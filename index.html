@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binderplan – Pokémon-Binder planen &amp; drucken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #fdf8f1; --ink: #3a3227; --mut: #8c7f6c; --line: #eadfd0;
+    --card: #ffffff; --akzent: #e85d43; --akzent-dunkel: #c74630; --gruen: #4f9d69;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Quicksand', 'Trebuchet MS', sans-serif; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 14px; color: var(--ink); }
+  .hidden { display: none !important; }
+
+  /* ---------- gemeinsame Bausteine ---------- */
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px;
+          border: 1.5px solid var(--line); background: var(--card); font-size: 13px; font-weight: 600; color: var(--mut); }
+  .chip.on { border-color: var(--akzent); background: var(--akzent); color: #fff; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 999px;
+         background: var(--akzent); color: #fff; font-size: 15px; font-weight: 700; }
+  .btn:hover { background: var(--akzent-dunkel); }
+  .btn.sekundaer { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
+  .btn.sekundaer:hover { background: #f6efe4; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+
+  /* ---------- Start / Assistent ---------- */
+  #view-start { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 20px 60px; }
+  .steps { display: flex; align-items: center; gap: 9px; margin-top: 42px; flex-wrap: wrap; justify-content: center; }
+  .dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+         font-size: 13px; font-weight: 700; background: #f2e9de; color: #a3947f; }
+  .dot.done { background: var(--akzent); color: #fff; }
+  .steplbl { font-size: 13.5px; color: #a3947f; font-weight: 600; }
+  .steplbl.done { color: var(--ink); }
+  .stepline { width: 44px; height: 2px; background: #e9ddce; }
+  h1 { font-size: 32px; font-weight: 700; margin: 44px 0 0; letter-spacing: -0.01em; text-align: center; }
+  .untertitel { font-size: 15.5px; color: var(--mut); margin-top: 10px; text-align: center; }
+  .ziele { display: flex; gap: 22px; max-width: 1060px; width: 100%; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
+  .ziel { flex: 1 1 280px; max-width: 340px; background: var(--card); border: 2px solid #efe4d8; border-radius: 20px;
+          padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; text-align: left; transition: box-shadow .15s, border-color .15s; }
+  .ziel:hover { border-color: var(--akzent); box-shadow: 0 10px 28px rgba(232,93,67,0.16); }
+  .ziel h3 { margin: 0; font-size: 18px; }
+  .ziel p { margin: 0; font-size: 13.5px; color: var(--mut); line-height: 1.55; }
+  .ziel .fuss { margin-top: auto; font-size: 13px; font-weight: 700; color: var(--akzent); }
+  .panel { background: var(--card); border: 2px solid #efe4d8; border-radius: 20px; padding: 24px; max-width: 720px; width: 100%; margin-top: 36px; }
+  .setliste { max-height: 380px; overflow-y: auto; margin-top: 14px; border: 1.5px solid var(--line); border-radius: 12px; }
+  .setzeile { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 14px;
+              border-bottom: 1px solid #f4ede2; font-size: 14px; }
+  .setzeile:hover { background: #fdf4ea; }
+  .setzeile.on { background: #fdeae4; }
+  .setzeile .datum { margin-left: auto; color: var(--mut); font-size: 12.5px; white-space: nowrap; }
+  .serie-kopf { padding: 8px 14px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+                color: var(--mut); background: #faf3e9; position: sticky; top: 0; }
+  .raster-optionen { display: flex; gap: 18px; margin-top: 24px; flex-wrap: wrap; justify-content: center; }
+  .raster-btn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 22px;
+                border: 2px solid #efe4d8; border-radius: 16px; background: var(--card); }
+  .raster-btn.on { border-color: var(--akzent); box-shadow: 0 8px 22px rgba(232,93,67,0.16); }
+  .raster-mini { display: grid; gap: 3px; }
+  .raster-mini div { width: 13px; height: 18px; border-radius: 2px; background: #e9ddce; }
+  .raster-btn.on .raster-mini div { background: var(--akzent); }
+  .wizard-fuss { display: flex; align-items: center; justify-content: space-between; max-width: 720px; width: 100%; margin-top: 30px; }
+  .meine-binder { max-width: 720px; width: 100%; margin-top: 48px; }
+  .binderzeile { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1.5px solid var(--line);
+                 border-radius: 14px; padding: 13px 18px; margin-top: 10px; }
+  .binderzeile .info { font-size: 12.5px; color: var(--mut); }
+  .hinweis { background: #fdf1e3; border: 1.5px solid #f3ddc0; border-radius: 12px; padding: 12px 16px;
+             font-size: 13.5px; color: #7a5c33; max-width: 720px; width: 100%; margin-top: 26px; line-height: 1.5; }
+
+  /* ---------- Werkbank ---------- */
+  #view-werkbank { height: 100vh; display: flex; flex-direction: column; }
+  .wb-kopf { display: flex; align-items: center; gap: 16px; padding: 0 18px; height: 56px; background: var(--card);
+             border-bottom: 1.5px solid var(--line); flex-shrink: 0; }
+  .wb-kopf input.bindername { border: none; background: transparent; font-size: 16px; font-weight: 700; min-width: 120px; width: 260px; outline: none; }
+  .wb-body { display: flex; flex: 1; min-height: 0; }
+  .wb-filter { width: 250px; flex-shrink: 0; background: var(--card); border-right: 1.5px solid var(--line);
+               padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .f-lbl { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-bottom: 7px; }
+  .f-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .f-chips .chip { padding: 4px 10px; font-size: 12px; }
+  .wb-filter input[type=search], .wb-filter select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line);
+    border-radius: 10px; background: #fdfaf5; outline: none; }
+  .wb-mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px 18px; gap: 10px; }
+  .wb-mitte .kopfzeile { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--mut); flex-wrap: wrap; }
+  .ergebnisse { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+                grid-auto-rows: max-content; gap: 10px; align-content: start; padding-bottom: 10px; }
+  .tk { position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
+        text-align: left; padding: 0; display: flex; flex-direction: column; cursor: pointer; }
+  .tk:hover { border-color: var(--akzent); }
+  /* Padding-Trick statt aspect-ratio: nur so bekommt die Auto-Grid-Zeile die richtige Höhe */
+  .tk .bildbox { position: relative; width: 100%; padding-top: 139.7%; background: #f3ede3; }
+  .tk .bildbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .tk .kein-bild { position: absolute; inset: 0; display: flex; align-items: center;
+                   justify-content: center; color: var(--mut); font-size: 11px; padding: 8px; text-align: center; }
+  .tk .tk-name { font-size: 11.5px; font-weight: 700; padding: 6px 8px 0; }
+  .tk .tk-meta { font-size: 10px; color: var(--mut); padding: 1px 8px 7px; }
+  .tk .anz { position: absolute; top: 6px; right: 6px; background: var(--gruen); color: #fff; font-size: 11px;
+             font-weight: 700; min-width: 20px; height: 20px; border-radius: 999px; display: flex; align-items: center;
+             justify-content: center; padding: 0 5px; }
+  .tk .rbtn { position: absolute; top: 6px; left: 6px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
+              color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+  .tk .rbtn:hover { border-color: var(--akzent); color: var(--akzent); }
+  .wb-binder { width: 330px; flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
+               padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+  .slots { background: #f6efe4; border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+  .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed #d8cbb6; background: transparent;
+          display: flex; align-items: center; justify-content: center; color: #c2b49c; font-size: 16px; overflow: hidden; padding: 0; }
+  .slot.voll { border: 1.5px solid #d8cbb6; background: #fff; cursor: grab; }
+  .slot img { width: 100%; height: 100%; object-fit: contain; }
+  .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; height: 100%; padding: 4px; }
+  .slot .dexzelle img { width: 55%; height: auto; }
+  .slot .dexzelle span { font-size: 8.5px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
+  .slot .raus { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(58,50,39,.75);
+                color: #fff; font-size: 11px; line-height: 18px; text-align: center; opacity: 0; }
+  .slot:hover .raus { opacity: 1; }
+  .slot .rmark { position: absolute; bottom: 3px; left: 3px; background: var(--akzent); color: #fff; font-size: 8px;
+                 font-weight: 700; padding: 1px 5px; border-radius: 999px; }
+  .slot.dragover { border-color: var(--akzent); }
+  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; color: var(--mut); }
+  .seiten-nav strong { color: var(--ink); }
+  .fortschritt { font-size: 12.5px; color: var(--mut); text-align: center; }
+  .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 13px;
+                 padding: 8px 18px; text-align: center; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+           font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50; }
+  .toast.zeig { opacity: 1; }
+  @media (max-width: 900px) {
+    .wb-filter { display: none; }
+    .wb-binder { width: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =============== Start & Assistent =============== -->
+<div id="view-start">
+  <div id="sync-banner" class="sync-banner hidden" style="width:100%"></div>
+  <div class="steps" id="steps"></div>
+  <h1 id="wz-titel">Was möchtest du sammeln?</h1>
+  <div class="untertitel" id="wz-unter">In vier Schritten zum druckfertigen Binder – du kannst jederzeit zurück.</div>
+
+  <!-- Schritt 1: Ziel -->
+  <div id="schritt-ziel" class="ziele">
+    <button class="ziel" onclick="wzZiel('master')">
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><rect x="6" y="5" width="28" height="30" rx="4"></rect><line x1="6" y1="15" x2="34" y2="15"></line><circle cx="20" cy="25" r="4.5"></circle></svg>
+      <h3>Master Set</h3>
+      <p>Ein komplettes Set, jede Karte einmal – sortiert nach Setnummer. Reverse Holos optional dazu.</p>
+      <div class="fuss">Alle Sets von 1999 bis heute</div>
+    </button>
+    <button class="ziel" onclick="wzZiel('dex')">
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><circle cx="20" cy="20" r="14"></circle><line x1="6" y1="20" x2="34" y2="20"></line><circle cx="20" cy="20" r="4"></circle></svg>
+      <h3>Pokédex-Binder</h3>
+      <p>Jedes Pokémon einmal – egal welche Karte. Gedruckt wird pro Fach nur Bild, Nummer und Name.</p>
+      <div class="fuss">Generation 1 bis 9 wählbar</div>
+    </button>
+    <button class="ziel" onclick="wzZiel('custom')">
+      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><path d="M8 32c4-10 8-14 12-14M20 18c5-6 9-8 12-8M20 18l4 14"></path><circle cx="8" cy="32" r="3"></circle><circle cx="32" cy="10" r="3"></circle></svg>
+      <h3>Eigene Auswahl</h3>
+      <p>Frei filtern und zusammenstellen: alle Lv.X, alle Glurak, ein Typ, eine Ära – was du willst.</p>
+      <div class="fuss">Volle Filter-Power</div>
+    </button>
+  </div>
+
+  <!-- Schritt 2a: Set wählen -->
+  <div id="schritt-set" class="panel hidden">
+    <div class="f-lbl">Set auswählen</div>
+    <input type="search" id="set-suche" placeholder="Set suchen … (z. B. Nebel der Sagen)" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fdfaf5;outline:none">
+    <div class="setliste" id="set-liste"></div>
+    <label style="display:flex;align-items:center;gap:9px;margin-top:16px;font-size:14px;font-weight:600">
+      <input type="checkbox" id="opt-reverse" style="width:17px;height:17px;accent-color:var(--akzent)">
+      Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)
+    </label>
+  </div>
+
+  <!-- Schritt 2b: Generationen -->
+  <div id="schritt-gen" class="panel hidden">
+    <div class="f-lbl">Welche Generationen?</div>
+    <div class="f-chips" id="gen-chips" style="margin-top:10px"></div>
+    <div style="font-size:13px;color:var(--mut);margin-top:14px" id="gen-info"></div>
+  </div>
+
+  <!-- Schritt 3: Raster -->
+  <div id="schritt-raster" class="hidden" style="width:100%;max-width:720px">
+    <div class="raster-optionen" id="raster-optionen"></div>
+  </div>
+
+  <div class="wizard-fuss">
+    <button class="btn sekundaer hidden" id="wz-zurueck" onclick="wzZurueck()">‹ Zurück</button>
+    <div style="flex:1"></div>
+    <button class="btn hidden" id="wz-weiter" onclick="wzWeiter()">Weiter ›</button>
+  </div>
+
+  <!-- Gespeicherte Binder -->
+  <div class="meine-binder hidden" id="meine-binder">
+    <div class="f-lbl">Meine Binder</div>
+    <div id="binder-liste"></div>
+  </div>
+
+  <div class="hinweis">Proxys aus diesem Tool sind für den privaten Gebrauch gedacht (Platzhalter im eigenen Binder).
+  Kartenbilder © Pokémon / The Pokémon Company – bitte nicht verkaufen oder als echte Karten ausgeben.</div>
+</div>
+
+<!-- =============== Werkbank =============== -->
+<div id="view-werkbank" class="hidden">
+  <div class="wb-kopf">
+    <button class="btn sekundaer" style="padding:8px 14px;font-size:13px" onclick="zeigeStart()">‹ Start</button>
+    <input class="bindername" id="wb-name" placeholder="Name des Binders">
+    <span id="wb-status" style="font-size:12px;color:var(--mut)"></span>
+    <div style="flex:1"></div>
+    <button class="btn" id="wb-pdf" onclick="exportPdf()">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
+      PDF exportieren (S/W)
+    </button>
+  </div>
+  <div class="wb-body">
+
+    <div class="wb-filter">
+      <div>
+        <div class="f-lbl">Suche</div>
+        <input type="search" id="f-suche" placeholder="Karte oder Pokémon …">
+      </div>
+      <div>
+        <div class="f-lbl">Kartenart</div>
+        <div class="f-chips" id="f-kinds"></div>
+      </div>
+      <div>
+        <div class="f-lbl">Typ</div>
+        <div class="f-chips" id="f-typen"></div>
+      </div>
+      <div>
+        <div class="f-lbl">Set</div>
+        <select id="f-set"><option value="">Alle Sets</option></select>
+      </div>
+      <div>
+        <div class="f-lbl">Sortierung</div>
+        <select id="f-sort">
+          <option value="datum">Erscheinungsdatum</option>
+          <option value="dex">Pokédex-Nummer</option>
+          <option value="name">Alphabetisch</option>
+          <option value="nummer">Set &amp; Setnummer</option>
+          <option value="typ">Typ</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:13px">
+          <input type="checkbox" id="f-absteigend" style="accent-color:var(--akzent)"> absteigend
+        </label>
+      </div>
+      <button class="btn sekundaer" style="font-size:13px;padding:9px 14px" onclick="filterReset()">Filter zurücksetzen</button>
+    </div>
+
+    <div class="wb-mitte">
+      <div class="kopfzeile">
+        <span id="erg-anzahl">–</span>
+        <div style="flex:1"></div>
+        <button class="btn sekundaer" style="font-size:12.5px;padding:7px 14px" onclick="alleHinzufuegen()" id="btn-alle">+ Alle Treffer in den Binder</button>
+      </div>
+      <div class="ergebnisse" id="ergebnisse"></div>
+      <button class="btn sekundaer hidden" id="btn-mehr" style="align-self:center;font-size:13px" onclick="mehrLaden()">Mehr laden</button>
+    </div>
+
+    <div class="wb-binder">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:700">Binder</div>
+        <div class="f-chips" id="wb-layouts"></div>
+      </div>
+      <div class="slots" id="wb-slots"></div>
+      <div class="seiten-nav">
+        <button onclick="seiteWechsel(-1)" style="font-size:17px">‹</button>
+        <span>Seite <strong id="wb-seite">1</strong> von <strong id="wb-seiten">1</strong></span>
+        <button onclick="seiteWechsel(1)" style="font-size:17px">›</button>
+      </div>
+      <div class="fortschritt" id="wb-fortschritt"></div>
+      <div style="flex:1"></div>
+      <div style="font-size:11.5px;color:var(--mut);line-height:1.5">Karten ziehen zum Umsortieren, ✕ entfernt.
+        Gedruckt wird in 63 × 88 mm mit Beschriftung „Seite · Fach“.</div>
+      <button class="btn sekundaer" style="font-size:12.5px;padding:8px 14px" onclick="binderLeeren()">Binder leeren</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ---------- Zustand ----------
+const S = {
+  meta: null,
+  binder: null,          // {id, name, mode, layout, options, items}
+  ergebnisse: [],
+  gesamt: 0,
+  offset: 0,
+  seite: 0,              // aktuelle Binderseite (0-basiert)
+  wzSchritt: 1,
+  wzMode: null,
+  wzSet: null,
+  wzGens: new Set(),
+  wzLayout: '3x3',
+  speicherTimer: null,
+};
+const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x4': [4, 4] };
+const KINDS = [
+  ['lvx', 'Lv.X'], ['ex', 'ex / EX'], ['gx', 'GX'], ['v', 'V'], ['vmax', 'VMAX'],
+  ['vstar', 'VSTAR'], ['mega', 'MEGA'], ['break', 'BREAK'], ['trainer', 'Trainer'], ['energie', 'Energie'],
+];
+const filter = { q: '', set: '', typ: '', kinds: new Set(), sort: 'datum', richtung: 'asc' };
+
+const $ = (id) => document.getElementById(id);
+const api = (pfad, opts) => fetch(pfad, opts).then((r) => {
+  if (!r.ok) throw new Error('API-Fehler ' + r.status);
+  return r.json();
+});
+
+let toastTimer = null;
+function toast(text) {
+  const t = $('toast');
+  t.textContent = text;
+  t.classList.add('zeig');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('zeig'), 2600);
+}
+
+// ---------- Start / Routing ----------
+async function boot() {
+  try { S.meta = await api('api/meta'); } catch (e) { toast('Server nicht erreichbar'); return; }
+  syncBanner();
+  baueFilterLeiste();
+  const hash = location.hash.slice(1);
+  if (hash.startsWith('binder/')) {
+    const id = hash.split('/')[1];
+    try {
+      S.binder = await api('api/binders/' + id);
+      merkeBinderId(id);
+      zeigeWerkbank();
+      return;
+    } catch (e) { /* Binder weg -> Start */ }
+  }
+  zeigeStart();
+}
+
+function syncBanner() {
+  const b = $('sync-banner');
+  const sync = S.meta && S.meta.sync;
+  if (sync && (sync.running || (S.meta.counts.cards === 0))) {
+    b.classList.remove('hidden');
+    b.textContent = sync.error
+      ? 'Karten-Sync fehlgeschlagen: ' + sync.error
+      : `Kartendatenbank wird aufgebaut … ${sync.step || ''} (${sync.done}/${sync.total || '?'}) – die Seite ist gleich einsatzbereit.`;
+    setTimeout(async () => { try { S.meta = await api('api/meta'); } catch (e) {} syncBanner(); }, 4000);
+  } else {
+    b.classList.add('hidden');
+  }
+}
+
+function zeigeStart() {
+  location.hash = '';
+  $('view-werkbank').classList.add('hidden');
+  $('view-start').classList.remove('hidden');
+  S.wzSchritt = 1; S.wzMode = null; S.wzSet = null;
+  wzRender();
+  ladeMeineBinder();
+}
+
+function zeigeWerkbank() {
+  if (!S.binder) return zeigeStart();
+  location.hash = 'binder/' + S.binder.id;
+  $('view-start').classList.add('hidden');
+  $('view-werkbank').classList.remove('hidden');
+  $('wb-name').value = S.binder.name;
+  S.seite = 0;
+  zeichneLayouts();
+  zeichneBinder();
+  sucheNeu();
+}
+
+// ---------- Assistent ----------
+const WZ_TITEL = {
+  1: ['Was möchtest du sammeln?', 'In vier Schritten zum druckfertigen Binder – du kannst jederzeit zurück.'],
+  2: { master: ['Welches Set soll es sein?', 'Jede Karte des Sets kommt einmal in den Binder – sortiert nach Setnummer.'],
+       dex: ['Welche Generationen?', 'Jedes Pokémon bekommt ein Fach – gedruckt wird Nummer, Name und Bild.'] },
+  3: ['Wie ist dein Binder aufgebaut?', 'Danach richtet sich, welche Karte auf welcher Seite in welchem Fach landet.'],
+};
+
+function wzRender() {
+  const s = S.wzSchritt;
+  const dots = [['Ziel', 1], ['Auswahl', 2], ['Raster', 3], ['Drucken', 4]];
+  $('steps').innerHTML = dots.map(([lbl, n], i) =>
+    `<div class="dot ${n <= s ? 'done' : ''}">${n}</div><div class="steplbl ${n <= s ? 'done' : ''}">${lbl}</div>` +
+    (i < dots.length - 1 ? '<div class="stepline"></div>' : '')
+  ).join('');
+  const titel = s === 2 ? WZ_TITEL[2][S.wzMode] : WZ_TITEL[s];
+  if (titel) { $('wz-titel').textContent = titel[0]; $('wz-unter').textContent = titel[1]; }
+  $('schritt-ziel').classList.toggle('hidden', s !== 1);
+  $('schritt-set').classList.toggle('hidden', !(s === 2 && S.wzMode === 'master'));
+  $('schritt-gen').classList.toggle('hidden', !(s === 2 && S.wzMode === 'dex'));
+  $('schritt-raster').classList.toggle('hidden', s !== 3);
+  $('wz-zurueck').classList.toggle('hidden', s === 1);
+  $('wz-weiter').classList.toggle('hidden', s === 1);
+  $('wz-weiter').textContent = s === 3 ? 'Binder erstellen ✓' : 'Weiter ›';
+  $('meine-binder').classList.toggle('hidden', s !== 1);
+  if (s === 2 && S.wzMode === 'master') zeichneSetliste();
+  if (s === 2 && S.wzMode === 'dex') zeichneGens();
+  if (s === 3) zeichneRaster();
+}
+
+function wzZiel(mode) {
+  S.wzMode = mode;
+  S.wzSchritt = mode === 'custom' ? 3 : 2;
+  wzRender();
+}
+
+function wzZurueck() {
+  S.wzSchritt = S.wzSchritt === 3 && S.wzMode === 'custom' ? 1 : S.wzSchritt - 1;
+  wzRender();
+}
+
+async function wzWeiter() {
+  if (S.wzSchritt === 2) {
+    if (S.wzMode === 'master' && !S.wzSet) return toast('Bitte erst ein Set wählen');
+    if (S.wzMode === 'dex' && S.wzGens.size === 0) return toast('Bitte mindestens eine Generation wählen');
+    S.wzSchritt = 3;
+    return wzRender();
+  }
+  if (S.wzSchritt === 3) return binderErstellen();
+}
+
+function zeichneSetliste() {
+  const q = ($('set-suche').value || '').toLowerCase();
+  const liste = $('set-liste');
+  const sets = (S.meta.sets || []).filter((s) => !q || (s.name || '').toLowerCase().includes(q));
+  let html = '';
+  let letzteSerie = null;
+  for (const s of sets) {
+    if (s.serie_name !== letzteSerie) {
+      letzteSerie = s.serie_name;
+      html += `<div class="serie-kopf">${s.serie_name || 'Weitere'}</div>`;
+    }
+    html += `<button class="setzeile ${S.wzSet === s.id ? 'on' : ''}" onclick="setWaehlen('${s.id}')">
+      <span style="font-weight:600">${s.name}</span>
+      <span style="color:var(--mut);font-size:12px">${s.official || s.total || '?'} Karten</span>
+      <span class="datum">${s.release_date || ''}</span></button>`;
+  }
+  liste.innerHTML = html || '<div style="padding:16px;color:var(--mut)">Kein Set gefunden.</div>';
+}
+
+function setWaehlen(id) { S.wzSet = id; zeichneSetliste(); }
+
+function zeichneGens() {
+  const box = $('gen-chips');
+  box.innerHTML = (S.meta.gens || []).map((g) =>
+    `<button class="chip ${S.wzGens.has(g.gen) ? 'on' : ''}" onclick="genToggle(${g.gen})">Gen ${g.gen} <span style="font-weight:500">#${g.von}–${g.bis}</span></button>`
+  ).join('') + `<button class="chip" onclick="genAlle()">Alle</button>`;
+  const summe = [...S.wzGens].reduce((acc, g) => {
+    const info = S.meta.gens.find((x) => x.gen === g);
+    return acc + (info ? info.bis - info.von + 1 : 0);
+  }, 0);
+  $('gen-info').textContent = summe ? `${summe} Pokémon ausgewählt` : 'Noch nichts ausgewählt.';
+}
+
+function genToggle(g) { S.wzGens.has(g) ? S.wzGens.delete(g) : S.wzGens.add(g); zeichneGens(); }
+function genAlle() { S.meta.gens.forEach((g) => S.wzGens.add(g.gen)); zeichneGens(); }
+
+function zeichneRaster() {
+  $('raster-optionen').innerHTML = Object.keys(LAYOUTS).map((l) => {
+    const [c, r] = LAYOUTS[l];
+    const zellen = Array(c * r).fill('<div></div>').join('');
+    return `<button class="raster-btn ${S.wzLayout === l ? 'on' : ''}" onclick="rasterWaehlen('${l}')">
+      <div class="raster-mini" style="grid-template-columns:repeat(${c},13px)">${zellen}</div>
+      <div style="font-weight:700">${l.replace('x', ' × ')}</div>
+      <div style="font-size:12px;color:var(--mut)">${c * r} Karten je Seite</div></button>`;
+  }).join('');
+}
+
+function rasterWaehlen(l) { S.wzLayout = l; zeichneRaster(); }
+
+async function binderErstellen() {
+  let items = [];
+  let name = 'Mein Binder';
+  const options = {};
+  try {
+    if (S.wzMode === 'master') {
+      const set = S.meta.sets.find((s) => s.id === S.wzSet);
+      name = 'Master Set ' + (set ? set.name : '');
+      const d = await api('api/sets/' + S.wzSet + '/cards');
+      items = d.karten.map((k) => ({ type: 'card', id: k.id }));
+      if ($('opt-reverse').checked) {
+        options.reverse = true;
+        items = items.concat(d.karten.filter((k) => k.reverse).map((k) => ({ type: 'card', id: k.id, variant: 'reverse' })));
+      }
+    } else if (S.wzMode === 'dex') {
+      const gens = [...S.wzGens].sort((a, b) => a - b);
+      name = 'Pokédex Gen ' + gens.join('+');
+      const d = await api('api/pokedex?gens=' + gens.join(','));
+      items = d.pokemon.map((p) => ({ type: 'dex', dex: p.dex, name: p.name }));
+    }
+    const res = await api('api/binders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, mode: S.wzMode, layout: S.wzLayout, options, items }),
+    });
+    S.binder = { id: res.id, name, mode: S.wzMode, layout: S.wzLayout, options, items };
+    merkeBinderId(res.id);
+    zeigeWerkbank();
+    toast(items.length ? `${items.length} Fächer angelegt` : 'Leerer Binder angelegt – such dir Karten!');
+  } catch (e) {
+    toast('Konnte Binder nicht anlegen: ' + e.message);
+  }
+}
+
+// ---------- Meine Binder ----------
+function binderIds() {
+  try { return JSON.parse(localStorage.getItem('bp_binder') || '[]'); } catch (e) { return []; }
+}
+function merkeBinderId(id) {
+  const ids = binderIds().filter((x) => x !== id);
+  ids.unshift(id);
+  localStorage.setItem('bp_binder', JSON.stringify(ids.slice(0, 50)));
+}
+
+async function ladeMeineBinder() {
+  const ids = binderIds();
+  const box = $('binder-liste');
+  if (!ids.length) { $('meine-binder').classList.add('hidden'); return; }
+  $('meine-binder').classList.remove('hidden');
+  try {
+    const d = await api('api/binders?ids=' + ids.join(','));
+    box.innerHTML = d.binder.map((b) => `
+      <div class="binderzeile">
+        <div style="flex:1">
+          <div style="font-weight:700">${b.name}</div>
+          <div class="info">${b.anzahl} Fächer · Raster ${b.layout.replace('x', '×')} · ${b.updated_at ? b.updated_at.slice(0, 10) : ''}</div>
+        </div>
+        <button class="btn sekundaer" style="font-size:13px;padding:8px 16px" onclick="binderOeffnen('${b.id}')">Öffnen</button>
+        <button class="btn sekundaer" style="font-size:13px;padding:8px 12px" onclick="binderLoeschen('${b.id}')">🗑</button>
+      </div>`).join('') || '';
+  } catch (e) { box.innerHTML = ''; }
+}
+
+async function binderOeffnen(id) {
+  try {
+    S.binder = await api('api/binders/' + id);
+    zeigeWerkbank();
+  } catch (e) { toast('Binder nicht gefunden'); }
+}
+
+async function binderLoeschen(id) {
+  if (!confirm('Diesen Binder wirklich löschen?')) return;
+  try { await api('api/binders/' + id, { method: 'DELETE' }); } catch (e) {}
+  localStorage.setItem('bp_binder', JSON.stringify(binderIds().filter((x) => x !== id)));
+  ladeMeineBinder();
+}
+
+// ---------- Werkbank: Filter & Suche ----------
+function baueFilterLeiste() {
+  $('f-kinds').innerHTML = KINDS.map(([k, lbl]) =>
+    `<button class="chip" data-kind="${k}" onclick="kindToggle('${k}')">${lbl}</button>`).join('');
+  const typen = Object.entries(S.meta.types || {});
+  $('f-typen').innerHTML = typen.map(([en, de]) =>
+    `<button class="chip" data-typ="${en}" onclick="typToggle('${en}')">${de}</button>`).join('');
+  const sel = $('f-set');
+  let letzteSerie = null; let html = '<option value="">Alle Sets</option>'; let offen = false;
+  for (const s of S.meta.sets || []) {
+    if (s.serie_name !== letzteSerie) {
+      if (offen) html += '</optgroup>';
+      html += `<optgroup label="${s.serie_name || 'Weitere'}">`; offen = true;
+      letzteSerie = s.serie_name;
+    }
+    html += `<option value="${s.id}">${s.name} (${s.release_date ? s.release_date.slice(0, 4) : '?'})</option>`;
+  }
+  if (offen) html += '</optgroup>';
+  sel.innerHTML = html;
+
+  let suchTimer = null;
+  $('f-suche').addEventListener('input', () => { clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
+  sel.addEventListener('change', () => { filter.set = sel.value; sucheNeu(); });
+  $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; sucheNeu(); });
+  $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; sucheNeu(); });
+  $('set-suche').addEventListener('input', zeichneSetliste);
+  $('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; speichern(); } });
+}
+
+function kindToggle(k) {
+  filter.kinds.has(k) ? filter.kinds.delete(k) : filter.kinds.add(k);
+  document.querySelectorAll('[data-kind]').forEach((el) => el.classList.toggle('on', filter.kinds.has(el.dataset.kind)));
+  sucheNeu();
+}
+function typToggle(t) {
+  filter.typ = filter.typ === t ? '' : t;
+  document.querySelectorAll('[data-typ]').forEach((el) => el.classList.toggle('on', el.dataset.typ === filter.typ));
+  sucheNeu();
+}
+function filterReset() {
+  filter.q = ''; filter.set = ''; filter.typ = ''; filter.kinds.clear();
+  filter.sort = 'datum'; filter.richtung = 'asc';
+  $('f-suche').value = ''; $('f-set').value = ''; $('f-sort').value = 'datum'; $('f-absteigend').checked = false;
+  document.querySelectorAll('[data-kind],[data-typ]').forEach((el) => el.classList.remove('on'));
+  sucheNeu();
+}
+
+function filterParams() {
+  const p = new URLSearchParams();
+  if (filter.q) p.set('q', filter.q);
+  if (filter.set) p.set('set_id', filter.set);
+  if (filter.typ) p.set('typ', filter.typ);
+  if (filter.kinds.size) p.set('kind', [...filter.kinds].join(','));
+  p.set('sort', filter.sort);
+  p.set('richtung', filter.richtung);
+  return p;
+}
+
+async function sucheNeu() {
+  S.offset = 0;
+  S.ergebnisse = [];
+  await sucheLaden();
+}
+
+async function sucheLaden() {
+  const p = filterParams();
+  p.set('limit', '60'); p.set('offset', String(S.offset));
+  try {
+    const d = await api('api/cards?' + p);
+    S.gesamt = d.total;
+    S.ergebnisse = S.ergebnisse.concat(d.karten);
+    S.offset += d.karten.length;
+    zeichneErgebnisse();
+  } catch (e) { toast('Suche fehlgeschlagen'); }
+}
+
+function mehrLaden() { sucheLaden(); }
+
+function anzahlImBinder(id) {
+  return S.binder ? S.binder.items.filter((i) => i.type === 'card' && i.id === id).length : 0;
+}
+
+function zeichneErgebnisse() {
+  $('erg-anzahl').innerHTML = `<strong>${S.gesamt}</strong> Karten gefunden`;
+  $('btn-mehr').classList.toggle('hidden', S.offset >= S.gesamt);
+  $('btn-alle').disabled = S.gesamt === 0 || S.gesamt > 2000;
+  $('btn-alle').title = S.gesamt > 2000 ? 'Mehr als 2000 Treffer – bitte enger filtern' : '';
+  $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
+    const n = anzahlImBinder(k.id);
+    return `<div class="tk" onclick="kartAdd(${i})" title="${k.name} – in den Binder">
+      <div class="bildbox">${k.img ? `<img loading="lazy" src="api/img/card/${encodeURIComponent(k.id)}" alt="">`
+              : `<div class="kein-bild">${k.name}</div>`}</div>
+      ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Als Reverse Holo hinzufügen">R+</span>` : ''}
+      ${n ? `<span class="anz">${n}</span>` : ''}
+      <div class="tk-name">${k.name}</div>
+      <div class="tk-meta">${k.set_name || k.set_id} · ${k.local_id}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function kartAdd(i, variant) {
+  const k = S.ergebnisse[i];
+  if (!k || !S.binder) return;
+  S.binder.items.push({ type: 'card', id: k.id, variant: variant || 'normal' });
+  speichern();
+  zeichneBinder();
+  zeichneErgebnisse();
+}
+
+async function alleHinzufuegen() {
+  if (!S.binder) return;
+  const p = filterParams();
+  p.set('limit', '2000');
+  try {
+    const d = await api('api/cards/ids?' + p);
+    if (!d.ids.length) return;
+    if (d.ids.length > 300 && !confirm(`${d.ids.length} Karten wirklich alle hinzufügen?`)) return;
+    for (const id of d.ids) S.binder.items.push({ type: 'card', id });
+    speichern();
+    zeichneBinder();
+    zeichneErgebnisse();
+    toast(`${d.ids.length} Karten hinzugefügt`);
+  } catch (e) { toast('Konnte Treffer nicht laden'); }
+}
+
+// ---------- Werkbank: Binder ----------
+function zeichneLayouts() {
+  $('wb-layouts').innerHTML = Object.keys(LAYOUTS).map((l) =>
+    `<button class="chip ${S.binder.layout === l ? 'on' : ''}" onclick="layoutWechsel('${l}')">${l.replace('x', '×')}</button>`).join('');
+}
+function layoutWechsel(l) {
+  S.binder.layout = l;
+  S.seite = 0;
+  zeichneLayouts();
+  zeichneBinder();
+  speichern();
+}
+
+function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return c * r; }
+
+function zeichneBinder() {
+  if (!S.binder) return;
+  const pp = proSeite();
+  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  if (S.seite >= seiten) S.seite = seiten - 1;
+  $('wb-seite').textContent = S.seite + 1;
+  $('wb-seiten').textContent = seiten;
+  $('wb-fortschritt').textContent = `${S.binder.items.length} Fächer belegt · ${seiten} Binderseiten · ` +
+    `${Math.ceil(S.binder.items.filter((x) => x.type !== 'empty').length / 9)} A4-Blätter im Druck`;
+  const box = $('wb-slots');
+  box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  let html = '';
+  for (let s = 0; s < pp; s++) {
+    const idx = S.seite * pp + s;
+    const item = S.binder.items[idx];
+    if (!item) { html += `<div class="slot">+</div>`; continue; }
+    let inhalt = '';
+    if (item.type === 'dex') {
+      inhalt = `<div class="dexzelle"><img loading="lazy" src="api/img/dex/${item.dex}" alt=""><span>#${String(item.dex).padStart(3, '0')} ${item.name || ''}</span></div>`;
+    } else {
+      inhalt = `<img loading="lazy" src="api/img/card/${encodeURIComponent(item.id)}" alt="" onerror="this.outerHTML='<span style=&quot;font-size:9px;padding:4px;color:var(--ink)&quot;>${(item.id || '').replace(/'/g, '')}</span>'">`;
+    }
+    html += `<div class="slot voll" draggable="true" data-idx="${idx}"
+        ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
+      ${inhalt}
+      ${item.variant === 'reverse' ? '<span class="rmark">REV</span>' : ''}
+      <button class="raus" onclick="slotEntfernen(${idx})" title="Entfernen">✕</button>
+    </div>`;
+  }
+  box.innerHTML = html;
+}
+
+function seiteWechsel(d) {
+  const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
+  zeichneBinder();
+}
+
+function slotEntfernen(idx) {
+  S.binder.items.splice(idx, 1);
+  speichern();
+  zeichneBinder();
+  zeichneErgebnisse();
+}
+
+function binderLeeren() {
+  if (!S.binder.items.length || !confirm('Alle Fächer aus diesem Binder entfernen?')) return;
+  S.binder.items = [];
+  S.seite = 0;
+  speichern();
+  zeichneBinder();
+  zeichneErgebnisse();
+}
+
+let dragIdx = null;
+function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); ev.dataTransfer.effectAllowed = 'move'; }
+function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
+function dragLeave(ev) { ev.currentTarget.classList.remove('dragover'); }
+function dragDrop(ev) {
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  const ziel = Number(ev.currentTarget.dataset.idx);
+  if (dragIdx === null || ziel === dragIdx) return;
+  const [item] = S.binder.items.splice(dragIdx, 1);
+  S.binder.items.splice(ziel, 0, item);
+  dragIdx = null;
+  speichern();
+  zeichneBinder();
+}
+
+// ---------- Speichern & PDF ----------
+function speichern() {
+  if (!S.binder) return;
+  $('wb-status').textContent = 'speichert …';
+  clearTimeout(S.speicherTimer);
+  S.speicherTimer = setTimeout(async () => {
+    try {
+      await api('api/binders/' + S.binder.id, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(S.binder),
+      });
+      $('wb-status').textContent = 'gespeichert ✓';
+    } catch (e) {
+      $('wb-status').textContent = 'Speichern fehlgeschlagen!';
+    }
+  }, 700);
+}
+
+async function exportPdf() {
+  if (!S.binder) return;
+  if (!S.binder.items.length) return toast('Der Binder ist noch leer.');
+  clearTimeout(S.speicherTimer);
+  try {
+    await api('api/binders/' + S.binder.id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(S.binder),
+    });
+  } catch (e) { return toast('Speichern vor dem Export fehlgeschlagen'); }
+  toast('PDF wird erzeugt – bei vielen Karten dauert der erste Export etwas …');
+  window.open('api/binders/' + S.binder.id + '/pdf', '_blank');
+}
+
+boot();
+</script>
+</body>
+</html>
