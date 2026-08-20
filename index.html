@@ -14,271 +14,273 @@
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Quicksand', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
-  input, select { font-family: inherit; font-size: 14px; color: var(--ink); }
+  input, select { font-family: inherit; font-size: 13.5px; color: var(--ink); }
   .hidden { display: none !important; }
-
-  /* ---------- gemeinsame Bausteine ---------- */
-  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 999px;
-          border: 1.5px solid var(--line); background: var(--card); font-size: 13px; font-weight: 600; color: var(--mut); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+          border: 1.5px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; color: var(--mut); }
   .chip.on { border-color: var(--akzent); background: var(--akzent); color: #fff; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 999px;
-         background: var(--akzent); color: #fff; font-size: 15px; font-weight: 700; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
+         background: var(--akzent); color: #fff; font-size: 14px; font-weight: 700; }
   .btn:hover { background: var(--akzent-dunkel); }
   .btn.sekundaer { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
   .btn.sekundaer:hover { background: #f6efe4; }
   .btn:disabled { opacity: 0.45; cursor: default; }
+  .feld { width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fdfaf5; outline: none; }
 
-  /* ---------- Start / Assistent ---------- */
-  #view-start { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 20px 60px; }
-  .steps { display: flex; align-items: center; gap: 9px; margin-top: 42px; flex-wrap: wrap; justify-content: center; }
-  .dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-         font-size: 13px; font-weight: 700; background: #f2e9de; color: #a3947f; }
-  .dot.done { background: var(--akzent); color: #fff; }
-  .steplbl { font-size: 13.5px; color: #a3947f; font-weight: 600; }
-  .steplbl.done { color: var(--ink); }
-  .stepline { width: 44px; height: 2px; background: #e9ddce; }
-  h1 { font-size: 32px; font-weight: 700; margin: 44px 0 0; letter-spacing: -0.01em; text-align: center; }
-  .untertitel { font-size: 15.5px; color: var(--mut); margin-top: 10px; text-align: center; }
-  .ziele { display: flex; gap: 22px; max-width: 1060px; width: 100%; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
-  .ziel { flex: 1 1 280px; max-width: 340px; background: var(--card); border: 2px solid #efe4d8; border-radius: 20px;
-          padding: 26px 24px; display: flex; flex-direction: column; gap: 12px; text-align: left; transition: box-shadow .15s, border-color .15s; }
-  .ziel:hover { border-color: var(--akzent); box-shadow: 0 10px 28px rgba(232,93,67,0.16); }
-  .ziel h3 { margin: 0; font-size: 18px; }
-  .ziel p { margin: 0; font-size: 13.5px; color: var(--mut); line-height: 1.55; }
-  .ziel .fuss { margin-top: auto; font-size: 13px; font-weight: 700; color: var(--akzent); }
-  .panel { background: var(--card); border: 2px solid #efe4d8; border-radius: 20px; padding: 24px; max-width: 720px; width: 100%; margin-top: 36px; }
-  .setliste { max-height: 380px; overflow-y: auto; margin-top: 14px; border: 1.5px solid var(--line); border-radius: 12px; }
-  .setzeile { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 14px;
-              border-bottom: 1px solid #f4ede2; font-size: 14px; }
-  .setzeile:hover { background: #fdf4ea; }
-  .setzeile.on { background: #fdeae4; }
-  .setzeile .datum { margin-left: auto; color: var(--mut); font-size: 12.5px; white-space: nowrap; }
-  .serie-kopf { padding: 8px 14px; font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-                color: var(--mut); background: #faf3e9; position: sticky; top: 0; }
-  .raster-optionen { display: flex; gap: 18px; margin-top: 24px; flex-wrap: wrap; justify-content: center; }
-  .raster-btn { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 22px;
-                border: 2px solid #efe4d8; border-radius: 16px; background: var(--card); }
-  .raster-btn.on { border-color: var(--akzent); box-shadow: 0 8px 22px rgba(232,93,67,0.16); }
-  .raster-mini { display: grid; gap: 3px; }
-  .raster-mini div { width: 13px; height: 18px; border-radius: 2px; background: #e9ddce; }
-  .raster-btn.on .raster-mini div { background: var(--akzent); }
-  .wizard-fuss { display: flex; align-items: center; justify-content: space-between; max-width: 720px; width: 100%; margin-top: 30px; }
-  .meine-binder { max-width: 720px; width: 100%; margin-top: 48px; }
-  .binderzeile { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1.5px solid var(--line);
-                 border-radius: 14px; padding: 13px 18px; margin-top: 10px; }
-  .binderzeile .info { font-size: 12.5px; color: var(--mut); }
-  .hinweis { background: #fdf1e3; border: 1.5px solid #f3ddc0; border-radius: 12px; padding: 12px 16px;
-             font-size: 13.5px; color: #7a5c33; max-width: 720px; width: 100%; margin-top: 26px; line-height: 1.5; }
+  /* ---------- Werkbank-Rahmen ---------- */
+  #app { height: 100vh; display: flex; flex-direction: column; }
+  .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
+          border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap; }
+  .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+  .kopf input.bindername { border: none; background: transparent; font-size: 15px; font-weight: 700; min-width: 80px; width: 210px; outline: none; }
+  .menuwrap { position: relative; }
+  .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+          box-shadow: 0 12px 30px rgba(58,50,39,.14); min-width: 250px; z-index: 30; padding: 6px; }
+  .menu button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 12px;
+                 border-radius: 8px; font-size: 13.5px; font-weight: 600; }
+  .menu button:hover { background: #fdf1e9; }
+  .menu .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
+  .lang-toggle { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .lang-toggle button { padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--mut); }
+  .lang-toggle button.on { background: var(--ink); color: #fff; }
 
-  /* ---------- Werkbank ---------- */
-  #view-werkbank { height: 100vh; display: flex; flex-direction: column; }
-  .wb-kopf { display: flex; align-items: center; gap: 16px; padding: 0 18px; height: 56px; background: var(--card);
-             border-bottom: 1.5px solid var(--line); flex-shrink: 0; }
-  .wb-kopf input.bindername { border: none; background: transparent; font-size: 16px; font-weight: 700; min-width: 120px; width: 260px; outline: none; }
-  .wb-body { display: flex; flex: 1; min-height: 0; }
-  .wb-filter { width: 250px; flex-shrink: 0; background: var(--card); border-right: 1.5px solid var(--line);
-               padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-  .f-lbl { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-bottom: 7px; }
-  .f-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .f-chips .chip { padding: 4px 10px; font-size: 12px; }
-  .wb-filter input[type=search], .wb-filter select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line);
-    border-radius: 10px; background: #fdfaf5; outline: none; }
-  .wb-mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px 18px; gap: 10px; }
-  .wb-mitte .kopfzeile { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--mut); flex-wrap: wrap; }
-  .ergebnisse { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-                grid-auto-rows: max-content; gap: 10px; align-content: start; padding-bottom: 10px; }
+  .rumpf { display: flex; flex: 1; min-height: 0; }
+  .spalte-filter { width: 252px; flex-shrink: 0; background: var(--card); border-right: 1.5px solid var(--line);
+                   padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .f-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-bottom: 6px; }
+  .f-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .spalte-mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 12px 16px; gap: 9px; }
+  .kopfzeile { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--mut); flex-wrap: wrap; }
+  .ergebnisse { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+                grid-auto-rows: max-content; gap: 9px; align-content: start; padding-bottom: 10px; }
   .tk { position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
         text-align: left; padding: 0; display: flex; flex-direction: column; cursor: pointer; }
   .tk:hover { border-color: var(--akzent); }
-  /* Padding-Trick statt aspect-ratio: nur so bekommt die Auto-Grid-Zeile die richtige Höhe */
   .tk .bildbox { position: relative; width: 100%; padding-top: 139.7%; background: #f3ede3; }
   .tk .bildbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
-  .tk .kein-bild { position: absolute; inset: 0; display: flex; align-items: center;
-                   justify-content: center; color: var(--mut); font-size: 11px; padding: 8px; text-align: center; }
-  .tk .tk-name { font-size: 11.5px; font-weight: 700; padding: 6px 8px 0; }
-  .tk .tk-meta { font-size: 10px; color: var(--mut); padding: 1px 8px 7px; }
-  .tk .anz { position: absolute; top: 6px; right: 6px; background: var(--gruen); color: #fff; font-size: 11px;
-             font-weight: 700; min-width: 20px; height: 20px; border-radius: 999px; display: flex; align-items: center;
+  .tk .kein-bild { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                   color: var(--mut); font-size: 11px; padding: 8px; text-align: center; }
+  .tk .tk-name { font-size: 11px; font-weight: 700; padding: 5px 7px 0; }
+  .tk .tk-meta { font-size: 9.5px; color: var(--mut); padding: 1px 7px 6px; }
+  .tk .anz { position: absolute; top: 5px; right: 5px; background: var(--gruen); color: #fff; font-size: 10.5px;
+             font-weight: 700; min-width: 19px; height: 19px; border-radius: 999px; display: flex; align-items: center;
              justify-content: center; padding: 0 5px; }
-  .tk .rbtn { position: absolute; top: 6px; left: 6px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
-              color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+  .tk .rbtn { position: absolute; top: 5px; left: 5px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
+              color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
   .tk .rbtn:hover { border-color: var(--akzent); color: var(--akzent); }
-  .wb-binder { width: 330px; flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
-               padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-  .slots { background: #f6efe4; border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+
+  .spalte-binder { width: 324px; flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
+                   padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
+  .slots { background: #f6efe4; border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
   .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed #d8cbb6; background: transparent;
-          display: flex; align-items: center; justify-content: center; color: #c2b49c; font-size: 16px; overflow: hidden; padding: 0; }
+          display: flex; align-items: center; justify-content: center; color: #c2b49c; font-size: 15px; overflow: hidden; padding: 0; }
   .slot.voll { border: 1.5px solid #d8cbb6; background: #fff; cursor: grab; }
+  .slot.leer-item { border-style: dotted; background: rgba(255,255,255,.5); cursor: grab; color: var(--mut); font-size: 10px; }
   .slot img { width: 100%; height: 100%; object-fit: contain; }
-  .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; height: 100%; padding: 4px; }
-  .slot .dexzelle img { width: 55%; height: auto; }
-  .slot .dexzelle span { font-size: 8.5px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
-  .slot .raus { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(58,50,39,.75);
-                color: #fff; font-size: 11px; line-height: 18px; text-align: center; opacity: 0; }
+  .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
+  .slot .dexzelle img { width: 52%; height: auto; }
+  .slot .dexzelle span { font-size: 8px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
+  .slot .raus { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
+                color: #fff; font-size: 10px; line-height: 17px; text-align: center; opacity: 0; z-index: 3; }
   .slot:hover .raus { opacity: 1; }
-  .slot .rmark { position: absolute; bottom: 3px; left: 3px; background: var(--akzent); color: #fff; font-size: 8px;
-                 font-weight: 700; padding: 1px 5px; border-radius: 999px; }
-  .slot.dragover { border-color: var(--akzent); }
-  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; color: var(--mut); }
+  .slot .rmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent); color: #fff; font-size: 7.5px;
+                 font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  .slot .preis { position: absolute; bottom: 2px; right: 2px; background: rgba(58,50,39,.82); color: #fff; font-size: 8px;
+                 font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  .slot.dragover { border-color: var(--akzent); border-style: solid; }
+  .slot.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -2px; }
+  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12.5px; color: var(--mut); }
   .seiten-nav strong { color: var(--ink); }
-  .fortschritt { font-size: 12.5px; color: var(--mut); text-align: center; }
-  .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 13px;
-                 padding: 8px 18px; text-align: center; }
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
-           font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50; }
+  .schalter { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
+  .schalter input { width: 15px; height: 15px; accent-color: var(--akzent); }
+
+  /* ---------- Modale & Planer ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: 40; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--card); border-radius: 18px; padding: 22px; width: min(680px, 94vw); max-height: 88vh;
+           overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  .modal h2 { margin: 0 0 4px; font-size: 19px; }
+  .modal .unter { font-size: 13px; color: var(--mut); margin-bottom: 14px; }
+  .setliste { max-height: 330px; overflow-y: auto; margin-top: 10px; border: 1.5px solid var(--line); border-radius: 12px; }
+  .setzeile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 13px;
+              border-bottom: 1px solid #f4ede2; font-size: 13.5px; }
+  .setzeile:hover { background: #fdf4ea; }
+  .setzeile.on { background: #fdeae4; }
+  .setzeile .datum { margin-left: auto; color: var(--mut); font-size: 12px; white-space: nowrap; }
+  .serie-kopf { padding: 7px 13px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+                color: var(--mut); background: #faf3e9; position: sticky; top: 0; }
+
+  #planer { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: flex; flex-direction: column; }
+  .planer-kopf { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card);
+                 border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
+  .planer-rumpf { flex: 1; overflow: auto; padding: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-content: start; }
+  .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; width: 300px; }
+  .planer-seite .ps-titel { font-size: 12px; font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
+  .planer-seite .slots { padding: 8px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+           font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 90; }
   .toast.zeig { opacity: 1; }
-  @media (max-width: 900px) {
-    .wb-filter { display: none; }
-    .wb-binder { width: 260px; }
-  }
+  .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
+  @media (max-width: 980px) { .spalte-filter { display: none; } .spalte-binder { width: 250px; } }
 </style>
 </head>
 <body>
-
-<!-- =============== Start & Assistent =============== -->
-<div id="view-start">
-  <div id="sync-banner" class="sync-banner hidden" style="width:100%"></div>
-  <div class="steps" id="steps"></div>
-  <h1 id="wz-titel">Was möchtest du sammeln?</h1>
-  <div class="untertitel" id="wz-unter">In vier Schritten zum druckfertigen Binder – du kannst jederzeit zurück.</div>
-
-  <!-- Schritt 1: Ziel -->
-  <div id="schritt-ziel" class="ziele">
-    <button class="ziel" onclick="wzZiel('master')">
-      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><rect x="6" y="5" width="28" height="30" rx="4"></rect><line x1="6" y1="15" x2="34" y2="15"></line><circle cx="20" cy="25" r="4.5"></circle></svg>
-      <h3>Master Set</h3>
-      <p>Ein komplettes Set, jede Karte einmal – sortiert nach Setnummer. Reverse Holos optional dazu.</p>
-      <div class="fuss">Alle Sets von 1999 bis heute</div>
-    </button>
-    <button class="ziel" onclick="wzZiel('dex')">
-      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><circle cx="20" cy="20" r="14"></circle><line x1="6" y1="20" x2="34" y2="20"></line><circle cx="20" cy="20" r="4"></circle></svg>
-      <h3>Pokédex-Binder</h3>
-      <p>Jedes Pokémon einmal – egal welche Karte. Gedruckt wird pro Fach nur Bild, Nummer und Name.</p>
-      <div class="fuss">Generation 1 bis 9 wählbar</div>
-    </button>
-    <button class="ziel" onclick="wzZiel('custom')">
-      <svg width="38" height="38" viewBox="0 0 40 40" fill="none" stroke="#e85d43" stroke-width="2.2"><path d="M8 32c4-10 8-14 12-14M20 18c5-6 9-8 12-8M20 18l4 14"></path><circle cx="8" cy="32" r="3"></circle><circle cx="32" cy="10" r="3"></circle></svg>
-      <h3>Eigene Auswahl</h3>
-      <p>Frei filtern und zusammenstellen: alle Lv.X, alle Glurak, ein Typ, eine Ära – was du willst.</p>
-      <div class="fuss">Volle Filter-Power</div>
-    </button>
-  </div>
-
-  <!-- Schritt 2a: Set wählen -->
-  <div id="schritt-set" class="panel hidden">
-    <div class="f-lbl">Set auswählen</div>
-    <input type="search" id="set-suche" placeholder="Set suchen … (z. B. Nebel der Sagen)" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fdfaf5;outline:none">
-    <div class="setliste" id="set-liste"></div>
-    <label style="display:flex;align-items:center;gap:9px;margin-top:16px;font-size:14px;font-weight:600">
-      <input type="checkbox" id="opt-reverse" style="width:17px;height:17px;accent-color:var(--akzent)">
-      Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)
-    </label>
-  </div>
-
-  <!-- Schritt 2b: Generationen -->
-  <div id="schritt-gen" class="panel hidden">
-    <div class="f-lbl">Welche Generationen?</div>
-    <div class="f-chips" id="gen-chips" style="margin-top:10px"></div>
-    <div style="font-size:13px;color:var(--mut);margin-top:14px" id="gen-info"></div>
-  </div>
-
-  <!-- Schritt 3: Raster -->
-  <div id="schritt-raster" class="hidden" style="width:100%;max-width:720px">
-    <div class="raster-optionen" id="raster-optionen"></div>
-  </div>
-
-  <div class="wizard-fuss">
-    <button class="btn sekundaer hidden" id="wz-zurueck" onclick="wzZurueck()">‹ Zurück</button>
-    <div style="flex:1"></div>
-    <button class="btn hidden" id="wz-weiter" onclick="wzWeiter()">Weiter ›</button>
-  </div>
-
-  <!-- Gespeicherte Binder -->
-  <div class="meine-binder hidden" id="meine-binder">
-    <div class="f-lbl">Meine Binder</div>
-    <div id="binder-liste"></div>
-  </div>
-
-  <div class="hinweis">Proxys aus diesem Tool sind für den privaten Gebrauch gedacht (Platzhalter im eigenen Binder).
-  Kartenbilder © Pokémon / The Pokémon Company – bitte nicht verkaufen oder als echte Karten ausgeben.</div>
-</div>
-
-<!-- =============== Werkbank =============== -->
-<div id="view-werkbank" class="hidden">
-  <div class="wb-kopf">
-    <button class="btn sekundaer" style="padding:8px 14px;font-size:13px" onclick="zeigeStart()">‹ Start</button>
+<div id="app">
+  <div id="sync-banner" class="sync-banner hidden"></div>
+  <div class="kopf">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
+      Binderplan
+    </div>
+    <div class="menuwrap">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="menuToggle('menu-neu')" data-i18n="neu">+ Neu / Vorlagen</button>
+      <div class="menu hidden" id="menu-neu">
+        <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
+        <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
+        <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
+      </div>
+    </div>
+    <div class="menuwrap">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="meineOeffnen()" data-i18n="meine">Meine Binder</button>
+      <div class="menu hidden" id="menu-meine"></div>
+    </div>
     <input class="bindername" id="wb-name" placeholder="Name des Binders">
-    <span id="wb-status" style="font-size:12px;color:var(--mut)"></span>
+    <span id="wb-status" style="font-size:11.5px;color:var(--mut)"></span>
     <div style="flex:1"></div>
-    <button class="btn" id="wb-pdf" onclick="exportPdf()">
-      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
-      PDF exportieren (S/W)
+    <label class="schalter"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
+    <div class="lang-toggle">
+      <button id="lang-de" class="on" onclick="setLang('de')">DE</button>
+      <button id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="planerOeffnen()" data-i18n="planer">Planer</button>
+    <button class="btn" style="font-size:13px" onclick="exportPdf()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
+      <span data-i18n="pdf">PDF (S/W)</span>
     </button>
   </div>
-  <div class="wb-body">
 
-    <div class="wb-filter">
+  <div class="rumpf">
+    <!-- Filter -->
+    <div class="spalte-filter">
       <div>
-        <div class="f-lbl">Suche</div>
-        <input type="search" id="f-suche" placeholder="Karte oder Pokémon …">
+        <div class="f-lbl" data-i18n="f_suche">Suche</div>
+        <input type="search" class="feld" id="f-suche" placeholder="Karte oder Pokémon …">
       </div>
       <div>
-        <div class="f-lbl">Kartenart</div>
-        <div class="f-chips" id="f-kinds"></div>
+        <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
+        <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak">
+        <datalist id="dex-namen"></datalist>
       </div>
       <div>
-        <div class="f-lbl">Typ</div>
-        <div class="f-chips" id="f-typen"></div>
+        <div class="f-lbl" data-i18n="f_aera">Ära</div>
+        <select class="feld" id="f-serie"></select>
       </div>
       <div>
         <div class="f-lbl">Set</div>
-        <select id="f-set"><option value="">Alle Sets</option></select>
+        <select class="feld" id="f-set"></select>
       </div>
       <div>
-        <div class="f-lbl">Sortierung</div>
-        <select id="f-sort">
-          <option value="datum">Erscheinungsdatum</option>
-          <option value="dex">Pokédex-Nummer</option>
-          <option value="name">Alphabetisch</option>
-          <option value="nummer">Set &amp; Setnummer</option>
-          <option value="typ">Typ</option>
-        </select>
-        <label style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:13px">
-          <input type="checkbox" id="f-absteigend" style="accent-color:var(--akzent)"> absteigend
-        </label>
+        <div class="f-lbl" data-i18n="f_art">Kartenart</div>
+        <div class="f-chips" id="f-kinds"></div>
       </div>
-      <button class="btn sekundaer" style="font-size:13px;padding:9px 14px" onclick="filterReset()">Filter zurücksetzen</button>
+      <div>
+        <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
+        <select class="feld" id="f-rarity"></select>
+      </div>
+      <div>
+        <div class="f-lbl" data-i18n="f_typ">Typ</div>
+        <div class="f-chips" id="f-typen"></div>
+      </div>
+      <div>
+        <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
+        <select class="feld" id="f-sort"></select>
+        <label class="schalter" style="margin-top:8px"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label>
+      </div>
+      <button class="btn sekundaer" style="font-size:12.5px;padding:8px 13px" onclick="filterReset()" data-i18n="f_reset">Filter zurücksetzen</button>
     </div>
 
-    <div class="wb-mitte">
+    <!-- Treffer -->
+    <div class="spalte-mitte">
       <div class="kopfzeile">
         <span id="erg-anzahl">–</span>
         <div style="flex:1"></div>
-        <button class="btn sekundaer" style="font-size:12.5px;padding:7px 14px" onclick="alleHinzufuegen()" id="btn-alle">+ Alle Treffer in den Binder</button>
+        <div class="menuwrap">
+          <button class="btn sekundaer" style="font-size:12px;padding:6px 12px" onclick="menuToggle('menu-alle')" id="btn-alle" data-i18n="alle">+ Alle Treffer …</button>
+          <div class="menu hidden" id="menu-alle">
+            <button onclick="alleHinzufuegen(false)" data-i18n="alle_ende">… ans Ende anhängen</button>
+            <button onclick="alleHinzufuegen(true)" data-i18n="alle_seite">… ab nächster freier Seite</button>
+          </div>
+        </div>
       </div>
       <div class="ergebnisse" id="ergebnisse"></div>
-      <button class="btn sekundaer hidden" id="btn-mehr" style="align-self:center;font-size:13px" onclick="mehrLaden()">Mehr laden</button>
+      <button class="btn sekundaer hidden" id="btn-mehr" style="align-self:center;font-size:13px" onclick="sucheLaden()" data-i18n="mehr">Mehr laden</button>
     </div>
 
-    <div class="wb-binder">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:14px;font-weight:700">Binder</div>
-        <div class="f-chips" id="wb-layouts"></div>
+    <!-- Binder -->
+    <div class="spalte-binder">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:13.5px;font-weight:700" data-i18n="binder">Binder</div>
+        <select class="feld" id="wb-layout" style="width:auto" onchange="layoutWechsel(this.value)"></select>
       </div>
       <div class="slots" id="wb-slots"></div>
       <div class="seiten-nav">
-        <button onclick="seiteWechsel(-1)" style="font-size:17px">‹</button>
-        <span>Seite <strong id="wb-seite">1</strong> von <strong id="wb-seiten">1</strong></span>
-        <button onclick="seiteWechsel(1)" style="font-size:17px">›</button>
+        <button onclick="seiteWechsel(-1)" style="font-size:16px">‹</button>
+        <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
+        <button onclick="seiteWechsel(1)" style="font-size:16px">›</button>
       </div>
-      <div class="fortschritt" id="wb-fortschritt"></div>
+      <div style="font-size:12px;color:var(--mut);text-align:center" id="wb-fortschritt"></div>
+      <div id="wb-preise" class="hidden" style="background:#f0f6ef;border:1.5px solid #d3e4d0;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#2f5c3b;text-align:center;font-weight:700"></div>
       <div style="flex:1"></div>
-      <div style="font-size:11.5px;color:var(--mut);line-height:1.5">Karten ziehen zum Umsortieren, ✕ entfernt.
-        Gedruckt wird in 63 × 88 mm mit Beschriftung „Seite · Fach“.</div>
-      <button class="btn sekundaer" style="font-size:12.5px;padding:8px 14px" onclick="binderLeeren()">Binder leeren</button>
+      <div style="font-size:11px;color:var(--mut);line-height:1.5" data-i18n="hilfe">Karten ziehen zum Umsortieren, ✕ entfernt. Gedruckt wird in 63 × 88 mm mit „Seite · Fach“-Beschriftung.</div>
+      <button class="btn sekundaer" style="font-size:12px;padding:7px 13px" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
     </div>
-
   </div>
+</div>
+
+<!-- Modal: Master Set -->
+<div class="overlay hidden" id="modal-master" onclick="if(event.target===this)modalSchliessen()">
+  <div class="modal">
+    <h2 data-i18n="m_master_t">Master Set anlegen</h2>
+    <div class="unter" data-i18n="m_master_u">Jede Karte des Sets einmal, sortiert nach Setnummer.</div>
+    <input type="search" class="feld" id="set-suche" placeholder="Set suchen …" oninput="zeichneSetliste()">
+    <div class="setliste" id="set-liste"></div>
+    <label class="schalter" style="margin-top:14px"><input type="checkbox" id="opt-reverse"><span data-i18n="m_reverse">Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)</span></label>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="masterErstellen()" data-i18n="anlegen">Binder anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pokédex -->
+<div class="overlay hidden" id="modal-dex" onclick="if(event.target===this)modalSchliessen()">
+  <div class="modal">
+    <h2 data-i18n="m_dex_t">Pokédex-Binder anlegen</h2>
+    <div class="unter" data-i18n="m_dex_u">Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.</div>
+    <div class="f-chips" id="gen-chips"></div>
+    <div style="font-size:13px;color:var(--mut);margin-top:12px" id="gen-info"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="dexErstellen()" data-i18n="anlegen">Binder anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Planer -->
+<div id="planer" class="hidden">
+  <div class="planer-kopf">
+    <button class="btn sekundaer" style="font-size:13px" onclick="planerSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
+    <div style="font-size:14px;font-weight:700" id="planer-titel"></div>
+    <div style="flex:1"></div>
+    <span style="font-size:12.5px;color:var(--mut)"><span data-i18n="auswahl">Auswahl</span>: <strong id="planer-anzahl">0</strong></span>
+    <select class="feld" id="planer-sortkey" style="width:auto"></select>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlSortieren()" data-i18n="sortieren">Auswahl sortieren</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlLeeren()" data-i18n="aufheben">Auswahl aufheben</button>
+  </div>
+  <div class="planer-rumpf" id="planer-rumpf"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -286,299 +288,319 @@
 <script>
 'use strict';
 
+// ---------- Übersetzungen ----------
+const T = {
+  de: {
+    neu: '+ Neu / Vorlagen', m_leer: 'Leerer Binder', m_master: 'Master Set …', m_dex: 'Pokédex-Binder …',
+    meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', pdf: 'PDF (S/W)',
+    f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
+    f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
+    alle: '+ Alle Treffer …', alle_ende: '… ans Ende anhängen', alle_seite: '… ab nächster freier Seite',
+    mehr: 'Mehr laden', binder: 'Binder', seite: 'Seite', leeren: 'Binder leeren',
+    hilfe: 'Karten ziehen zum Umsortieren, ✕ entfernt. Gedruckt wird in 63 × 88 mm mit „Seite · Fach“-Beschriftung.',
+    m_master_t: 'Master Set anlegen', m_master_u: 'Jede Karte des Sets einmal, sortiert nach Setnummer.',
+    m_reverse: 'Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)',
+    m_dex_t: 'Pokédex-Binder anlegen', m_dex_u: 'Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.',
+    abbrechen: 'Abbrechen', anlegen: 'Binder anlegen', zurueck: 'Zurück', auswahl: 'Auswahl',
+    sortieren: 'Auswahl sortieren', nach_vorn: 'Nach vorn', ans_ende: 'Ans Ende', entfernen: 'Entfernen',
+    leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
+    treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
+    alle_sets: 'Alle Sets', alle_aeren: 'Alle Ären', alle_rar: 'Alle Seltenheiten', alle_gen: 'Alle', gen: 'Gen',
+    leer_slot: 'leer', gesamt: 'Gesamtwert', preise_offen: 'Preise werden geladen … erneut aktivieren für den Rest.',
+    s_datum: 'Erscheinungsdatum', s_dex: 'Pokédex-Nummer', s_name: 'Alphabetisch', s_nummer: 'Set & Setnummer',
+    s_typ: 'Typ', s_rarity: 'Seltenheit',
+    kinds: { lvx: 'Lv.X', ex: 'ex', exgross: 'EX', gx: 'GX', tagteam: 'TAG TEAM', v: 'V', vmax: 'VMAX',
+      vstar: 'VSTAR', vunion: 'V-UNION', mega: 'MEGA', break: 'BREAK', prime: 'Prime', legend: 'LEGENDE',
+      sp: 'SP (Galaktik)', shining: 'Shining', goldstar: 'Gold Star ☆', shiny: 'Shiny / Baby-Shiny',
+      radiant: 'Strahlend', amazing: 'Amazing', delta: 'Delta δ', prism: 'Prisma-Stern ◇', acespec: 'ACE SPEC',
+      dark: 'Dunkle (Dark)', light: 'Helle (Light)', trainer: 'Trainer', energie: 'Energie' },
+    typen: { Grass: 'Pflanze', Fire: 'Feuer', Water: 'Wasser', Lightning: 'Elektro', Psychic: 'Psycho',
+      Fighting: 'Kampf', Darkness: 'Finsternis', Metal: 'Metall', Fairy: 'Fee', Dragon: 'Drache', Colorless: 'Farblos' },
+    bestaetigen_viele: 'Karten wirklich alle hinzufügen?', bestaetigen_leeren: 'Alle Fächer aus diesem Binder entfernen?',
+    bestaetigen_loeschen: 'Diesen Binder wirklich löschen?', binder_leer: 'Der Binder ist noch leer.',
+    pdf_dauert: 'PDF wird erzeugt – bei vielen Karten dauert der erste Export etwas …',
+    hinzugefuegt: 'Karten hinzugefügt', angelegt: 'Fächer angelegt', gespeichert: 'gespeichert ✓',
+    speichert: 'speichert …', fehler_speichern: 'Speichern fehlgeschlagen!', neuer_binder: 'Mein Binder',
+    sync: 'Kartendatenbank wird aufgebaut …', keine_sets: 'Kein Set gefunden.', pokemon_gew: 'Pokémon ausgewählt',
+    erst_waehlen: 'Bitte erst auswählen', zu_viele: 'Mehr als 2000 Treffer – bitte enger filtern',
+  },
+  en: {
+    neu: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
+    meine: 'My binders', preise: 'Prices', planer: 'Planner', pdf: 'PDF (B/W)',
+    f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
+    f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
+    alle: '+ All results …', alle_ende: '… append at the end', alle_seite: '… start on next free page',
+    mehr: 'Load more', binder: 'Binder', seite: 'Page', leeren: 'Clear binder',
+    hilfe: 'Drag cards to reorder, ✕ removes. Prints at 63 × 88 mm with “page · slot” labels.',
+    m_master_t: 'Create master set', m_master_u: 'Every card of the set once, ordered by set number.',
+    m_reverse: 'Also plan reverse holos (card appears twice)',
+    m_dex_t: 'Create Pokédex binder', m_dex_u: 'One slot per Pokémon — prints number, name and image.',
+    abbrechen: 'Cancel', anlegen: 'Create binder', zurueck: 'Back', auswahl: 'Selection',
+    sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
+    leere_seite: '+ Empty page', aufheben: 'Clear selection',
+    treffer: 'cards found', faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
+    alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
+    leer_slot: 'empty', gesamt: 'Total value', preise_offen: 'Prices loading … toggle again for the rest.',
+    s_datum: 'Release date', s_dex: 'Pokédex number', s_name: 'Alphabetical', s_nummer: 'Set & number',
+    s_typ: 'Type', s_rarity: 'Rarity',
+    kinds: { lvx: 'Lv.X', ex: 'ex', exgross: 'EX', gx: 'GX', tagteam: 'TAG TEAM', v: 'V', vmax: 'VMAX',
+      vstar: 'VSTAR', vunion: 'V-UNION', mega: 'MEGA', break: 'BREAK', prime: 'Prime', legend: 'LEGEND',
+      sp: 'SP (Galactic)', shining: 'Shining', goldstar: 'Gold Star ☆', shiny: 'Shiny / baby shiny',
+      radiant: 'Radiant', amazing: 'Amazing', delta: 'Delta δ', prism: 'Prism Star ◇', acespec: 'ACE SPEC',
+      dark: 'Dark', light: 'Light', trainer: 'Trainer', energie: 'Energy' },
+    typen: { Grass: 'Grass', Fire: 'Fire', Water: 'Water', Lightning: 'Lightning', Psychic: 'Psychic',
+      Fighting: 'Fighting', Darkness: 'Darkness', Metal: 'Metal', Fairy: 'Fairy', Dragon: 'Dragon', Colorless: 'Colorless' },
+    bestaetigen_viele: 'really add all of them?', bestaetigen_leeren: 'Remove all slots from this binder?',
+    bestaetigen_loeschen: 'Really delete this binder?', binder_leer: 'This binder is still empty.',
+    pdf_dauert: 'Generating PDF – the first export may take a moment …',
+    hinzugefuegt: 'cards added', angelegt: 'slots created', gespeichert: 'saved ✓',
+    speichert: 'saving …', fehler_speichern: 'Saving failed!', neuer_binder: 'My binder',
+    sync: 'Building card database …', keine_sets: 'No set found.', pokemon_gew: 'Pokémon selected',
+    erst_waehlen: 'Please choose first', zu_viele: 'More than 2000 results – please narrow the filters',
+  },
+};
+let LANG = localStorage.getItem('bp_lang') || 'de';
+const t = (k) => T[LANG][k] || T.de[k] || k;
+
 // ---------- Zustand ----------
 const S = {
-  meta: null,
-  binder: null,          // {id, name, mode, layout, options, items}
-  ergebnisse: [],
-  gesamt: 0,
-  offset: 0,
-  seite: 0,              // aktuelle Binderseite (0-basiert)
-  wzSchritt: 1,
-  wzMode: null,
-  wzSet: null,
-  wzGens: new Set(),
-  wzLayout: '3x3',
-  speicherTimer: null,
+  meta: null, binder: null, pokedex: null, preise: {}, preiseAn: false,
+  ergebnisse: [], gesamt: 0, offset: 0, seite: 0, speicherTimer: null,
+  auswahl: new Set(),
 };
-const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x4': [4, 4] };
-const KINDS = [
-  ['lvx', 'Lv.X'], ['ex', 'ex / EX'], ['gx', 'GX'], ['v', 'V'], ['vmax', 'VMAX'],
-  ['vstar', 'VSTAR'], ['mega', 'MEGA'], ['break', 'BREAK'], ['trainer', 'Trainer'], ['energie', 'Energie'],
-];
-const filter = { q: '', set: '', typ: '', kinds: new Set(), sort: 'datum', richtung: 'asc' };
+const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
+const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
+const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc' };
 
 const $ = (id) => document.getElementById(id);
-const api = (pfad, opts) => fetch(pfad, opts).then((r) => {
-  if (!r.ok) throw new Error('API-Fehler ' + r.status);
-  return r.json();
-});
+const api = (pfad, opts) => fetch(pfad, opts).then((r) => { if (!r.ok) throw new Error('API ' + r.status); return r.json(); });
+const nm = (k) => (LANG === 'en' ? (k.name_en || k.name) : (k.name || k.name_en)) || '';
+const setNm = (k) => (LANG === 'en' ? (k.set_name_en || k.set_name) : (k.set_name || k.set_name_en)) || '';
+const imgUrl = (id, extra) => 'api/img/card/' + encodeURIComponent(id) + '?lang=' + LANG + (extra || '');
 
 let toastTimer = null;
 function toast(text) {
-  const t = $('toast');
-  t.textContent = text;
-  t.classList.add('zeig');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('zeig'), 2600);
+  const el = $('toast'); el.textContent = text; el.classList.add('zeig');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 2600);
 }
 
-// ---------- Start / Routing ----------
+// ---------- Sprache ----------
+function setLang(lang) {
+  LANG = lang; localStorage.setItem('bp_lang', lang);
+  $('lang-de').classList.toggle('on', lang === 'de');
+  $('lang-en').classList.toggle('on', lang === 'en');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  baueFilterLeiste();
+  zeichneErgebnisse();
+  zeichneBinder();
+  baueDexNamen();
+}
+
+// ---------- Start ----------
 async function boot() {
-  try { S.meta = await api('api/meta'); } catch (e) { toast('Server nicht erreichbar'); return; }
+  try { S.meta = await api('api/meta'); } catch (e) { toast('Server?'); return; }
   syncBanner();
   baueFilterLeiste();
+  baueDexNamen();
+  setLang(LANG);
   const hash = location.hash.slice(1);
   if (hash.startsWith('binder/')) {
-    const id = hash.split('/')[1];
     try {
-      S.binder = await api('api/binders/' + id);
-      merkeBinderId(id);
-      zeigeWerkbank();
-      return;
-    } catch (e) { /* Binder weg -> Start */ }
+      S.binder = await api('api/binders/' + hash.split('/')[1]);
+      merkeBinderId(S.binder.id);
+    } catch (e) { S.binder = null; }
   }
-  zeigeStart();
+  if (!S.binder) {
+    const ids = binderIds();
+    if (ids.length) { try { S.binder = await api('api/binders/' + ids[0]); } catch (e) {} }
+  }
+  if (!S.binder) await neuLeer(true);
+  binderAnzeigen();
+  sucheNeu();
 }
 
 function syncBanner() {
   const b = $('sync-banner');
   const sync = S.meta && S.meta.sync;
-  if (sync && (sync.running || (S.meta.counts.cards === 0))) {
+  if (sync && (sync.running || S.meta.counts.cards === 0)) {
     b.classList.remove('hidden');
-    b.textContent = sync.error
-      ? 'Karten-Sync fehlgeschlagen: ' + sync.error
-      : `Kartendatenbank wird aufgebaut … ${sync.step || ''} (${sync.done}/${sync.total || '?'}) – die Seite ist gleich einsatzbereit.`;
+    b.textContent = sync.error ? 'Sync-Fehler: ' + sync.error : `${t('sync')} ${sync.step || ''} (${sync.done}/${sync.total || '?'})`;
     setTimeout(async () => { try { S.meta = await api('api/meta'); } catch (e) {} syncBanner(); }, 4000);
-  } else {
-    b.classList.add('hidden');
-  }
+  } else b.classList.add('hidden');
 }
 
-function zeigeStart() {
-  location.hash = '';
-  $('view-werkbank').classList.add('hidden');
-  $('view-start').classList.remove('hidden');
-  S.wzSchritt = 1; S.wzMode = null; S.wzSet = null;
-  wzRender();
-  ladeMeineBinder();
-}
-
-function zeigeWerkbank() {
-  if (!S.binder) return zeigeStart();
+function binderAnzeigen() {
   location.hash = 'binder/' + S.binder.id;
-  $('view-start').classList.add('hidden');
-  $('view-werkbank').classList.remove('hidden');
   $('wb-name').value = S.binder.name;
-  S.seite = 0;
+  S.seite = 0; S.preise = {};
   zeichneLayouts();
   zeichneBinder();
-  sucheNeu();
 }
 
-// ---------- Assistent ----------
-const WZ_TITEL = {
-  1: ['Was möchtest du sammeln?', 'In vier Schritten zum druckfertigen Binder – du kannst jederzeit zurück.'],
-  2: { master: ['Welches Set soll es sein?', 'Jede Karte des Sets kommt einmal in den Binder – sortiert nach Setnummer.'],
-       dex: ['Welche Generationen?', 'Jedes Pokémon bekommt ein Fach – gedruckt wird Nummer, Name und Bild.'] },
-  3: ['Wie ist dein Binder aufgebaut?', 'Danach richtet sich, welche Karte auf welcher Seite in welchem Fach landet.'],
-};
+// ---------- Menüs & Modale ----------
+function menuToggle(id) {
+  document.querySelectorAll('.menu').forEach((m) => { if (m.id !== id) m.classList.add('hidden'); });
+  $(id).classList.toggle('hidden');
+}
+document.addEventListener('click', (ev) => {
+  if (!ev.target.closest('.menuwrap')) document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+});
+function modalOeffnen(id) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  $(id).classList.remove('hidden');
+  if (id === 'modal-master') zeichneSetliste();
+  if (id === 'modal-dex') zeichneGens();
+}
+function modalSchliessen() { document.querySelectorAll('.overlay').forEach((o) => o.classList.add('hidden')); }
 
-function wzRender() {
-  const s = S.wzSchritt;
-  const dots = [['Ziel', 1], ['Auswahl', 2], ['Raster', 3], ['Drucken', 4]];
-  $('steps').innerHTML = dots.map(([lbl, n], i) =>
-    `<div class="dot ${n <= s ? 'done' : ''}">${n}</div><div class="steplbl ${n <= s ? 'done' : ''}">${lbl}</div>` +
-    (i < dots.length - 1 ? '<div class="stepline"></div>' : '')
-  ).join('');
-  const titel = s === 2 ? WZ_TITEL[2][S.wzMode] : WZ_TITEL[s];
-  if (titel) { $('wz-titel').textContent = titel[0]; $('wz-unter').textContent = titel[1]; }
-  $('schritt-ziel').classList.toggle('hidden', s !== 1);
-  $('schritt-set').classList.toggle('hidden', !(s === 2 && S.wzMode === 'master'));
-  $('schritt-gen').classList.toggle('hidden', !(s === 2 && S.wzMode === 'dex'));
-  $('schritt-raster').classList.toggle('hidden', s !== 3);
-  $('wz-zurueck').classList.toggle('hidden', s === 1);
-  $('wz-weiter').classList.toggle('hidden', s === 1);
-  $('wz-weiter').textContent = s === 3 ? 'Binder erstellen ✓' : 'Weiter ›';
-  $('meine-binder').classList.toggle('hidden', s !== 1);
-  if (s === 2 && S.wzMode === 'master') zeichneSetliste();
-  if (s === 2 && S.wzMode === 'dex') zeichneGens();
-  if (s === 3) zeichneRaster();
+// ---------- Binder anlegen ----------
+async function binderSpeichernNeu(name, mode, items, options) {
+  const res = await api('api/binders', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mode, layout: (S.binder && S.binder.layout) || '3x3', options: options || {}, items }),
+  });
+  S.binder = { id: res.id, name, mode, layout: (S.binder && S.binder.layout) || '3x3', options: options || {}, items };
+  merkeBinderId(res.id);
+  binderAnzeigen();
+  zeichneErgebnisse();
 }
 
-function wzZiel(mode) {
-  S.wzMode = mode;
-  S.wzSchritt = mode === 'custom' ? 3 : 2;
-  wzRender();
+async function neuLeer(still) {
+  await binderSpeichernNeu(t('neuer_binder'), 'custom', [], {});
+  if (!still) { modalSchliessen(); toast(t('angelegt')); }
 }
 
-function wzZurueck() {
-  S.wzSchritt = S.wzSchritt === 3 && S.wzMode === 'custom' ? 1 : S.wzSchritt - 1;
-  wzRender();
-}
-
-async function wzWeiter() {
-  if (S.wzSchritt === 2) {
-    if (S.wzMode === 'master' && !S.wzSet) return toast('Bitte erst ein Set wählen');
-    if (S.wzMode === 'dex' && S.wzGens.size === 0) return toast('Bitte mindestens eine Generation wählen');
-    S.wzSchritt = 3;
-    return wzRender();
-  }
-  if (S.wzSchritt === 3) return binderErstellen();
-}
-
+let wzSet = null;
 function zeichneSetliste() {
   const q = ($('set-suche').value || '').toLowerCase();
-  const liste = $('set-liste');
-  const sets = (S.meta.sets || []).filter((s) => !q || (s.name || '').toLowerCase().includes(q));
-  let html = '';
-  let letzteSerie = null;
+  const sets = (S.meta.sets || []).filter((s) => {
+    const n = (LANG === 'en' ? s.name_en : s.name) || s.name || '';
+    return !q || n.toLowerCase().includes(q);
+  });
+  let html = ''; let letzte = null;
   for (const s of sets) {
-    if (s.serie_name !== letzteSerie) {
-      letzteSerie = s.serie_name;
-      html += `<div class="serie-kopf">${s.serie_name || 'Weitere'}</div>`;
-    }
-    html += `<button class="setzeile ${S.wzSet === s.id ? 'on' : ''}" onclick="setWaehlen('${s.id}')">
-      <span style="font-weight:600">${s.name}</span>
-      <span style="color:var(--mut);font-size:12px">${s.official || s.total || '?'} Karten</span>
+    const serie = (LANG === 'en' ? (s.serie_name_en || s.serie_name) : s.serie_name) || '—';
+    if (serie !== letzte) { letzte = serie; html += `<div class="serie-kopf">${serie}</div>`; }
+    const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
+    html += `<button class="setzeile ${wzSet === s.id ? 'on' : ''}" onclick="wzSet='${s.id}';zeichneSetliste()">
+      <span style="font-weight:600">${n}</span>
+      <span style="color:var(--mut);font-size:11.5px">${s.official || s.total || '?'} K.</span>
       <span class="datum">${s.release_date || ''}</span></button>`;
   }
-  liste.innerHTML = html || '<div style="padding:16px;color:var(--mut)">Kein Set gefunden.</div>';
+  $('set-liste').innerHTML = html || `<div style="padding:14px;color:var(--mut)">${t('keine_sets')}</div>`;
 }
 
-function setWaehlen(id) { S.wzSet = id; zeichneSetliste(); }
-
-function zeichneGens() {
-  const box = $('gen-chips');
-  box.innerHTML = (S.meta.gens || []).map((g) =>
-    `<button class="chip ${S.wzGens.has(g.gen) ? 'on' : ''}" onclick="genToggle(${g.gen})">Gen ${g.gen} <span style="font-weight:500">#${g.von}–${g.bis}</span></button>`
-  ).join('') + `<button class="chip" onclick="genAlle()">Alle</button>`;
-  const summe = [...S.wzGens].reduce((acc, g) => {
-    const info = S.meta.gens.find((x) => x.gen === g);
-    return acc + (info ? info.bis - info.von + 1 : 0);
-  }, 0);
-  $('gen-info').textContent = summe ? `${summe} Pokémon ausgewählt` : 'Noch nichts ausgewählt.';
-}
-
-function genToggle(g) { S.wzGens.has(g) ? S.wzGens.delete(g) : S.wzGens.add(g); zeichneGens(); }
-function genAlle() { S.meta.gens.forEach((g) => S.wzGens.add(g.gen)); zeichneGens(); }
-
-function zeichneRaster() {
-  $('raster-optionen').innerHTML = Object.keys(LAYOUTS).map((l) => {
-    const [c, r] = LAYOUTS[l];
-    const zellen = Array(c * r).fill('<div></div>').join('');
-    return `<button class="raster-btn ${S.wzLayout === l ? 'on' : ''}" onclick="rasterWaehlen('${l}')">
-      <div class="raster-mini" style="grid-template-columns:repeat(${c},13px)">${zellen}</div>
-      <div style="font-weight:700">${l.replace('x', ' × ')}</div>
-      <div style="font-size:12px;color:var(--mut)">${c * r} Karten je Seite</div></button>`;
-  }).join('');
-}
-
-function rasterWaehlen(l) { S.wzLayout = l; zeichneRaster(); }
-
-async function binderErstellen() {
-  let items = [];
-  let name = 'Mein Binder';
+async function masterErstellen() {
+  if (!wzSet) return toast(t('erst_waehlen'));
+  const s = S.meta.sets.find((x) => x.id === wzSet);
+  const name = 'Master Set ' + ((LANG === 'en' ? s.name_en : s.name) || s.name_en || wzSet);
+  const d = await api('api/sets/' + wzSet + '/cards');
+  let items = d.karten.map((k) => ({ type: 'card', id: k.id }));
   const options = {};
-  try {
-    if (S.wzMode === 'master') {
-      const set = S.meta.sets.find((s) => s.id === S.wzSet);
-      name = 'Master Set ' + (set ? set.name : '');
-      const d = await api('api/sets/' + S.wzSet + '/cards');
-      items = d.karten.map((k) => ({ type: 'card', id: k.id }));
-      if ($('opt-reverse').checked) {
-        options.reverse = true;
-        items = items.concat(d.karten.filter((k) => k.reverse).map((k) => ({ type: 'card', id: k.id, variant: 'reverse' })));
-      }
-    } else if (S.wzMode === 'dex') {
-      const gens = [...S.wzGens].sort((a, b) => a - b);
-      name = 'Pokédex Gen ' + gens.join('+');
-      const d = await api('api/pokedex?gens=' + gens.join(','));
-      items = d.pokemon.map((p) => ({ type: 'dex', dex: p.dex, name: p.name }));
-    }
-    const res = await api('api/binders', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, mode: S.wzMode, layout: S.wzLayout, options, items }),
-    });
-    S.binder = { id: res.id, name, mode: S.wzMode, layout: S.wzLayout, options, items };
-    merkeBinderId(res.id);
-    zeigeWerkbank();
-    toast(items.length ? `${items.length} Fächer angelegt` : 'Leerer Binder angelegt – such dir Karten!');
-  } catch (e) {
-    toast('Konnte Binder nicht anlegen: ' + e.message);
+  if ($('opt-reverse').checked) {
+    options.reverse = true;
+    items = items.concat(d.karten.filter((k) => k.reverse).map((k) => ({ type: 'card', id: k.id, variant: 'reverse' })));
   }
+  await binderSpeichernNeu(name, 'master', items, options);
+  modalSchliessen();
+  toast(items.length + ' ' + t('angelegt'));
+}
+
+const wzGens = new Set();
+function zeichneGens() {
+  $('gen-chips').innerHTML = (S.meta.gens || []).map((g) =>
+    `<button class="chip ${wzGens.has(g.gen) ? 'on' : ''}" onclick="genToggle(${g.gen})">${t('gen')} ${g.gen} <span style="font-weight:500">#${g.von}–${g.bis}</span></button>`
+  ).join('') + `<button class="chip" onclick="S.meta.gens.forEach(g=>wzGens.add(g.gen));zeichneGens()">${t('alle_gen')}</button>`;
+  const summe = [...wzGens].reduce((a, g) => { const i = S.meta.gens.find((x) => x.gen === g); return a + (i ? i.bis - i.von + 1 : 0); }, 0);
+  $('gen-info').textContent = summe ? summe + ' ' + t('pokemon_gew') : '';
+}
+function genToggle(g) { wzGens.has(g) ? wzGens.delete(g) : wzGens.add(g); zeichneGens(); }
+
+async function dexErstellen() {
+  if (!wzGens.size) return toast(t('erst_waehlen'));
+  const gens = [...wzGens].sort((a, b) => a - b);
+  const d = await api('api/pokedex?gens=' + gens.join(','));
+  const items = d.pokemon.map((p) => ({ type: 'dex', dex: p.dex }));
+  await binderSpeichernNeu('Pokédex ' + t('gen') + ' ' + gens.join('+'), 'dex', items, {});
+  modalSchliessen();
+  toast(items.length + ' ' + t('angelegt'));
 }
 
 // ---------- Meine Binder ----------
-function binderIds() {
-  try { return JSON.parse(localStorage.getItem('bp_binder') || '[]'); } catch (e) { return []; }
-}
+function binderIds() { try { return JSON.parse(localStorage.getItem('bp_binder') || '[]'); } catch (e) { return []; } }
 function merkeBinderId(id) {
-  const ids = binderIds().filter((x) => x !== id);
-  ids.unshift(id);
+  const ids = binderIds().filter((x) => x !== id); ids.unshift(id);
   localStorage.setItem('bp_binder', JSON.stringify(ids.slice(0, 50)));
 }
-
-async function ladeMeineBinder() {
+async function meineOeffnen() {
+  menuToggle('menu-meine');
+  const box = $('menu-meine');
+  if (box.classList.contains('hidden')) return;
   const ids = binderIds();
-  const box = $('binder-liste');
-  if (!ids.length) { $('meine-binder').classList.add('hidden'); return; }
-  $('meine-binder').classList.remove('hidden');
+  if (!ids.length) { box.innerHTML = '<button>–</button>'; return; }
   try {
     const d = await api('api/binders?ids=' + ids.join(','));
     box.innerHTML = d.binder.map((b) => `
-      <div class="binderzeile">
-        <div style="flex:1">
-          <div style="font-weight:700">${b.name}</div>
-          <div class="info">${b.anzahl} Fächer · Raster ${b.layout.replace('x', '×')} · ${b.updated_at ? b.updated_at.slice(0, 10) : ''}</div>
-        </div>
-        <button class="btn sekundaer" style="font-size:13px;padding:8px 16px" onclick="binderOeffnen('${b.id}')">Öffnen</button>
-        <button class="btn sekundaer" style="font-size:13px;padding:8px 12px" onclick="binderLoeschen('${b.id}')">🗑</button>
-      </div>`).join('') || '';
+      <button onclick="binderOeffnen('${b.id}')" style="justify-content:space-between">
+        <span>${b.name}<br><span style="font-weight:500;font-size:11px;color:var(--mut)">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}</span></span>
+        <span onclick="event.stopPropagation();binderLoeschen('${b.id}')" style="color:var(--mut)">🗑</span>
+      </button>`).join('');
   } catch (e) { box.innerHTML = ''; }
 }
-
 async function binderOeffnen(id) {
-  try {
-    S.binder = await api('api/binders/' + id);
-    zeigeWerkbank();
-  } catch (e) { toast('Binder nicht gefunden'); }
+  try { S.binder = await api('api/binders/' + id); binderAnzeigen(); zeichneErgebnisse(); } catch (e) { toast('?'); }
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
 }
-
 async function binderLoeschen(id) {
-  if (!confirm('Diesen Binder wirklich löschen?')) return;
+  if (!confirm(t('bestaetigen_loeschen'))) return;
   try { await api('api/binders/' + id, { method: 'DELETE' }); } catch (e) {}
   localStorage.setItem('bp_binder', JSON.stringify(binderIds().filter((x) => x !== id)));
-  ladeMeineBinder();
+  if (S.binder && S.binder.id === id) { S.binder = null; await neuLeer(true); }
+  meineOeffnen(); meineOeffnen();
 }
 
-// ---------- Werkbank: Filter & Suche ----------
+// ---------- Filterleiste ----------
 function baueFilterLeiste() {
-  $('f-kinds').innerHTML = KINDS.map(([k, lbl]) =>
-    `<button class="chip" data-kind="${k}" onclick="kindToggle('${k}')">${lbl}</button>`).join('');
-  const typen = Object.entries(S.meta.types || {});
-  $('f-typen').innerHTML = typen.map(([en, de]) =>
-    `<button class="chip" data-typ="${en}" onclick="typToggle('${en}')">${de}</button>`).join('');
-  const sel = $('f-set');
-  let letzteSerie = null; let html = '<option value="">Alle Sets</option>'; let offen = false;
-  for (const s of S.meta.sets || []) {
-    if (s.serie_name !== letzteSerie) {
-      if (offen) html += '</optgroup>';
-      html += `<optgroup label="${s.serie_name || 'Weitere'}">`; offen = true;
-      letzteSerie = s.serie_name;
-    }
-    html += `<option value="${s.id}">${s.name} (${s.release_date ? s.release_date.slice(0, 4) : '?'})</option>`;
-  }
-  if (offen) html += '</optgroup>';
-  sel.innerHTML = html;
+  // Kartenarten
+  $('f-kinds').innerHTML = KIND_KEYS.map((k) =>
+    `<button class="chip ${filter.kinds.has(k) ? 'on' : ''}" data-kind="${k}" onclick="kindToggle('${k}')">${T[LANG].kinds[k]}</button>`).join('');
+  // Typen
+  $('f-typen').innerHTML = Object.keys(T.de.typen).map((en) =>
+    `<button class="chip ${filter.typ === en ? 'on' : ''}" data-typ="${en}" onclick="typToggle('${en}')">${T[LANG].typen[en]}</button>`).join('');
+  // Ären chronologisch
+  $('f-serie').innerHTML = `<option value="">${t('alle_aeren')}</option>` + (S.meta.series || []).map((s) =>
+    `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name} (${(s.von || '').slice(0, 4)})</option>`).join('');
+  // Sets (nach Ära gefiltert, chronologisch)
+  baueSetSelect();
+  // Seltenheiten
+  $('f-rarity').innerHTML = `<option value="">${t('alle_rar')}</option>` + (S.meta.rarities || []).map((r) =>
+    `<option value="${r.rarity.replace(/"/g, '&quot;')}" ${filter.rarity === r.rarity ? 'selected' : ''}>${r.rarity} (${r.anzahl})</option>`).join('');
+  // Sortierung
+  $('f-sort').innerHTML = ['datum', 'dex', 'name', 'nummer', 'typ'].map((s) =>
+    `<option value="${s}" ${filter.sort === s ? 'selected' : ''}>${t('s_' + s)}</option>`).join('');
+  $('planer-sortkey').innerHTML = ['datum', 'dex', 'name', 'nummer', 'typ', 'rarity'].map((s) =>
+    `<option value="${s}">${t('s_' + s)}</option>`).join('');
+}
 
-  let suchTimer = null;
-  $('f-suche').addEventListener('input', () => { clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
-  sel.addEventListener('change', () => { filter.set = sel.value; sucheNeu(); });
-  $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; sucheNeu(); });
-  $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; sucheNeu(); });
-  $('set-suche').addEventListener('input', zeichneSetliste);
-  $('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; speichern(); } });
+function baueSetSelect() {
+  const sets = (S.meta.sets || []).filter((s) => !filter.serie || s.serie_id === filter.serie);
+  $('f-set').innerHTML = `<option value="">${t('alle_sets')}</option>` + sets.map((s) => {
+    const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
+    return `<option value="${s.id}" ${filter.set === s.id ? 'selected' : ''}>${n} (${(s.release_date || '?').slice(0, 4)})</option>`;
+  }).join('');
+}
+
+function baueDexNamen() {
+  if (!S.pokedex) return;
+  $('dex-namen').innerHTML = S.pokedex.map((p) =>
+    `<option value="${LANG === 'en' ? p.name_en : p.name}"></option>`).join('');
+}
+
+async function ladePokedex() {
+  if (S.pokedex) return;
+  const d = await api('api/pokedex');
+  S.pokedex = d.pokemon.map((p) => ({ ...p, name_en: p.name_en || p.name }));
+  baueDexNamen();
 }
 
 function kindToggle(k) {
@@ -586,16 +608,16 @@ function kindToggle(k) {
   document.querySelectorAll('[data-kind]').forEach((el) => el.classList.toggle('on', filter.kinds.has(el.dataset.kind)));
   sucheNeu();
 }
-function typToggle(t) {
-  filter.typ = filter.typ === t ? '' : t;
+function typToggle(ty) {
+  filter.typ = filter.typ === ty ? '' : ty;
   document.querySelectorAll('[data-typ]').forEach((el) => el.classList.toggle('on', el.dataset.typ === filter.typ));
   sucheNeu();
 }
 function filterReset() {
-  filter.q = ''; filter.set = ''; filter.typ = ''; filter.kinds.clear();
-  filter.sort = 'datum'; filter.richtung = 'asc';
-  $('f-suche').value = ''; $('f-set').value = ''; $('f-sort').value = 'datum'; $('f-absteigend').checked = false;
-  document.querySelectorAll('[data-kind],[data-typ]').forEach((el) => el.classList.remove('on'));
+  Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc' });
+  filter.kinds.clear();
+  $('f-suche').value = ''; $('f-dex').value = ''; $('f-absteigend').checked = false;
+  baueFilterLeiste();
   sucheNeu();
 }
 
@@ -603,51 +625,46 @@ function filterParams() {
   const p = new URLSearchParams();
   if (filter.q) p.set('q', filter.q);
   if (filter.set) p.set('set_id', filter.set);
+  if (filter.serie) p.set('serie', filter.serie);
   if (filter.typ) p.set('typ', filter.typ);
+  if (filter.rarity) p.set('rarity', filter.rarity);
+  if (filter.dex) p.set('dex', String(filter.dex));
   if (filter.kinds.size) p.set('kind', [...filter.kinds].join(','));
-  p.set('sort', filter.sort);
-  p.set('richtung', filter.richtung);
+  p.set('sort', filter.sort); p.set('richtung', filter.richtung);
   return p;
 }
 
-async function sucheNeu() {
-  S.offset = 0;
-  S.ergebnisse = [];
-  await sucheLaden();
-}
-
+// ---------- Suche ----------
+async function sucheNeu() { S.offset = 0; S.ergebnisse = []; await sucheLaden(); }
 async function sucheLaden() {
-  const p = filterParams();
-  p.set('limit', '60'); p.set('offset', String(S.offset));
+  const p = filterParams(); p.set('limit', '60'); p.set('offset', String(S.offset));
   try {
     const d = await api('api/cards?' + p);
     S.gesamt = d.total;
     S.ergebnisse = S.ergebnisse.concat(d.karten);
     S.offset += d.karten.length;
     zeichneErgebnisse();
-  } catch (e) { toast('Suche fehlgeschlagen'); }
+  } catch (e) { toast('Suche?'); }
 }
-
-function mehrLaden() { sucheLaden(); }
 
 function anzahlImBinder(id) {
   return S.binder ? S.binder.items.filter((i) => i.type === 'card' && i.id === id).length : 0;
 }
 
 function zeichneErgebnisse() {
-  $('erg-anzahl').innerHTML = `<strong>${S.gesamt}</strong> Karten gefunden`;
+  if (!S.meta) return;
+  $('erg-anzahl').innerHTML = `<strong>${S.gesamt}</strong> ${t('treffer')}`;
   $('btn-mehr').classList.toggle('hidden', S.offset >= S.gesamt);
   $('btn-alle').disabled = S.gesamt === 0 || S.gesamt > 2000;
-  $('btn-alle').title = S.gesamt > 2000 ? 'Mehr als 2000 Treffer – bitte enger filtern' : '';
+  $('btn-alle').title = S.gesamt > 2000 ? t('zu_viele') : '';
   $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
     const n = anzahlImBinder(k.id);
-    return `<div class="tk" onclick="kartAdd(${i})" title="${k.name} – in den Binder">
-      <div class="bildbox">${k.img ? `<img loading="lazy" src="api/img/card/${encodeURIComponent(k.id)}" alt="">`
-              : `<div class="kein-bild">${k.name}</div>`}</div>
-      ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Als Reverse Holo hinzufügen">R+</span>` : ''}
+    return `<div class="tk" onclick="kartAdd(${i})" title="${nm(k)}">
+      <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
+      ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Reverse Holo">R+</span>` : ''}
       ${n ? `<span class="anz">${n}</span>` : ''}
-      <div class="tk-name">${k.name}</div>
-      <div class="tk-meta">${k.set_name || k.set_id} · ${k.local_id}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}</div>
+      <div class="tk-name">${nm(k)}</div>
+      <div class="tk-meta">${setNm(k)} · ${k.local_id}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}</div>
     </div>`;
   }).join('');
 }
@@ -656,41 +673,62 @@ function kartAdd(i, variant) {
   const k = S.ergebnisse[i];
   if (!k || !S.binder) return;
   S.binder.items.push({ type: 'card', id: k.id, variant: variant || 'normal' });
-  speichern();
-  zeichneBinder();
-  zeichneErgebnisse();
+  speichern(); zeichneBinder(); zeichneErgebnisse();
 }
 
-async function alleHinzufuegen() {
+async function alleHinzufuegen(naechsteSeite) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.binder) return;
-  const p = filterParams();
-  p.set('limit', '2000');
+  const p = filterParams(); p.set('limit', '2000');
   try {
     const d = await api('api/cards/ids?' + p);
     if (!d.ids.length) return;
-    if (d.ids.length > 300 && !confirm(`${d.ids.length} Karten wirklich alle hinzufügen?`)) return;
+    if (d.ids.length > 300 && !confirm(d.ids.length + ' ' + t('bestaetigen_viele'))) return;
+    if (naechsteSeite) {
+      const pp = proSeite();
+      const rest = S.binder.items.length % pp;
+      if (rest) for (let x = 0; x < pp - rest; x++) S.binder.items.push({ type: 'empty' });
+    }
     for (const id of d.ids) S.binder.items.push({ type: 'card', id });
-    speichern();
-    zeichneBinder();
-    zeichneErgebnisse();
-    toast(`${d.ids.length} Karten hinzugefügt`);
-  } catch (e) { toast('Konnte Treffer nicht laden'); }
+    speichern(); zeichneBinder(); zeichneErgebnisse();
+    toast(d.ids.length + ' ' + t('hinzugefuegt'));
+  } catch (e) { toast('?'); }
 }
 
-// ---------- Werkbank: Binder ----------
+// ---------- Binder-Panel ----------
 function zeichneLayouts() {
-  $('wb-layouts').innerHTML = Object.keys(LAYOUTS).map((l) =>
-    `<button class="chip ${S.binder.layout === l ? 'on' : ''}" onclick="layoutWechsel('${l}')">${l.replace('x', '×')}</button>`).join('');
+  $('wb-layout').innerHTML = Object.keys(LAYOUTS).map((l) =>
+    `<option value="${l}" ${S.binder.layout === l ? 'selected' : ''}>${l.replace('x', '×')} (${LAYOUTS[l][0] * LAYOUTS[l][1]})</option>`).join('');
 }
-function layoutWechsel(l) {
-  S.binder.layout = l;
-  S.seite = 0;
-  zeichneLayouts();
-  zeichneBinder();
-  speichern();
+function layoutWechsel(l) { S.binder.layout = l; S.seite = 0; zeichneBinder(); speichern(); }
+function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return c * r; }
+
+function slotInhalt(item) {
+  if (!item) return '+';
+  if (item.type === 'empty') return `<span>${t('leer_slot')}</span>`;
+  if (item.type === 'dex') {
+    const p = (S.pokedex || []).find((x) => x.dex === item.dex);
+    const name = p ? (LANG === 'en' ? p.name_en : p.name) : (item.name || '#' + item.dex);
+    return `<div class="dexzelle"><img loading="lazy" src="api/img/dex/${item.dex}" alt=""><span>#${String(item.dex).padStart(3, '0')} ${name}</span></div>`;
+  }
+  return `<img loading="lazy" src="${imgUrl(item.id)}" alt="" data-cid="${item.id}" onerror="bildFehlt(this)">`;
 }
 
-function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return c * r; }
+function bildFehlt(img) {
+  const span = document.createElement('span');
+  span.textContent = img.dataset.cid || '?';
+  span.style.cssText = 'font-size:9px;padding:3px;color:var(--mut);text-align:center;word-break:break-all';
+  img.replaceWith(span);
+}
+
+function slotExtras(item, idx) {
+  let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})">✕</button>`;
+  if (item && item.variant === 'reverse') html += '<span class="rmark">REV</span>';
+  if (S.preiseAn && item && item.type === 'card' && S.preise[item.id] != null) {
+    html += `<span class="preis">${S.preise[item.id].toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
+  }
+  return html;
+}
 
 function zeichneBinder() {
   if (!S.binder) return;
@@ -700,29 +738,22 @@ function zeichneBinder() {
   if (S.seite >= seiten) S.seite = seiten - 1;
   $('wb-seite').textContent = S.seite + 1;
   $('wb-seiten').textContent = seiten;
-  $('wb-fortschritt').textContent = `${S.binder.items.length} Fächer belegt · ${seiten} Binderseiten · ` +
-    `${Math.ceil(S.binder.items.filter((x) => x.type !== 'empty').length / 9)} A4-Blätter im Druck`;
+  const druck = S.binder.items.filter((x) => x.type !== 'empty').length;
+  $('wb-fortschritt').textContent = `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')} · ${Math.ceil(druck / 9)} ${t('blaetter')}`;
   const box = $('wb-slots');
   box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   let html = '';
   for (let s = 0; s < pp; s++) {
     const idx = S.seite * pp + s;
     const item = S.binder.items[idx];
-    if (!item) { html += `<div class="slot">+</div>`; continue; }
-    let inhalt = '';
-    if (item.type === 'dex') {
-      inhalt = `<div class="dexzelle"><img loading="lazy" src="api/img/dex/${item.dex}" alt=""><span>#${String(item.dex).padStart(3, '0')} ${item.name || ''}</span></div>`;
-    } else {
-      inhalt = `<img loading="lazy" src="api/img/card/${encodeURIComponent(item.id)}" alt="" onerror="this.outerHTML='<span style=&quot;font-size:9px;padding:4px;color:var(--ink)&quot;>${(item.id || '').replace(/'/g, '')}</span>'">`;
-    }
-    html += `<div class="slot voll" draggable="true" data-idx="${idx}"
-        ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
-      ${inhalt}
-      ${item.variant === 'reverse' ? '<span class="rmark">REV</span>' : ''}
-      <button class="raus" onclick="slotEntfernen(${idx})" title="Entfernen">✕</button>
-    </div>`;
+    if (!item) { html += '<div class="slot">+</div>'; continue; }
+    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'}" draggable="true" data-idx="${idx}"
+      ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
+      ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
+  zeichnePreisSumme();
+  if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
 
 function seiteWechsel(d) {
@@ -730,21 +761,10 @@ function seiteWechsel(d) {
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
   zeichneBinder();
 }
-
-function slotEntfernen(idx) {
-  S.binder.items.splice(idx, 1);
-  speichern();
-  zeichneBinder();
-  zeichneErgebnisse();
-}
-
+function slotEntfernen(idx) { S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); }
 function binderLeeren() {
-  if (!S.binder.items.length || !confirm('Alle Fächer aus diesem Binder entfernen?')) return;
-  S.binder.items = [];
-  S.seite = 0;
-  speichern();
-  zeichneBinder();
-  zeichneErgebnisse();
+  if (!S.binder.items.length || !confirm(t('bestaetigen_leeren'))) return;
+  S.binder.items = []; S.seite = 0; speichern(); zeichneBinder(); zeichneErgebnisse();
 }
 
 let dragIdx = null;
@@ -752,48 +772,198 @@ function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); ev.data
 function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
 function dragLeave(ev) { ev.currentTarget.classList.remove('dragover'); }
 function dragDrop(ev) {
-  ev.preventDefault();
-  ev.currentTarget.classList.remove('dragover');
+  ev.preventDefault(); ev.currentTarget.classList.remove('dragover');
   const ziel = Number(ev.currentTarget.dataset.idx);
-  if (dragIdx === null || ziel === dragIdx) return;
+  if (dragIdx === null || ziel === dragIdx || Number.isNaN(ziel)) return;
   const [item] = S.binder.items.splice(dragIdx, 1);
   S.binder.items.splice(ziel, 0, item);
-  dragIdx = null;
-  speichern();
+  dragIdx = null; S.auswahl.clear();
+  speichern(); zeichneBinder();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
+
+// ---------- Preise ----------
+async function preiseUmschalten() {
+  S.preiseAn = $('preis-toggle').checked;
+  $('wb-preise').classList.toggle('hidden', !S.preiseAn);
+  if (S.preiseAn) await preiseLaden();
   zeichneBinder();
+}
+async function preiseLaden() {
+  const ids = [...new Set(S.binder.items.filter((i) => i.type === 'card').map((i) => i.id))];
+  if (!ids.length) return;
+  $('wb-preise').textContent = '…';
+  try {
+    const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    Object.assign(S.preise, d.preise);
+    if (d.offen > 0) toast(t('preise_offen'));
+  } catch (e) { toast('Preise?'); }
+  zeichnePreisSumme();
+}
+function zeichnePreisSumme() {
+  if (!S.preiseAn) return;
+  let summe = 0; let fehlen = 0;
+  for (const i of S.binder.items) {
+    if (i.type !== 'card') continue;
+    const p = S.preise[i.id];
+    if (p == null) fehlen++; else summe += p;
+  }
+  const fmt = summe.toFixed(2).replace('.', LANG === 'de' ? ',' : '.');
+  $('wb-preise').textContent = `${t('gesamt')}: ${fmt} €` + (fehlen ? ` (+${fehlen}?)` : '');
+}
+
+// ---------- Planer ----------
+function planerOeffnen() {
+  S.auswahl.clear();
+  $('planer').classList.remove('hidden');
+  $('planer-titel').textContent = S.binder.name;
+  if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
+  zeichnePlaner();
+}
+function planerSchliessen() { $('planer').classList.add('hidden'); zeichneBinder(); }
+
+function zeichnePlaner() {
+  const pp = proSeite();
+  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  $('planer-anzahl').textContent = S.auswahl.size;
+  let html = '';
+  for (let seite = 0; seite < seiten; seite++) {
+    let slots = '';
+    for (let s = 0; s < pp; s++) {
+      const idx = seite * pp + s;
+      const item = S.binder.items[idx];
+      if (!item) { slots += '<div class="slot">+</div>'; continue; }
+      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
+        draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
+        ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
+        ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
+    }
+    html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
+      <span style="cursor:pointer" onclick="seiteWaehlen(${seite})" title="${t('auswahl')}">☑</span></div>
+      <div class="slots" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${slots}</div></div>`;
+  }
+  $('planer-rumpf').innerHTML = html;
+}
+
+let letzterKlick = null;
+function planerKlick(ev, idx) {
+  if (ev.target.closest('.raus')) return;
+  if (ev.shiftKey && letzterKlick !== null) {
+    const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
+    for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
+  } else {
+    S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
+  }
+  letzterKlick = idx;
+  zeichnePlaner();
+}
+function seiteWaehlen(seite) {
+  const pp = proSeite();
+  for (let s = 0; s < pp; s++) {
+    const idx = seite * pp + s;
+    if (S.binder.items[idx]) S.auswahl.add(idx);
+  }
+  zeichnePlaner();
+}
+function auswahlLeeren() { S.auswahl.clear(); zeichnePlaner(); }
+
+function auswahlVerschieben(wohin) {
+  if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  const idxe = [...S.auswahl].sort((a, b) => a - b);
+  const bewegt = idxe.map((i) => S.binder.items[i]);
+  const rest = S.binder.items.filter((_, i) => !S.auswahl.has(i));
+  S.binder.items = wohin === 'anfang' ? bewegt.concat(rest) : rest.concat(bewegt);
+  S.auswahl.clear();
+  speichern(); zeichnePlaner();
+}
+function auswahlEntfernen() {
+  if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  S.binder.items = S.binder.items.filter((_, i) => !S.auswahl.has(i));
+  S.auswahl.clear();
+  speichern(); zeichnePlaner(); zeichneErgebnisse();
+}
+function leereSeite() {
+  const pp = proSeite();
+  for (let i = 0; i < pp; i++) S.binder.items.push({ type: 'empty' });
+  speichern(); zeichnePlaner();
+}
+
+async function auswahlSortieren() {
+  if (S.auswahl.size < 2) return toast(t('erst_waehlen'));
+  const key = $('planer-sortkey').value;
+  const idxe = [...S.auswahl].sort((a, b) => a - b);
+  const items = idxe.map((i) => S.binder.items[i]);
+  const cardIds = [...new Set(items.filter((i) => i.type === 'card').map((i) => i.id))];
+  let daten = {};
+  if (cardIds.length) {
+    const d = await api('api/cards/nach_ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: cardIds }) });
+    daten = d.karten;
+  }
+  const wert = (item) => {
+    if (item.type === 'empty') return ['￿'];
+    if (item.type === 'dex') {
+      if (key === 'dex') return [String(item.dex).padStart(5, '0')];
+      const p = (S.pokedex || []).find((x) => x.dex === item.dex);
+      return [p ? nm(p).toLowerCase() : String(item.dex)];
+    }
+    const k = daten[item.id] || {};
+    if (key === 'datum') return [(k.datum || '9999'), k.set_id || '', String(parseInt(k.local_id) || 99999).padStart(6, '0')];
+    if (key === 'dex') return [String(k.dex == null ? 99999 : k.dex).padStart(5, '0'), k.datum || '9999'];
+    if (key === 'name') return [(nm(k) || '').toLowerCase()];
+    if (key === 'nummer') return [k.set_id || '', String(parseInt(k.local_id) || 99999).padStart(6, '0')];
+    if (key === 'typ') return [(k.types && k.types[0]) || 'zz', (nm(k) || '').toLowerCase()];
+    if (key === 'rarity') return [k.rarity || 'zz', (nm(k) || '').toLowerCase()];
+    return [''];
+  };
+  const sortiert = items.map((it) => ({ it, w: wert(it) }))
+    .sort((a, b) => { for (let i = 0; i < Math.max(a.w.length, b.w.length); i++) { const x = a.w[i] || '', y = b.w[i] || ''; if (x < y) return -1; if (x > y) return 1; } return 0; })
+    .map((x) => x.it);
+  idxe.forEach((pos, i) => { S.binder.items[pos] = sortiert[i]; });
+  speichern(); zeichnePlaner();
 }
 
 // ---------- Speichern & PDF ----------
 function speichern() {
   if (!S.binder) return;
-  $('wb-status').textContent = 'speichert …';
+  $('wb-status').textContent = t('speichert');
   clearTimeout(S.speicherTimer);
   S.speicherTimer = setTimeout(async () => {
     try {
-      await api('api/binders/' + S.binder.id, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(S.binder),
-      });
-      $('wb-status').textContent = 'gespeichert ✓';
-    } catch (e) {
-      $('wb-status').textContent = 'Speichern fehlgeschlagen!';
-    }
+      await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
+      $('wb-status').textContent = t('gespeichert');
+    } catch (e) { $('wb-status').textContent = t('fehler_speichern'); }
   }, 700);
 }
 
 async function exportPdf() {
   if (!S.binder) return;
-  if (!S.binder.items.length) return toast('Der Binder ist noch leer.');
+  if (!S.binder.items.length) return toast(t('binder_leer'));
   clearTimeout(S.speicherTimer);
+  S.binder.options = { ...(S.binder.options || {}), sprache: LANG };
   try {
-    await api('api/binders/' + S.binder.id, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(S.binder),
-    });
-  } catch (e) { return toast('Speichern vor dem Export fehlgeschlagen'); }
-  toast('PDF wird erzeugt – bei vielen Karten dauert der erste Export etwas …');
+    await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
+  } catch (e) { return toast(t('fehler_speichern')); }
+  toast(t('pdf_dauert'));
   window.open('api/binders/' + S.binder.id + '/pdf', '_blank');
 }
+
+// ---------- Ereignisse ----------
+let suchTimer = null;
+$('f-suche').addEventListener('input', () => { clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
+$('f-dex').addEventListener('focus', ladePokedex);
+$('f-dex').addEventListener('input', () => {
+  const v = $('f-dex').value.trim().toLowerCase();
+  if (!v) { if (filter.dex) { filter.dex = 0; sucheNeu(); } return; }
+  const p = (S.pokedex || []).find((x) => x.name.toLowerCase() === v || (x.name_en || '').toLowerCase() === v);
+  if (p) { filter.dex = p.dex; sucheNeu(); }
+});
+$('f-serie').addEventListener('change', () => { filter.serie = $('f-serie').value; filter.set = ''; baueSetSelect(); sucheNeu(); });
+$('f-set').addEventListener('change', () => { filter.set = $('f-set').value; sucheNeu(); });
+$('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').value; sucheNeu(); });
+$('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; sucheNeu(); });
+$('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; sucheNeu(); });
+$('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; speichern(); } });
 
 boot();
 </script>
