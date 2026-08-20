@@ -321,6 +321,27 @@ def admin_sync(key: str = ""):
     return {"gestartet": True}
 
 
+@app.get("/api/admin/stats")
+def admin_stats(key: str = ""):
+    """Interne Kennzahlen fürs Empire-Dashboard (Venture Lab), nur mit ADMIN_KEY."""
+    if not _admin_key() or key != _admin_key():
+        raise HTTPException(403, "Falscher Schlüssel")
+    con = get_db()
+    binder = con.execute("SELECT COUNT(*) c FROM binders").fetchone()["c"]
+    neu7 = con.execute(
+        "SELECT COUNT(*) c FROM binders WHERE created_at >= datetime('now','-7 days')"
+    ).fetchone()["c"]
+    karten = con.execute("SELECT COUNT(*) c FROM cards").fetchone()["c"]
+    pdfs = con.execute("SELECT value FROM kv WHERE key='pdf_exports'").fetchone()
+    con.close()
+    return {"kpis": [
+        {"label": "Binder", "value": binder, "color": "blue"},
+        {"label": "Neu (7T)", "value": neu7, "color": "green" if neu7 else None},
+        {"label": "PDF-Exporte", "value": int(pdfs["value"]) if pdfs else 0},
+        {"label": "Karten im Katalog", "value": karten},
+    ]}
+
+
 @app.get("/api/meta")
 def meta():
     con = get_db()
@@ -780,6 +801,14 @@ def binder_pdf(binder_id: str):
         c.setFont("Helvetica", 14)
         c.drawCentredString(page_w / 2, page_h / 2, "Dieser Binder ist noch leer.")
     c.save()
+
+    con = get_db()
+    con.execute(
+        "INSERT INTO kv (key,value) VALUES ('pdf_exports','1')"
+        " ON CONFLICT(key) DO UPDATE SET value = CAST(value AS INTEGER) + 1"
+    )
+    con.commit()
+    con.close()
 
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
     return Response(
