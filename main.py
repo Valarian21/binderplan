@@ -199,6 +199,8 @@ def init_db():
         "ALTER TABLE cards ADD COLUMN kinds TEXT",
         "ALTER TABLE cards ADD COLUMN image_alt TEXT",
         "ALTER TABLE binders ADD COLUMN user_id INTEGER",
+        "ALTER TABLE users ADD COLUMN reset_token TEXT",
+        "ALTER TABLE users ADD COLUMN reset_bis TEXT",
     ):
         try:
             con.execute(alter)
@@ -908,6 +910,101 @@ def _neue_session(con, user_id) -> str:
     return token
 
 
+# --- E-Mail-Versand (SMTP aus .env: SMTP_HOST/PORT/USER/PASS/FROM) ----------
+
+def _mail_senden(an: str, betreff: str, text: str) -> bool:
+    import smtplib
+    from email.message import EmailMessage
+    env = _env()
+    host = env.get("SMTP_HOST")
+    user = env.get("SMTP_USER")
+    if not host or not user:
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = betreff
+    msg["From"] = f'{env.get("SMTP_FROM_NAME", "Binderplan")} <{env.get("SMTP_FROM", user)}>'
+    msg["To"] = an
+    msg.set_content(text)
+    try:
+        port = int(env.get("SMTP_PORT", "587") or 587)
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=20) as s:
+                s.login(user, env.get("SMTP_PASS", ""))
+                s.send_message(msg)
+        else:
+            with smtplib.SMTP(host, port, timeout=20) as s:
+                s.ehlo()
+                s.starttls()
+                s.login(user, env.get("SMTP_PASS", ""))
+                s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+def _mail_konfiguriert() -> bool:
+    env = _env()
+    return bool(env.get("SMTP_HOST") and env.get("SMTP_USER"))
+
+
+@app.post("/api/auth/passwort_vergessen")
+async def passwort_vergessen(request: Request):
+    """Reset-Link mailen. Antwortet immer gleich, verrät also nicht, ob die E-Mail existiert."""
+    if not _mail_konfiguriert():
+        raise HTTPException(503, detail={"code": "mail"})
+    data = await request.json()
+    email = str(data.get("email") or "").strip().lower()
+    con = get_db()
+    row = con.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+    if row:
+        token = secrets.token_urlsafe(24)
+        con.execute(
+            "UPDATE users SET reset_token = ?, reset_bis = datetime('now', '+2 hours') WHERE id = ?",
+            (token, row["id"]),
+        )
+        con.commit()
+        app_url = _env().get("APP_URL", "https://binderplan.app")
+        _mail_senden(
+            email, "Binderplan – Passwort zurücksetzen",
+            "Hallo,\n\n"
+            "für dein Binderplan-Konto wurde ein neues Passwort angefordert. "
+            "Klicke auf diesen Link (2 Stunden gültig):\n\n"
+            f"{app_url}/?reset={token}\n\n"
+            "Wenn du das nicht warst, kannst du diese E-Mail einfach ignorieren.\n\n"
+            "Viele Grüße\nBinderplan",
+        )
+    con.close()
+    return {"ok": True}
+
+
+@app.post("/api/auth/passwort_neu")
+async def passwort_neu(request: Request):
+    data = await request.json()
+    token = str(data.get("token") or "")
+    pw = str(data.get("passwort") or "")
+    if len(pw) < 8:
+        raise HTTPException(400, "Das Passwort braucht mindestens 8 Zeichen.")
+    con = get_db()
+    row = con.execute(
+        "SELECT id FROM users WHERE reset_token = ? AND reset_token != ''"
+        " AND reset_bis > datetime('now')", (token,),
+    ).fetchone()
+    if not row:
+        con.close()
+        raise HTTPException(400, "Der Link ist ungültig oder abgelaufen — bitte neu anfordern.")
+    salt = secrets.token_hex(16)
+    con.execute(
+        "UPDATE users SET pw_hash = ?, salt = ?, reset_token = '', reset_bis = '' WHERE id = ?",
+        (_hash_pw(pw, salt), salt, row["id"]),
+    )
+    con.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
+    session = _neue_session(con, row["id"])
+    con.commit()
+    user = dict(con.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone())
+    con.close()
+    return {"token": session, "user": _user_info(user)}
+
+
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
     data = await request.json()
@@ -1074,6 +1171,25 @@ async def stripe_webhook(request: Request):
             else:
                 con.execute("UPDATE users SET plan = 'pro', stripe_sub = ? WHERE id = ?",
                             (obj.get("subscription"), user_id))
+            # Kaufbestätigung (best effort — Zahlung ist unabhängig davon gültig)
+            try:
+                zeile = con.execute("SELECT email FROM users WHERE id = ?", (user_id,)).fetchone()
+                if zeile and _mail_konfiguriert():
+                    lifetime = obj.get("mode") == "payment"
+                    _mail_senden(
+                        zeile["email"], "Binderplan – Kaufbestätigung",
+                        "Hallo,\n\n"
+                        "danke für deinen Kauf! Dein Konto wurde soeben freigeschaltet:\n\n"
+                        + ("• Binderplan Lifetime — einmalig bezahlt, dauerhaft alle Pro-Funktionen\n"
+                           if lifetime else
+                           "• Binderplan Pro — dein Abo ist aktiv und jederzeit über \"Konto → Abo verwalten\" kündbar\n")
+                        + "\nAb sofort: unbegrenzte Binder & Exporte, tagesaktuelle Preise und die Kaufliste."
+                        "\nDie Rechnung bekommst du separat von unserem Zahlungsdienstleister Stripe."
+                        "\n\nViel Spaß beim Sammeln!\nBinderplan – https://binderplan.app"
+                        "\n\nImpressum & AGB: https://binderplan.app/recht",
+                    )
+            except Exception:
+                pass
     elif typ == "customer.subscription.deleted":
         con.execute(
             "UPDATE users SET plan = 'free', stripe_sub = NULL WHERE stripe_sub = ? AND plan != 'lifetime'",

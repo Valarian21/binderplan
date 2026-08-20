@@ -155,7 +155,63 @@
            font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 90; }
   .toast.zeig { opacity: 1; }
   .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
-  @media (max-width: 980px) { .spalte-filter { display: none; } .spalte-binder { width: 250px; } }
+  /* Touch-Geräte: Aktions-Knöpfe auf den Slots ohne Hover immer zeigen */
+  @media (hover: none) {
+    .slot .raus, .slot .hat-btn { opacity: .95; }
+  }
+
+  /* ---------- Mobile (gestapeltes Layout, Filter-Schublade, Binder-Tab) ---------- */
+  .mnav, .m-backdrop { display: none; }
+  @media (max-width: 900px) {
+    html, body { overflow-x: hidden; }
+    #app { height: 100dvh; }
+    .kopf { flex-wrap: wrap; height: auto; padding: 8px 10px; gap: 7px; row-gap: 7px; }
+    .kopf .logo { font-size: 15px; }
+    .kopf input.bindername { order: 5; flex: 1 1 130px; width: auto; min-width: 0; font-size: 14px; }
+    #wb-status { order: 6; }
+    .kopf > .menuwrap:nth-of-type(1), .kopf > .menuwrap:nth-of-type(2) { order: 7; }
+    .kopf .btn { padding: 8px 12px; font-size: 12.5px; }
+    /* Planer- und Druck-Knopf wandern in die untere Leiste */
+    .kopf [onclick="planerOeffnen()"] { display: none; }
+    .kopf > .menuwrap:last-of-type { display: none; }
+
+    .rumpf { flex-direction: column; padding-bottom: 62px; }
+    .spalte-mitte { padding: 10px 10px 0; width: 100%; }
+    .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 7px; }
+
+    /* Filter als Schublade von links */
+    .spalte-filter { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: 70;
+      width: min(85vw, 330px); border-right: 1.5px solid var(--line);
+      transform: translateX(-105%); transition: transform .22s ease; box-shadow: 8px 0 30px rgba(0,0,0,.18);
+      padding-bottom: 74px; }
+    .spalte-filter.offen { transform: translateX(0); }
+    .m-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 65; }
+    .m-backdrop.offen { display: block; }
+
+    /* Binder als eigene Vollbild-Ansicht (Umschalter unten) */
+    .spalte-binder { display: none; width: 100%; border-left: none; }
+    body.binder-an .spalte-binder { display: flex; }
+    body.binder-an .spalte-mitte { display: none; }
+    .slots { max-width: 430px; margin: 0 auto; width: 100%; }
+
+    /* Untere Navigationsleiste */
+    .mnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+      background: var(--card); border-top: 1.5px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+    .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: 11px; font-weight: 700; color: var(--mut); padding: 5px 2px; border-radius: 10px; min-height: 44px; }
+    .mnav button.on { color: var(--akzent); background: var(--hover); }
+    .mnav .mzahl { position: absolute; margin-left: 34px; margin-top: -4px; background: var(--akzent); color: #fff;
+      font-size: 9.5px; min-width: 16px; border-radius: 999px; padding: 1px 4px; }
+    #mobil-export { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
+
+    .planer-kopf { gap: 6px; padding: 8px 10px; }
+    .planer-kopf .btn { font-size: 11.5px !important; padding: 7px 10px; }
+    .planer-rumpf { padding: 10px; gap: 12px; }
+    .planer-seite { width: 100%; max-width: 420px; margin: 0 auto; }
+    .toast { bottom: 74px; max-width: 92vw; text-align: center; }
+    .modal { padding: 16px; }
+    .tarife { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
@@ -296,6 +352,43 @@
       <button class="btn sekundaer" style="font-size:12px;padding:7px 13px" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
     </div>
   </div>
+
+  <!-- Mobile Navigationsleiste -->
+  <div class="m-backdrop" id="m-backdrop" onclick="mobilFilter(false)"></div>
+  <div class="mnav">
+    <button id="mnav-filter" onclick="mobilFilter()">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 3h12L9.5 8.5V13l-3 1.5V8.5L2 3z"></path></svg>
+      <span data-i18n="m_filter">Filter</span>
+    </button>
+    <button id="mnav-suche" class="on" onclick="mobilAnsicht('suche')">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
+      <span data-i18n="m_suche">Suche</span>
+    </button>
+    <button id="mnav-binder" onclick="mobilAnsicht('binder')">
+      <span class="mzahl" id="mnav-binder-zahl">0</span>
+      <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
+      <span data-i18n="m_binder">Binder</span>
+    </button>
+    <button id="mnav-planer" onclick="planerOeffnen()">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1.5" y="2.5" width="5.5" height="11" rx="1"></rect><rect x="9" y="2.5" width="5.5" height="11" rx="1"></rect></svg>
+      <span data-i18n="planer">Planer</span>
+    </button>
+    <div class="menuwrap" style="flex:1;display:flex">
+      <button style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);padding:5px 2px;border-radius:10px;min-height:44px" onclick="menuToggle('mobil-export')">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
+        <span data-i18n="pdf">Drucken</span>
+      </button>
+      <div class="menu hidden" id="mobil-export">
+        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">PDF – alle Karten (S/W)</button>
+        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">PDF – nur fehlende Karten</button>
+        <div class="trenn"></div>
+        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste ohne Bilder (zählt nicht als Export)</button>
+        <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
+        <div class="trenn"></div>
+        <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Modal: Master Set -->
@@ -336,7 +429,7 @@
       <button id="auth-tab-login" class="on" onclick="authTab('login')" data-i18n="anmelden">Anmelden</button>
       <button id="auth-tab-reg" onclick="authTab('reg')" data-i18n="registrieren">Registrieren</button>
     </div>
-    <div class="feld-lbl">E-Mail</div>
+    <div class="feld-lbl" id="auth-email-lbl">E-Mail</div>
     <input class="feld" id="auth-email" type="email" autocomplete="email">
     <div class="feld-lbl" data-i18n="passwort">Passwort</div>
     <input class="feld" id="auth-pw" type="password" autocomplete="current-password">
@@ -344,6 +437,7 @@
       <input type="checkbox" id="auth-agb-check" style="margin-top:2px">
       <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung (Links unten links auf der Seite).</span>
     </label>
+    <button id="auth-vergessen" onclick="passwortVergessen()" style="font-size:12px;color:var(--mut);text-decoration:underline;margin-top:10px;padding:0" data-i18n="pw_vergessen">Passwort vergessen?</button>
     <div id="auth-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
     <button class="btn" style="width:100%;justify-content:center;margin-top:14px" onclick="authAbsenden()" id="auth-senden" data-i18n="anmelden">Anmelden</button>
     <div style="font-size:11px;color:var(--mut);margin-top:12px;text-align:center">
@@ -458,6 +552,12 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
+    pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
+    pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
+    pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
+    mail_fehlt: 'Mail-Versand ist noch nicht eingerichtet — bitte beim Betreiber melden.',
+    pw_geaendert: 'Passwort geändert — du bist angemeldet.',
+    m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Suche',
   },
   en: {
     neu: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
@@ -513,6 +613,12 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT charged under German small business rules (§ 19 UStG). Payments via Stripe, subscriptions cancellable anytime for the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
+    pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
+    pw_email_noetig: 'Enter your email above, then click “forgot password”.',
+    pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
+    mail_fehlt: 'Email sending is not set up yet — please contact the operator.',
+    pw_geaendert: 'Password changed — you are signed in.',
+    m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Search',
   },
 };
 let LANG = localStorage.getItem('bp_lang') || 'de';
@@ -566,6 +672,22 @@ function toast(text) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 2600);
 }
 
+// ---------- Mobile: Filter-Schublade & Ansichts-Umschalter ----------
+function mobilFilter(an) {
+  const drawer = document.querySelector('.spalte-filter');
+  const offen = an !== undefined ? an : !drawer.classList.contains('offen');
+  drawer.classList.toggle('offen', offen);
+  $('m-backdrop').classList.toggle('offen', offen);
+  $('mnav-filter').classList.toggle('on', offen);
+}
+function mobilAnsicht(w) {
+  document.body.classList.toggle('binder-an', w === 'binder');
+  $('mnav-suche').classList.toggle('on', w !== 'binder');
+  $('mnav-binder').classList.toggle('on', w === 'binder');
+  mobilFilter(false);
+  if (w === 'binder') zeichneBinder();
+}
+
 // ---------- Hell/Dunkel (Auto -> Hell -> Dunkel) ----------
 const THEMES = ['auto', 'hell', 'dunkel'];
 let THEME = localStorage.getItem('bp_theme') || 'auto';
@@ -609,6 +731,15 @@ async function boot() {
   setLang(LANG);
   kontoAnzeigen();
 
+  // Passwort-Reset-Link?
+  const q0 = new URLSearchParams(location.search);
+  if (q0.get('reset')) {
+    resetToken = q0.get('reset');
+    history.replaceState(null, '', location.pathname + location.hash);
+    $('modal-auth').classList.remove('hidden');
+    authTab('reset');
+  }
+
   // Rückkehr von Stripe?
   const q = new URLSearchParams(location.search);
   if (q.get('zahlung')) {
@@ -646,8 +777,11 @@ async function boot() {
 function ansichtAktivieren() {
   document.querySelector('.spalte-filter').classList.add('hidden');
   document.querySelector('.spalte-mitte').classList.add('hidden');
-  document.querySelector('[onclick="planerOeffnen()"]').classList.add('hidden');
+  document.querySelectorAll('[onclick="planerOeffnen()"]').forEach((el) => el.classList.add('hidden'));
   document.querySelector('[onclick="binderLeeren()"]').classList.add('hidden');
+  // Mobil: direkt die Binder-Ansicht zeigen, Such-/Filter-Knöpfe ausblenden
+  document.body.classList.add('binder-an');
+  ['mnav-filter', 'mnav-suche', 'mnav-binder'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
   document.querySelector('.spalte-binder').style.width = 'min(700px, 100%)';
   document.querySelector('.spalte-binder').style.margin = '0 auto';
   const banner = document.createElement('div');
@@ -701,6 +835,7 @@ function kontoMenue() {
 }
 
 let authModus = 'login';
+let resetToken = '';
 function loginOeffnen(grund) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   $('auth-grund').textContent = grund || '';
@@ -709,15 +844,47 @@ function loginOeffnen(grund) {
 }
 function authTab(modus) {
   authModus = modus;
+  const reset = modus === 'reset';
   $('auth-tab-login').classList.toggle('on', modus === 'login');
   $('auth-tab-reg').classList.toggle('on', modus === 'reg');
+  $('auth-tab-login').parentElement.classList.toggle('hidden', reset);
+  $('auth-email').classList.toggle('hidden', reset);
+  $('auth-email-lbl').classList.toggle('hidden', reset);
   $('auth-agb').classList.toggle('hidden', modus !== 'reg');
-  $('auth-senden').textContent = modus === 'reg' ? t('registrieren') : t('anmelden');
+  $('auth-vergessen').classList.toggle('hidden', modus !== 'login');
+  $('auth-titel').textContent = reset ? t('pw_neu_t') : t('anmelden_t');
+  $('auth-senden').textContent = reset ? t('pw_neu_senden') : (modus === 'reg' ? t('registrieren') : t('anmelden'));
   $('auth-fehler').textContent = '';
+}
+async function passwortVergessen() {
+  const email = $('auth-email').value.trim();
+  if (!email) { $('auth-fehler').textContent = t('pw_email_noetig'); return; }
+  try {
+    await api('api/auth/passwort_vergessen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    modalSchliessen();
+    toast(t('pw_mail_raus'));
+  } catch (e) {
+    $('auth-fehler').textContent = e.code === 'mail' ? t('mail_fehlt') : e.message;
+  }
 }
 async function authAbsenden() {
   const email = $('auth-email').value.trim();
   const pw = $('auth-pw').value;
+  if (authModus === 'reset') {
+    try {
+      const d = await api('api/auth/passwort_neu', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, passwort: pw }),
+      });
+      setToken(d.token); S.user = d.user;
+      modalSchliessen(); kontoAnzeigen();
+      toast(t('pw_geaendert'));
+    } catch (e) { $('auth-fehler').textContent = e.message; }
+    return;
+  }
   if (authModus === 'reg' && !$('auth-agb-check').checked) {
     $('auth-fehler').textContent = t('agb_noetig');
     return;
@@ -1114,6 +1281,8 @@ function zeichneBinder() {
   $('wb-seiten').textContent = seiten;
   const druck = S.binder.items.filter((x) => x.type !== 'empty').length;
   $('wb-fortschritt').textContent = `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')} · ${Math.ceil(druck / 9)} ${t('blaetter')}`;
+  const zahl = $('mnav-binder-zahl');
+  if (zahl) zahl.textContent = S.binder.items.length;
   const box = $('wb-slots');
   box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   let html = '';
