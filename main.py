@@ -502,16 +502,33 @@ def admin_sync(key: str = ""):
     return {"gestartet": True}
 
 
+def _ptc_get(client, url, params=None):
+    """pokemontcg.io antwortet sporadisch mit leeren 500ern — mit Backoff wiederholen."""
+    import time as _time
+    for versuch in range(5):
+        try:
+            r = client.get(url, params=params)
+            if r.status_code == 200 and r.content:
+                return r.json()
+        except Exception:
+            pass
+        _time.sleep(2 * (versuch + 1))
+    return {}
+
+
 def _bilder_fallback_job():
     """Bildlücken (TCGdex ohne Scan) über pokemontcg.io füllen.
     Set-Zuordnung über den englischen Set-Namen, Karten über die Setnummer."""
     import time as _time
+    def norm(s):
+        return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
     con = get_db()
     luecken = con.execute(
         "SELECT set_id, COUNT(*) n FROM cards WHERE image_de IS NULL AND image_en IS NULL"
         " AND image_alt IS NULL GROUP BY set_id"
     ).fetchall()
-    unsere = {r["id"]: (r["name_en"] or "").lower() for r in con.execute("SELECT id, name_en FROM sets")}
+    unsere = {r["id"]: norm(r["name_en"]) for r in con.execute("SELECT id, name_en FROM sets")}
     con.close()
     if not luecken:
         return
@@ -521,8 +538,8 @@ def _bilder_fallback_job():
         headers["X-Api-Key"] = key
     try:
         with httpx.Client(timeout=30, headers=headers) as client:
-            ptc_sets = client.get("https://api.pokemontcg.io/v2/sets?pageSize=250").json().get("data", [])
-            nach_name = {(s.get("name") or "").lower(): s["id"] for s in ptc_sets}
+            ptc_sets = _ptc_get(client, "https://api.pokemontcg.io/v2/sets?pageSize=250").get("data", [])
+            nach_name = {norm(s.get("name")): s["id"] for s in ptc_sets}
             gefunden = 0
             for lk in luecken:
                 sid = lk["set_id"]
@@ -531,29 +548,36 @@ def _bilder_fallback_job():
                     continue
                 seite = 1
                 nummern = {}
-                while True:
-                    r = client.get(
-                        "https://api.pokemontcg.io/v2/cards",
-                        params={"q": f"set.id:{ptc_id}", "pageSize": 250, "page": seite,
-                                "select": "number,images"},
-                    ).json()
-                    daten = r.get("data", [])
-                    for karte in daten:
-                        bild = (karte.get("images") or {}).get("small")
-                        if bild:
-                            nummern[str(karte.get("number", "")).lower()] = bild
-                    if len(daten) < 250:
-                        break
-                    seite += 1
-                    _time.sleep(2)
+                namen = {}
+                try:
+                    while True:
+                        # Achtung: "select" MUSS "id" enthalten, sonst antwortet die API mit 500
+                        r = _ptc_get(
+                            client, "https://api.pokemontcg.io/v2/cards",
+                            params={"q": f"set.id:{ptc_id}", "pageSize": 250, "page": seite,
+                                    "select": "id,number,images,name"},
+                        )
+                        daten = r.get("data", [])
+                        for karte in daten:
+                            bild = (karte.get("images") or {}).get("small")
+                            if bild:
+                                nummern[norm(str(karte.get("number", "")))] = bild
+                                namen.setdefault(norm(karte.get("name")), bild)
+                        if len(daten) < 250:
+                            break
+                        seite += 1
+                        _time.sleep(1)
+                except Exception:
+                    continue  # einzelnes Set überspringen, Job läuft weiter
                 if not nummern:
                     continue
                 con = get_db()
                 for r2 in con.execute(
-                    "SELECT id, local_id FROM cards WHERE set_id = ? AND image_de IS NULL"
+                    "SELECT id, local_id, name_en FROM cards WHERE set_id = ? AND image_de IS NULL"
                     " AND image_en IS NULL AND image_alt IS NULL", (sid,)
                 ).fetchall():
-                    bild = nummern.get(str(r2["local_id"] or "").lower())
+                    # erst Setnummer, sonst Kartenname (z. B. Classic Collection: CC001 vs. Originalnummern)
+                    bild = nummern.get(norm(str(r2["local_id"] or ""))) or namen.get(norm(r2["name_en"]))
                     if bild:
                         con.execute("UPDATE cards SET image_alt = ? WHERE id = ?", (bild, r2["id"]))
                         gefunden += 1
