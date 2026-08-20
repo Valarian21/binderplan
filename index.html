@@ -15,12 +15,18 @@
     --card: #ffffff; --akzent: #e85d43; --akzent-dunkel: #c74630; --gruen: #4f9d69;
     --panel2: #f6efe4; --hover: #fdf1e9; --eingabe: #fdfaf5; --slotrand: #d8cbb6;
   }
+  /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg: #1c1815; --ink: #ece5da; --mut: #a3947f; --line: #3a322a;
       --card: #262019; --akzent: #e85d43; --akzent-dunkel: #f07b64; --gruen: #6fbf88;
       --panel2: #2e2720; --hover: #33291f; --eingabe: #201b16; --slotrand: #4a3f33;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1815; --ink: #ece5da; --mut: #a3947f; --line: #3a322a;
+    --card: #262019; --akzent: #e85d43; --akzent-dunkel: #f07b64; --gruen: #6fbf88;
+    --panel2: #2e2720; --hover: #33291f; --eingabe: #201b16; --slotrand: #4a3f33;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Quicksand', 'Trebuchet MS', sans-serif; }
@@ -180,6 +186,7 @@
       <button id="lang-de" class="on" onclick="setLang('de')">DE</button>
       <button id="lang-en" onclick="setLang('en')">EN</button>
     </div>
+    <button class="btn sekundaer" style="font-size:12px;padding:6px 11px" id="theme-btn" onclick="themeWechsel()" title="Hell / Dunkel"></button>
     <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="planerOeffnen()" data-i18n="planer">Planer</button>
     <div class="menuwrap">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
@@ -559,12 +566,32 @@ function toast(text) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 2600);
 }
 
+// ---------- Hell/Dunkel (Auto -> Hell -> Dunkel) ----------
+const THEMES = ['auto', 'hell', 'dunkel'];
+let THEME = localStorage.getItem('bp_theme') || 'auto';
+function themeAnwenden() {
+  const root = document.documentElement;
+  if (THEME === 'hell') root.dataset.theme = 'light';
+  else if (THEME === 'dunkel') root.dataset.theme = 'dark';
+  else delete root.dataset.theme;
+  const lbl = { auto: 'Auto', hell: LANG === 'en' ? 'Light' : 'Hell', dunkel: LANG === 'en' ? 'Dark' : 'Dunkel' };
+  const btn = $('theme-btn');
+  if (btn) btn.textContent = '◐ ' + lbl[THEME];
+}
+function themeWechsel() {
+  THEME = THEMES[(THEMES.indexOf(THEME) + 1) % THEMES.length];
+  localStorage.setItem('bp_theme', THEME);
+  themeAnwenden();
+}
+themeAnwenden();
+
 // ---------- Sprache ----------
 function setLang(lang) {
   LANG = lang; localStorage.setItem('bp_lang', lang);
   $('lang-de').classList.toggle('on', lang === 'de');
   $('lang-en').classList.toggle('on', lang === 'en');
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  themeAnwenden();
   baueFilterLeiste();
   zeichneErgebnisse();
   zeichneBinder();

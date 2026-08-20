@@ -1020,6 +1020,10 @@ async def stripe_checkout(request: Request):
         con.execute("UPDATE users SET stripe_customer = ? WHERE id = ?", (kunde, user["id"]))
         con.commit()
         con.close()
+    extra = {}
+    if tarif == "lifetime":
+        # Einmalzahlung: Verwendungszweck auf dem Kontoauszug explizit setzen
+        extra["payment_intent_data"] = {"statement_descriptor": "BINDERPLAN"}
     session = stripe_lib.checkout.Session.create(
         customer=kunde,
         mode="payment" if tarif == "lifetime" else "subscription",
@@ -1028,6 +1032,7 @@ async def stripe_checkout(request: Request):
         cancel_url=f"{app_url}/?zahlung=abbruch",
         client_reference_id=str(user["id"]),
         allow_promotion_codes=True,
+        **extra,
     )
     return {"url": session.url}
 
