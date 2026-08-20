@@ -172,6 +172,24 @@ def init_db():
         CREATE TABLE IF NOT EXISTS card_prices (
             card_id TEXT PRIMARY KEY, eur REAL, updated_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            pw_hash TEXT NOT NULL, salt TEXT NOT NULL,
+            plan TEXT DEFAULT 'free',            -- free | pro | lifetime
+            stripe_customer TEXT, stripe_sub TEXT,
+            exports_monat TEXT DEFAULT '',       -- 'JJJJ-MM:anzahl'
+            preise_tag TEXT DEFAULT '',          -- letzter Preis-Abruf (frei: 1x/Tag)
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS price_history (
+            card_id TEXT, datum TEXT, eur REAL,
+            PRIMARY KEY (card_id, datum)
+        );
         """
     )
     # Spätere Spalten additiv nachziehen
@@ -179,6 +197,8 @@ def init_db():
         "ALTER TABLE sets ADD COLUMN name_en TEXT",
         "ALTER TABLE sets ADD COLUMN serie_name_en TEXT",
         "ALTER TABLE cards ADD COLUMN kinds TEXT",
+        "ALTER TABLE cards ADD COLUMN image_alt TEXT",
+        "ALTER TABLE binders ADD COLUMN user_id INTEGER",
     ):
         try:
             con.execute(alter)
@@ -482,6 +502,80 @@ def admin_sync(key: str = ""):
     return {"gestartet": True}
 
 
+def _bilder_fallback_job():
+    """Bildlücken (TCGdex ohne Scan) über pokemontcg.io füllen.
+    Set-Zuordnung über den englischen Set-Namen, Karten über die Setnummer."""
+    import time as _time
+    con = get_db()
+    luecken = con.execute(
+        "SELECT set_id, COUNT(*) n FROM cards WHERE image_de IS NULL AND image_en IS NULL"
+        " AND image_alt IS NULL GROUP BY set_id"
+    ).fetchall()
+    unsere = {r["id"]: (r["name_en"] or "").lower() for r in con.execute("SELECT id, name_en FROM sets")}
+    con.close()
+    if not luecken:
+        return
+    headers = dict(UA)
+    key = _env().get("PTCGIO_KEY")
+    if key:
+        headers["X-Api-Key"] = key
+    try:
+        with httpx.Client(timeout=30, headers=headers) as client:
+            ptc_sets = client.get("https://api.pokemontcg.io/v2/sets?pageSize=250").json().get("data", [])
+            nach_name = {(s.get("name") or "").lower(): s["id"] for s in ptc_sets}
+            gefunden = 0
+            for lk in luecken:
+                sid = lk["set_id"]
+                ptc_id = nach_name.get(unsere.get(sid, ""))
+                if not ptc_id:
+                    continue
+                seite = 1
+                nummern = {}
+                while True:
+                    r = client.get(
+                        "https://api.pokemontcg.io/v2/cards",
+                        params={"q": f"set.id:{ptc_id}", "pageSize": 250, "page": seite,
+                                "select": "number,images"},
+                    ).json()
+                    daten = r.get("data", [])
+                    for karte in daten:
+                        bild = (karte.get("images") or {}).get("small")
+                        if bild:
+                            nummern[str(karte.get("number", "")).lower()] = bild
+                    if len(daten) < 250:
+                        break
+                    seite += 1
+                    _time.sleep(2)
+                if not nummern:
+                    continue
+                con = get_db()
+                for r2 in con.execute(
+                    "SELECT id, local_id FROM cards WHERE set_id = ? AND image_de IS NULL"
+                    " AND image_en IS NULL AND image_alt IS NULL", (sid,)
+                ).fetchall():
+                    bild = nummern.get(str(r2["local_id"] or "").lower())
+                    if bild:
+                        con.execute("UPDATE cards SET image_alt = ? WHERE id = ?", (bild, r2["id"]))
+                        gefunden += 1
+                con.commit()
+                con.close()
+                _time.sleep(2)
+        con = get_db()
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('bilder_fallback', ?)", (str(gefunden),))
+        con.commit()
+        con.close()
+    except Exception:
+        pass
+
+
+@app.post("/api/admin/bilder_fallback")
+def admin_bilder_fallback(key: str = ""):
+    if not _admin_key() or key != _admin_key():
+        raise HTTPException(403, "Falscher Schlüssel")
+    threading.Thread(target=_bilder_fallback_job, daemon=True).start()
+    return {"gestartet": True}
+
+
 @app.get("/api/admin/stats")
 def admin_stats(key: str = ""):
     """Interne Kennzahlen fürs Empire-Dashboard (Venture Lab), nur mit ADMIN_KEY."""
@@ -697,6 +791,279 @@ def pokedex(gens: str = ""):
     return {"pokemon": result}
 
 
+# --- Konten, Limits & Abos --------------------------------------------------
+#
+# Free-Konto: 2 gespeicherte Binder, 1 Karten-PDF pro Monat, Preis-Abruf 1x/Tag.
+# Pro/Lifetime: alles unbegrenzt + Kaufliste. Checklisten-PDF (ohne Kartenbilder)
+# zählt bewusst nicht als Export. Anonyme Binder (user_id NULL) bleiben frei
+# planbar — das Gate sitzt am PDF-Export.
+
+import hashlib  # noqa: E402
+
+FREE_BINDER_LIMIT = 2
+FREE_EXPORT_LIMIT = 1
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _env():
+    text = (BASE / ".env").read_text() if (BASE / ".env").exists() else ""
+    out = {}
+    for line in text.splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            k, v = line.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def _hash_pw(pw: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), 120_000).hex()
+
+
+def _current_user(request: Request):
+    token = ""
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+    if not token:
+        token = request.cookies.get("bp_token", "")
+    if not token:
+        return None
+    con = get_db()
+    row = con.execute(
+        "SELECT users.* FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token = ?",
+        (token,),
+    ).fetchone()
+    con.close()
+    return dict(row) if row else None
+
+
+def _require_user(request: Request):
+    user = _current_user(request)
+    if not user:
+        raise HTTPException(401, detail={"code": "login"})
+    return user
+
+
+def _ist_pro(user) -> bool:
+    return (user or {}).get("plan") in ("pro", "lifetime")
+
+
+def _monat_key():
+    from datetime import datetime as _dt
+    return _dt.utcnow().strftime("%Y-%m")
+
+
+def _heute():
+    from datetime import datetime as _dt
+    return _dt.utcnow().strftime("%Y-%m-%d")
+
+
+def _exporte_benutzt(user) -> int:
+    teil = (user.get("exports_monat") or "").split(":")
+    return int(teil[1]) if len(teil) == 2 and teil[0] == _monat_key() else 0
+
+
+def _user_info(user):
+    con = get_db()
+    anzahl = con.execute("SELECT COUNT(*) c FROM binders WHERE user_id = ?", (user["id"],)).fetchone()["c"]
+    con.close()
+    pro = _ist_pro(user)
+    return {
+        "email": user["email"], "plan": user["plan"],
+        "binder_anzahl": anzahl, "binder_limit": None if pro else FREE_BINDER_LIMIT,
+        "exporte_benutzt": _exporte_benutzt(user),
+        "exporte_limit": None if pro else FREE_EXPORT_LIMIT,
+        "stripe": bool(_env().get("STRIPE_SECRET_KEY")),
+    }
+
+
+def _neue_session(con, user_id) -> str:
+    token = secrets.token_urlsafe(32)
+    con.execute("INSERT INTO sessions (token, user_id) VALUES (?,?)", (token, user_id))
+    return token
+
+
+@app.post("/api/auth/register")
+async def auth_register(request: Request):
+    data = await request.json()
+    email = str(data.get("email") or "").strip().lower()
+    pw = str(data.get("passwort") or "")
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(400, "Bitte eine gültige E-Mail-Adresse angeben.")
+    if len(pw) < 8:
+        raise HTTPException(400, "Das Passwort braucht mindestens 8 Zeichen.")
+    salt = secrets.token_hex(16)
+    con = get_db()
+    try:
+        cur = con.execute(
+            "INSERT INTO users (email, pw_hash, salt) VALUES (?,?,?)",
+            (email, _hash_pw(pw, salt), salt),
+        )
+    except sqlite3.IntegrityError:
+        con.close()
+        raise HTTPException(400, "Für diese E-Mail gibt es schon ein Konto — bitte anmelden.")
+    token = _neue_session(con, cur.lastrowid)
+    con.commit()
+    user = dict(con.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone())
+    con.close()
+    return {"token": token, "user": _user_info(user)}
+
+
+@app.post("/api/auth/login")
+async def auth_login(request: Request):
+    data = await request.json()
+    email = str(data.get("email") or "").strip().lower()
+    pw = str(data.get("passwort") or "")
+    con = get_db()
+    row = con.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    if not row or _hash_pw(pw, row["salt"]) != row["pw_hash"]:
+        con.close()
+        raise HTTPException(401, "E-Mail oder Passwort stimmt nicht.")
+    token = _neue_session(con, row["id"])
+    con.commit()
+    con.close()
+    return {"token": token, "user": _user_info(dict(row))}
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request):
+    token = request.headers.get("authorization", "")[7:].strip() or request.cookies.get("bp_token", "")
+    if token:
+        con = get_db()
+        con.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        con.commit()
+        con.close()
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    user = _current_user(request)
+    return {"user": _user_info(user) if user else None}
+
+
+@app.post("/api/auth/claim")
+async def auth_claim(request: Request):
+    """Anonyme Binder aus dem Browser dem frisch angemeldeten Konto zuordnen."""
+    user = _require_user(request)
+    data = await request.json()
+    ids = [str(i) for i in (data.get("ids") or [])][:50]
+    if not ids:
+        return {"uebernommen": 0}
+    con = get_db()
+    cur = con.execute(
+        "UPDATE binders SET user_id = ? WHERE user_id IS NULL AND id IN (%s)"
+        % ",".join("?" * len(ids)),
+        [user["id"]] + ids,
+    )
+    con.commit()
+    con.close()
+    return {"uebernommen": cur.rowcount}
+
+
+# --- Stripe (Checkout, Portal, Webhook) -------------------------------------
+
+TARIFE = {"monat": "STRIPE_PRICE_MONAT", "jahr": "STRIPE_PRICE_JAHR", "lifetime": "STRIPE_PRICE_LIFETIME"}
+
+
+def _stripe():
+    env = _env()
+    key = env.get("STRIPE_SECRET_KEY")
+    if not key:
+        raise HTTPException(503, "Zahlungen sind noch nicht eingerichtet.")
+    import stripe as stripe_lib
+    stripe_lib.api_key = key
+    return stripe_lib, env
+
+
+@app.post("/api/stripe/checkout")
+async def stripe_checkout(request: Request):
+    user = _require_user(request)
+    data = await request.json()
+    tarif = data.get("tarif")
+    if tarif not in TARIFE:
+        raise HTTPException(400, "Unbekannter Tarif.")
+    stripe_lib, env = _stripe()
+    price = env.get(TARIFE[tarif])
+    if not price:
+        raise HTTPException(503, "Zahlungen sind noch nicht eingerichtet.")
+    app_url = env.get("APP_URL", "https://agi-empire.com/binderplan")
+    kunde = user.get("stripe_customer")
+    if not kunde:
+        kunde = stripe_lib.Customer.create(email=user["email"], metadata={"binderplan_user": user["id"]}).id
+        con = get_db()
+        con.execute("UPDATE users SET stripe_customer = ? WHERE id = ?", (kunde, user["id"]))
+        con.commit()
+        con.close()
+    session = stripe_lib.checkout.Session.create(
+        customer=kunde,
+        mode="payment" if tarif == "lifetime" else "subscription",
+        line_items=[{"price": price, "quantity": 1}],
+        success_url=f"{app_url}/?zahlung=ok",
+        cancel_url=f"{app_url}/?zahlung=abbruch",
+        client_reference_id=str(user["id"]),
+        allow_promotion_codes=True,
+    )
+    return {"url": session.url}
+
+
+@app.post("/api/stripe/portal")
+def stripe_portal(request: Request):
+    user = _require_user(request)
+    if not user.get("stripe_customer"):
+        raise HTTPException(400, "Kein Zahlungskonto vorhanden.")
+    stripe_lib, env = _stripe()
+    session = stripe_lib.billing_portal.Session.create(
+        customer=user["stripe_customer"],
+        return_url=env.get("APP_URL", "https://agi-empire.com/binderplan") + "/",
+    )
+    return {"url": session.url}
+
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    env = _env()
+    secret = env.get("STRIPE_WEBHOOK_SECRET")
+    if not secret:
+        raise HTTPException(503, "Webhook nicht konfiguriert.")
+    import stripe as stripe_lib
+    try:
+        event = stripe_lib.Webhook.construct_event(payload, sig, secret)
+    except Exception:
+        raise HTTPException(400, "Ungültige Signatur.")
+    typ = event["type"]
+    obj = event["data"]["object"]
+    con = get_db()
+    if typ == "checkout.session.completed":
+        user_id = obj.get("client_reference_id")
+        if user_id:
+            if obj.get("mode") == "payment":
+                con.execute("UPDATE users SET plan = 'lifetime' WHERE id = ?", (user_id,))
+            else:
+                con.execute("UPDATE users SET plan = 'pro', stripe_sub = ? WHERE id = ?",
+                            (obj.get("subscription"), user_id))
+    elif typ == "customer.subscription.deleted":
+        con.execute(
+            "UPDATE users SET plan = 'free', stripe_sub = NULL WHERE stripe_sub = ? AND plan != 'lifetime'",
+            (obj.get("id"),),
+        )
+    elif typ == "customer.subscription.updated":
+        status = obj.get("status")
+        if status in ("canceled", "unpaid", "incomplete_expired"):
+            con.execute(
+                "UPDATE users SET plan = 'free' WHERE stripe_sub = ? AND plan != 'lifetime'",
+                (obj.get("id"),),
+            )
+        elif status == "active":
+            con.execute("UPDATE users SET plan = 'pro' WHERE stripe_sub = ?", (obj.get("id"),))
+    con.commit()
+    con.close()
+    return {"ok": True}
+
+
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
 
 def _fetch_price(client, card_id):
@@ -713,9 +1080,12 @@ def _fetch_price(client, card_id):
 
 @app.post("/api/preise")
 async def preise(request: Request):
-    """EUR-Preise (Cardmarket-Trend) für Karten-IDs; fehlende werden nachgeladen."""
+    """EUR-Preise (Cardmarket-Trend) für Karten-IDs; fehlende werden nachgeladen.
+    Nur mit Konto; Free-Konten aktualisieren 1x pro Tag (Cache wird immer geliefert)."""
+    user = _require_user(request)
     data = await request.json()
     ids = list(dict.fromkeys(str(i) for i in (data.get("ids") or [])))[:1500]
+    frei_gedrosselt = not _ist_pro(user) and user.get("preise_tag") == _heute()
     con = get_db()
     result, fehlt = {}, []
     for start in range(0, len(ids), 500):
@@ -730,7 +1100,7 @@ async def preise(request: Request):
                 result[cid] = frisch[cid]["eur"]
             else:
                 fehlt.append(cid)
-    nachgeladen = fehlt[:400]  # pro Aufruf begrenzen, Rest holt der nächste Klick
+    nachgeladen = [] if frei_gedrosselt else fehlt[:400]
     if nachgeladen:
         with httpx.Client(timeout=20, headers=UA) as client:
             with ThreadPoolExecutor(8) as pool:
@@ -739,9 +1109,15 @@ async def preise(request: Request):
                     con.execute(
                         "INSERT OR REPLACE INTO card_prices (card_id, eur, updated_at)"
                         " VALUES (?,?,datetime('now'))", (cid, eur))
+                    if eur is not None:
+                        con.execute(
+                            "INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)",
+                            (cid, _heute(), eur))
+        con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
         con.commit()
     con.close()
-    return {"preise": result, "offen": max(0, len(fehlt) - len(nachgeladen))}
+    return {"preise": result, "offen": max(0, len(fehlt) - len(nachgeladen)),
+            "gedrosselt": frei_gedrosselt}
 
 
 def datetime_str_vor(stunden):
@@ -768,6 +1144,15 @@ def _fetch_asset(urls, target: Path):
 IMG_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 
+def _alt_urls(image_alt, variante):
+    """pokemontcg.io-Fallback: gespeichert ist die small-URL (…/2.png)."""
+    if not image_alt:
+        return []
+    if variante == "high" and image_alt.endswith(".png"):
+        return [image_alt[:-4] + "_hires.png", image_alt]
+    return [image_alt]
+
+
 @app.get("/api/img/card/{card_id}")
 def card_image(card_id: str, variante: str = "low", lang: str = "de"):
     variante = "high" if variante == "high" else "low"
@@ -777,7 +1162,7 @@ def card_image(card_id: str, variante: str = "low", lang: str = "de"):
     target = CACHE / "cards" / variante / f"{safe}{suffix}.webp"
     if not target.exists():
         con = get_db()
-        row = con.execute("SELECT image_de, image_en FROM cards WHERE id = ?", (card_id,)).fetchone()
+        row = con.execute("SELECT image_de, image_en, image_alt FROM cards WHERE id = ?", (card_id,)).fetchone()
         con.close()
         if not row:
             raise HTTPException(404, "Karte unbekannt")
@@ -787,9 +1172,11 @@ def card_image(card_id: str, variante: str = "low", lang: str = "de"):
         ]
         if lang == "en":
             urls.reverse()
+        urls += _alt_urls(row["image_alt"], variante)
         if not _fetch_asset(urls, target):
             raise HTTPException(404, "Kein Bild verfügbar")
-    return FileResponse(target, media_type="image/webp", headers=IMG_HEADERS)
+    media = "image/png" if target.read_bytes()[:4] == b"\x89PNG" else "image/webp"
+    return FileResponse(target, media_type=media, headers=IMG_HEADERS)
 
 
 @app.get("/api/img/dex/{dex_id}")
@@ -830,19 +1217,41 @@ def _binder_payload(data):
 async def binder_create(request: Request):
     data = await request.json()
     p = _binder_payload(data)
+    user = _current_user(request)
+    if user and not _ist_pro(user):
+        con = get_db()
+        anzahl = con.execute("SELECT COUNT(*) c FROM binders WHERE user_id = ?", (user["id"],)).fetchone()["c"]
+        con.close()
+        if anzahl >= FREE_BINDER_LIMIT:
+            raise HTTPException(402, detail={"code": "limit_binder"})
     binder_id = secrets.token_urlsafe(8)
     con = get_db()
     con.execute(
-        "INSERT INTO binders (id,name,mode,layout,options,items) VALUES (?,?,?,?,?,?)",
-        (binder_id, p["name"], p["mode"], p["layout"], p["options"], p["items"]),
+        "INSERT INTO binders (id,name,mode,layout,options,items,user_id) VALUES (?,?,?,?,?,?,?)",
+        (binder_id, p["name"], p["mode"], p["layout"], p["options"], p["items"],
+         user["id"] if user else None),
     )
     con.commit()
     con.close()
     return {"id": binder_id}
 
 
+def _binder_schreibrecht(binder_id: str, request: Request):
+    """Konto-Binder darf nur der Besitzer ändern; anonyme Binder bleiben offen."""
+    con = get_db()
+    row = con.execute("SELECT user_id FROM binders WHERE id = ?", (binder_id,)).fetchone()
+    con.close()
+    if not row:
+        raise HTTPException(404, "Binder nicht gefunden")
+    if row["user_id"] is not None:
+        user = _current_user(request)
+        if not user or user["id"] != row["user_id"]:
+            raise HTTPException(403, detail={"code": "fremder_binder"})
+
+
 @app.put("/api/binders/{binder_id}")
 async def binder_update(binder_id: str, request: Request):
+    _binder_schreibrecht(binder_id, request)
     data = await request.json()
     p = _binder_payload(data)
     con = get_db()
@@ -877,7 +1286,8 @@ def binder_get(binder_id: str):
 
 
 @app.delete("/api/binders/{binder_id}")
-def binder_delete(binder_id: str):
+def binder_delete(binder_id: str, request: Request):
+    _binder_schreibrecht(binder_id, request)
     con = get_db()
     con.execute("DELETE FROM binders WHERE id = ?", (binder_id,))
     con.commit()
@@ -886,25 +1296,40 @@ def binder_delete(binder_id: str):
 
 
 @app.get("/api/binders")
-def binder_list(ids: str = ""):
+def binder_list(request: Request, ids: str = ""):
+    """Konto-Binder (falls angemeldet) plus lokal gemerkte anonyme Binder."""
     wanted = [i for i in ids.split(",") if i][:50]
-    if not wanted:
-        return {"binder": []}
+    user = _current_user(request)
     con = get_db()
-    rows = con.execute(
-        "SELECT id,name,mode,layout,items,updated_at FROM binders WHERE id IN (%s)"
-        % ",".join("?" * len(wanted)),
-        wanted,
-    ).fetchall()
+    rows = []
+    if user:
+        rows += con.execute(
+            "SELECT id,name,mode,layout,items,updated_at FROM binders WHERE user_id = ?"
+            " ORDER BY updated_at DESC", (user["id"],)).fetchall()
+    if wanted:
+        rows += con.execute(
+            "SELECT id,name,mode,layout,items,updated_at FROM binders WHERE user_id IS NULL"
+            " AND id IN (%s)" % ",".join("?" * len(wanted)),
+            wanted,
+        ).fetchall()
     con.close()
-    by_id = {
-        r["id"]: {
+    gesehen = set()
+    result = []
+    reihenfolge = [r["id"] for r in rows if user] + wanted
+    by_id = {r["id"]: r for r in rows}
+    for bid in reihenfolge:
+        r = by_id.get(bid)
+        if not r or bid in gesehen:
+            continue
+        gesehen.add(bid)
+        items = json.loads(r["items"] or "[]")
+        result.append({
             "id": r["id"], "name": r["name"], "mode": r["mode"], "layout": r["layout"],
-            "anzahl": len(json.loads(r["items"] or "[]")), "updated_at": r["updated_at"],
-        }
-        for r in rows
-    }
-    return {"binder": [by_id[i] for i in wanted if i in by_id]}
+            "anzahl": len(items),
+            "gesammelt": sum(1 for i in items if i.get("have")),
+            "updated_at": r["updated_at"],
+        })
+    return {"binder": result}
 
 
 # --- PDF-Export -------------------------------------------------------------
@@ -939,7 +1364,7 @@ def _card_image_path(card_id, lang="de"):
     if target.exists():
         return target
     con = get_db()
-    row = con.execute("SELECT image_de, image_en FROM cards WHERE id = ?", (card_id,)).fetchone()
+    row = con.execute("SELECT image_de, image_en, image_alt FROM cards WHERE id = ?", (card_id,)).fetchone()
     con.close()
     if not row:
         return None
@@ -949,6 +1374,7 @@ def _card_image_path(card_id, lang="de"):
     ]
     if lang == "en":
         urls.reverse()
+    urls += _alt_urls(row["image_alt"], "high")
     return target if _fetch_asset(urls, target) else None
 
 
@@ -998,11 +1424,78 @@ def _draw_dex_cell(c, x, y, item, pokemon_names):
     c.drawCentredString(x + CARD_W / 2, y + 9 * mm, str(name)[:24])
 
 
+def _pdf_titelseite(c, binder, lang, stats):
+    """Deckblatt mit Eckdaten und Rechtshinweis."""
+    page_w, page_h = A4
+    c.setFillGray(0.1)
+    c.setFont("Helvetica-Bold", 26)
+    c.drawCentredString(page_w / 2, page_h - 70 * mm, binder["name"][:48])
+    c.setFont("Helvetica", 12)
+    c.setFillGray(0.4)
+    c.drawCentredString(page_w / 2, page_h - 80 * mm,
+                        "Binderplan" + (" · Sammlungs-Checkliste" if lang == "de" else " · Collection plan"))
+    c.setFillGray(0.2)
+    c.setFont("Helvetica", 13)
+    y = page_h - 105 * mm
+    for zeile in stats:
+        c.drawCentredString(page_w / 2, y, zeile)
+        y -= 9 * mm
+    c.setFont("Helvetica", 8.5)
+    c.setFillGray(0.45)
+    if lang == "de":
+        hinweise = [
+            "Nur für die private Sammlungsplanung. Die Ausdrucke sind Platzhalter,",
+            "dürfen nicht verkauft, getauscht oder als echte Karten ausgegeben werden.",
+            "Inoffizielles Fan-Werkzeug ohne Verbindung zu The Pokémon Company / Nintendo.",
+        ]
+    else:
+        hinweise = [
+            "For private collection planning only. Prints are placeholders and must not be",
+            "sold, traded or passed off as real cards.",
+            "Unofficial fan tool, not affiliated with The Pokémon Company / Nintendo.",
+        ]
+    y = 30 * mm
+    for zeile in hinweise:
+        c.drawCentredString(page_w / 2, y, zeile)
+        y -= 4.5 * mm
+    c.showPage()
+
+
+def _pdf_wasserzeichen(c, x, y, lang):
+    c.saveState()
+    try:
+        c.setFillAlpha(0.30)
+    except Exception:
+        pass
+    c.setFillGray(0.30)
+    c.setFont("Helvetica-Bold", 13)
+    c.translate(x + CARD_W / 2, y + CARD_H / 2)
+    c.rotate(36)
+    c.drawCentredString(0, 0, "PLATZHALTER · KEIN ORIGINAL" if lang == "de" else "PLACEHOLDER · NOT ORIGINAL")
+    c.restoreState()
+
+
+def _zaehle_export(user):
+    if _ist_pro(user):
+        return
+    con = get_db()
+    con.execute("UPDATE users SET exports_monat = ? WHERE id = ?",
+                (f"{_monat_key()}:{_exporte_benutzt(user) + 1}", user["id"]))
+    con.commit()
+    con.close()
+
+
 @app.get("/api/binders/{binder_id}/pdf")
-def binder_pdf(binder_id: str):
+def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_fehlende: int = 0):
+    user = _require_user(request)
     binder = _load_binder(binder_id)
     per_page = LAYOUTS.get(binder["layout"], 9)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
+    if variante == "checkliste":
+        return _checkliste_pdf(binder, lang, bool(nur_fehlende))
+    # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten
+    if not _ist_pro(user) and _exporte_benutzt(user) >= FREE_EXPORT_LIMIT:
+        raise HTTPException(402, detail={"code": "limit_export"})
 
     con = get_db()
     card_ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
@@ -1030,8 +1523,25 @@ def binder_pdf(binder_id: str):
     oy = (page_h - grid_h) / 2
 
     printable = [
-        (idx, item) for idx, item in enumerate(binder["items"]) if item.get("type") != "empty"
+        (idx, item) for idx, item in enumerate(binder["items"])
+        if item.get("type") != "empty" and not (nur_fehlende and item.get("have"))
     ]
+
+    gesammelt = sum(1 for i in binder["items"] if i.get("have"))
+    gesamt = sum(1 for i in binder["items"] if i.get("type") != "empty")
+    if lang == "de":
+        stats = [
+            f"{gesamt} Karten geplant · {gesammelt} bereits gesammelt",
+            f"{len(printable)} Proxys in diesem Druck · {max(1, -(-len(printable) // 9))} A4-Blätter",
+            f"Raster {binder['layout'].replace('x', ' × ')} · {max(1, -(-len(binder['items']) // per_page))} Binderseiten",
+        ]
+    else:
+        stats = [
+            f"{gesamt} cards planned · {gesammelt} already collected",
+            f"{len(printable)} proxies in this print · {max(1, -(-len(printable) // 9))} A4 sheets",
+            f"Grid {binder['layout'].replace('x', ' × ')} · {max(1, -(-len(binder['items']) // per_page))} binder pages",
+        ]
+    _pdf_titelseite(c, binder, lang, stats)
 
     cell = 0
     for idx, item in printable:
@@ -1064,6 +1574,7 @@ def binder_pdf(binder_id: str):
                     name = (card["name_de"] or card["name_en"]) if card else item.get("id", "?")
                 setline = f"{card['set_name'] or card['set_id']} · {card['local_id']}" if card else ""
                 _draw_placeholder(c, x, y, [(str(name), 12, True), (setline, 9, False)])
+            _pdf_wasserzeichen(c, x, y, lang)
 
         # Schnittkante + Fach-Beschriftung in der Fuge (wird mit abgeschnitten)
         c.setLineWidth(0.4)
@@ -1082,7 +1593,8 @@ def binder_pdf(binder_id: str):
 
     if not printable:
         c.setFont("Helvetica", 14)
-        c.drawCentredString(page_w / 2, page_h / 2, "Dieser Binder ist noch leer.")
+        c.drawCentredString(page_w / 2, page_h / 2,
+                            "Dieser Binder ist noch leer." if lang == "de" else "This binder is still empty.")
     c.save()
 
     con = get_db()
@@ -1092,6 +1604,7 @@ def binder_pdf(binder_id: str):
     )
     con.commit()
     con.close()
+    _zaehle_export(user)
 
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
     return Response(
@@ -1101,8 +1614,171 @@ def binder_pdf(binder_id: str):
     )
 
 
-# --- Frontend ---------------------------------------------------------------
+def _binder_zeilen(binder, lang):
+    """Alle Nicht-Leer-Fächer mit Anzeigedaten (für Checkliste und Kaufliste)."""
+    con = get_db()
+    card_ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
+    karten = {}
+    for start in range(0, len(card_ids), 500):
+        chunk = card_ids[start:start + 500]
+        for r in con.execute(
+            f"{_CARD_SELECT} WHERE cards.id IN ({','.join('?' * len(chunk))})", chunk
+        ):
+            karten[r["id"]] = _card_brief(r)
+    spalte = "name_en" if lang == "en" else "name_de"
+    pokemon_names = {r["dex_id"]: (r[spalte] or r["name_de"])
+                     for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
+    preise = {r["card_id"]: r["eur"] for r in con.execute("SELECT card_id, eur FROM card_prices")}
+    con.close()
+    per_page = LAYOUTS.get(binder["layout"], 9)
+    zeilen = []
+    for idx, item in enumerate(binder["items"]):
+        if item.get("type") == "empty":
+            continue
+        pos = f"{idx // per_page + 1}·{idx % per_page + 1}"
+        if item.get("type") == "dex":
+            zeilen.append({"pos": pos, "name": f"#{item.get('dex'):03d} {pokemon_names.get(item.get('dex'), '')}",
+                           "set": "Pokédex", "nr": "", "eur": None, "have": bool(item.get("have")),
+                           "variant": ""})
+        else:
+            k = karten.get(item.get("id")) or {}
+            name = (k.get("name_en") if lang == "en" else k.get("name")) or item.get("id", "?")
+            setn = (k.get("set_name_en") if lang == "en" else k.get("set_name")) or ""
+            zeilen.append({"pos": pos, "name": name, "set": setn, "nr": k.get("local_id") or "",
+                           "eur": preise.get(item.get("id")), "have": bool(item.get("have")),
+                           "variant": item.get("variant") or ""})
+    return zeilen
+
+
+def _checkliste_pdf(binder, lang, nur_fehlende):
+    """Karteiliste ohne Kartenbilder — zählt nicht als Export."""
+    zeilen = _binder_zeilen(binder, lang)
+    if nur_fehlende:
+        zeilen = [z for z in zeilen if not z["have"]]
+    buf = io.BytesIO()
+    c = pdfcanvas.Canvas(buf, pagesize=A4)
+    page_w, page_h = A4
+    kopf = ("Checkliste" if lang == "de" else "Checklist") + " – " + binder["name"][:40]
+    y = 0
+
+    def neue_seite():
+        nonlocal y
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillGray(0.1)
+        c.drawString(18 * mm, page_h - 18 * mm, kopf)
+        c.setFont("Helvetica", 8)
+        c.setFillGray(0.5)
+        c.drawRightString(page_w - 18 * mm, page_h - 18 * mm, "Binderplan")
+        y = page_h - 28 * mm
+
+    neue_seite()
+    c.setFont("Helvetica", 9.5)
+    for z in zeilen:
+        if y < 18 * mm:
+            c.showPage()
+            neue_seite()
+            c.setFont("Helvetica", 9.5)
+        c.setFillGray(0.15)
+        c.setLineWidth(0.7)
+        c.setStrokeGray(0.3)
+        c.rect(18 * mm, y - 1, 3.4 * mm, 3.4 * mm)
+        if z["have"]:
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(18.6 * mm, y - 0.4, "X")
+            c.setFont("Helvetica", 9.5)
+        c.drawString(25 * mm, y, z["pos"])
+        name = z["name"] + (" (Reverse)" if z["variant"] == "reverse" else "")
+        c.drawString(38 * mm, y, name[:42])
+        c.setFillGray(0.45)
+        c.drawString(118 * mm, y, (z["set"] or "")[:28])
+        c.drawRightString(page_w - 30 * mm, y, z["nr"])
+        if z["eur"] is not None:
+            c.drawRightString(page_w - 18 * mm, y, f"{z['eur']:.2f}€")
+        y -= 6.2 * mm
+    c.save()
+    fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
+    return Response(buf.getvalue(), media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="{fname}-checkliste.pdf"'})
+
+
+@app.get("/api/binders/{binder_id}/kaufliste")
+def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
+    """Fehlende Karten samt Preisen als Einkaufsliste (Pro-Funktion)."""
+    user = _require_user(request)
+    if not _ist_pro(user):
+        raise HTTPException(402, detail={"code": "limit_pro"})
+    binder = _load_binder(binder_id)
+    lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
+    zeilen = [z for z in _binder_zeilen(binder, lang) if not z["have"]]
+    summe = sum(z["eur"] or 0 for z in zeilen)
+    ohne = sum(1 for z in zeilen if z["eur"] is None)
+    if format == "txt":
+        out = [f"Kaufliste – {binder['name']}", ""]
+        for z in zeilen:
+            preis = f"{z['eur']:.2f} €" if z["eur"] is not None else "?"
+            out.append(f"- {z['name']}{' (Reverse)' if z['variant'] == 'reverse' else ''} · {z['set']} · Nr. {z['nr']} · {preis}")
+        out += ["", f"Summe (Cardmarket-Trend): {summe:.2f} €" + (f" · {ohne} ohne Preis" if ohne else "")]
+        text = "\n".join(out)
+        media, ext = "text/plain; charset=utf-8", "txt"
+    else:
+        out = ["Name;Set;Nummer;Variante;Preis EUR"]
+        for z in zeilen:
+            preis = f"{z['eur']:.2f}".replace(".", ",") if z["eur"] is not None else ""
+            out.append(f"{z['name']};{z['set']};{z['nr']};{z['variant']};{preis}")
+        summe_txt = f"{summe:.2f}".replace(".", ",")
+        out.append(f"Summe;;;;{summe_txt}")
+        text = "\n".join(out)
+        media, ext = "text/csv; charset=utf-8", "csv"
+    fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
+    return Response(text.encode("utf-8-sig"), media_type=media,
+                    headers={"Content-Disposition": f'attachment; filename="{fname}-kaufliste.{ext}"'})
+
+
+# --- Frontend, Rechtsseite & PWA --------------------------------------------
 
 @app.get("/")
 def index():
     return FileResponse(BASE / "index.html", media_type="text/html")
+
+
+@app.get("/recht")
+def recht():
+    return FileResponse(BASE / "recht.html", media_type="text/html")
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return Response(json.dumps({
+        "name": "Binderplan", "short_name": "Binderplan",
+        "description": "Pokémon-Binder planen und als Schwarz-Weiß-Checkliste drucken",
+        "start_url": ".", "scope": ".", "display": "standalone",
+        "background_color": "#fdf8f1", "theme_color": "#e85d43",
+        "icons": [
+            {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+            {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+        ],
+    }), media_type="application/manifest+json")
+
+
+def _app_icon(groesse: int) -> Path:
+    """Einfaches App-Icon (Binder-Glyphe) einmalig mit Pillow erzeugen."""
+    ziel = CACHE / f"icon-{groesse}.png"
+    if ziel.exists():
+        return ziel
+    from PIL import ImageDraw
+    img = Image.new("RGB", (groesse, groesse), "#e85d43")
+    d = ImageDraw.Draw(img)
+    g = groesse
+    d.rounded_rectangle([g * 0.2, g * 0.16, g * 0.8, g * 0.84], radius=g * 0.06,
+                        outline="white", width=max(3, g // 28))
+    d.line([g * 0.34, g * 0.16, g * 0.34, g * 0.84], fill="white", width=max(3, g // 28))
+    d.ellipse([g * 0.47, g * 0.32, g * 0.67, g * 0.52], outline="white", width=max(3, g // 32))
+    img.save(ziel)
+    return ziel
+
+
+@app.get("/icon-{groesse}.png")
+def icon(groesse: int):
+    if groesse not in (192, 512):
+        raise HTTPException(404)
+    return FileResponse(_app_icon(groesse), media_type="image/png", headers=IMG_HEADERS)
