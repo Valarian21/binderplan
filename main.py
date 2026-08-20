@@ -63,9 +63,12 @@ SHINY_RARITIES = {
 }
 
 
-def _compute_kinds(category, stage, suffix, rarity, name_en, name_de):
+def _compute_kinds(category, stage, suffix, rarity, name_en, name_de, local_id=""):
     """Alle zutreffenden Kartenarten (Mehrfach-Label) für die Filter-Chips."""
     kinds = []
+    # DP/Platinum-Secret-Shinies (SH1–SH12) — TCGdex führt sie teils mit falscher Rarität
+    if str(local_id or "").upper().startswith("SH"):
+        kinds.append("shiny")
     stage_u = (stage or "").upper()
     suffix_s = (suffix or "").strip()
     name = name_en or ""
@@ -111,7 +114,7 @@ def _compute_kinds(category, stage, suffix, rarity, name_en, name_de):
             kinds.append("dark")
         if name.startswith("Light ") or name_d.startswith("Helle"):
             kinds.append("light")
-    if rarity in SHINY_RARITIES:
+    if rarity in SHINY_RARITIES and "shiny" not in kinds:
         kinds.append("shiny")
     if rarity == "Radiant Rare":
         kinds.append("radiant")
@@ -191,12 +194,16 @@ init_db()
 def recompute_kinds():
     """Kartenarten aus den lokalen Feldern neu ableiten (kein API-Zugriff nötig)."""
     con = get_db()
+    # Datenkorrektur: DP-Ära-Secret-Shinies tragen bei TCGdex fälschlich die Lv.X-Rarität
+    con.execute(
+        "UPDATE cards SET rarity = 'Secret Rare' WHERE local_id LIKE 'SH%' AND rarity = 'Rare Holo LV.X'"
+    )
     rows = con.execute(
-        "SELECT id, category, stage, suffix, rarity, name_en, name_de FROM cards"
+        "SELECT id, category, stage, suffix, rarity, name_en, name_de, local_id FROM cards"
     ).fetchall()
     for r in rows:
         kinds = _compute_kinds(r["category"], r["stage"], r["suffix"], r["rarity"],
-                               r["name_en"], r["name_de"])
+                               r["name_en"], r["name_de"], r["local_id"])
         con.execute("UPDATE cards SET kinds = ?, kind = ? WHERE id = ?",
                     (json.dumps(kinds), kinds[0], r["id"]))
     con.commit()
