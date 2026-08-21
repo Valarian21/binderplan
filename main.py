@@ -56,6 +56,75 @@ SERIE_NAME_FIX_DE = {
     "base": "Base",
 }
 
+# --- Ären -------------------------------------------------------------------
+# TCGdex-Serien entsprechen nicht den echten TCG-Ären (Platin ist dort eigene
+# Serie, e-Card/Gym/Legendary Collection fehlen der Klassik, Ruf der Legenden
+# gehört zu HGSS). Hier die im Sammlerraum üblichen Ären; Quer-Serien wie POP,
+# Trainer-Kits und McDonald's werden über das Erscheinungsdatum der jeweils
+# laufenden Ära zugeschlagen. TCG Pocket (nur digital) bleibt eigener Eintrag.
+AEREN = [
+    {"id": "klassik", "name": "Klassik (WotC)", "name_en": "Classic (WotC)",
+     "von": "1999", "bis": "2003", "start": "0000-00-00"},
+    {"id": "ex", "name": "EX (Rubin & Saphir)", "name_en": "EX (Ruby & Sapphire)",
+     "von": "2003", "bis": "2007", "start": "2003-06-15"},
+    {"id": "dp", "name": "Diamant & Perl / Platin", "name_en": "Diamond & Pearl / Platinum",
+     "von": "2007", "bis": "2010", "start": "2007-05-01"},
+    {"id": "hgss", "name": "HeartGold & SoulSilver", "name_en": "HeartGold & SoulSilver",
+     "von": "2010", "bis": "2011", "start": "2010-02-10"},
+    {"id": "bw", "name": "Schwarz & Weiß", "name_en": "Black & White",
+     "von": "2011", "bis": "2013", "start": "2011-03-01"},
+    {"id": "xy", "name": "XY", "name_en": "XY",
+     "von": "2013", "bis": "2016", "start": "2013-10-12"},
+    {"id": "sm", "name": "Sonne & Mond", "name_en": "Sun & Moon",
+     "von": "2017", "bis": "2019", "start": "2017-02-03"},
+    {"id": "swsh", "name": "Schwert & Schild", "name_en": "Sword & Shield",
+     "von": "2020", "bis": "2023", "start": "2019-11-15"},
+    {"id": "sv", "name": "Karmesin & Purpur", "name_en": "Scarlet & Violet",
+     "von": "2023", "bis": "2025", "start": "2023-03-01"},
+    {"id": "me", "name": "Mega-Entwicklung", "name_en": "Mega Evolution",
+     "von": "2025", "bis": "", "start": "2025-09-01"},
+    {"id": "tcgp", "name": "TCG Pocket (digital)", "name_en": "TCG Pocket (digital)",
+     "von": "2024", "bis": "", "start": None},  # nie per Datum, nur per Serie
+]
+AERA_ORDNUNG = {a["id"]: i for i, a in enumerate(AEREN)}
+# Feste Serie→Ära-Zuordnung; alles andere (pop, tk, mc, …) läuft übers Datum.
+AERA_SERIEN = {
+    "base": "klassik", "gym": "klassik", "neo": "klassik", "lc": "klassik",
+    "ecard": "klassik", "misc": "klassik",
+    "ex": "ex", "dp": "dp", "pl": "dp", "hgss": "hgss", "col": "hgss",
+    "bw": "bw", "xy": "xy", "sm": "sm", "swsh": "swsh", "sv": "sv",
+    "me": "me", "tcgp": "tcgp",
+}
+
+
+def _aera_fuer_set(serie_id, release_date):
+    fest = AERA_SERIEN.get(serie_id or "")
+    if fest:
+        return fest
+    datum = release_date or "0000-00-00"
+    passend = "klassik"
+    for a in AEREN:
+        if a["start"] is not None and datum >= a["start"]:
+            passend = a["id"]
+    return passend
+
+
+def _aera_sql(aera_id):
+    """WHERE-Fragment + Parameter für den Ären-Filter der Kartensuche."""
+    serien = [s for s, a in AERA_SERIEN.items() if a == aera_id]
+    a = next((x for x in AEREN if x["id"] == aera_id), None)
+    frag = "serie_id IN (%s)" % ",".join("?" * len(serien))
+    params = list(serien)
+    if a and a["start"] is not None:
+        # Quer-Serien (POP, Trainer-Kits, McDonald's) über das Datum einfangen
+        idx = AERA_ORDNUNG[aera_id]
+        ende = next((x["start"] for x in AEREN[idx + 1:] if x["start"] is not None), "9999-99-99")
+        quer = [s for s in ("pop", "tk", "mc") if s not in serien]
+        frag += (" OR (serie_id IN (%s) AND release_date >= ? AND release_date < ?)"
+                 % ",".join("?" * len(quer)))
+        params += quer + [a["start"], ende]
+    return "set_id IN (SELECT id FROM sets WHERE %s)" % frag, params
+
 # Shiny-/Baby-Shiny-Raritäten (Shiny Vault, Schillerndes Schicksal, SV-Ära …)
 SHINY_RARITIES = {
     "Shiny rare", "Shiny rare V", "Shiny rare VMAX", "Shiny Ultra Rare",
@@ -632,7 +701,7 @@ def meta():
         "pokemon": con.execute("SELECT COUNT(*) c FROM pokemon").fetchone()["c"],
     }
     sets = []
-    series = {}
+    vorhandene_aeren = set()
     for r in con.execute(
         "SELECT id,name,name_en,serie_id,serie_name,serie_name_en,release_date,total,official,symbol"
         " FROM sets ORDER BY release_date IS NULL, release_date"
@@ -640,12 +709,20 @@ def meta():
         d = dict(r)
         d["name"] = SET_NAME_FIX_DE.get(d["id"], d["name"]) or d["name_en"]
         d["serie_name"] = SERIE_NAME_FIX_DE.get(d["serie_id"], d["serie_name"]) or d["serie_name_en"]
+        aera = _aera_fuer_set(d["serie_id"], d["release_date"])
+        info = next(a for a in AEREN if a["id"] == aera)
+        d["aera"] = aera
+        d["aera_name"] = info["name"]
+        d["aera_name_en"] = info["name_en"]
+        vorhandene_aeren.add(aera)
         sets.append(d)
-        sid = d["serie_id"] or "misc"
-        if sid not in series:
-            series[sid] = {"id": sid, "name": d["serie_name"] or sid,
-                           "name_en": d["serie_name_en"] or d["serie_name"] or sid,
-                           "von": d["release_date"] or "9999"}
+    # Ären-Reihenfolge, innerhalb einer Ära chronologisch (TCG Pocket ans Ende)
+    sets.sort(key=lambda s: (AERA_ORDNUNG[s["aera"]], s["release_date"] or "9999"))
+    series = [
+        {"id": a["id"], "name": a["name"], "name_en": a["name_en"],
+         "von": a["von"], "bis": a["bis"]}
+        for a in AEREN if a["id"] in vorhandene_aeren
+    ]
     rarities = [
         {"rarity": r["rarity"], "anzahl": r["c"]}
         for r in con.execute(
@@ -659,7 +736,7 @@ def meta():
         "sync": {**SYNC, "last": last_sync["value"] if last_sync else None},
         "counts": counts,
         "sets": sets,
-        "series": sorted(series.values(), key=lambda s: s["von"]),
+        "series": series,
         "rarities": rarities,
         "types": TYPES_DE,
         "gens": [{"gen": g, "von": lo, "bis": hi} for g, lo, hi in GEN_RANGES],
@@ -686,8 +763,13 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0):
         where.append("set_id = ?")
         params.append(set_id)
     if serie:
-        where.append("set_id IN (SELECT id FROM sets WHERE serie_id = ?)")
-        params.append(serie)
+        if serie in AERA_ORDNUNG:
+            frag, aera_params = _aera_sql(serie)
+            where.append(frag)
+            params += aera_params
+        else:  # Rückfall: alte Links mit TCGdex-Serien-ID
+            where.append("set_id IN (SELECT id FROM sets WHERE serie_id = ?)")
+            params.append(serie)
     if typ:
         where.append("types LIKE ?")
         params.append(f'%"{typ}"%')

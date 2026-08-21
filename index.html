@@ -1294,7 +1294,7 @@ function zeichneSetliste() {
   });
   let html = ''; let letzte = null;
   for (const s of sets) {
-    const serie = (LANG === 'en' ? (s.serie_name_en || s.serie_name) : s.serie_name) || '—';
+    const serie = (LANG === 'en' ? (s.aera_name_en || s.aera_name) : s.aera_name) || '—';
     if (serie !== letzte) { letzte = serie; html += `<div class="serie-kopf">${serie}</div>`; }
     const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
     html += `<button class="setzeile ${wzSet === s.id ? 'on' : ''}" onclick="wzSet='${s.id}';zeichneSetliste()">
@@ -1380,9 +1380,9 @@ function baueFilterLeiste() {
   // Typen
   $('f-typen').innerHTML = Object.keys(T.de.typen).map((en) =>
     `<button class="chip ${filter.typ === en ? 'on' : ''}" data-typ="${en}" onclick="typToggle('${en}')">${T[LANG].typen[en]}</button>`).join('');
-  // Ären chronologisch
+  // Ären chronologisch (vom Server in echter Ären-Ordnung geliefert)
   $('f-serie').innerHTML = `<option value="">${t('alle_aeren')}</option>` + (S.meta.series || []).map((s) =>
-    `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name} (${(s.von || '').slice(0, 4)})</option>`).join('');
+    `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name} (${s.von}–${s.bis || ''})</option>`).join('');
   // Sets (nach Ära gefiltert, chronologisch)
   baueSetSelect();
   // Seltenheiten
@@ -1396,7 +1396,7 @@ function baueFilterLeiste() {
 }
 
 function baueSetSelect() {
-  const sets = (S.meta.sets || []).filter((s) => !filter.serie || s.serie_id === filter.serie);
+  const sets = (S.meta.sets || []).filter((s) => !filter.serie || s.aera === filter.serie);
   $('f-set').innerHTML = `<option value="">${t('alle_sets')}</option>` + sets.map((s) => {
     const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
     return `<option value="${s.id}" ${filter.set === s.id ? 'selected' : ''}>${n} (${(s.release_date || '?').slice(0, 4)})</option>`;
