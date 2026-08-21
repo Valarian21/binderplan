@@ -1058,6 +1058,49 @@ def auth_logout(request: Request):
     return {"ok": True}
 
 
+@app.post("/api/auth/passwort_aendern")
+async def passwort_aendern(request: Request):
+    """Passwort im Profil ändern; meldet alle anderen Sitzungen ab."""
+    user = _require_user(request)
+    data = await request.json()
+    alt = str(data.get("alt") or "")
+    neu = str(data.get("neu") or "")
+    if len(neu) < 8:
+        raise HTTPException(400, "Das neue Passwort braucht mindestens 8 Zeichen.")
+    if _hash_pw(alt, user["salt"]) != user["pw_hash"]:
+        raise HTTPException(400, "Das aktuelle Passwort stimmt nicht.")
+    salt = secrets.token_hex(16)
+    con = get_db()
+    con.execute(
+        "UPDATE users SET pw_hash = ?, salt = ? WHERE id = ?",
+        (_hash_pw(neu, salt), salt, user["id"]),
+    )
+    con.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    token = _neue_session(con, user["id"])
+    con.commit()
+    con.close()
+    return {"ok": True, "token": token}
+
+
+@app.post("/api/auth/konto_loeschen")
+async def konto_loeschen(request: Request):
+    """Konto samt aller Binder und Sitzungen endgültig löschen (DSGVO)."""
+    user = _require_user(request)
+    data = await request.json()
+    pw = str(data.get("passwort") or "")
+    if _hash_pw(pw, user["salt"]) != user["pw_hash"]:
+        raise HTTPException(400, "Das Passwort stimmt nicht.")
+    if user.get("plan") == "pro" and user.get("stripe_sub"):
+        raise HTTPException(400, "Bitte zuerst das Abo über „Abo verwalten“ kündigen, dann das Konto löschen.")
+    con = get_db()
+    con.execute("DELETE FROM binders WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM users WHERE id = ?", (user["id"],))
+    con.commit()
+    con.close()
+    return {"ok": True}
+
+
 @app.get("/api/auth/me")
 def auth_me(request: Request):
     user = _current_user(request)

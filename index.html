@@ -112,9 +112,12 @@
   .schalter input { width: 15px; height: 15px; accent-color: var(--akzent); }
 
   /* ---------- Modale & Planer ---------- */
-  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: 40; display: flex; align-items: center; justify-content: center; }
-  .modal { background: var(--card); border-radius: 18px; padding: 22px; width: min(680px, 94vw); max-height: 88vh;
+  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: 80; display: flex; align-items: center; justify-content: center; }
+  .modal { position: relative; background: var(--card); border-radius: 18px; padding: 22px; width: min(680px, 94vw); max-height: 88vh;
            overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  .modal-x { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%;
+             background: var(--panel2); color: var(--mut); font-size: 13px; font-weight: 700; z-index: 2; }
+  .modal-x:hover { background: var(--hover); color: var(--ink); }
   .modal h2 { margin: 0 0 4px; font-size: 19px; }
   .modal .unter { font-size: 13px; color: var(--mut); margin-bottom: 14px; }
   .setliste { max-height: 330px; overflow-y: auto; margin-top: 10px; border: 1.5px solid var(--line); border-radius: 12px; }
@@ -155,6 +158,33 @@
            font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 90; }
   .toast.zeig { opacity: 1; }
   .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
+
+  /* ---------- Übersichts- & Profilseite (angemeldete Nutzer) ---------- */
+  .seite-voll { position: fixed; inset: 0; background: var(--bg); z-index: 75; display: flex; flex-direction: column; }
+  .seite-rumpf { flex: 1; overflow-y: auto; padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
+                 max-width: 1060px; margin: 0 auto; width: 100%; }
+  .seite-rumpf h1 { font-size: 22px; margin: 0 0 4px; }
+  .statzeile { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 22px; }
+  .statkachel { flex: 1 1 140px; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 16px; }
+  .statkachel .zahl { font-size: 23px; font-weight: 700; }
+  .statkachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; }
+  .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 14px; padding-bottom: 20px; }
+  .bcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; cursor: pointer;
+           display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .bcard:hover { border-color: var(--akzent); }
+  .bcard .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--panel2);
+                  color: var(--mut); align-self: flex-start; letter-spacing: .05em; text-transform: uppercase; }
+  .bcard .bname { font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .bcard .bmeta { font-size: 12px; color: var(--mut); }
+  .bcard.neu { border-style: dashed; align-items: center; justify-content: center; color: var(--mut); min-height: 130px; }
+  .bcard.neu:hover { color: var(--akzent); }
+  .pf-block { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .pf-block h3 { margin: 0 0 12px; font-size: 14px; }
+  .pf-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .pf-zeile:last-child { border-bottom: none; }
+  .pf-zeile .wert { font-weight: 700; }
+  .pf-block.gefahr { border-color: #d9847360; }
+  .pf-block.gefahr h3 { color: var(--akzent); }
   /* Touch-Geräte: Aktions-Knöpfe auf den Slots ohne Hover immer zeigen */
   @media (hover: none) {
     .slot .raus, .slot .hat-btn { opacity: .95; }
@@ -218,7 +248,7 @@
 <div id="app">
   <div id="sync-banner" class="sync-banner hidden"></div>
   <div class="kopf">
-    <div class="logo">
+    <div class="logo" onclick="if(S.user)startOeffnen()" style="cursor:pointer" title="Übersicht">
       <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
       Binderplan
     </div>
@@ -392,8 +422,9 @@
 </div>
 
 <!-- Modal: Master Set -->
-<div class="overlay hidden" id="modal-master" onclick="if(event.target===this)modalSchliessen()">
+<div class="overlay hidden" id="modal-master">
   <div class="modal">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
     <h2 data-i18n="m_master_t">Master Set anlegen</h2>
     <div class="unter" data-i18n="m_master_u">Jede Karte des Sets einmal, sortiert nach Setnummer.</div>
     <input type="search" class="feld" id="set-suche" placeholder="Set suchen …" oninput="zeichneSetliste()">
@@ -407,8 +438,9 @@
 </div>
 
 <!-- Modal: Pokédex -->
-<div class="overlay hidden" id="modal-dex" onclick="if(event.target===this)modalSchliessen()">
+<div class="overlay hidden" id="modal-dex">
   <div class="modal">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
     <h2 data-i18n="m_dex_t">Pokédex-Binder anlegen</h2>
     <div class="unter" data-i18n="m_dex_u">Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.</div>
     <div class="f-chips" id="gen-chips"></div>
@@ -421,8 +453,9 @@
 </div>
 
 <!-- Modal: Anmelden / Registrieren -->
-<div class="overlay hidden" id="modal-auth" onclick="if(event.target===this)modalSchliessen()">
+<div class="overlay hidden" id="modal-auth">
   <div class="modal" style="width:min(420px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
     <h2 id="auth-titel" data-i18n="anmelden_t">Anmelden</h2>
     <div class="unter" id="auth-grund"></div>
     <div class="tab-leiste">
@@ -430,9 +463,9 @@
       <button id="auth-tab-reg" onclick="authTab('reg')" data-i18n="registrieren">Registrieren</button>
     </div>
     <div class="feld-lbl" id="auth-email-lbl">E-Mail</div>
-    <input class="feld" id="auth-email" type="email" autocomplete="email">
+    <input class="feld" id="auth-email" type="email" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
     <div class="feld-lbl" data-i18n="passwort">Passwort</div>
-    <input class="feld" id="auth-pw" type="password" autocomplete="current-password">
+    <input class="feld" id="auth-pw" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
     <label class="schalter hidden" id="auth-agb" style="margin-top:12px;align-items:flex-start">
       <input type="checkbox" id="auth-agb-check" style="margin-top:2px">
       <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung (Links unten links auf der Seite).</span>
@@ -447,8 +480,9 @@
 </div>
 
 <!-- Modal: Upgrade -->
-<div class="overlay hidden" id="modal-upgrade" onclick="if(event.target===this)modalSchliessen()">
+<div class="overlay hidden" id="modal-upgrade">
   <div class="modal" style="width:min(560px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
     <h2 data-i18n="up_t">Binderplan Pro</h2>
     <div class="unter" id="up-grund" data-i18n="up_u">Unbegrenzte Binder &amp; Exporte, tagesaktuelle Preise und die Kaufliste.</div>
     <div class="tarife">
@@ -489,6 +523,77 @@
     <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlLeeren()" data-i18n="aufheben">Auswahl aufheben</button>
   </div>
   <div class="planer-rumpf" id="planer-rumpf"></div>
+</div>
+
+<!-- Übersichtsseite (angemeldete Nutzer) -->
+<div id="startseite" class="seite-voll hidden">
+  <div class="planer-kopf">
+    <div class="logo" style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
+      Binderplan
+    </div>
+    <div style="flex:1"></div>
+    <button class="btn sekundaer" style="font-size:13px" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button>
+    <button class="btn" style="font-size:13px" onclick="startSchliessen()" data-i18n="zur_werkbank">Zur Werkbank ›</button>
+  </div>
+  <div class="seite-rumpf">
+    <h1 id="st-gruss"></h1>
+    <div style="font-size:13px;color:var(--mut)" data-i18n="st_unter">Deine Binder auf einen Blick — klick einen an, um weiterzuplanen.</div>
+    <div class="statzeile" id="st-stats"></div>
+    <div class="binder-grid" id="st-grid"></div>
+  </div>
+</div>
+
+<!-- Profilseite -->
+<div id="profilseite" class="seite-voll hidden" style="z-index:76">
+  <div class="planer-kopf">
+    <button class="btn sekundaer" style="font-size:13px" onclick="profilSchliessen()">‹ <span data-i18n="start">Übersicht</span></button>
+    <div style="font-size:15px;font-weight:700" data-i18n="profil">Profil &amp; Konto</div>
+    <div style="flex:1"></div>
+    <button class="btn sekundaer" style="font-size:13px" onclick="profilAbmelden()" data-i18n="abmelden">Abmelden</button>
+  </div>
+  <div class="seite-rumpf" style="max-width:640px">
+    <div class="pf-block">
+      <h3 data-i18n="pf_konto">Konto</h3>
+      <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_exporte">PDF-Exporte diesen Monat übrig</span><span class="wert" id="pf-exporte"></span></div>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn hidden" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Auf Pro upgraden</span> ★</button>
+        <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Abo verwalten</button>
+        <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
+      </div>
+    </div>
+    <div class="pf-block">
+      <h3 data-i18n="pf_einstellungen">Einstellungen</h3>
+      <div class="pf-zeile"><span data-i18n="pf_sprache">Sprache</span>
+        <span class="lang-toggle"><button id="pf-lang-de" onclick="setLang('de');profilFuellen()">DE</button><button id="pf-lang-en" onclick="setLang('en');profilFuellen()">EN</button></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_design">Design</span>
+        <button class="btn sekundaer" id="pf-theme-btn" onclick="themeWechsel()" style="font-size:12px;padding:5px 12px"></button></div>
+    </div>
+    <div class="pf-block">
+      <h3 data-i18n="pf_pw">Passwort ändern</h3>
+      <div class="feld-lbl" data-i18n="pf_pw_alt">Aktuelles Passwort</div>
+      <input class="feld" id="pf-pw-alt" type="password" autocomplete="new-password">
+      <div class="feld-lbl" data-i18n="pf_pw_neu">Neues Passwort (mindestens 8 Zeichen)</div>
+      <input class="feld" id="pf-pw-neu" type="password" autocomplete="new-password">
+      <button class="btn sekundaer" style="font-size:13px;margin-top:12px" onclick="pwAendern()" data-i18n="pf_pw_btn">Passwort speichern</button>
+    </div>
+    <div class="pf-block">
+      <h3 data-i18n="pf_recht">Rechtliches</h3>
+      <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)">Impressum</a> ·
+        <a href="recht#agb" target="_blank" style="color:var(--mut)">AGB</a> ·
+        <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a></div>
+    </div>
+    <div class="pf-block gefahr">
+      <h3 data-i18n="pf_gefahr">Konto löschen</h3>
+      <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px" data-i18n="pf_loeschen_hint">Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.</div>
+      <div class="feld-lbl" data-i18n="pf_loeschen_pw">Zum Bestätigen Passwort eingeben</div>
+      <input class="feld" id="pf-del-pw" type="password" autocomplete="new-password">
+      <button class="btn sekundaer" style="font-size:13px;margin-top:12px;color:var(--akzent)" onclick="kontoLoeschen()" data-i18n="pf_loeschen_btn">Konto endgültig löschen</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -558,6 +663,21 @@ const T = {
     mail_fehlt: 'Mail-Versand ist noch nicht eingerichtet — bitte beim Betreiber melden.',
     pw_geaendert: 'Passwort geändert — du bist angemeldet.',
     m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Suche',
+    start: 'Übersicht', profil: 'Profil & Konto', zur_werkbank: 'Zur Werkbank ›',
+    hallo: 'Hallo', st_unter: 'Deine Binder auf einen Blick — klick einen an, um weiterzuplanen.',
+    st_binder: 'Binder', st_faecher: 'Fächer geplant', st_gesammelt: 'Karten gesammelt',
+    st_neu: 'Neuer Binder', st_zuletzt: 'zuletzt',
+    mode_master: 'Master Set', mode_dex: 'Pokédex', mode_custom: 'Frei geplant',
+    pf_konto: 'Konto', pf_tarif: 'Tarif', pf_binderzahl: 'Binder',
+    pf_exporte: 'PDF-Exporte diesen Monat übrig',
+    pf_einstellungen: 'Einstellungen', pf_sprache: 'Sprache', pf_design: 'Design',
+    pf_pw: 'Passwort ändern', pf_pw_alt: 'Aktuelles Passwort', pf_pw_neu: 'Neues Passwort (mindestens 8 Zeichen)',
+    pf_pw_btn: 'Passwort speichern', pf_pw_ok: 'Passwort geändert ✓',
+    pf_recht: 'Rechtliches', pf_gefahr: 'Konto löschen',
+    pf_loeschen_hint: 'Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.',
+    pf_loeschen_pw: 'Zum Bestätigen Passwort eingeben', pf_loeschen_btn: 'Konto endgültig löschen',
+    pf_loeschen_frage: 'Wirklich? Konto und alle Binder werden endgültig gelöscht.',
+    pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
     neu: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
@@ -619,6 +739,21 @@ const T = {
     mail_fehlt: 'Email sending is not set up yet — please contact the operator.',
     pw_geaendert: 'Password changed — you are signed in.',
     m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Search',
+    start: 'Overview', profil: 'Profile & account', zur_werkbank: 'To the workbench ›',
+    hallo: 'Hello', st_unter: 'All your binders at a glance — click one to keep planning.',
+    st_binder: 'Binders', st_faecher: 'Slots planned', st_gesammelt: 'Cards collected',
+    st_neu: 'New binder', st_zuletzt: 'updated',
+    mode_master: 'Master set', mode_dex: 'Pokédex', mode_custom: 'Custom',
+    pf_konto: 'Account', pf_tarif: 'Plan', pf_binderzahl: 'Binders',
+    pf_exporte: 'PDF exports left this month',
+    pf_einstellungen: 'Settings', pf_sprache: 'Language', pf_design: 'Theme',
+    pf_pw: 'Change password', pf_pw_alt: 'Current password', pf_pw_neu: 'New password (at least 8 characters)',
+    pf_pw_btn: 'Save password', pf_pw_ok: 'Password changed ✓',
+    pf_recht: 'Legal', pf_gefahr: 'Delete account',
+    pf_loeschen_hint: 'Permanently deletes your account and all your binders — this cannot be undone.',
+    pf_loeschen_pw: 'Enter your password to confirm', pf_loeschen_btn: 'Delete account permanently',
+    pf_loeschen_frage: 'Really? Your account and all binders will be deleted for good.',
+    pf_geloescht: 'Your account has been deleted.',
   },
 };
 let LANG = localStorage.getItem('bp_lang') || 'de';
@@ -636,6 +771,20 @@ const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunio
 const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc' };
 
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Browser-Autofill strikt unterbinden — für alle Browser und Passwort-Manager.
+// autocomplete="off" reicht Chrome & Co. nicht; dazu kommen die Ignorier-Attribute
+// der gängigen Passwort-Manager (LastPass, 1Password, Bitwarden, Dashlane).
+function autofillSperren() {
+  document.querySelectorAll('input').forEach((el) => {
+    if (!el.getAttribute('autocomplete')) el.setAttribute('autocomplete', el.type === 'password' ? 'new-password' : 'off');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', '');
+    el.setAttribute('data-bwignore', '');
+    el.setAttribute('data-form-type', 'other');
+  });
+}
 async function api(pfad, opts) {
   opts = opts || {};
   opts.headers = Object.assign({}, opts.headers);
@@ -699,6 +848,8 @@ function themeAnwenden() {
   const lbl = { auto: 'Auto', hell: LANG === 'en' ? 'Light' : 'Hell', dunkel: LANG === 'en' ? 'Dark' : 'Dunkel' };
   const btn = $('theme-btn');
   if (btn) btn.textContent = '◐ ' + lbl[THEME];
+  const btn2 = $('pf-theme-btn');
+  if (btn2) btn2.textContent = '◐ ' + lbl[THEME];
 }
 function themeWechsel() {
   THEME = THEMES[(THEMES.indexOf(THEME) + 1) % THEMES.length];
@@ -730,6 +881,7 @@ async function boot() {
   baueDexNamen();
   setLang(LANG);
   kontoAnzeigen();
+  autofillSperren();
 
   // Passwort-Reset-Link?
   const q0 = new URLSearchParams(location.search);
@@ -769,9 +921,18 @@ async function boot() {
     const ids = binderIds();
     if (ids.length) { try { S.binder = await api('api/binders/' + ids[0]); } catch (e) {} }
   }
-  if (!S.binder) await neuLeer(true);
-  binderAnzeigen();
+  if (!S.binder && S.user) {
+    // Neustes Konto-Binder als Rückfall (z. B. neues Gerät ohne lokale Liste)
+    try {
+      const d = await api('api/binders?ids=');
+      if (d.binder.length) { S.binder = await api('api/binders/' + d.binder[0].id); merkeBinderId(S.binder.id); }
+    } catch (e) {}
+  }
+  const zeigeStart = S.user && (!hash || hash === 'start');
+  if (!S.binder && !zeigeStart) await neuLeer(true);
+  if (S.binder) binderAnzeigen();
   sucheNeu();
+  if (zeigeStart) startOeffnen();
 }
 
 function ansichtAktivieren() {
@@ -827,6 +988,9 @@ function kontoMenue() {
   $('menu-konto').innerHTML = `
     <div style="padding:9px 12px;font-size:12px;color:var(--mut)">${u.email}<br>
       <strong style="color:var(--ink)">${planLbl}</strong> · ${exporte} ${t('exporte_uebrig')}</div>
+    <div class="trenn"></div>
+    <button onclick="startOeffnen()">🗂 ${t('start')}</button>
+    <button onclick="profilOeffnen()">${t('profil')}</button>
     <div class="trenn"></div>
     ${u.plan === 'free' ? `<button onclick="upgradeOeffnen('')">${t('upgrade')} ★</button>` : ''}
     ${u.plan === 'pro' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
@@ -915,8 +1079,9 @@ async function authAbsenden() {
 async function abmelden() {
   try { await api('api/auth/logout', { method: 'POST' }); } catch (e) {}
   setToken('');
-  kontoAnzeigen();
-  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Konto-Binder gehören nicht in die anonyme Sitzung — frisch als Gast starten
+  localStorage.removeItem('bp_binder');
+  location.href = location.pathname;
 }
 
 function upgradeOeffnen(grund) {
@@ -937,6 +1102,123 @@ async function aboVerwalten() {
     location.href = d.url;
   } catch (e) { toast(e.message); }
 }
+
+// ---------- Übersichtsseite ----------
+async function startOeffnen() {
+  if (!S.user) return;
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  $('profilseite').classList.add('hidden');
+  $('startseite').classList.remove('hidden');
+  location.hash = 'start';
+  $('st-gruss').textContent = t('hallo') + ', ' + S.user.email.split('@')[0] + '!';
+  await startLaden();
+}
+function startSchliessen() {
+  $('startseite').classList.add('hidden');
+  if (S.binder) location.hash = 'binder/' + S.binder.id;
+  else neuLeer(true);
+}
+async function startLaden() {
+  let liste = [];
+  try { liste = (await api('api/binders?ids=' + binderIds().join(','))).binder; } catch (e) {}
+  const faecher = liste.reduce((a, b) => a + b.anzahl, 0);
+  const gesammelt = liste.reduce((a, b) => a + (b.gesammelt || 0), 0);
+  $('st-stats').innerHTML = `
+    <div class="statkachel"><div class="zahl">${liste.length}</div><div class="lbl">${t('st_binder')}</div></div>
+    <div class="statkachel"><div class="zahl">${faecher}</div><div class="lbl">${t('st_faecher')}</div></div>
+    <div class="statkachel"><div class="zahl">${gesammelt}</div><div class="lbl">${t('st_gesammelt')}</div></div>`;
+  const modeLbl = { master: t('mode_master'), dex: t('mode_dex'), custom: t('mode_custom') };
+  $('st-grid').innerHTML = liste.map((b) => {
+    const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
+    return `<div class="bcard" onclick="startBinderOeffnen('${b.id}')">
+      <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
+      <div class="bname"><span>${esc(b.name)}</span>
+        <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">🗑</span></div>
+      <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
+      ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
+      <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
+    </div>`;
+  }).join('') + `
+    <div class="bcard neu menuwrap" onclick="menuToggle('menu-st-neu')">
+      <div style="font-size:26px">+</div><div style="font-weight:700">${t('st_neu')}</div>
+      <div class="menu hidden" id="menu-st-neu" style="top:auto;bottom:12px;left:12px;right:12px">
+        <button onclick="event.stopPropagation();startNeu('leer')">${t('m_leer')}</button>
+        <button onclick="event.stopPropagation();startNeu('master')">${t('m_master')}</button>
+        <button onclick="event.stopPropagation();startNeu('dex')">${t('m_dex')}</button>
+      </div>
+    </div>`;
+}
+async function startBinderOeffnen(id) {
+  await binderOeffnen(id);
+  $('startseite').classList.add('hidden');
+}
+async function startBinderLoeschen(id) {
+  if (!confirm(t('bestaetigen_loeschen'))) return;
+  try { await api('api/binders/' + id, { method: 'DELETE' }); } catch (e) {}
+  localStorage.setItem('bp_binder', JSON.stringify(binderIds().filter((x) => x !== id)));
+  if (S.binder && S.binder.id === id) S.binder = null;
+  startLaden();
+}
+async function startNeu(art) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (art === 'leer') { $('startseite').classList.add('hidden'); await neuLeer(); return; }
+  $('startseite').classList.add('hidden');
+  if (S.binder) location.hash = 'binder/' + S.binder.id;
+  modalOeffnen(art === 'master' ? 'modal-master' : 'modal-dex');
+}
+
+// ---------- Profilseite ----------
+function profilOeffnen() {
+  if (!S.user) return loginOeffnen('');
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  $('profilseite').classList.remove('hidden');
+  profilFuellen();
+}
+function profilSchliessen() {
+  $('profilseite').classList.add('hidden');
+  if ($('startseite').classList.contains('hidden')) startOeffnen();
+}
+function profilFuellen() {
+  const u = S.user;
+  if (!u) return;
+  $('pf-email').textContent = u.email;
+  $('pf-plan').textContent = u.plan === 'free' ? t('tarif_frei') : (u.plan === 'lifetime' ? 'Lifetime ★' : 'Pro ★');
+  $('pf-binder').textContent = u.binder_anzahl + ' / ' + (u.binder_limit == null ? '∞' : u.binder_limit);
+  $('pf-exporte').textContent = u.exporte_limit == null ? '∞' : Math.max(0, u.exporte_limit - u.exporte_benutzt) + ' / ' + u.exporte_limit;
+  $('pf-upgrade').classList.toggle('hidden', u.plan !== 'free');
+  $('pf-abo').classList.toggle('hidden', u.plan !== 'pro');
+  $('pf-life').classList.toggle('hidden', u.plan !== 'lifetime');
+  $('pf-lang-de').classList.toggle('on', LANG === 'de');
+  $('pf-lang-en').classList.toggle('on', LANG === 'en');
+  themeAnwenden();
+}
+async function pwAendern() {
+  const alt = $('pf-pw-alt').value, neu = $('pf-pw-neu').value;
+  try {
+    const d = await api('api/auth/passwort_aendern', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alt, neu }),
+    });
+    setToken(d.token);
+    $('pf-pw-alt').value = ''; $('pf-pw-neu').value = '';
+    toast(t('pf_pw_ok'));
+  } catch (e) { toast(e.message); }
+}
+async function kontoLoeschen() {
+  const pw = $('pf-del-pw').value;
+  if (!confirm(t('pf_loeschen_frage'))) return;
+  try {
+    await api('api/auth/konto_loeschen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passwort: pw }),
+    });
+    setToken('');
+    localStorage.removeItem('bp_binder');
+    alert(t('pf_geloescht'));
+    location.href = location.pathname;
+  } catch (e) { toast(e.message); }
+}
+async function profilAbmelden() { await abmelden(); }
 
 function syncBanner() {
   const b = $('sync-banner');
@@ -963,6 +1245,13 @@ function menuToggle(id) {
 }
 document.addEventListener('click', (ev) => {
   if (!ev.target.closest('.menuwrap')) document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+});
+// Escape schließt Modale und offene Menüs — daneben tippen schließt bewusst nichts mehr
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') {
+    modalSchliessen();
+    document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  }
 });
 function modalOeffnen(id) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
