@@ -86,8 +86,10 @@
               color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
   .tk .rbtn:hover { border-color: var(--akzent); color: var(--akzent); }
 
-  .spalte-binder { width: 324px; flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
+  .spalte-binder { width: var(--binder-w, 324px); flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
                    padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
+  .binder-groesse { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--mut); }
+  .binder-groesse input[type=range] { flex: 1; accent-color: var(--gruen); cursor: pointer; }
   .slots { background: var(--panel2); border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
   .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed var(--slotrand); background: transparent;
           display: flex; align-items: center; justify-content: center; color: #c2b49c; font-size: 15px; overflow: hidden; padding: 0; }
@@ -126,6 +128,8 @@
   .setzeile:hover { background: var(--hover); }
   .setzeile.on { background: var(--hover); }
   .setzeile .datum { margin-left: auto; color: var(--mut); font-size: 12px; white-space: nowrap; }
+  .setzeile .set-sym { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+  .setzeile .set-sym.leer { visibility: hidden; }
   .serie-kopf { padding: 7px 13px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
                 color: var(--mut); background: var(--panel2); position: sticky; top: 0; }
 
@@ -220,6 +224,7 @@
 
     /* Binder als eigene Vollbild-Ansicht (Umschalter unten) */
     .spalte-binder { display: none; width: 100%; border-left: none; }
+    .binder-groesse { display: none; }
     body.binder-an .spalte-binder { display: flex; }
     body.binder-an .spalte-mitte { display: none; }
     .slots { max-width: 430px; margin: 0 auto; width: 100%; }
@@ -362,6 +367,11 @@
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font-size:13.5px;font-weight:700" data-i18n="binder">Binder</div>
         <select class="feld" id="wb-layout" style="width:auto" onchange="layoutWechsel(this.value)"></select>
+      </div>
+      <div class="binder-groesse desktop-only" title="Größe der Binder-Übersicht">
+        <span>–</span>
+        <input type="range" id="wb-groesse" min="324" max="680" step="20" oninput="binderBreite(this.value)">
+        <span>+</span>
       </div>
       <div class="slots" id="wb-slots"></div>
       <div class="seiten-nav">
@@ -1297,7 +1307,13 @@ function zeichneSetliste() {
     const serie = (LANG === 'en' ? (s.aera_name_en || s.aera_name) : s.aera_name) || '—';
     if (serie !== letzte) { letzte = serie; html += `<div class="serie-kopf">${serie}</div>`; }
     const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
+    // Set-Symbol (TCGdex, über den gecachten Proxy) – fehlt es, wird der Platz
+    // unsichtbar reserviert, damit die Namen bündig bleiben.
+    const sym = s.symbol
+      ? `<img class="set-sym" src="api/img/set/${encodeURIComponent(s.id)}" alt="" loading="lazy" onerror="this.classList.add('leer')">`
+      : `<img class="set-sym leer" alt="">`;
     html += `<button class="setzeile ${wzSet === s.id ? 'on' : ''}" onclick="wzSet='${s.id}';zeichneSetliste()">
+      ${sym}
       <span style="font-weight:600">${n}</span>
       <span style="color:var(--mut);font-size:11.5px">${s.official || s.total || '?'} K.</span>
       <span class="datum">${s.release_date || ''}</span></button>`;
@@ -1448,16 +1464,21 @@ function filterParams() {
 }
 
 // ---------- Suche ----------
+let _sucheSeq = 0;   // gegen Race Conditions: nur die neueste Antwort zählt
 async function sucheNeu() { S.offset = 0; S.ergebnisse = []; await sucheLaden(); }
 async function sucheLaden() {
+  const meineSeq = ++_sucheSeq;
   const p = filterParams(); p.set('limit', '60'); p.set('offset', String(S.offset));
   try {
     const d = await api('api/cards?' + p);
+    // Eine schnellere spätere Anfrage hat uns überholt → dieses (veraltete)
+    // Ergebnis verwerfen, sonst überschreibt es die aktuelle Filterauswahl.
+    if (meineSeq !== _sucheSeq) return;
     S.gesamt = d.total;
     S.ergebnisse = S.ergebnisse.concat(d.karten);
     S.offset += d.karten.length;
     zeichneErgebnisse();
-  } catch (e) { toast('Suche?'); }
+  } catch (e) { if (meineSeq === _sucheSeq) toast('Suche?'); }
 }
 
 function anzahlImBinder(id) {
@@ -1514,6 +1535,19 @@ function zeichneLayouts() {
     `<option value="${l}" ${S.binder.layout === l ? 'selected' : ''}>${l.replace('x', '×')} (${LAYOUTS[l][0] * LAYOUTS[l][1]})</option>`).join('');
 }
 function layoutWechsel(l) { S.binder.layout = l; S.seite = 0; zeichneBinder(); speichern(); }
+// Breite der Binder-Übersicht (persistiert). Größer = die Karten in der
+// Übersicht werden größer und besser lesbar.
+function binderBreite(px) {
+  document.documentElement.style.setProperty('--binder-w', px + 'px');
+  try { localStorage.setItem('bp_binder_w', px); } catch (e) {}
+}
+function binderBreiteInit() {
+  const px = localStorage.getItem('bp_binder_w');
+  const el = $('wb-groesse');
+  if (px) { document.documentElement.style.setProperty('--binder-w', px + 'px'); if (el) el.value = px; }
+  else if (el) el.value = 324;
+}
+binderBreiteInit();
 function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return c * r; }
 
 function slotInhalt(item) {

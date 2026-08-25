@@ -1462,6 +1462,24 @@ def dex_image(dex_id: int):
     return FileResponse(target, media_type="image/png", headers=IMG_HEADERS)
 
 
+@app.get("/api/img/set/{set_id}")
+def set_symbol_image(set_id: str):
+    """Set-Symbol (TCGdex) für die Set-Filteransicht – gecacht wie die übrigen Bilder."""
+    target = CACHE / "sym" / f"{set_id}.png"
+    if not target.exists():
+        con = get_db()
+        row = con.execute("SELECT symbol FROM sets WHERE id = ?", (set_id,)).fetchone()
+        con.close()
+        sym = ((row["symbol"] if row else "") or "").strip()
+        if not sym:
+            raise HTTPException(404, "Kein Symbol")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # TCGdex-Symbol-URL braucht eine Endung (png bevorzugt, webp als Fallback)
+        if not _fetch_asset([sym + ".png", sym + ".webp"], target):
+            raise HTTPException(404, "Kein Symbol verfügbar")
+    return FileResponse(target, media_type="image/png", headers=IMG_HEADERS)
+
+
 # --- Binder -----------------------------------------------------------------
 
 # Gängige Binder-Raster: 4er (2×2), 9er (3×3), 12er hoch (3×4) und quer (4×3),
