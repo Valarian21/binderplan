@@ -1852,7 +1852,17 @@ function zeichneSetWahlKnopf() {
 }
 function setWahlToggle() {
   menuToggle('set-popover');
-  if (!$('set-popover').classList.contains('hidden')) { $('set-popover-suche').value = ''; zeichneSetWahl(); setTimeout(() => $('set-popover-suche').focus(), 30); }
+  const pop = $('set-popover');
+  if (!pop.classList.contains('hidden')) {
+    // fixed positioniert: die Filterspalte scrollt und würde ein absolutes Popover abschneiden
+    const r = $('f-set-btn').getBoundingClientRect();
+    const w = Math.min(380, window.innerWidth - 16);
+    pop.style.position = 'fixed'; pop.style.width = w + 'px';
+    pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    pop.style.top = (r.bottom + 4) + 'px'; pop.style.right = 'auto';
+    pop.style.maxHeight = (window.innerHeight - r.bottom - 16) + 'px'; pop.style.overflow = 'auto';
+    $('set-popover-suche').value = ''; zeichneSetWahl(); setTimeout(() => $('set-popover-suche').focus(), 30);
+  }
 }
 function zeichneSetWahl() {
   const q = ($('set-popover-suche').value || '').toLowerCase();
