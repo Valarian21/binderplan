@@ -676,6 +676,76 @@ def run_sync_ja():
         _sync_lock.release()
 
 
+def run_backfill_ja_details():
+    """Japan: Einzelkarten-Details (Künstler, Seltenheit, Pokédex, HP, Regulation Mark, Varianten) nachladen –
+    die ja-Listen liefern das nicht, die Einzelabfrage schon. ~12.800 Anfragen, gedrosselt, im Hintergrund."""
+    if not _sync_lock.acquire(blocking=False):
+        return
+    import time as _time
+    con = get_db()
+    try:
+        ids = [r["id"] for r in con.execute("SELECT id FROM cards WHERE region='jp' AND rarity IS NULL ORDER BY release_date DESC")]
+        SYNC.update(running=True, error=None, step="Japan: Kartendetails", done=0, total=len(ids))
+        namen = {r["dex_id"]: (r["name_de"], r["name_en"]) for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
+
+        def fetch(cid):
+            for versuch in range(3):
+                try:
+                    with httpx.Client(timeout=30, headers=UA) as client:
+                        r = client.get(f"{TCGDEX}/ja/cards/{cid}")
+                    if r.status_code == 200:
+                        return cid, r.json()
+                    if r.status_code == 404:
+                        return cid, {}
+                except Exception:
+                    pass
+                _time.sleep(1.5 * (versuch + 1))
+            return cid, None
+
+        with ThreadPoolExecutor(4) as pool:
+            for cid, d in pool.map(fetch, ids):
+                SYNC["done"] += 1
+                if not d:
+                    if d == {}:
+                        con.execute("UPDATE cards SET rarity='None' WHERE id=?", (cid,))
+                    continue
+                dex = d.get("dexId") or []
+                v = d.get("variants") or {}
+                kinds = _compute_kinds(d.get("category"), d.get("stage"), d.get("suffix"), d.get("rarity"),
+                                       d.get("name"), None, d.get("localId"))
+                nde, nen = namen.get(dex[0], (None, None)) if dex else (None, None)
+                con.execute(
+                    "UPDATE cards SET category=?, rarity=?, stage=?, suffix=?, illustrator=?, hp=?, regulation_mark=?, types=?,"
+                    " dex_ids=?, first_dex=COALESCE(?, first_dex), name_de=COALESCE(?, name_de), name_en=COALESCE(?, name_en),"
+                    " has_normal=?, has_reverse=?, has_holo=?, has_first=?, kinds=?, kind=?, trainer_type=?, energy_type=?,"
+                    " image_en=COALESCE(image_en, ?) WHERE id=?",
+                    (d.get("category"), d.get("rarity") or "None", d.get("stage"), d.get("suffix"), _norm_illustrator(d.get("illustrator")),
+                     d.get("hp"), d.get("regulationMark"), json.dumps(d.get("types") or []),
+                     json.dumps(dex), dex[0] if dex else None, nde, nen,
+                     1 if v.get("normal", True) else 0, 1 if v.get("reverse") else 0, 1 if v.get("holo") else 0, 1 if v.get("firstEdition") else 0,
+                     json.dumps(kinds), kinds[0], d.get("trainerType"), d.get("energyType"), d.get("image"), cid))
+                if SYNC["done"] % 200 == 0:
+                    con.commit()
+        con.commit()
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('ja_details', datetime('now'))")
+        con.commit()
+        SYNC["step"] = "fertig"
+    except Exception as exc:
+        SYNC["error"] = str(exc)[:500]
+    finally:
+        SYNC["running"] = False
+        con.close()
+        _sync_lock.release()
+
+
+@app.post("/api/admin/backfill_ja")
+def admin_backfill_ja(key: str = ""):
+    if not _admin_key() or key != _admin_key():
+        raise HTTPException(403, "Falscher Schlüssel")
+    threading.Thread(target=run_backfill_ja_details, daemon=True).start()
+    return {"gestartet": True}
+
+
 @app.post("/api/admin/sync_ja")
 def admin_sync_ja(key: str = ""):
     if not _admin_key() or key != _admin_key():
@@ -1090,6 +1160,7 @@ def meta():
         "SELECT trainer_type FROM cards WHERE trainer_type IS NOT NULL GROUP BY trainer_type ORDER BY COUNT(*) DESC")]
     jahre = con.execute("SELECT MIN(substr(release_date,1,4)) a, MAX(substr(release_date,1,4)) b FROM cards WHERE release_date IS NOT NULL AND region='intl'").fetchone()
     familien = con.execute("SELECT COUNT(*) c FROM pokemon WHERE familie IS NOT NULL").fetchone()["c"]
+    jp_details = con.execute("SELECT COUNT(*) c FROM cards WHERE region='jp' AND rarity IS NOT NULL").fetchone()["c"]
     con.close()
     return {
         "sync": {**SYNC, "last": last_sync["value"] if last_sync else None},
@@ -1098,6 +1169,7 @@ def meta():
         "presets": [{"id": k, "name": v["name"], "name_en": v["name_en"]} for k, v in PRESETS.items()],
         "regmarks": regmarks, "trainer_types": trainer_types,
         "jahre": [int(jahre["a"] or 1999), int(jahre["b"] or 2026)], "familien": familien,
+        "jp_details": jp_details,
         "counts": counts,
         "sets": sets,
         "series": series,
@@ -1113,9 +1185,9 @@ def meta():
 RARITY_GROUPS = {
     "common":       {"name": "Common", "name_en": "Common", "werte": ["Common"]},
     "uncommon":     {"name": "Uncommon", "name_en": "Uncommon", "werte": ["Uncommon"]},
-    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection"]},
+    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Triple Rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection"]},
     "ultra":        {"name": "Ultra Rare / Full Art", "name_en": "Ultra Rare / Full Art", "werte": ["Ultra Rare", "Full Art Trainer"]},
-    "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare"]},
+    "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare", "Character Rare", "Character Super Rare"]},
     "secret":       {"name": "Secret / Gold / Rainbow", "name_en": "Secret / Gold / Rainbow", "werte": ["Secret Rare", "Hyper rare", "Mega Hyper Rare", "Black White Rare"]},
     "shiny":        {"name": "Shiny", "name_en": "Shiny", "werte": ["Shiny rare", "Shiny rare V", "Shiny rare VMAX", "Shiny Ultra Rare"]},
     "special":      {"name": "Radiant / Amazing / ACE SPEC", "name_en": "Radiant / Amazing / ACE SPEC", "werte": ["Radiant Rare", "Amazing Rare", "ACE SPEC Rare"]},
@@ -1391,6 +1463,7 @@ def card_detail(card_id: str):
     if r["first_dex"]:
         for a in con.execute(
             f"{_CARD_SELECT} WHERE first_dex = ? AND cards.id != ? AND COALESCE(cards.region,'intl') = ?"
+            " AND (image_de IS NOT NULL OR image_en IS NOT NULL OR image_alt IS NOT NULL)"
             " ORDER BY release_date DESC LIMIT 24", (r["first_dex"], card_id, k["region"])):
             andere.append(_card_brief(a))
         k["andere_gesamt"] = con.execute("SELECT COUNT(*) c FROM cards WHERE first_dex = ?", (r["first_dex"],)).fetchone()["c"]
@@ -2282,6 +2355,7 @@ from reportlab.lib.units import mm  # noqa: E402
 from reportlab.lib.utils import ImageReader  # noqa: E402
 from reportlab.pdfgen import canvas as pdfcanvas  # noqa: E402
 
+SPRACHE_LABELS = {"de": "DE", "en": "EN", "jp": "JP"}
 # Varianten je Fach (Kurzbezeichnung für Druck und Listen)
 VARIANT_LABELS = {"reverse": "Reverse Holo", "holo": "Holo", "first": "1st Edition",
                   "pokeball": "Poké Ball", "masterball": "Master Ball"}
@@ -2594,6 +2668,8 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         vl = VARIANT_LABELS.get(variant)
         if vl:
             label += " · " + vl
+        if item.get("sprache") and item["sprache"] != lang:
+            label += " · " + SPRACHE_LABELS.get(item["sprache"], str(item["sprache"]).upper())
         if item.get("zustand"):
             label += " · " + str(item["zustand"])[:12]
         c.drawCentredString(x + CARD_W / 2, y - 2.6 * mm, label)
@@ -2654,7 +2730,8 @@ def _binder_zeilen(binder, lang):
             setn = (k.get("set_name_en") if lang == "en" else k.get("set_name")) or ""
             zeilen.append({"pos": pos, "name": name, "set": setn, "nr": k.get("local_id") or "",
                            "eur": preise.get(item.get("id")), "have": bool(item.get("have")),
-                           "variant": item.get("variant") or "", "zustand": item.get("zustand") or ""})
+                           "variant": item.get("variant") or "", "zustand": item.get("zustand") or "",
+                           "sprache": item.get("sprache") or ""})
     return zeilen
 
 
@@ -2716,7 +2793,7 @@ def _checkliste_pdf(binder, lang, nur_fehlende):
             c.setFont("Helvetica", 9.5)
         c.drawString(27 * mm, y, z["pos"].split("·")[1])
         extra = VARIANT_LABELS.get(z["variant"], "")
-        name = z["name"] + (f" ({extra})" if extra else "") + (f" · {z['zustand']}" if z.get("zustand") else "")
+        name = z["name"] + (f" ({extra})" if extra else "") + (f" · {SPRACHE_LABELS.get(z['sprache'], z['sprache'].upper())}" if z.get("sprache") else "") + (f" · {z['zustand']}" if z.get("zustand") else "")
         c.drawString(36 * mm, y, name[:46])
         c.setFillGray(0.45)
         c.drawString(122 * mm, y, ((z["set"] or "") + (" " + z["nr"] if z["nr"] else ""))[:30])
@@ -2757,12 +2834,12 @@ def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
         text = "\n".join(out)
         media, ext = "text/plain; charset=utf-8", "txt"
     else:
-        out = ["Name;Set;Nummer;Variante;Preis EUR"]
+        out = ["Name;Set;Nummer;Variante;Sprache;Zustand;Preis EUR"]
         for z in zeilen:
             preis = f"{z['eur']:.2f}".replace(".", ",") if z["eur"] is not None else ""
-            out.append(f"{z['name']};{z['set']};{z['nr']};{z['variant']};{preis}")
+            out.append(f"{z['name']};{z['set']};{z['nr']};{z['variant']};{z['sprache']};{z['zustand']};{preis}")
         summe_txt = f"{summe:.2f}".replace(".", ",")
-        out.append(f"Summe;;;;{summe_txt}")
+        out.append(f"Summe;;;;;;{summe_txt}")
         text = "\n".join(out)
         media, ext = "text/csv; charset=utf-8", "csv"
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"

@@ -321,6 +321,9 @@ window.mpUtm=read;})();
   .spalte-filter select.feld { text-overflow: ellipsis; }
   .chip.klein { font-size: 11px; padding: 3px 8px; }
   .d-illu { color: var(--akzent); cursor: pointer; font-weight: 700; }
+  .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
+  .d-kein-bild small { font-weight: 500; color: var(--mut); font-size: 11.5px; }
+  .slot .spmark { left: auto; right: 2px; bottom: 21px; background: var(--ink); }
   .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: 12.5px; }
   .detail .d-grid > div { min-width: 0; }
   .d-fam .btn { white-space: nowrap; }
@@ -451,7 +454,7 @@ window.mpUtm=read;})();
     <div class="menuwrap desktop-only">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen">⚙</button>
       <div class="menu hidden" id="menu-einst" style="min-width:200px">
-        <div class="menu-lbl" data-i18n="pf_sprache">Sprache</div>
+        <div class="menu-lbl" data-i18n="pf_sprache_ui">Sprache der Oberfläche</div>
         <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
         <div class="menu-lbl" data-i18n="pf_design">Design</div>
         <button id="theme-btn" onclick="themeWechsel()"></button>
@@ -474,7 +477,7 @@ window.mpUtm=read;})();
           <button id="reg-intl" class="on" onclick="regionSetzen('intl')" data-i18n="reg_west">Westlich</button>
           <button id="reg-jp" onclick="regionSetzen('jp')" data-i18n="reg_jp">Japan</button>
         </div>
-        <div class="lang-toggle" id="f-lang" title="Sprache der Namen, Bilder und PDFs"><button id="f-lang-de" class="on" onclick="setLang('de')">DE</button><button id="f-lang-en" onclick="setLang('en')">EN</button></div>
+        <div class="lang-toggle" id="f-lang" title="Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)"><button id="f-lang-de" class="on" onclick="setKartensprache('de')">DE</button><button id="f-lang-en" onclick="setKartensprache('en')">EN</button></div>
       </div>
       <div>
         <div class="f-lbl" data-i18n="f_suche">Suche</div>
@@ -950,6 +953,7 @@ const T = {
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
+    kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis', pf_sprache_ui: 'Sprache der Oberfläche',
     f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
     m_illu: 'Künstler-Binder …', m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
@@ -1054,6 +1058,7 @@ const T = {
     pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
+    kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price', pf_sprache_ui: 'Interface language',
     f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
     m_illu: 'Artist binder …', m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
     tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
@@ -1143,8 +1148,11 @@ const T = {
     pf_geloescht: 'Your account has been deleted.',
   },
 };
-let LANG = localStorage.getItem('bp_lang') || 'de';
+let LANG = localStorage.getItem('bp_lang') || 'de';            // Sprache der Oberfläche
+let KLANG = localStorage.getItem('bp_klang') || LANG;          // Sprache der Karten (Namen, Bilder, PDF): de | en
 const t = (k) => T[LANG][k] || T.de[k] || k;
+// Bild-/Namenssprache: japanische Karten haben nur einen Scan (liegt in der en-Spalte)
+const kl = () => (filter.region === 'jp' ? 'en' : KLANG);
 
 // ---------- Zustand ----------
 const S = {
@@ -1199,9 +1207,9 @@ function gate(err) {
   if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro')); return true; }
   return false;
 }
-const nm = (k) => (LANG === 'en' ? (k.name_en || k.name) : (k.name || k.name_en)) || '';
-const setNm = (k) => (LANG === 'en' ? (k.set_name_en || k.set_name) : (k.set_name || k.set_name_en)) || '';
-const imgUrl = (id, extra) => 'api/img/card/' + encodeURIComponent(id) + '?lang=' + LANG + (extra || '');
+const nm = (k) => (KLANG === 'en' ? (k.name_en || k.name) : (k.name || k.name_en)) || '';
+const setNm = (k) => (KLANG === 'en' ? (k.set_name_en || k.set_name) : (k.set_name || k.set_name_en)) || '';
+const imgUrl = (id, extra) => 'api/img/card/' + encodeURIComponent(id) + '?lang=' + (/^[A-Z]/.test(id) ? 'en' : KLANG) + (extra || '');
 
 let toastTimer = null;
 function toast(text) {
@@ -1249,11 +1257,18 @@ function themeWechsel() {
 themeAnwenden();
 
 // ---------- Sprache ----------
+// Kartensprache (Filterspalte DE|EN): Namen, Bilder, Set-Namen, PDF – die Oberfläche bleibt, wie sie ist
+function setKartensprache(lang) {
+  KLANG = lang; localStorage.setItem('bp_klang', lang);
+  $('f-lang-de').classList.toggle('on', lang === 'de'); $('f-lang-en').classList.toggle('on', lang === 'en');
+  zeichneErgebnisse(); zeichneBinder(); baueSetSelect(); zeichneSetWahlKnopf();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
 function setLang(lang) {
   LANG = lang; localStorage.setItem('bp_lang', lang);
   $('lang-de').classList.toggle('on', lang === 'de');
   $('lang-en').classList.toggle('on', lang === 'en');
-  if ($('f-lang-de')) { $('f-lang-de').classList.toggle('on', lang === 'de'); $('f-lang-en').classList.toggle('on', lang === 'en'); }
+  if ($('f-lang-de')) { $('f-lang-de').classList.toggle('on', KLANG === 'de'); $('f-lang-en').classList.toggle('on', KLANG === 'en'); }
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
   themeAnwenden();
@@ -1922,10 +1937,11 @@ function regionSetzen(r) {
   if (r === 'jp') { filter.illustrator = ''; filter.rgroup.clear(); filter.kinds.clear(); filter.trainer = ''; filter.regmark.clear(); filter.first = false; filter.preset = ''; }
   $('reg-intl').classList.toggle('on', r === 'intl'); $('reg-jp').classList.toggle('on', r === 'jp');
   $('f-lang').classList.toggle('hidden', r === 'jp');
-  $('f-illu-rar').classList.toggle('hidden', r === 'jp'); $('f-illu-suche').classList.toggle('hidden', r === 'jp');
-  $('f-mehr-btn').classList.toggle('hidden', r === 'jp'); if (r === 'jp') mehrFilterToggle(false);
-  $('f-jp-hinweis').classList.toggle('hidden', r !== 'jp');
-  $('f-presets').classList.toggle('hidden', r === 'jp');
+  // Bis die JP-Einzelkartendaten geladen sind, gibt es dort keine Künstler/Seltenheiten
+  const jpOhne = r === 'jp' && !(S.meta.jp_details > 5000);
+  $('f-illu-rar').classList.toggle('hidden', jpOhne); $('f-illu-suche').classList.toggle('hidden', jpOhne);
+  $('f-mehr-btn').classList.toggle('hidden', jpOhne); if (jpOhne) mehrFilterToggle(false);
+  $('f-jp-hinweis').classList.toggle('hidden', !jpOhne);
   baueFilterLeiste(); mehrFilterZahl(); sucheNeu();
 }
 function rgroupToggle(g) {
@@ -2012,7 +2028,7 @@ function zeichneErgebnisse() {
   }
   $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
     const n = anzahlImBinder(k.id);
-    const enb = LANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
+    const enb = KLANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
     const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
     return `<div class="tk" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
@@ -2103,6 +2119,7 @@ function slotExtras(item, idx) {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
   if (item && VMARK[item.variant]) html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
+  if (item && item.sprache && item.sprache !== 'de') html += `<span class="vmark spmark" title="${t('kartensprache')}">${item.sprache.toUpperCase()}</span>`;
   if (S.preiseAn && item && item.type === 'card') {
     const p = preisFuer(item);
     if (p != null) html += `<span class="preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
@@ -2386,7 +2403,7 @@ async function _binderSichern() {
   if (S.nurAnsicht) return;
   if (!S.binder.id && !await binderAnlegenWennNoetig()) return;
   clearTimeout(S.speicherTimer);
-  S.binder.options = { ...(S.binder.options || {}), sprache: LANG };
+  S.binder.options = { ...(S.binder.options || {}), sprache: KLANG };
   await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
 }
 
@@ -2558,6 +2575,7 @@ function slotMenue(ev, idx) {
     ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ↻</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
     ${item.type !== 'empty' ? `<button onclick="slotMenueZu();fachFreimachen(${idx})">${t('s_zu_leer')}</button>` : ''}
     <div class="trenn"></div>
     <button class="gefahr" onclick="slotMenueZu();slotEntfernen(${idx})">${t('s_entfernen')}</button>`;
@@ -2569,6 +2587,18 @@ function slotMenue(ev, idx) {
 }
 function slotMenueZu() { $('menu-slot').classList.add('hidden'); }
 document.addEventListener('click', (ev) => { if (!ev.target.closest('#menu-slot') && !ev.target.closest('.slot .mehr')) slotMenueZu(); });
+function fachSprache(idx) {
+  const item = S.binder.items[idx]; if (!item) return;
+  const reihe = ['de', 'en', 'jp']; const neu = reihe[(reihe.indexOf(item.sprache || 'de') + 1) % reihe.length];
+  if (neu === 'de') delete item.sprache; else item.sprache = neu;
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
+function fachZustand(idx) {
+  const item = S.binder.items[idx]; if (!item) return;
+  const z = prompt(t('zustand_ph'), item.zustand || ''); if (z === null) return;
+  if (z.trim()) item.zustand = z.trim().slice(0, 16); else delete item.zustand;
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
 function fachEinfuegen(idx) {
   merken('fach');
   S.binder.items.splice(idx, 0, { type: 'empty' });
@@ -2638,7 +2668,7 @@ function mehrFilterZahl() {
 // ---------- Kartendetail ----------
 const VARIANTEN = ['normal', 'reverse', 'holo', 'first', 'pokeball', 'masterball'];
 const VMARK = { reverse: 'REV', holo: 'HOLO', first: '1ST', pokeball: 'PB', masterball: 'MB' };
-let detailKarte = null; let detailVariante = 'normal';
+let detailKarte = null; let detailVariante = 'normal'; let detailSprache = 'de';
 async function detailOeffnen(idOrIdx) {
   const id = typeof idOrIdx === 'number' ? (S.ergebnisse[idOrIdx] || {}).id : idOrIdx;
   if (!id) return;
@@ -2646,7 +2676,7 @@ async function detailOeffnen(idOrIdx) {
   $('detail-inhalt').innerHTML = `<div style="padding:40px;text-align:center;color:var(--mut)">…</div>`;
   let k;
   try { k = await api('api/cards/' + encodeURIComponent(id) + '/detail'); } catch (e) { $('detail-inhalt').textContent = '?'; return; }
-  detailKarte = k; detailVariante = 'normal';
+  detailKarte = k; detailVariante = 'normal'; detailSprache = k.region === 'jp' ? 'jp' : KLANG;
   const fmt = (v) => v == null ? '?' : v.toFixed(2).replace('.', LANG === 'de' ? ',' : '.') + ' €';
   const preis = k.preis || {};
   const verlauf = (k.verlauf || []).filter((v) => v.eur != null);
@@ -2665,8 +2695,9 @@ async function detailOeffnen(idOrIdx) {
   const cm = 'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
   $('detail-inhalt').innerHTML = `
     <div class="d-grid">
-      <div><img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}">
-        ${k.img_lang && k.img_lang !== 'de' && LANG === 'de' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
+      <div>${k.img ? `<img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}" onerror="this.outerHTML='<div class=d-kein-bild>${esc(nm(k))}<small>${t('kein_scan')}</small></div>'">`
+        : `<div class="d-kein-bild">${esc(nm(k))}<small>${t('kein_scan')}</small></div>`}
+        ${k.img && k.img_lang && k.img_lang !== 'de' && KLANG === 'de' && k.region !== 'jp' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
       <div>
         <h2>${esc(nm(k))}</h2>
         <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · 🇯🇵' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
@@ -2675,11 +2706,13 @@ async function detailOeffnen(idOrIdx) {
         <div class="d-preise">
           <div class="d-preis"><div class="z">${fmt(preis.eur)}</div><div class="l">${t('preis_trend')}</div></div>
           ${preis.eur_holo ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
-          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div></div>
+          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div></div>
         </div>
         ${spark}
         <div class="f-lbl">${t('variante')}</div>
         <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
+        <div class="f-lbl">${t('kartensprache')}</div>
+        <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSprache='${sp}';document.querySelectorAll('#detail-sprache .chip').forEach((c)=>c.classList.toggle('on',c.textContent===('${sp}'.toUpperCase())))">${sp.toUpperCase()}</button>`).join('')}</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
@@ -2690,8 +2723,11 @@ async function detailOeffnen(idOrIdx) {
     </div>`;
   if (preis.eur == null) {   // Preis nachladen, falls noch nie geholt
     try { const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [k.id] }) });
-      if (d.preise[k.id] != null && detailKarte && detailKarte.id === k.id) { detailKarte.preis = { eur: d.preise[k.id], eur_holo: d.holo[k.id] }; detailOeffnen(k.id); }
-    } catch (e) {}
+      if (detailKarte && detailKarte.id === k.id) {
+        if (d.preise[k.id] != null) { detailKarte.preis = { eur: d.preise[k.id], eur_holo: d.holo[k.id], stand: new Date().toISOString() }; detailOeffnen(k.id); }
+        else if ($('detail-preis-stand')) $('detail-preis-stand').textContent = t('kein_preis');
+      }
+    } catch (e) { if ($('detail-preis-stand')) $('detail-preis-stand').textContent = t('kein_preis'); }
   }
 }
 function zeichneDetailChips() {
@@ -2700,14 +2736,16 @@ function zeichneDetailChips() {
 function detailHinzufuegen() {
   if (!detailKarte || !S.binder) return;
   const zustand = ($('detail-zustand').value || '').trim();
-  kartAddId(detailKarte.id, detailVariante, zustand);
+  kartAddId(detailKarte.id, detailVariante, zustand, detailSprache);
   $('detail-anz').textContent = anzahlImBinder(detailKarte.id) + '× ' + t('im_binder');
 }
-async function kartAddId(id, variant, zustand) {
+async function kartAddId(id, variant, zustand, sprache) {
   if (!S.binder) return;
   merken('add');
   const item = { type: 'card', id, variant: variant || 'normal' };
   if (zustand) item.zustand = zustand;
+  const sp = sprache || (/^[A-Z]/.test(id) ? 'jp' : KLANG);
+  if (sp !== 'de') item.sprache = sp;
   S.binder.items.push(item);
   if (!await binderAnlegenWennNoetig()) { S.binder.items.pop(); return; }
   speichern(); zeichneBinder(); zeichneErgebnisse();
