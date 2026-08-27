@@ -965,11 +965,15 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, r
             params += [f'%"{k}"%' for k in kinds]
     sql_where = (" WHERE " + " AND ".join(where)) if where else ""
     order = SORTS.get(sort, SORTS["datum"])
+    if region == "jp" and sort == "datum" and richtung == "asc":
+        richtung = "desc"   # Japan: neueste zuerst – die 1996er-Sets haben kaum Scans
     if richtung == "desc":
         order = ", ".join(
             part.strip() + " DESC" if "IS NULL" not in part else part.strip()
             for part in order.split(",")
         )
+    # Karten ohne Bild immer ans Ende – ein Raster voller Text-Platzhalter wirkt kaputt
+    order = "(image_de IS NULL AND image_en IS NULL AND image_alt IS NULL), " + order
     return sql_where, params, order
 
 

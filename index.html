@@ -58,7 +58,6 @@ window.mpUtm=read;})();
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
           border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap; }
   .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
-  .kopf input.bindername { border: none; background: transparent; font-size: 15px; font-weight: 700; min-width: 80px; width: 210px; outline: none; }
   .menuwrap { position: relative; }
   .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
           box-shadow: 0 12px 30px rgba(58,50,39,.14); min-width: 250px; z-index: 30; padding: 6px; }
@@ -210,13 +209,7 @@ window.mpUtm=read;})();
     #app { height: 100dvh; }
     .kopf { flex-wrap: wrap; height: auto; padding: 8px 10px; gap: 7px; row-gap: 7px; }
     .kopf .logo { font-size: 15px; }
-    .kopf input.bindername { order: 5; flex: 1 1 130px; width: auto; min-width: 0; font-size: 14px; }
-    #wb-status { order: 6; }
-    .kopf > .menuwrap:nth-of-type(1), .kopf > .menuwrap:nth-of-type(2) { order: 7; }
     .kopf .btn { padding: 8px 12px; font-size: 12.5px; }
-    /* Planer- und Druck-Knopf wandern in die untere Leiste */
-    .kopf [onclick="planerOeffnen()"] { display: none; }
-    .kopf > .menuwrap:last-of-type { display: none; }
 
     .rumpf { flex-direction: column; padding-bottom: 62px; }
     .spalte-mitte { padding: 10px 10px 0; width: 100%; }
@@ -246,7 +239,7 @@ window.mpUtm=read;})();
     .mnav button.on { color: var(--akzent); background: var(--hover); }
     .mnav .mzahl { position: absolute; margin-left: 34px; margin-top: -4px; background: var(--akzent); color: #fff;
       font-size: 9.5px; min-width: 16px; border-radius: 999px; padding: 1px 4px; }
-    #mobil-export { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
+    #mobil-mehr { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
 
     .planer-kopf { gap: 6px; padding: 8px 10px; }
     .planer-kopf .btn { font-size: 11.5px !important; padding: 7px 10px; }
@@ -256,6 +249,61 @@ window.mpUtm=read;})();
     .modal { padding: 16px; }
     .tarife { flex-direction: column; }
   }
+  /* ---------- 2026-08-27 (2): Binder-Wechsler, Segment, Planer-Tab, Fach-Menü, Panel ---------- */
+  .menu.links { right: auto; left: 0; }
+  .menu-lbl { padding: 6px 12px 2px; font-size: 11px; color: var(--mut); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .menu button.gefahr { color: var(--akzent); }
+  .bw-btn { max-width: 320px; gap: 6px; }
+  .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bw-caret { color: var(--mut); font-size: 11px; }
+  #menu-bw { min-width: 320px; }
+  .bw-edit { display: flex; align-items: center; gap: 6px; padding: 6px 12px 4px; }
+  .bw-edit .stift { color: var(--mut); }
+  .bw-edit input.bindername { flex: 1; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--eingabe); font-size: 14px; }
+  .bw-edit #wb-status { font-size: 11px; color: var(--mut); white-space: nowrap; }
+  .bw-liste { max-height: 260px; overflow-y: auto; }
+  .bw-liste button.aktiv { background: var(--hover); }
+  .bw-liste .bwl-meta { font-weight: 500; font-size: 11px; color: var(--mut); }
+  .bw-liste .bwl-del { margin-left: auto; color: var(--mut); padding: 2px 6px; border-radius: 6px; }
+  .bw-liste .bwl-del:hover { color: var(--akzent); background: var(--panel2); }
+  .segment { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .segment button { padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--mut); }
+  .segment button.on { background: var(--ink); color: #fff; }
+  #menu-konto { min-width: 280px; }
+  #menu-konto .konto-mail { padding: 9px 12px; font-size: 12px; color: var(--mut); word-break: break-all; }
+  /* Binder-Panel: Kopf mit Stats und Werkzeugen */
+  .bp-kopf { display: flex; flex-direction: column; gap: 8px; }
+  .bp-stats { font-size: 12.5px; color: var(--mut); font-weight: 600; }
+  .bp-tools { display: flex; align-items: center; gap: 12px; }
+  .bp-tools .menuwrap { margin-left: auto; }
+  .bp-hilfe { font-size: 11px; color: var(--mut); line-height: 1.5; margin-top: auto; }
+  .slot.frei { cursor: pointer; }
+  .slot.frei:hover { border-color: var(--akzent); color: var(--akzent); }
+  .slot .mehr { position: absolute; bottom: 2px; right: 2px; width: 22px; height: 17px; border-radius: 999px; background: rgba(58,50,39,.75); color: #fff; font-size: 12px; line-height: 15px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
+  .slot:hover .mehr { opacity: 1; }
+  .slot .preis { bottom: 21px; }
+  .slot.leer-item .mehr { opacity: .6; }
+  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: 13px; line-height: 23px; } .slot .mehr { opacity: .85; width: 28px; height: 22px; line-height: 20px; } .slot .preis { bottom: 26px; } }
+  /* Planer als zweite Ansicht unter der Kopfzeile */
+  #planer { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg); z-index: 40; display: flex; flex-direction: column; }
+  .planer-kopf { justify-content: flex-start; }
+  .ps-titel .ps-akt { display: inline-flex; gap: 2px; }
+  .ps-titel .ps-akt button { font-size: 12px; color: var(--mut); padding: 1px 5px; border-radius: 6px; }
+  .ps-titel .ps-akt button:hover { background: var(--panel2); color: var(--ink); }
+  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; z-index: 45; max-width: 96vw; flex-wrap: wrap; justify-content: center; }
+  .planer-bar .btn { font-size: 12.5px; padding: 6px 12px; }
+  .erg-leer { grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--mut); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .up-tab { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  .up-tab th, .up-tab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
+  .up-tab td:first-child, .up-tab th:first-child { text-align: left; }
+  .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent); font-weight: 700; }
+  body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap { display: none !important; }
+  body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: 13px; }
+  body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
+  .st-leer { margin-top: 10px; }
+  .mnav .menu button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: 13.5px; padding: 10px 14px; }
+  body.nur-ansicht .bp-tools label:nth-of-type(2) { display: none !important; }
+  .st-leer .onb-tpl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   /* ---------- 2026-08-27: Kopfzeile, Filter, Onboarding, Detail, Varianten, Undo ---------- */
   .mobil-only { display: none !important; }
   .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }
@@ -314,12 +362,14 @@ window.mpUtm=read;})();
   @media (max-width: 900px) {
     .mobil-only { display: inline-flex !important; }
     .desktop-only { display: none !important; }
-    .kopf { flex-wrap: nowrap; height: 54px; overflow: hidden; }
+    .kopf { flex-wrap: nowrap; height: 54px; overflow: visible; }
     .kopf .logo-text { display: none; }
-    .kopf .namefeld { flex: 1; min-width: 0; }
-    .kopf input.bindername { order: 0; width: 100%; }
-    #wb-status { display: none; }
-    .kopf > .menuwrap:nth-of-type(1), .kopf > .menuwrap:nth-of-type(2) { order: 0; }
+    .kopf .bw { flex: 1; min-width: 0; }
+    .bw-btn { max-width: 100%; width: 100%; justify-content: space-between; }
+    #menu-bw { min-width: 0; left: 0; right: 0; width: min(92vw, 360px); }
+    #planer { top: 54px; padding-bottom: 62px; }
+    .planer-bar { bottom: 72px; border-radius: 16px; }
+    .bp-tools { flex-wrap: wrap; }
     .detail .d-grid { grid-template-columns: 1fr; }
     .detail .d-bild { max-width: 240px; margin: 0 auto; }
     .onb-tpl { grid-template-columns: 1fr 1fr; }
@@ -331,64 +381,62 @@ window.mpUtm=read;})();
 <div id="app">
   <div id="sync-banner" class="sync-banner hidden"></div>
   <div class="kopf">
-    <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Übersicht">
+    <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Binderplan">
       <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       <span class="logo-text">Binderplan</span>
     </div>
-    <div class="menuwrap desktop-only">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="menuToggle('menu-neu')" data-i18n="neu">+ Neu</button>
-      <div class="menu hidden" id="menu-neu">
+    <!-- Binder-Wechsler: aktueller Binder, Name ändern, meine Binder, neu anlegen -->
+    <div class="menuwrap bw">
+      <button class="btn sekundaer bw-btn" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen"><span class="bw-name" id="bw-name">Mein Binder</span><span class="bw-caret">▾</span></button>
+      <div class="menu links hidden" id="menu-bw">
+        <div class="bw-edit"><span class="stift" aria-hidden="true">✎</span><input class="bindername" id="wb-name" placeholder="Name des Binders" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
+        <div class="trenn"></div>
+        <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
+        <div class="bw-liste" id="bw-liste"></div>
+        <div class="trenn"></div>
+        <div class="menu-lbl" data-i18n="neu_lbl">Neu anlegen</div>
         <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
         <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
         <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
         <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
-        <div class="trenn"></div>
         <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
       </div>
     </div>
-    <div class="menuwrap">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="meineOeffnen()" data-i18n="meine">Meine Binder</button>
-      <div class="menu hidden" id="menu-meine"></div>
+    <div class="segment desktop-only" role="tablist">
+      <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="m_suche">Suche</button>
+      <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
     </div>
-    <label class="namefeld" title="Name des Binders – zum Ändern anklicken">
-      <span class="stift" aria-hidden="true">✎</span>
-      <input class="bindername" id="wb-name" placeholder="Name des Binders">
-    </label>
-    <span id="wb-status" style="font-size:11.5px;color:var(--mut)"></span>
     <div style="flex:1"></div>
-    <label class="schalter desktop-only" title="Cardmarket-Trendpreise in Euro einblenden"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-    <div class="menuwrap">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen">⚙</button>
-      <div class="menu hidden" id="menu-einst" style="min-width:200px">
-        <div style="padding:6px 12px 2px;font-size:11px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.06em" data-i18n="pf_sprache">Sprache</div>
-        <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
-        <div style="padding:6px 12px 2px;font-size:11px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.06em" data-i18n="pf_design">Design</div>
-        <button id="theme-btn" onclick="themeWechsel()"></button>
-        <div class="trenn"></div>
-        <button class="mobil-only" onclick="preisToggleMobil()"><span data-i18n="preise">Preise</span> <span id="preis-mobil-stand"></span></button>
-        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
-      </div>
-    </div>
-    <button class="btn sekundaer desktop-only" style="font-size:13px;padding:7px 14px" onclick="planerOeffnen()" data-i18n="planer">Planer</button>
-    <div class="menuwrap">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
-      <div class="menu hidden" id="menu-konto"></div>
-    </div>
     <div class="menuwrap desktop-only">
       <button class="btn" style="font-size:13px" onclick="menuToggle('menu-export')">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
         <span data-i18n="pdf">Drucken</span>
       </button>
       <div class="menu hidden" id="menu-export">
-        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">PDF – alle Karten (S/W)</button>
-        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">PDF – nur fehlende Karten</button>
+        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
+        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
+        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
         <div class="trenn"></div>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste (seitenweise, ohne Bilder)</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
-        <div class="trenn"></div>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
       </div>
     </div>
+    <div class="menuwrap desktop-only">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen">⚙</button>
+      <div class="menu hidden" id="menu-einst" style="min-width:200px">
+        <div class="menu-lbl" data-i18n="pf_sprache">Sprache</div>
+        <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
+        <div class="menu-lbl" data-i18n="pf_design">Design</div>
+        <button id="theme-btn" onclick="themeWechsel()"></button>
+        <div class="trenn"></div>
+        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+      </div>
+    </div>
+    <div class="menuwrap">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
+      <div class="menu hidden" id="menu-konto"></div>
+    </div>
+    <a class="btn ansicht-cta hidden" href="/app" data-i18n="eigener_binder">Eigenen Binder planen</a>
   </div>
 
   <div class="rumpf">
@@ -455,27 +503,27 @@ window.mpUtm=read;})();
 
     <!-- Binder -->
     <div class="spalte-binder">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <div style="font-size:13.5px;font-weight:700" data-i18n="binder">Binder</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn sekundaer mobil-only" style="font-size:12px;padding:5px 10px" onclick="menuToggle('menu-neu-m')" data-i18n="neu">+ Neu</button>
-          <div class="menuwrap mobil-only">
-            <div class="menu hidden" id="menu-neu-m" style="right:auto;left:0">
-              <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
-              <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
-              <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
-              <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
-              <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
+      <div class="bp-kopf">
+        <div class="bp-stats" id="wb-fortschritt"></div>
+        <div class="bp-tools">
+          <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
+          <label class="schalter" title="Fach antippen = als „hab ich“ markieren"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammeln</span></label>
+          <div class="menuwrap">
+            <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen">⋯</button>
+            <div class="menu hidden" id="menu-binder" style="min-width:260px">
+              <div class="menu-lbl" data-i18n="raster">Raster</div>
+              <select class="feld" id="wb-layout" style="margin:2px 12px 8px;width:calc(100% - 24px)" onchange="layoutWechsel(this.value)"></select>
+              <div class="menu-lbl desktop-only" data-i18n="ansicht">Größe der Ansicht</div>
+              <div class="binder-groesse desktop-only" style="margin:2px 12px 8px"><span>–</span><input type="range" id="wb-groesse" min="324" max="680" step="20" oninput="binderBreite(this.value)"><span>+</span></div>
+              <div class="trenn"></div>
+              <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
+              <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
+              <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+              <div class="trenn"></div>
+              <button class="gefahr" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
             </div>
           </div>
-          <select class="feld" id="wb-layout" style="width:auto" onchange="layoutWechsel(this.value)"></select>
         </div>
-      </div>
-      <div class="binder-groesse desktop-only" title="Größe der Binder-Übersicht">
-        <span data-i18n="ansicht">Ansicht</span>
-        <span>–</span>
-        <input type="range" id="wb-groesse" min="324" max="680" step="20" oninput="binderBreite(this.value)">
-        <span>+</span>
       </div>
       <div id="wb-onb" class="onb hidden">
         <div class="onb-titel" data-i18n="onb_t">So geht’s</div>
@@ -492,23 +540,17 @@ window.mpUtm=read;})();
         </div>
       </div>
       <div class="slots" id="wb-slots"></div>
-      <div class="seiten-nav">
-        <button onclick="seiteWechsel(-1)" style="font-size:16px">‹</button>
+      <div class="seiten-nav" id="wb-nav">
+        <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
-        <button onclick="seiteWechsel(1)" style="font-size:16px">›</button>
+        <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
       </div>
-      <div style="font-size:12px;color:var(--mut);text-align:center" id="wb-fortschritt"></div>
       <div id="wb-sammel" class="hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--mut);margin-bottom:4px">
-          <label class="schalter" style="font-size:11.5px" title="Fächer anklicken = als „hab ich“ markieren"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammel-Modus</span></label>
-          <span><span data-i18n="gesammelt">Gesammelt</span> <strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></span>
-        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
       <div id="wb-preise" class="hidden preisbox"></div>
-      <div style="flex:1"></div>
-      <div style="font-size:11px;color:var(--mut);line-height:1.5" data-i18n="hilfe">Karten ziehen zum Umsortieren, ✕ entfernt. Gedruckt wird in 63 × 88 mm mit „Seite · Fach“-Beschriftung.</div>
-      <button class="btn sekundaer" style="font-size:12px;padding:7px 13px" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
+      <div class="bp-hilfe" data-i18n="hilfe2">Ziehen sortiert um, ⋯ am Fach für freie Plätze, ✕ entfernt.</div>
     </div>
   </div>
 
@@ -528,27 +570,32 @@ window.mpUtm=read;})();
       <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       <span data-i18n="m_binder">Binder</span>
     </button>
-    <button id="mnav-planer" onclick="planerOeffnen()">
+    <button id="mnav-planer" onclick="ansicht('planer')">
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1.5" y="2.5" width="5.5" height="11" rx="1"></rect><rect x="9" y="2.5" width="5.5" height="11" rx="1"></rect></svg>
       <span data-i18n="planer">Planer</span>
     </button>
     <div class="menuwrap" style="flex:1;display:flex">
-      <button style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);padding:5px 2px;border-radius:10px;min-height:44px" onclick="menuToggle('mobil-export')">
-        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
-        <span data-i18n="pdf">Drucken</span>
+      <button id="mnav-mehr" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);padding:5px 2px;border-radius:10px;min-height:44px" onclick="menuToggle('mobil-mehr')">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><circle cx="3" cy="8" r="1.6"></circle><circle cx="8" cy="8" r="1.6"></circle><circle cx="13" cy="8" r="1.6"></circle></svg>
+        <span data-i18n="mehr_nav">Mehr</span>
       </button>
-      <div class="menu hidden" id="mobil-export">
-        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">PDF – alle Karten (S/W)</button>
-        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">PDF – nur fehlende Karten</button>
-        <div class="trenn"></div>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste (seitenweise, ohne Bilder)</button>
+      <div class="menu hidden" id="mobil-mehr">
+        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
+        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
+        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
-        <div class="trenn"></div>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+        <div class="trenn"></div>
+        <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
+        <button onclick="themeWechsel()"><span data-i18n="pf_design">Design</span>: <span class="theme-stand"></span></button>
+        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Fach-Menü (⋯ an einem Fach) -->
+<div class="menu hidden" id="menu-slot" style="position:fixed;z-index:95"></div>
 
 <!-- Modal: Master Set -->
 <div class="overlay hidden" id="modal-master">
@@ -622,6 +669,19 @@ window.mpUtm=read;})();
   </div>
 </div>
 
+<!-- Modal: Anzeigename nach der Registrierung -->
+<div class="overlay hidden" id="modal-name">
+  <div class="modal" style="width:min(380px,94vw)">
+    <h2 data-i18n="name_t">Wie sollen wir dich nennen?</h2>
+    <div class="unter" data-i18n="name_u">Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.</div>
+    <input class="feld" id="name-neu" maxlength="40" placeholder="z. B. Marcel">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="spaeter">Später</button>
+      <button class="btn" onclick="nameNeuSpeichern()" data-i18n="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Kartendetail -->
 <div class="overlay hidden" id="modal-detail">
   <div class="modal detail" style="width:min(820px,96vw)">
@@ -644,6 +704,7 @@ window.mpUtm=read;})();
     <input class="feld" id="auth-email" type="email" autocomplete="off" readonly onfocus="this.removeAttribute('readonly')">
     <div class="feld-lbl" data-i18n="passwort">Passwort</div>
     <input class="feld" id="auth-pw" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
+    <div id="auth-pw-hint" class="hidden" style="font-size:11.5px;color:var(--mut);margin-top:5px" data-i18n="pw_hint">Mindestens 8 Zeichen.</div>
     <label class="schalter hidden" id="auth-agb" style="margin-top:12px;align-items:flex-start">
       <input type="checkbox" id="auth-agb-check" style="margin-top:2px">
       <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung.</span>
@@ -681,27 +742,37 @@ window.mpUtm=read;})();
         <div class="klein" data-i18n="up_life_k">einmal zahlen, für immer</div>
       </div>
     </div>
+    <table class="up-tab">
+      <tr><th></th><th data-i18n="tarif_frei">Kostenlos</th><th>Pro</th></tr>
+      <tr><td data-i18n="up_r1">Gespeicherte Binder</td><td>2</td><td>∞</td></tr>
+      <tr><td data-i18n="up_r2">Platzhalter-PDF</td><td data-i18n="up_r2f">1 / Monat</td><td>∞</td></tr>
+      <tr><td data-i18n="up_r3">Checkliste &amp; Preise ansehen</td><td>✓</td><td>✓</td></tr>
+      <tr><td data-i18n="up_r4">Preise sofort aktualisieren</td><td data-i18n="up_r4f">1× täglich</td><td>✓</td></tr>
+      <tr><td data-i18n="up_r5">Kaufliste als CSV</td><td>–</td><td>✓</td></tr>
+    </table>
     <div style="font-size:11px;color:var(--mut);margin-top:14px" data-i18n="up_recht">Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.</div>
   </div>
 </div>
 
-<!-- Planer -->
+<!-- Planer (zweite Ansicht neben der Suche; Kopfzeile bleibt) -->
 <div id="planer" class="hidden">
   <div class="planer-kopf">
-    <button class="btn sekundaer" style="font-size:13px" onclick="planerSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
-    <div style="font-size:14px;font-weight:700" id="planer-titel"></div>
-    <div style="flex:1"></div>
+    <button class="btn sekundaer mobil-only" style="font-size:13px" onclick="ansicht('suche')">‹ <span data-i18n="m_suche">Suche</span></button>
     <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
-    <span style="font-size:12.5px;color:var(--mut)"><span data-i18n="auswahl">Auswahl</span>: <strong id="planer-anzahl">0</strong></span>
-    <select class="feld pl-akt" id="planer-sortkey" style="width:auto"></select>
-    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlSortieren()" data-i18n="sortieren">Auswahl sortieren</button>
-    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
-    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
-    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
-    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlLeeren()" data-i18n="aufheben">Auswahl aufheben</button>
+    <div style="flex:1"></div>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
   </div>
   <div class="planer-rumpf" id="planer-rumpf"></div>
+  <div class="planer-bar hidden" id="planer-bar">
+    <strong id="planer-anzahl">0</strong> <span data-i18n="gewaehlt">gewählt</span>
+    <select class="feld" id="planer-sortkey" style="width:auto;padding:5px 8px"></select>
+    <button class="btn sekundaer pl-akt" onclick="auswahlSortieren()" data-i18n="sortieren">Sortieren</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlZuLeer()" data-i18n="zu_leer">Fächer freimachen</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlLeeren()" data-i18n="aufheben">Aufheben</button>
+  </div>
 </div>
 
 <!-- Übersichtsseite (angemeldete Nutzer) -->
@@ -797,7 +868,15 @@ const T = {
     preis_trend: 'Cardmarket-Trend', preis_holo: 'Holo-Trend', preis_laden: 'Preis wird geladen …', verlauf: 'Preisverlauf', tage: 'Tage', verlauf_bald: 'Preisverlauf entsteht ab jetzt täglich.',
     bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
-    ex_check: 'Checkliste (seitenweise, ohne Bilder)', neu: '+ Neu',
+    ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
+    neu_lbl: 'Neu anlegen', raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Ziehen sortiert um, ⋯ am Fach für freie Plätze, ✕ entfernt.',
+    mehr_nav: 'Mehr', gewaehlt: 'gewählt', zu_leer: 'Fächer freimachen', eigener_binder: 'Eigenen Binder planen',
+    name_t: 'Wie sollen wir dich nennen?', name_u: 'Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.', spaeter: 'Später',
+    pw_hint: 'Mindestens 8 Zeichen.', up_r1: 'Gespeicherte Binder', up_r2: 'Platzhalter-PDF', up_r2f: '1 / Monat', up_r3: 'Checkliste & Preise ansehen', up_r4: 'Preise sofort aktualisieren', up_r4f: '1× täglich', up_r5: 'Kaufliste als CSV',
+    s_details: 'Details', s_frei_davor: 'Leeres Fach davor', s_frei_danach: 'Leeres Fach danach', s_zu_leer: 'Fach freimachen (Karte raus)', s_entfernen: 'Fach entfernen',
+    s_seite_hoch: 'Seite nach vorn', s_seite_runter: 'Seite nach hinten', s_seite_weg: 'Seite entfernen', s_seite_fach: 'Leeres Fach anhängen', s_seite_wahl: 'Seite wählen',
+    erg_leer: 'Keine Karten gefunden.', ex_alle: 'Platzhalter-PDF – alle Karten', ex_fehlend: 'Platzhalter-PDF – nur fehlende', ex_check2: 'Checkliste',
+    verlauf_bald: 'Preisverlauf: ab morgen, täglich neu.', zustand_ph: 'Zustand, z. B. NM',
     neu_alt: '+ Neu / Vorlagen', m_leer: 'Leerer Binder', m_master: 'Master Set …', m_dex: 'Pokédex-Binder …',
     meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', pdf: 'Drucken',
     f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
@@ -834,7 +913,7 @@ const T = {
     agb_text: 'Ich akzeptiere die AGB und die Datenschutzerklärung.',
     agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
     konto: 'Konto', tarif_frei: 'Kostenlos', upgrade: 'Auf Pro upgraden', abo_verwalten: 'Abo verwalten',
-    ex_alle: 'PDF – alle Karten (S/W)', ex_fehlend: 'PDF – nur fehlende Karten',
+    ex_alle_alt: 'PDF – alle Karten (S/W)', ex_fehlend_alt: 'PDF – nur fehlende Karten',
     ex_check_alt: 'Checkliste ohne Bilder (zählt nicht als Export)', ex_kauf: 'Kaufliste als CSV (Pro)',
     ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
     gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
@@ -887,7 +966,15 @@ const T = {
     preis_trend: 'Cardmarket trend', preis_holo: 'Holo trend', preis_laden: 'loading price …', verlauf: 'Price history', tage: 'days', verlauf_bald: 'Price history builds up daily from now on.',
     bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
     pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
-    ex_check: 'Checklist (page by page, no images)', neu: '+ New',
+    ex_check: 'Checklist (no images)', neu: '+ New',
+    neu_lbl: 'Create new', raster: 'Grid', auffuellen: 'Fill page with empty slots', hilfe2: 'Drag to reorder, ⋯ on a slot for free slots, ✕ removes.',
+    mehr_nav: 'More', gewaehlt: 'selected', zu_leer: 'Free the slots', eigener_binder: 'Plan your own binder',
+    name_t: 'What should we call you?', name_u: 'Shown in the greeting – change it any time in your profile.', spaeter: 'Later',
+    pw_hint: 'At least 8 characters.', up_r1: 'Saved binders', up_r2: 'Placeholder PDF', up_r2f: '1 / month', up_r3: 'Checklist & prices', up_r4: 'Refresh prices instantly', up_r4f: 'once a day', up_r5: 'Buy list as CSV',
+    s_details: 'Details', s_frei_davor: 'Empty slot before', s_frei_danach: 'Empty slot after', s_zu_leer: 'Free the slot (remove card)', s_entfernen: 'Remove slot',
+    s_seite_hoch: 'Move page forward', s_seite_runter: 'Move page back', s_seite_weg: 'Remove page', s_seite_fach: 'Append empty slot', s_seite_wahl: 'Select page',
+    erg_leer: 'No cards found.', ex_alle: 'Placeholder PDF – all cards', ex_fehlend: 'Placeholder PDF – missing only', ex_check2: 'Checklist',
+    verlauf_bald: 'Price history: from tomorrow, updated daily.', zustand_ph: 'Condition, e.g. NM',
     neu_alt: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
     meine: 'My binders', preise: 'Prices', planer: 'Planner', pdf: 'Print',
     f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
@@ -924,7 +1011,7 @@ const T = {
     agb_text: 'I accept the terms of service and the privacy policy.',
     agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
     konto: 'Account', tarif_frei: 'Free', upgrade: 'Upgrade to Pro', abo_verwalten: 'Manage subscription',
-    ex_alle: 'PDF – all cards (B/W)', ex_fehlend: 'PDF – missing cards only',
+    ex_alle_alt: 'PDF – all cards (B/W)', ex_fehlend_alt: 'PDF – missing cards only',
     ex_check_alt: 'Checklist without images (does not count as export)', ex_kauf: 'Buy list as CSV (Pro)',
     ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
     gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
@@ -1038,6 +1125,7 @@ function mobilFilter(an) {
   $('mnav-filter').classList.toggle('on', offen);
 }
 function mobilAnsicht(w) {
+  if (!$('planer').classList.contains('hidden')) planerSchliessen();
   document.body.classList.toggle('binder-an', w === 'binder');
   $('mnav-suche').classList.toggle('on', w !== 'binder');
   $('mnav-binder').classList.toggle('on', w === 'binder');
@@ -1056,6 +1144,7 @@ function themeAnwenden() {
   const lbl = { auto: 'Auto', hell: LANG === 'en' ? 'Light' : 'Hell', dunkel: LANG === 'en' ? 'Dark' : 'Dunkel' };
   const btn = $('theme-btn');
   if (btn) btn.textContent = '◐ ' + lbl[THEME];
+  document.querySelectorAll('.theme-stand').forEach((el) => { el.textContent = lbl[THEME]; });
   const btn2 = $('pf-theme-btn');
   if (btn2) btn2.textContent = '◐ ' + lbl[THEME];
 }
@@ -1077,6 +1166,7 @@ function setLang(lang) {
   zeichneErgebnisse();
   zeichneBinder();
   baueDexNamen();
+  document.querySelectorAll('.lang-stand').forEach((el) => { el.textContent = lang.toUpperCase(); });
 }
 
 // ---------- Start ----------
@@ -1148,7 +1238,9 @@ async function boot() {
 function ansichtAktivieren() {
   document.querySelector('.spalte-filter').classList.add('hidden');
   document.querySelector('.spalte-mitte').classList.add('hidden');
-  document.querySelectorAll('[onclick="planerOeffnen()"], [onclick="binderLeeren()"], #wb-sammel, .mobil-only').forEach((el) => el.classList.add('hidden'));
+  document.body.classList.add('nur-ansicht');
+  document.querySelectorAll('#wb-sammel, .mobil-only').forEach((el) => el.classList.add('hidden'));
+  $('bw-name').textContent = S.binder.name;
   // Mobil: direkt die Binder-Ansicht zeigen, Such-/Filter-Knöpfe ausblenden
   document.body.classList.add('binder-an');
   ['mnav-filter', 'mnav-suche', 'mnav-binder'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
@@ -1160,7 +1252,6 @@ function ansichtAktivieren() {
   document.querySelector('.kopf').after(banner);
   $('wb-name').value = S.binder.name;
   $('wb-name').readOnly = true;
-  $('wb-layout').disabled = true;
   S.seite = 0;
   zeichneLayouts();
   zeichneBinder();
@@ -1195,8 +1286,8 @@ function kontoMenue() {
   const planLbl = u.plan === 'free' ? t('tarif_frei') : (u.plan === 'lifetime' ? 'Lifetime ★' : 'Pro ★');
   const exporte = u.exporte_limit == null ? '∞' : `${Math.max(0, u.exporte_limit - u.exporte_benutzt)}/${u.exporte_limit}`;
   $('menu-konto').innerHTML = `
-    <div style="padding:9px 12px;font-size:12px;color:var(--mut)">${u.email}<br>
-      <strong style="color:var(--ink)">${planLbl}</strong> · ${exporte} ${t('exporte_uebrig')}</div>
+    <div class="konto-mail"><strong style="color:var(--ink)">${esc(anzeigeName())}</strong><br>${esc(u.email)}<br>
+      ${planLbl} · ${exporte} ${t('exporte_uebrig')}</div>
     <div class="trenn"></div>
     <button onclick="startOeffnen()">${t('start')}</button>
     <button onclick="profilOeffnen()">${t('profil')}</button>
@@ -1224,6 +1315,7 @@ function authTab(modus) {
   $('auth-email').classList.toggle('hidden', reset);
   $('auth-email-lbl').classList.toggle('hidden', reset);
   $('auth-agb').classList.toggle('hidden', modus !== 'reg');
+  $('auth-pw-hint').classList.toggle('hidden', modus === 'login');
   $('auth-vergessen').classList.toggle('hidden', modus !== 'login');
   $('auth-titel').textContent = reset ? t('pw_neu_t') : t('anmelden_t');
   $('auth-senden').textContent = reset ? t('pw_neu_senden') : (modus === 'reg' ? t('registrieren') : t('anmelden'));
@@ -1270,6 +1362,7 @@ async function authAbsenden() {
     setToken(d.token);
     S.user = d.user;
     if (authModus === 'reg' && window.mpTrack) { try { mpTrack('signup', String(d.user.email).slice(0, 3) + '…'); } catch (e) {} }
+    const nameFragen = authModus === 'reg';
     // Anonyme Binder dem Konto zuordnen
     const ids = binderIds();
     if (ids.length) {
@@ -1282,9 +1375,16 @@ async function authAbsenden() {
     modalSchliessen();
     kontoAnzeigen();
     toast(t('willkommen') + ' ' + d.user.email);
+    if (nameFragen) { $('modal-name').classList.remove('hidden'); setTimeout(() => $('name-neu').focus(), 50); }
   } catch (e) {
     $('auth-fehler').textContent = e.message;
   }
+}
+async function nameNeuSpeichern() {
+  const name = $('name-neu').value.trim();
+  modalSchliessen();
+  if (!name) return;
+  try { const d = await api('api/auth/profil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); S.user = d.user; kontoAnzeigen(); } catch (e) {}
 }
 async function abmelden() {
   try { await api('api/auth/logout', { method: 'POST' }); } catch (e) {}
@@ -1351,7 +1451,17 @@ async function startLaden() {
       ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
       <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
-  }).join('') + `
+  }).join('') + (liste.length ? '' : `
+    <div class="onb st-leer" style="grid-column:1/-1">
+      <div class="onb-titel">${t('onb_t')}</div>
+      <div class="onb-tpl">
+        <button onclick="startNeu('master')"><strong>${t('tpl_master')}</strong><span>${t('tpl_master_u')}</span></button>
+        <button onclick="startNeu('dex')"><strong>${t('tpl_dex')}</strong><span>${t('tpl_dex_u')}</span></button>
+        <button onclick="startNeu('poke')"><strong>${t('tpl_poke')}</strong><span>${t('tpl_poke_u')}</span></button>
+        <button onclick="startNeu('import')"><strong>${t('tpl_import')}</strong><span>${t('tpl_import_u')}</span></button>
+        <button onclick="startNeu('leer')"><strong>${t('m_leer')}</strong><span>${t('onb_1')}</span></button>
+      </div>
+    </div>`) + `
     <div class="bcard neu menuwrap" onclick="menuToggle('menu-st-neu')">
       <div style="font-size:26px">+</div><div style="font-weight:700">${t('st_neu')}</div>
       <div class="menu hidden" id="menu-st-neu" style="top:auto;bottom:12px;left:12px;right:12px">
@@ -1377,7 +1487,8 @@ async function startNeu(art) {
   if (art === 'leer') { $('startseite').classList.add('hidden'); await neuLeer(); return; }
   $('startseite').classList.add('hidden');
   if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
-  modalOeffnen(art === 'master' ? 'modal-master' : 'modal-dex');
+  if (art === 'import') return importOeffnen();
+  modalOeffnen(art === 'master' ? 'modal-master' : art === 'poke' ? 'modal-poke' : 'modal-dex');
 }
 
 // ---------- Profilseite ----------
@@ -1447,6 +1558,7 @@ function syncBanner() {
 function binderAnzeigen() {
   if (S.binder.id) location.hash = 'binder/' + S.binder.id;
   $('wb-name').value = S.binder.name;
+  $('bw-name').textContent = S.binder.name || t('neuer_binder');
   S.seite = 0; S.preise = {};
   zeichneLayouts();
   zeichneBinder();
@@ -1499,6 +1611,7 @@ async function neuLeer(still) {
   // Leerer Binder = nur lokal; die DB-Zeile entsteht mit der ersten Karte (keine leeren Gast-Binder mehr)
   S.binder = lokalerBinder();
   binderAnzeigen(); zeichneErgebnisse();
+  if (!$('planer').classList.contains('hidden')) planerSchliessen();
   if (!still) { modalSchliessen(); toast(t('angelegt')); }
 }
 
@@ -1574,19 +1687,21 @@ function merkeBinderId(id) {
   const ids = binderIds().filter((x) => x !== id); ids.unshift(id);
   localStorage.setItem('bp_binder', JSON.stringify(ids.slice(0, 50)));
 }
-async function meineOeffnen() {
-  menuToggle('menu-meine');
-  const box = $('menu-meine');
-  if (box.classList.contains('hidden')) return;
+async function wechslerOeffnen() {
+  menuToggle('menu-bw');
+  const box = $('bw-liste');
+  if ($('menu-bw').classList.contains('hidden')) return;
+  box.innerHTML = `<div style="padding:6px 12px;font-size:12px;color:var(--mut)">…</div>`;
   try {
     const d = await api('api/binders?ids=' + binderIds().join(','));
     box.innerHTML = d.binder.map((b) => `
-      <button onclick="binderOeffnen('${b.id}')" style="justify-content:space-between">
-        <span>${b.name}<br><span style="font-weight:500;font-size:11px;color:var(--mut)">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gesammelt ? ` · <span style=\"color:var(--gruen)\">${b.gesammelt} ✓</span>` : ''}</span></span>
-        <span onclick="event.stopPropagation();binderLoeschen('${b.id}')" style="color:var(--mut)">🗑</span>
-      </button>`).join('') || '<button>–</button>';
+      <button class="${S.binder && S.binder.id === b.id ? 'aktiv' : ''}" onclick="binderOeffnen('${b.id}')">
+        <span style="min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span><span class="bwl-meta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gesammelt ? ` · <span style=\"color:var(--gruen)\">${b.gesammelt} ✓</span>` : ''}</span></span>
+        <span class="bwl-del" onclick="event.stopPropagation();binderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}">✕</span>
+      </button>`).join('') || `<div style="padding:6px 12px;font-size:12px;color:var(--mut)">–</div>`;
   } catch (e) { box.innerHTML = ''; }
 }
+async function meineOeffnen() { wechslerOeffnen(); }
 async function binderOeffnen(id) {
   try { S.binder = await api('api/binders/' + id); binderAnzeigen(); zeichneErgebnisse(); } catch (e) { toast('?'); }
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -1596,7 +1711,8 @@ async function binderLoeschen(id) {
   try { await api('api/binders/' + id, { method: 'DELETE' }); } catch (e) {}
   localStorage.setItem('bp_binder', JSON.stringify(binderIds().filter((x) => x !== id)));
   if (S.binder && S.binder.id === id) { S.binder = null; await neuLeer(true); }
-  meineOeffnen(); meineOeffnen();
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  wechslerOeffnen();
 }
 
 // ---------- Filterleiste ----------
@@ -1702,6 +1818,10 @@ function zeichneErgebnisse() {
   $('btn-mehr').classList.toggle('hidden', S.offset >= S.gesamt);
   $('btn-alle').disabled = S.gesamt === 0 || S.gesamt > 2000;
   $('btn-alle').title = S.gesamt > 2000 ? t('zu_viele') : '';
+  if (S.gesamt === 0) {
+    $('ergebnisse').innerHTML = `<div class="erg-leer"><strong>${t('erg_leer')}</strong><button class="btn sekundaer" onclick="filterReset()">${t('f_reset')}</button></div>`;
+    return;
+  }
   $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
     const n = anzahlImBinder(k.id);
     const enb = LANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
@@ -1789,7 +1909,8 @@ function slotExtras(item, idx) {
     if (item && VMARK[item.variant]) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
     return html;
   }
-  let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})">✕</button>`;
+  let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})" title="${t('s_entfernen')}">✕</button>
+    <button class="mehr" onclick="event.stopPropagation();slotMenue(event,${idx})" title="${t('s_frei_davor')} / ${t('s_details')}">⋯</button>`;
   if (item && item.type !== 'empty') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
@@ -1819,7 +1940,7 @@ function zeichneBinder() {
   $('wb-seite').textContent = S.seite + 1;
   $('wb-seiten').textContent = seiten;
   const druck = S.binder.items.filter((x) => x.type !== 'empty').length;
-  $('wb-fortschritt').textContent = `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')} · ${Math.ceil(druck / 9)} ${t('blaetter')}`;
+  $('wb-fortschritt').textContent = S.binder.items.length ? `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')} · ${Math.ceil(druck / 9)} ${t('blaetter')}` : t('binder_leer');
   const zahl = $('mnav-binder-zahl');
   if (zahl) zahl.textContent = S.binder.items.length;
   const box = $('wb-slots');
@@ -1828,18 +1949,21 @@ function zeichneBinder() {
   for (let s = 0; s < pp; s++) {
     const idx = S.seite * pp + s;
     const item = S.binder.items[idx];
-    if (!item) { html += '<div class="slot">+</div>'; continue; }
+    if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
     html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
       ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
-  // Leerer Binder: Einstieg erklären und die Vorlagen zeigen
-  $('wb-onb').classList.toggle('hidden', S.nurAnsicht || S.binder.items.length > 0);
+  // Leerer Binder: Einstieg erklären und die Vorlagen zeigen – das Raster erst ab der ersten Karte
+  const leer = !S.nurAnsicht && S.binder.items.length === 0;
+  $('wb-onb').classList.toggle('hidden', !leer);
+  $('wb-slots').classList.toggle('hidden', leer);
+  $('wb-nav').classList.toggle('hidden', leer);
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty').length;
   const gesammelt = S.binder.items.filter((i) => i.have).length;
-  $('wb-sammel').classList.toggle('hidden', sammelbar === 0);
+  $('wb-sammel').classList.toggle('hidden', sammelbar === 0 || !document.body.classList.contains('sammeln'));
   if (sammelbar) {
     $('wb-sammel-zahl').textContent = `${gesammelt} / ${sammelbar}`;
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
@@ -1869,8 +1993,17 @@ function dragDrop(ev) {
   ev.preventDefault(); ev.currentTarget.classList.remove('dragover');
   const ziel = Number(ev.currentTarget.dataset.idx);
   if (dragIdx === null || ziel === dragIdx || Number.isNaN(ziel)) return;
-  const [item] = S.binder.items.splice(dragIdx, 1);
-  S.binder.items.splice(ziel, 0, item);
+  merken('drag');
+  const zielItem = S.binder.items[ziel];
+  if (!zielItem || zielItem.type === 'empty') {
+    // freier Platz oder leeres Fach: Karte dorthin, am Ursprung bleibt eine Lücke (die Seiten verrutschen nicht)
+    while (S.binder.items.length <= ziel) S.binder.items.push({ type: 'empty' });
+    S.binder.items[ziel] = S.binder.items[dragIdx];
+    S.binder.items[dragIdx] = { type: 'empty' };
+  } else {
+    const [item] = S.binder.items.splice(dragIdx, 1);
+    S.binder.items.splice(ziel, 0, item);
+  }
   dragIdx = null; S.auswahl.clear();
   speichern(); zeichneBinder();
   if (!$('planer').classList.contains('hidden')) zeichnePlaner();
@@ -1916,34 +2049,49 @@ function zeichnePreisSumme() {
 }
 
 // ---------- Planer ----------
+function ansicht(w) {
+  if (w === 'planer') planerOeffnen(); else planerSchliessen();
+}
 function planerOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
-  $('planer-titel').textContent = S.binder.name;
+  $('seg-planer').classList.add('on'); $('seg-suche').classList.remove('on');
+  $('mnav-planer').classList.add('on'); $('mnav-suche').classList.remove('on'); $('mnav-binder').classList.remove('on');
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
   zeichnePlaner();
 }
-function planerSchliessen() { $('planer').classList.add('hidden'); zeichneBinder(); }
+function planerSchliessen() {
+  $('planer').classList.add('hidden');
+  $('seg-planer').classList.remove('on'); $('seg-suche').classList.add('on');
+  $('mnav-planer').classList.remove('on'); if (!document.body.classList.contains('binder-an')) $('mnav-suche').classList.add('on'); else $('mnav-binder').classList.add('on');
+  zeichneBinder();
+}
 
 function zeichnePlaner() {
   const pp = proSeite();
   const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
-  $('planer-anzahl').textContent = S.auswahl.size;
   let html = '';
   for (let seite = 0; seite < seiten; seite++) {
     let slots = '';
     for (let s = 0; s < pp; s++) {
       const idx = seite * pp + s;
       const item = S.binder.items[idx];
-      if (!item) { slots += '<div class="slot">+</div>'; continue; }
+      if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
       slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
         draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
         ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
         ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
     }
     html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
-      <span style="cursor:pointer" onclick="seiteWaehlen(${seite})" title="${t('auswahl')}">☑</span></div>
+      <span class="ps-akt">
+        <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">☑</button>
+        <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
+        <button onclick="seiteVerschieben(${seite},1)" title="${t('s_seite_runter')}" ${seite === seiten - 1 ? 'disabled' : ''}>↓</button>
+        <button onclick="seiteLeeresFach(${seite})" title="${t('s_seite_fach')}">＋</button>
+        <button onclick="seiteEntfernen(${seite})" title="${t('s_seite_weg')}">✕</button>
+      </span></div>
       <div class="slots" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${slots}</div></div>`;
   }
   $('planer-rumpf').innerHTML = html;
@@ -1991,9 +2139,11 @@ function auswahlEntfernen() {
   toastUndo(n + ' ' + t('entfernen'));
 }
 function leereSeite() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   const pp = proSeite();
+  merken('seite');
   for (let i = 0; i < pp; i++) S.binder.items.push({ type: 'empty' });
-  speichern(); zeichnePlaner();
+  speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
 }
 
 async function auswahlSortieren() {
@@ -2128,7 +2278,7 @@ $('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').v
 $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; mehrFilterZahl(); sucheNeu(); });
 $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; mehrFilterZahl(); sucheNeu(); });
 $('poke-name').addEventListener('focus', ladePokedex);
-$('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; speichern(); } });
+$('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; $('bw-name').textContent = S.binder.name || t('neuer_binder'); speichern(); } });
 
 
 // ============================================================================
@@ -2179,6 +2329,83 @@ function sammelnToggle() {
   document.body.classList.toggle('sammeln', $('sammel-toggle').checked);
   zeichneBinder();
 }
+
+// ---------- Fächer frei anordnen ----------
+function freiesFach(idx) {
+  // Klick auf einen unbelegten Platz: bis dorthin mit leeren Fächern auffüllen (freier Platz im Raster)
+  if (!S.binder || S.nurAnsicht) return;
+  merken('frei');
+  while (S.binder.items.length <= idx) S.binder.items.push({ type: 'empty' });
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
+function slotMenue(ev, idx) {
+  const item = S.binder.items[idx]; if (!item) return;
+  const m = $('menu-slot');
+  const r = ev.currentTarget.getBoundingClientRect();
+  m.innerHTML = `
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><div class="trenn"></div>` : ''}
+    <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
+    <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
+    ${item.type !== 'empty' ? `<button onclick="slotMenueZu();fachFreimachen(${idx})">${t('s_zu_leer')}</button>` : ''}
+    <div class="trenn"></div>
+    <button class="gefahr" onclick="slotMenueZu();slotEntfernen(${idx})">${t('s_entfernen')}</button>`;
+  m.classList.remove('hidden');
+  const w = 240; m.style.minWidth = w + 'px';
+  m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left - w / 2 + r.width / 2)) + 'px';
+  m.style.top = Math.min(window.innerHeight - 220, r.bottom + 6) + 'px';
+  ev.stopPropagation();
+}
+function slotMenueZu() { $('menu-slot').classList.add('hidden'); }
+document.addEventListener('click', (ev) => { if (!ev.target.closest('#menu-slot') && !ev.target.closest('.slot .mehr')) slotMenueZu(); });
+function fachEinfuegen(idx) {
+  merken('fach');
+  S.binder.items.splice(idx, 0, { type: 'empty' });
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('s_frei_davor'));
+}
+function fachFreimachen(idx) {
+  merken('frei');
+  S.binder.items[idx] = { type: 'empty' };
+  speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('s_zu_leer'));
+}
+function seiteAuffuellen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  const pp = proSeite(); const rest = S.binder.items.length % pp;
+  if (!rest) return toast(t('gespeichert'));
+  merken('auffuellen');
+  for (let i = 0; i < pp - rest; i++) S.binder.items.push({ type: 'empty' });
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+}
+function seiteVerschieben(seite, d) {
+  const pp = proSeite(); const a = seite * pp, b = (seite + d) * pp;
+  if (b < 0 || b >= S.binder.items.length) return;
+  merken('seite');
+  while (S.binder.items.length % pp) S.binder.items.push({ type: 'empty' });   // volle Seiten, damit nichts verrutscht
+  const items = S.binder.items;
+  const block = items.splice(a, pp); items.splice(b, 0, ...block);
+  S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneBinder();
+}
+function seiteEntfernen(seite) {
+  const pp = proSeite();
+  merken('seite');
+  S.binder.items.splice(seite * pp, pp);
+  S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneBinder(); zeichneErgebnisse();
+  toastUndo(t('s_seite_weg'));
+}
+function seiteLeeresFach(seite) {
+  const pp = proSeite(); const ende = Math.min((seite + 1) * pp, S.binder.items.length);
+  merken('fach');
+  S.binder.items.splice(ende, 0, { type: 'empty' });
+  speichern(); zeichnePlaner(); zeichneBinder();
+}
+function auswahlZuLeer() {
+  if (!S.auswahl.size) return;
+  merken('auswahl');
+  for (const i of S.auswahl) if (S.binder.items[i]) S.binder.items[i] = { type: 'empty' };
+  S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneErgebnisse();
+  toastUndo(t('zu_leer'));
+}
 function slotKlick(idx) {
   if (document.body.classList.contains('sammeln')) hatToggle(idx);
 }
@@ -2226,7 +2453,7 @@ async function detailOeffnen(idOrIdx) {
   const cm = 'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
   $('detail-inhalt').innerHTML = `
     <div class="d-grid">
-      <div><img class="d-bild" src="${imgUrl(k.id, '&variante=high')}" alt="" onerror="this.src='${imgUrl(k.id)}'">
+      <div><img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}">
         ${k.img_lang && k.img_lang !== 'de' && LANG === 'de' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
       <div>
         <h2>${esc(nm(k))}</h2>
@@ -2240,7 +2467,7 @@ async function detailOeffnen(idOrIdx) {
         <div class="f-lbl">${t('variante')}</div>
         <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input class="feld" id="detail-zustand" style="width:150px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
+          <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
           <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
         </div>
@@ -2331,15 +2558,13 @@ async function nameSpeichern() {
 function anzeigeName() { return S.user ? (S.user.name || S.user.email.split('@')[0]) : ''; }
 
 // ---------- Mobil: Preise über das ⚙-Menü ----------
-function preisToggleMobil() {
-  const cb = $('preis-toggle'); cb.checked = !cb.checked; preiseUmschalten();
-  $('preis-mobil-stand').textContent = cb.checked ? '✓' : '';
-}
+
 
 // ---------- Planer: Aktionen nur mit Auswahl ----------
 function planerAktionen() {
   const n = S.auswahl.size;
-  document.querySelectorAll('.pl-akt').forEach((el) => { el.disabled = n === 0; });
+  $('planer-bar').classList.toggle('hidden', n === 0);
+  $('planer-anzahl').textContent = n;
   $('planer-hinweis').textContent = n ? '' : t('planer_hinweis');
 }
 
