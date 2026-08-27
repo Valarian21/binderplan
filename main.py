@@ -68,8 +68,10 @@ AEREN = [
      "von": "1999", "bis": "2003", "start": "0000-00-00"},
     {"id": "ex", "name": "EX (Rubin & Saphir)", "name_en": "EX (Ruby & Sapphire)",
      "von": "2003", "bis": "2007", "start": "2003-06-15"},
-    {"id": "dp", "name": "Diamant & Perl / Platin", "name_en": "Diamond & Pearl / Platinum",
-     "von": "2007", "bis": "2010", "start": "2007-05-01"},
+    {"id": "dp", "name": "Diamant & Perl", "name_en": "Diamond & Pearl",
+     "von": "2007", "bis": "2009", "start": "2007-05-01"},
+    {"id": "pl", "name": "Platin", "name_en": "Platinum",
+     "von": "2009", "bis": "2010", "start": "2009-02-11"},
     {"id": "hgss", "name": "HeartGold & SoulSilver", "name_en": "HeartGold & SoulSilver",
      "von": "2010", "bis": "2011", "start": "2010-02-10"},
     {"id": "bw", "name": "Schwarz & Weiß", "name_en": "Black & White",
@@ -84,17 +86,17 @@ AEREN = [
      "von": "2023", "bis": "2025", "start": "2023-03-01"},
     {"id": "me", "name": "Mega-Entwicklung", "name_en": "Mega Evolution",
      "von": "2025", "bis": "", "start": "2025-09-01"},
-    {"id": "tcgp", "name": "TCG Pocket (digital)", "name_en": "TCG Pocket (digital)",
-     "von": "2024", "bis": "", "start": None},  # nie per Datum, nur per Serie
 ]
+# TCG Pocket (Handy-App, nur digital) wird bewusst NICHT geführt – es gibt keine physischen Karten.
+POCKET_SERIEN = {"tcgp"}
 AERA_ORDNUNG = {a["id"]: i for i, a in enumerate(AEREN)}
 # Feste Serie→Ära-Zuordnung; alles andere (pop, tk, mc, …) läuft übers Datum.
 AERA_SERIEN = {
     "base": "klassik", "gym": "klassik", "neo": "klassik", "lc": "klassik",
     "ecard": "klassik", "misc": "klassik",
-    "ex": "ex", "dp": "dp", "pl": "dp", "hgss": "hgss", "col": "hgss",
+    "ex": "ex", "dp": "dp", "pl": "pl", "hgss": "hgss", "col": "hgss",
     "bw": "bw", "xy": "xy", "sm": "sm", "swsh": "swsh", "sv": "sv",
-    "me": "me", "tcgp": "tcgp",
+    "me": "me",
 }
 
 
@@ -408,6 +410,8 @@ def _sync_sets(client, con):
     todo = [("de", s["id"]) for s in de_sets] + [
         ("en", s["id"]) for s in en_sets if s["id"] not in de_ids
     ]
+    pocket = {s["id"] for s in de_sets + en_sets if (s.get("serie") or {}).get("id") in POCKET_SERIEN}
+    todo = [x for x in todo if x[1] not in pocket]
     SYNC["total"] = len(todo)
     SYNC["done"] = 0
 
@@ -548,6 +552,11 @@ def run_sync():
             _sync_cards(client, con)
             _sync_pokedex(client, con)
         SYNC["step"] = "Kartenarten ableiten"
+        # digitale Pocket-Karten, die über die Kartenliste hereinkamen, wieder entfernen
+        con.execute("DELETE FROM cards WHERE set_id IN (SELECT id FROM sets WHERE serie_id IN (%s))" % ",".join("?" * len(POCKET_SERIEN)), list(POCKET_SERIEN))
+        con.execute("DELETE FROM cards WHERE set_id NOT IN (SELECT id FROM sets) AND COALESCE(region,'intl') = 'intl'")
+        con.execute("DELETE FROM sets WHERE serie_id IN (%s)" % ",".join("?" * len(POCKET_SERIEN)), list(POCKET_SERIEN))
+        con.commit()
         recompute_kinds()
         con.execute(
             "INSERT OR REPLACE INTO kv (key,value) VALUES ('last_sync', datetime('now'))"
@@ -1042,13 +1051,13 @@ def meta():
 # 39 Roh-Seltenheiten (inkl. TCG Pocket „One Diamond“ …) sind kein Filter, den ein Sammler
 # versteht – die Gruppen entsprechen dem Sprachgebrauch: Illustration Rares, Full Arts, Secret/Gold …
 RARITY_GROUPS = {
-    "common":       {"name": "Common", "name_en": "Common", "werte": ["Common", "One Diamond"]},
-    "uncommon":     {"name": "Uncommon", "name_en": "Uncommon", "werte": ["Uncommon", "Two Diamond"]},
-    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection", "Three Diamond", "Four Diamond"]},
-    "ultra":        {"name": "Ultra Rare / Full Art", "name_en": "Ultra Rare / Full Art", "werte": ["Ultra Rare", "Full Art Trainer", "Two Star"]},
-    "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare", "One Star", "Three Star"]},
-    "secret":       {"name": "Secret / Gold / Rainbow", "name_en": "Secret / Gold / Rainbow", "werte": ["Secret Rare", "Hyper rare", "Mega Hyper Rare", "Crown", "Black White Rare"]},
-    "shiny":        {"name": "Shiny", "name_en": "Shiny", "werte": ["Shiny rare", "Shiny rare V", "Shiny rare VMAX", "Shiny Ultra Rare", "One Shiny", "Two Shiny"]},
+    "common":       {"name": "Common", "name_en": "Common", "werte": ["Common"]},
+    "uncommon":     {"name": "Uncommon", "name_en": "Uncommon", "werte": ["Uncommon"]},
+    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection"]},
+    "ultra":        {"name": "Ultra Rare / Full Art", "name_en": "Ultra Rare / Full Art", "werte": ["Ultra Rare", "Full Art Trainer"]},
+    "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare"]},
+    "secret":       {"name": "Secret / Gold / Rainbow", "name_en": "Secret / Gold / Rainbow", "werte": ["Secret Rare", "Hyper rare", "Mega Hyper Rare", "Black White Rare"]},
+    "shiny":        {"name": "Shiny", "name_en": "Shiny", "werte": ["Shiny rare", "Shiny rare V", "Shiny rare VMAX", "Shiny Ultra Rare"]},
     "special":      {"name": "Radiant / Amazing / ACE SPEC", "name_en": "Radiant / Amazing / ACE SPEC", "werte": ["Radiant Rare", "Amazing Rare", "ACE SPEC Rare"]},
     "promo":        {"name": "Promo", "name_en": "Promo", "werte": ["Promo"]},
 }

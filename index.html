@@ -302,6 +302,14 @@ window.mpUtm=read;})();
   body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
   .st-leer { margin-top: 10px; }
   #f-presets .chip { font-size: 11.5px; padding: 3px 9px; }
+  .setwahl { display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: pointer; min-height: 38px; }
+  .setwahl-inhalt { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; }
+  .setwahl-inhalt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .setwahl-inhalt img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+  .setpop { width: min(92vw, 380px); padding: 8px; }
+  .setpop .setliste { max-height: 380px; margin-top: 8px; }
+  .setpop .setzeile { padding: 7px 10px; font-size: 13px; }
+  .setpop .setzeile .set-sym { width: 24px; height: 24px; }
   .f-jahr { display: flex; align-items: center; gap: 8px; }
   .f-jahr input { flex: 1; min-width: 0; width: 100%; padding: 8px 10px; font-size: 14px; -moz-appearance: textfield; }
   .f-jahr span { color: var(--mut); }
@@ -462,7 +470,16 @@ window.mpUtm=read;})();
       </div>
       <div class="f-zweispaltig">
         <div><div class="f-lbl" data-i18n="f_aera">Ära</div><select class="feld" id="f-serie"></select></div>
-        <div><div class="f-lbl">Set</div><select class="feld" id="f-set"></select></div>
+        <div><div class="f-lbl">Set</div>
+          <div class="menuwrap" style="width:100%">
+            <button class="feld setwahl" id="f-set-btn" onclick="setWahlToggle()"><span class="setwahl-inhalt" id="f-set-lbl"></span><span class="bw-caret">▾</span></button>
+            <div class="menu links hidden setpop" id="set-popover">
+              <input type="search" class="feld" id="set-popover-suche" placeholder="Set suchen …" oninput="zeichneSetWahl()" onclick="event.stopPropagation()">
+              <div class="setliste" id="set-popover-liste"></div>
+            </div>
+          </div>
+          <select class="feld hidden" id="f-set"></select>
+        </div>
       </div>
       <div>
         <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
@@ -472,6 +489,12 @@ window.mpUtm=read;})();
       <div class="f-zweispaltig">
         <div><div class="f-lbl" data-i18n="f_illu">Künstler</div><select class="feld" id="f-illu"></select><datalist id="illu-namen"></datalist><div class="hidden" id="f-illu-chips"></div></div>
         <div><div class="f-lbl" data-i18n="f_rarity">Seltenheit</div><select class="feld" id="f-rgroup-select"></select><div class="hidden" id="f-rgroup"></div></div>
+      </div>
+      <input class="feld" id="f-illu-suche" list="illu-namen" placeholder="Künstler suchen …" data-i18n-ph="illu_suche" style="margin-top:-6px">
+      <div>
+        <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
+        <div style="display:flex;gap:8px;align-items:center"><select class="feld" id="f-sort" style="flex:1"></select>
+        <label class="schalter" style="white-space:nowrap"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label></div>
       </div>
       <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Erweiterte Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
       <div id="f-mehr" class="hidden f-mehr-box">
@@ -496,11 +519,6 @@ window.mpUtm=read;})();
         <div>
           <div class="f-lbl" data-i18n="f_typ">Typ</div>
           <div class="f-chips" id="f-typen"></div>
-        </div>
-        <div>
-          <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
-          <select class="feld" id="f-sort"></select>
-          <label class="schalter" style="margin-top:8px"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label>
         </div>
       </div>
       <button class="btn sekundaer" style="font-size:12.5px;padding:8px 13px" onclick="filterReset()" data-i18n="f_reset">Filter zurücksetzen</button>
@@ -918,7 +936,7 @@ const T = {
     bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
-    f_illu: 'Künstler', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
+    f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
     m_illu: 'Künstler-Binder …', m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
     illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
@@ -1021,7 +1039,7 @@ const T = {
     bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
     pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
-    f_illu: 'Artist', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
+    f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
     m_illu: 'Artist binder …', m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
     tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
     illu_karten: 'cards', d_illu: 'Illustration', d_regmark: 'Regulation mark', d_fam: 'Evolution line', d_fam_btn: 'Evolution line as binder', d_illu_btn: 'All by this artist',
@@ -1221,6 +1239,7 @@ function setLang(lang) {
   $('lang-de').classList.toggle('on', lang === 'de');
   $('lang-en').classList.toggle('on', lang === 'en');
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
   themeAnwenden();
   baueFilterLeiste(); mehrFilterZahl();
   zeichneErgebnisse();
@@ -1822,6 +1841,35 @@ function baueSetSelect() {
     const n = (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id;
     return `<option value="${s.id}" ${filter.set === s.id ? 'selected' : ''}>${n} (${(s.release_date || '?').slice(0, 4)})</option>`;
   }).join('');
+  zeichneSetWahlKnopf();
+}
+// Set-Wähler mit Symbolen: viele Sammler kennen das Symbol, nicht den Namen
+function setName(s) { return (LANG === 'en' ? (s.name_en || s.name) : (s.name || s.name_en)) || s.id; }
+function setSymbol(s, cls) { return s.symbol ? `<img class="${cls}" src="api/img/set/${encodeURIComponent(s.id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<img class="${cls} leer" alt="">`; }
+function zeichneSetWahlKnopf() {
+  const s = (S.meta.sets || []).find((x) => x.id === filter.set);
+  $('f-set-lbl').innerHTML = s ? `${setSymbol(s, '')}<span>${esc(setName(s))}</span>` : `<span>${t('alle_sets')}</span>`;
+}
+function setWahlToggle() {
+  menuToggle('set-popover');
+  if (!$('set-popover').classList.contains('hidden')) { $('set-popover-suche').value = ''; zeichneSetWahl(); setTimeout(() => $('set-popover-suche').focus(), 30); }
+}
+function zeichneSetWahl() {
+  const q = ($('set-popover-suche').value || '').toLowerCase();
+  const sets = (S.meta.sets || []).filter((s) => (!filter.serie || s.aera === filter.serie) && (!q || setName(s).toLowerCase().includes(q) || s.id.toLowerCase().includes(q)));
+  let html = `<button class="setzeile ${filter.set ? '' : 'on'}" onclick="setWaehlen('')"><img class="set-sym leer" alt=""><span style="font-weight:600">${t('alle_sets')}</span></button>`;
+  let letzte = null;
+  for (const s of sets) {
+    const aera = (LANG === 'en' ? (s.aera_name_en || s.aera_name) : s.aera_name) || '—';
+    if (aera !== letzte) { letzte = aera; html += `<div class="serie-kopf">${esc(aera)}</div>`; }
+    html += `<button class="setzeile ${filter.set === s.id ? 'on' : ''}" onclick="setWaehlen('${s.id}')">${setSymbol(s, 'set-sym')}<span style="font-weight:600">${esc(setName(s))}</span><span style="color:var(--mut);font-size:11.5px">${s.official || s.total || '?'} K.</span><span class="datum">${(s.release_date || '').slice(0, 4)}</span></button>`;
+  }
+  $('set-popover-liste').innerHTML = html || `<div style="padding:14px;color:var(--mut)">${t('keine_sets')}</div>`;
+}
+function setWaehlen(id) {
+  filter.set = id; $('f-set').value = id;
+  $('set-popover').classList.add('hidden');
+  zeichneSetWahlKnopf(); sucheNeu();
 }
 
 function baueDexNamen() {
@@ -1860,7 +1908,7 @@ function typToggle(ty) {
 function filterReset() {
   Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc', illustrator: '', trainer: '', first: false, jahrVon: 0, jahrBis: 0, preset: '' });
   filter.kinds.clear(); filter.rgroup.clear(); filter.regmark.clear();
-  $('f-suche').value = ''; $('f-dex').value = ''; $('f-illu').value = ''; $('f-jahr-von').value = ''; $('f-jahr-bis').value = ''; $('f-absteigend').checked = false;
+  $('f-suche').value = ''; $('f-dex').value = ''; $('f-illu').value = ''; $('f-illu-suche').value = ''; $('f-jahr-von').value = ''; $('f-jahr-bis').value = ''; $('f-absteigend').checked = false;
   baueFilterLeiste(); mehrFilterZahl();
   sucheNeu();
 }
@@ -2388,7 +2436,12 @@ $('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').v
 $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; mehrFilterZahl(); sucheNeu(); });
 $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; mehrFilterZahl(); sucheNeu(); });
 $('poke-name').addEventListener('focus', ladePokedex);
-$('f-illu').addEventListener('change', () => { filter.illustrator = $('f-illu').value; sucheNeu(); });
+$('f-illu').addEventListener('change', () => { filter.illustrator = $('f-illu').value; $('f-illu-suche').value = ''; sucheNeu(); });
+$('f-illu-suche').addEventListener('change', () => {
+  const v = $('f-illu-suche').value.trim().toLowerCase();
+  const i = (S.meta.illustrators || []).find((x) => x.name.toLowerCase() === v) || (v ? (S.meta.illustrators || []).find((x) => x.name.toLowerCase().includes(v)) : null);
+  filter.illustrator = i ? i.name : ''; $('f-illu').value = filter.illustrator; sucheNeu();
+});
 $('f-rgroup-select').addEventListener('change', () => { rgroupToggle($('f-rgroup-select').value); });
 $('f-trainer').addEventListener('change', () => { filter.trainer = $('f-trainer').value; mehrFilterZahl(); sucheNeu(); });
 $('f-jahr-von').addEventListener('change', () => { filter.jahrVon = Number($('f-jahr-von').value) || 0; mehrFilterZahl(); sucheNeu(); });
@@ -2533,7 +2586,7 @@ function mehrFilterToggle(an) {
   $('f-mehr-caret').textContent = mehrFilterOffen ? '▴' : '▾';
 }
 function mehrFilterZahl() {
-  const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.trainer ? 1 : 0) + filter.regmark.size + (filter.first ? 1 : 0) + (filter.jahrVon || filter.jahrBis ? 1 : 0) + (filter.sort !== 'datum' || filter.richtung !== 'asc' ? 1 : 0);
+  const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.trainer ? 1 : 0) + filter.regmark.size + (filter.first ? 1 : 0) + (filter.jahrVon || filter.jahrBis ? 1 : 0);
   const el = $('f-mehr-zahl'); if (el) el.textContent = n ? `(${n})` : '';
   const btn = $('f-mehr-btn'); if (btn) btn.style.borderColor = n ? 'var(--akzent)' : '';
 }
