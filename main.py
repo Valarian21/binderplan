@@ -87,6 +87,15 @@ AEREN = [
     {"id": "me", "name": "Mega-Entwicklung", "name_en": "Mega Evolution",
      "von": "2025", "bis": "", "start": "2025-09-01"},
 ]
+# Japanische Serien → lesbare Ären (TCGdex-ja-Serien-IDs)
+JP_AEREN = {
+    "PMCG": ("Original (1996–2000)", "Original (1996–2000)"), "neo": ("neo", "neo"), "VS": ("VS", "VS"), "web": ("web", "web"),
+    "e": ("Karte e", "Card e"), "ADV": ("ADV (Rubin & Saphir)", "ADV (Ruby & Sapphire)"), "PCG": ("PCG", "PCG"),
+    "DP": ("DP", "DP"), "DPt": ("DPt (Platin)", "DPt (Platinum)"), "L": ("LEGEND", "LEGEND"), "BW": ("BW", "BW"),
+    "XY": ("XY", "XY"), "XYb": ("XY BREAK", "XY BREAK"), "SM": ("Sonne & Mond", "Sun & Moon"),
+    "S": ("Schwert & Schild", "Sword & Shield"), "SV": ("Karmesin & Purpur", "Scarlet & Violet"), "M": ("MEGA", "MEGA"),
+}
+
 # TCG Pocket (Handy-App, nur digital) wird bewusst NICHT geführt – es gibt keine physischen Karten.
 POCKET_SERIEN = {"tcgp"}
 AERA_ORDNUNG = {a["id"]: i for i, a in enumerate(AEREN)}
@@ -291,6 +300,7 @@ def init_db():
         "ALTER TABLE cards ADD COLUMN energy_type TEXT",
         "ALTER TABLE pokemon ADD COLUMN familie INTEGER",     # PokéAPI-Entwicklungskette
         "ALTER TABLE pokemon ADD COLUMN evo_stufe INTEGER",
+        "ALTER TABLE sets ADD COLUMN symbol_alt TEXT",      # pokemontcg.io-Symbol, wenn TCGdex keins hat
     ):
         try:
             con.execute(alter)
@@ -763,6 +773,46 @@ def admin_backfill_details(key: str = ""):
     return {"gestartet": True}
 
 
+def _symbole_job():
+    """Alle Set-Symbole in den Cache holen; Sets ohne TCGdex-Symbol bekommen das pokemontcg.io-Symbol
+    (Name-Abgleich wie beim Bild-Fallback). Läuft beim Start im Hintergrund."""
+    con = get_db()
+    ohne = [dict(r) for r in con.execute("SELECT id, name_en, name FROM sets WHERE region='intl' AND (symbol IS NULL OR symbol='') AND symbol_alt IS NULL")]
+    con.close()
+    if ohne:
+        def norm(x):
+            return re.sub(r"[^a-z0-9]", "", (x or "").lower())
+        headers = dict(UA)
+        key = _env().get("PTCGIO_KEY")
+        if key:
+            headers["X-Api-Key"] = key
+        try:
+            with httpx.Client(timeout=30, headers=headers) as client:
+                ptc = _ptc_get(client, "https://api.pokemontcg.io/v2/sets?pageSize=250&select=id,name,images").get("data", [])
+            nach_name = {norm(x.get("name")): (x.get("images") or {}).get("symbol") for x in ptc}
+            con = get_db()
+            for st in ohne:
+                sym = nach_name.get(norm(st["name_en"])) or nach_name.get(norm(st["name"]))
+                if sym:
+                    con.execute("UPDATE sets SET symbol_alt = ? WHERE id = ?", (sym, st["id"]))
+            con.commit()
+            con.close()
+        except Exception:
+            pass
+    con = get_db()
+    ids = [r["id"] for r in con.execute("SELECT id FROM sets WHERE (symbol IS NOT NULL AND symbol != '') OR symbol_alt IS NOT NULL")]
+    con.close()
+
+    def hole(sid):
+        try:
+            set_symbol_image(sid)
+        except Exception:
+            pass
+
+    with ThreadPoolExecutor(6) as pool:
+        list(pool.map(hole, ids))
+
+
 def _preishistorie_job():
     """Täglich: alle bekannten Preise auffrischen und in die Historie schreiben."""
     con = get_db()
@@ -822,6 +872,7 @@ def _maybe_autosync():
         con.close()
         if fehlt > 5000 and not done:
             threading.Thread(target=run_backfill_details, daemon=True).start()
+        threading.Thread(target=_symbole_job, daemon=True).start()
     threading.Thread(target=_hintergrund_takt, daemon=True).start()
 
 
@@ -979,7 +1030,7 @@ def meta():
     sets = []
     vorhandene_aeren = set()
     for r in con.execute(
-        "SELECT id,name,name_en,serie_id,serie_name,serie_name_en,release_date,total,official,symbol,region"
+        "SELECT id,name,name_en,serie_id,serie_name,serie_name_en,release_date,total,official,symbol,region,symbol_alt"
         " FROM sets ORDER BY release_date IS NULL, release_date"
     ):
         d = dict(r)
@@ -989,9 +1040,12 @@ def meta():
         d["promo"] = bool(re.search(r"promo|jumbo|misc|mcdonald|trainer kit|pop series|deck|starter", (d.get("name_en") or d.get("name") or ""), re.I)
                           or (d["serie_id"] in ("pop", "tk", "mc", "misc")))
         if d["region"] == "jp":
-            d["aera"] = "jp"; d["aera_name"] = "Japan"; d["aera_name_en"] = "Japan"
+            jn = JP_AEREN.get(d["serie_id"] or "", (d["serie_name"] or d["serie_id"] or "?",) * 2)
+            d["aera"] = "jp:" + (d["serie_id"] or "?"); d["aera_name"] = jn[0]; d["aera_name_en"] = jn[1]
+            d["symbol"] = d["symbol"] or None
             sets.append(d)
             continue
+        d["symbol"] = d["symbol"] or (r["symbol_alt"] if "symbol_alt" in r.keys() and r["symbol_alt"] else None)
         d["name"] = SET_NAME_FIX_DE.get(d["id"], d["name"]) or d["name_en"]
         d["serie_name"] = SERIE_NAME_FIX_DE.get(d["serie_id"], d["serie_name"]) or d["serie_name_en"]
         aera = _aera_fuer_set(d["serie_id"], d["release_date"])
@@ -1002,14 +1056,20 @@ def meta():
         vorhandene_aeren.add(aera)
         sets.append(d)
     # Ären-Reihenfolge, innerhalb einer Ära erst Sammel-Sets chronologisch, dann Promos; Japan als eigener Baum
-    sets.sort(key=lambda s: (AERA_ORDNUNG.get(s["aera"], 99), s["promo"], s["release_date"] or "9999"))
+    jp_start = {}
+    for x in sets:
+        if x["region"] == "jp":
+            jp_start[x["aera"]] = min(jp_start.get(x["aera"], "9999"), x["release_date"] or "9999")
+    sets.sort(key=lambda s: (AERA_ORDNUNG.get(s["aera"], 99) if s["region"] != "jp" else 100, jp_start.get(s["aera"], ""), s["promo"], s["release_date"] or "9999"))
     series = [
         {"id": a["id"], "name": a["name"], "name_en": a["name_en"],
-         "von": a["von"], "bis": a["bis"]}
+         "von": a["von"], "bis": a["bis"], "region": "intl"}
         for a in AEREN if a["id"] in vorhandene_aeren
     ]
-    if any(x["region"] == "jp" for x in sets):
-        series.append({"id": "jp", "name": "Japan (日本)", "name_en": "Japan (日本)", "von": "", "bis": ""})
+    for aera, start in sorted(jp_start.items(), key=lambda x: x[1]):
+        bsp = next(x for x in sets if x["aera"] == aera)
+        jahre = [x["release_date"][:4] for x in sets if x["aera"] == aera and x["release_date"]]
+        series.append({"id": aera, "name": bsp["aera_name"], "name_en": bsp["aera_name_en"], "von": min(jahre) if jahre else "", "bis": max(jahre) if jahre else "", "region": "jp"})
     rarities = [
         {"rarity": r["rarity"], "anzahl": r["c"]}
         for r in con.execute(
@@ -1149,6 +1209,10 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, r
         params += [f"%{q}%", f"%{q}%", f"%{q}%"]
     if serie == "jp":
         region = "jp"; serie = ""
+    if serie.startswith("jp:"):
+        region = "jp"
+        where.append("set_id IN (SELECT id FROM sets WHERE serie_id = ? AND region = 'jp')"); params.append(serie[3:])
+        serie = ""
     if region in ("intl", "jp"):
         where.append("COALESCE(cards.region,'intl') = ?")
         params.append(region)
@@ -2054,14 +2118,16 @@ def set_symbol_image(set_id: str):
     target = CACHE / "sym" / f"{set_id}.png"
     if not target.exists():
         con = get_db()
-        row = con.execute("SELECT symbol FROM sets WHERE id = ?", (set_id,)).fetchone()
+        row = con.execute("SELECT symbol, symbol_alt FROM sets WHERE id = ?", (set_id,)).fetchone()
         con.close()
         sym = ((row["symbol"] if row else "") or "").strip()
-        if not sym:
+        alt = ((row["symbol_alt"] if row else "") or "").strip()
+        if not sym and not alt:
             raise HTTPException(404, "Kein Symbol")
         target.parent.mkdir(parents=True, exist_ok=True)
-        # TCGdex-Symbol-URL braucht eine Endung (png bevorzugt, webp als Fallback)
-        if not _fetch_asset([sym + ".png", sym + ".webp"], target):
+        # TCGdex-Symbol-URL braucht eine Endung (png bevorzugt, webp als Fallback); sonst pokemontcg.io
+        urls = ([sym + ".png", sym + ".webp"] if sym else []) + ([alt] if alt else [])
+        if not _fetch_asset(urls, target):
             raise HTTPException(404, "Kein Symbol verfügbar")
     return FileResponse(target, media_type="image/png", headers=IMG_HEADERS)
 
