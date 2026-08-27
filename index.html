@@ -302,6 +302,10 @@ window.mpUtm=read;})();
   body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
   .st-leer { margin-top: 10px; }
   #f-presets .chip { font-size: 11.5px; padding: 3px 9px; }
+  .f-jahr { display: flex; align-items: center; gap: 8px; }
+  .f-jahr input { flex: 1; min-width: 0; width: 100%; padding: 8px 10px; font-size: 14px; -moz-appearance: textfield; }
+  .f-jahr span { color: var(--mut); }
+  .spalte-filter select.feld { text-overflow: ellipsis; }
   .chip.klein { font-size: 11px; padding: 3px 8px; }
   .d-illu { color: var(--akzent); cursor: pointer; font-weight: 700; }
   .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: 12.5px; }
@@ -465,17 +469,11 @@ window.mpUtm=read;})();
         <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak">
         <datalist id="dex-namen"></datalist>
       </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_illu">Künstler</div>
-        <input class="feld" id="f-illu" list="illu-namen" placeholder="z. B. Mitsuhiro Arita">
-        <datalist id="illu-namen"></datalist>
-        <div class="f-chips" id="f-illu-chips" style="margin-top:6px"></div>
+      <div class="f-zweispaltig">
+        <div><div class="f-lbl" data-i18n="f_illu">Künstler</div><select class="feld" id="f-illu"></select><datalist id="illu-namen"></datalist><div class="hidden" id="f-illu-chips"></div></div>
+        <div><div class="f-lbl" data-i18n="f_rarity">Seltenheit</div><select class="feld" id="f-rgroup-select"></select><div class="hidden" id="f-rgroup"></div></div>
       </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
-        <div class="f-chips" id="f-rgroup"></div>
-      </div>
-      <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Mehr Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
+      <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Erweiterte Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
       <div id="f-mehr" class="hidden f-mehr-box">
         <div>
           <div class="f-lbl" data-i18n="f_sonder">Sonderdrucke</div>
@@ -485,9 +483,10 @@ window.mpUtm=read;})();
           <div class="f-lbl" data-i18n="f_art">Kartenart</div>
           <div class="f-chips" id="f-kinds"></div>
         </div>
-        <div class="f-zweispaltig">
-          <div><div class="f-lbl" data-i18n="f_trainer">Trainer-Typ</div><select class="feld" id="f-trainer"></select></div>
-          <div><div class="f-lbl" data-i18n="f_jahr">Jahr von – bis</div><div style="display:flex;gap:6px"><input class="feld" id="f-jahr-von" type="number" min="1996" max="2030" placeholder="1999"><input class="feld" id="f-jahr-bis" type="number" min="1996" max="2030" placeholder="2026"></div></div>
+        <div><div class="f-lbl" data-i18n="f_trainer">Trainer-Typ</div><select class="feld" id="f-trainer"></select></div>
+        <div>
+          <div class="f-lbl" data-i18n="f_jahr">Erscheinungsjahr von – bis</div>
+          <div class="f-jahr"><input class="feld" id="f-jahr-von" type="number" min="1996" max="2030" placeholder="1999"><span>–</span><input class="feld" id="f-jahr-bis" type="number" min="1996" max="2030" placeholder="2026"></div>
         </div>
         <div>
           <div class="f-lbl" title="Turnierlegalität: Buchstabe unten links auf der Karte" data-i18n="f_regmark">Regulation Mark</div>
@@ -906,7 +905,7 @@ window.mpUtm=read;})();
 const T = {
   de: {
     undo: 'Rückgängig', undo_ok: 'Rückgängig gemacht.', hinzugefuegt_1: 'Karte im Binder',
-    f_mehr: 'Mehr Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus', m_poke: 'Ein Pokémon – alle Karten …',
+    f_mehr: 'Erweiterte Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus', m_poke: 'Ein Pokémon – alle Karten …',
     m_import: 'Liste importieren …', m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
     m_poke_jp: 'Japanische Karten dazunehmen', alle_karten: 'alle Karten', s_rainbow: 'Regenbogen (nach Typ)',
     m_import_t: 'Liste importieren', m_import_u: 'Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.',
@@ -919,7 +918,7 @@ const T = {
     bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
-    f_illu: 'Künstler', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
+    f_illu: 'Künstler', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
     m_illu: 'Künstler-Binder …', m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
     illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
@@ -1009,7 +1008,7 @@ const T = {
   },
   en: {
     undo: 'Undo', undo_ok: 'Undone.', hinzugefuegt_1: 'Card added',
-    f_mehr: 'More filters', ansicht: 'Size', sammeln: 'Collect mode', m_poke: 'One Pokémon – all cards …',
+    f_mehr: 'Advanced filters', ansicht: 'Size', sammeln: 'Collect mode', m_poke: 'One Pokémon – all cards …',
     m_import: 'Import list …', m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
     m_poke_jp: 'Include Japanese cards', alle_karten: 'all cards', s_rainbow: 'Rainbow (by type)',
     m_import_t: 'Import a list', m_import_u: 'One card per line – e.g. “sv1 25”, “Charizard 4/102”, “1x Charizard (Base Set) 4” or the CSV exports of TCG Collector, Collectr and Cardmarket wants.',
@@ -1022,7 +1021,7 @@ const T = {
     bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
     pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
-    f_illu: 'Artist', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
+    f_illu: 'Artist', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
     m_illu: 'Artist binder …', m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
     tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
     illu_karten: 'cards', d_illu: 'Illustration', d_regmark: 'Regulation mark', d_fam: 'Evolution line', d_fam_btn: 'Evolution line as binder', d_illu_btn: 'All by this artist',
@@ -1789,14 +1788,17 @@ function baueFilterLeiste() {
     `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name}${s.von ? ` (${s.von}–${s.bis || ''})` : ''}</option>`).join('');
   // Sets (nach Ära gefiltert, chronologisch)
   baueSetSelect();
-  // Seltenheits-Gruppen (statt 39 Rohwerten)
-  $('f-rgroup').innerHTML = (S.meta.rarity_groups || []).map((g) =>
-    `<button class="chip klein ${filter.rgroup.has(g.id) ? 'on' : ''}" data-rg="${g.id}" onclick="rgroupToggle('${g.id}')">${LANG === 'en' ? g.name_en : g.name}</button>`).join('');
-  // Künstler: die meistgesammelten als Chips, alle per Autovervollständigung
-  const top = (S.meta.illustrators || []).slice(0, 6);
-  $('f-illu-chips').innerHTML = top.map((i) => `<button class="chip klein ${filter.illustrator === i.name ? 'on' : ''}" data-illu="${esc(i.name)}" onclick="illuSetzen('${esc(i.name).replace(/'/g, "\\'")}')">${esc(i.name)}</button>`).join('');
-  $('illu-namen').innerHTML = (S.meta.illustrators || []).map((i) => `<option value="${esc(i.name)}">${i.anzahl} ${t('illu_karten')}</option>`).join('');
-  if ($('illu-top')) $('illu-top').innerHTML = (S.meta.illustrators || []).slice(0, 8).map((i) => `<button class="chip klein" onclick="$('illu-name').value='${esc(i.name).replace(/'/g, "\\'")}';illuInfo()">${esc(i.name)}</button>`).join('');
+  // Seltenheit als Dropdown mit Gruppen (statt 39 Rohwerten)
+  const rg = [...filter.rgroup][0] || '';
+  $('f-rgroup-select').innerHTML = `<option value="">${t('alle_rar')}</option>` + (S.meta.rarity_groups || []).map((g) =>
+    `<option value="${g.id}" ${rg === g.id ? 'selected' : ''}>${LANG === 'en' ? g.name_en : g.name}</option>`).join('');
+  // Künstler als Dropdown: erst die meistgesammelten, dann alle alphabetisch
+  const illus = S.meta.illustrators || [];
+  const tops = illus.filter((i) => i.top), rest = illus.filter((i) => !i.top);
+  const opt = (i) => `<option value="${esc(i.name)}" ${filter.illustrator === i.name ? 'selected' : ''}>${esc(i.name)} (${i.anzahl})</option>`;
+  $('f-illu').innerHTML = `<option value="">${t('alle_illu')}</option>` + (tops.length ? `<optgroup label="${t('illu_top')}">${tops.map(opt).join('')}</optgroup>` : '') + `<optgroup label="${t('illu_alle')}">${rest.map(opt).join('')}</optgroup>`;
+  $('illu-namen').innerHTML = illus.map((i) => `<option value="${esc(i.name)}">${i.anzahl} ${t('illu_karten')}</option>`).join('');
+  if ($('illu-top')) $('illu-top').innerHTML = tops.slice(0, 12).map((i) => `<button class="chip klein" onclick="$('illu-name').value='${esc(i.name).replace(/'/g, "\\'")}';illuInfo()">${esc(i.name)}</button>`).join('');
   // Sonderdrucke
   $('f-sonder').innerHTML = `<button class="chip ${filter.first ? 'on' : ''}" onclick="filter.first=!filter.first;baueFilterLeiste();mehrFilterZahl();sucheNeu()">${t('first_ed')}</button>`;
   // Trainer-Typ, Regulation Mark
@@ -1836,14 +1838,13 @@ async function ladePokedex() {
 }
 
 function rgroupToggle(g) {
-  filter.rgroup.has(g) ? filter.rgroup.delete(g) : filter.rgroup.add(g);
-  document.querySelectorAll('[data-rg]').forEach((el) => el.classList.toggle('on', filter.rgroup.has(el.dataset.rg)));
+  filter.rgroup.clear(); if (g) filter.rgroup.add(g);
+  $('f-rgroup-select').value = g || '';
   sucheNeu();
 }
 function illuSetzen(name) {
   filter.illustrator = filter.illustrator === name ? '' : name;
   $('f-illu').value = filter.illustrator;
-  document.querySelectorAll('[data-illu]').forEach((el) => el.classList.toggle('on', el.dataset.illu === filter.illustrator));
   sucheNeu();
 }
 function kindToggle(k) {
@@ -2387,7 +2388,8 @@ $('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').v
 $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; mehrFilterZahl(); sucheNeu(); });
 $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; mehrFilterZahl(); sucheNeu(); });
 $('poke-name').addEventListener('focus', ladePokedex);
-$('f-illu').addEventListener('input', () => { filter.illustrator = $('f-illu').value.trim(); document.querySelectorAll('[data-illu]').forEach((el) => el.classList.toggle('on', el.dataset.illu === filter.illustrator)); clearTimeout(suchTimer); suchTimer = setTimeout(sucheNeu, 350); });
+$('f-illu').addEventListener('change', () => { filter.illustrator = $('f-illu').value; sucheNeu(); });
+$('f-rgroup-select').addEventListener('change', () => { rgroupToggle($('f-rgroup-select').value); });
 $('f-trainer').addEventListener('change', () => { filter.trainer = $('f-trainer').value; mehrFilterZahl(); sucheNeu(); });
 $('f-jahr-von').addEventListener('change', () => { filter.jahrVon = Number($('f-jahr-von').value) || 0; mehrFilterZahl(); sucheNeu(); });
 $('f-jahr-bis').addEventListener('change', () => { filter.jahrBis = Number($('f-jahr-bis').value) || 0; mehrFilterZahl(); sucheNeu(); });

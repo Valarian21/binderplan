@@ -673,8 +673,9 @@ def _norm_illustrator(name):
     n = re.sub(r"\s+", " ", (name or "").replace('"', "").replace("“", "").replace("”", "")).strip()
     if not n:
         return None
-    if n == n.lower():
+    if n == n.lower() or n == n.upper():
         n = " ".join(w.capitalize() for w in n.split(" "))
+    n = re.sub(r"\bAky ?CG Works\b", "aky CG Works", n, flags=re.I)
     return n
 
 
@@ -1008,8 +1009,12 @@ def meta():
         )
     ]
     last_sync = con.execute("SELECT value FROM kv WHERE key='last_sync'").fetchone()
-    illustrators = [{"name": r["illustrator"], "anzahl": r["c"]} for r in con.execute(
-        "SELECT illustrator, COUNT(*) c FROM cards WHERE illustrator IS NOT NULL GROUP BY illustrator HAVING c >= 3 ORDER BY c DESC")]
+    alle_illu = {r["illustrator"]: r["c"] for r in con.execute(
+        "SELECT illustrator, COUNT(*) c FROM cards WHERE illustrator IS NOT NULL GROUP BY illustrator HAVING c >= 3")}
+    nach_klein = {n.lower(): n for n in alle_illu}
+    top_namen = [nach_klein[t.lower()] for t in TOP_ARTISTS if t.lower() in nach_klein]
+    illustrators = [{"name": n, "anzahl": alle_illu[n], "top": True} for n in top_namen]
+    illustrators += [{"name": n, "anzahl": c, "top": False} for n, c in sorted(alle_illu.items(), key=lambda x: x[0].lower()) if n not in top_namen]
     regmarks = [r["regulation_mark"] for r in con.execute(
         "SELECT DISTINCT regulation_mark FROM cards WHERE regulation_mark IS NOT NULL AND regulation_mark != 'None' ORDER BY regulation_mark")]
     trainer_types = [r["trainer_type"] for r in con.execute(
@@ -1047,6 +1052,15 @@ RARITY_GROUPS = {
     "special":      {"name": "Radiant / Amazing / ACE SPEC", "name_en": "Radiant / Amazing / ACE SPEC", "werte": ["Radiant Rare", "Amazing Rare", "ACE SPEC Rare"]},
     "promo":        {"name": "Promo", "name_en": "Promo", "werte": ["Promo"]},
 }
+# Meistgesammelte Illustratoren (Recherche 2026-08-27, siehe TOP_ARTISTS_QUELLEN) – stehen im Künstler-
+# Dropdown ganz oben; danach alle übrigen alphabetisch.
+TOP_ARTISTS = [
+    "Mitsuhiro Arita", "Shinji Kanda", "Akira Egawa", "Yuka Morii", "Tomokazu Komiya", "Sowsow",
+    "Kagemaru Himeno", "Atsuko Nishida", "Ken Sugimori", "Kouki Saitou", "Masakazu Fukuda", "Ryo Ueda",
+    "Naoyo Kimura", "Tokiya", "Asako Ito", "Naoki Saito", "Shin Nagasawa", "Oswaldo Kato", "Narumi Sato", "Mugi Hamada",
+]
+TOP_ARTISTS_QUELLEN = "snkrdunk.com, woahpoke.com, thegamer.com, crispycards.de"
+
 # Beliebte Sammelthemen als Pokédex-Listen (Grundformen; Entwicklungen kommen über die Familie dazu)
 PRESETS = {
     "starter":   {"name": "Starter", "name_en": "Starters", "dex": [1, 4, 7, 152, 155, 158, 252, 255, 258, 387, 390, 393, 495, 498, 501, 650, 653, 656, 722, 725, 728, 810, 813, 816, 906, 909, 912], "familie": True},
@@ -1195,7 +1209,7 @@ def _card_brief(row):
         "dex": row["first_dex"],
         "datum": row["release_date"],
         "reverse": bool(row["has_reverse"]),
-        "img": bool(row["image_de"] or row["image_en"]),
+        "img": bool(row["image_de"] or row["image_en"] or ("image_alt" in keys and row["image_alt"])),
     }
 
 
