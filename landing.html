@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binderplan – Pokémon-Binder planen, Preise sehen, Platzhalter drucken</title>
+<meta name="description" content="Plane deinen Pokémon-Sammelbinder Fach für Fach: Master Set, Pokédex oder alle Karten eines Pokémon. Cardmarket-Preise in Euro, Kaufliste, Schwarz-Weiß-Platzhalter mit Seite·Fach-Beschriftung zum Ausdrucken. Kostenlos starten.">
+<link rel="canonical" href="https://binderplan.app/">
+<meta property="og:title" content="Binderplan – Pokémon-Binder planen & drucken">
+<meta property="og:description" content="Master Set, Pokédex oder Lieblings-Pokémon: Binder planen, Cardmarket-Preise in Euro sehen, Platzhalter drucken, Karten abhaken.">
+<meta property="og:url" content="https://binderplan.app/">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#e85d43">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/","inLanguage":"de","description":"Pokémon-Sammelbinder planen: Master Set, Pokédex, Cardmarket-Preise in Euro, Kaufliste und druckbare Platzhalter.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Kostenlos"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Pro monatlich"},{"@type":"Offer","price":"49.99","priceCurrency":"EUR","name":"Lifetime"}]}
+</script>
+<style>
+  :root { --bg:#fdf8f1; --ink:#3a3227; --mut:#8c7f6c; --line:#eadfd0; --card:#fff; --akzent:#e85d43; --akzent-dunkel:#c74630; --gruen:#4f9d69; --panel2:#f6efe4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1c1815; --ink:#ece5da; --mut:#a3947f; --line:#3a322a; --card:#262019; --panel2:#2e2720; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Quicksand','Trebuchet MS',sans-serif; line-height:1.5; }
+  a { color:var(--akzent); }
+  .wrap { max-width:1060px; margin:0 auto; padding:0 20px; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 0; }
+  header .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:18px; color:var(--ink); text-decoration:none; }
+  header nav { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:999px; background:var(--akzent); color:#fff; font-weight:700; text-decoration:none; font-size:15px; border:none; cursor:pointer; }
+  .btn:hover { background:var(--akzent-dunkel); }
+  .btn.sek { background:var(--card); color:var(--ink); border:1.5px solid var(--line); }
+  .hero { display:grid; grid-template-columns: 1.1fr 1fr; gap:40px; align-items:center; padding:40px 0 30px; }
+  .hero h1 { font-size:clamp(30px,4.5vw,46px); line-height:1.12; margin:0 0 14px; }
+  .hero h1 em { color:var(--akzent); font-style:normal; }
+  .hero p.lead { font-size:17px; color:var(--mut); margin:0 0 22px; max-width:52ch; }
+  .hero .cta { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .hero .klein { font-size:12.5px; color:var(--mut); margin-top:10px; }
+  .shot { border:1.5px solid var(--line); border-radius:16px; overflow:hidden; background:var(--card); box-shadow:0 20px 50px rgba(58,50,39,.12); }
+  .shot img { display:block; width:100%; height:auto; }
+  section { padding:34px 0; }
+  h2 { font-size:26px; margin:0 0 6px; }
+  .sub { color:var(--mut); margin:0 0 22px; }
+  .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .step { background:var(--card); border:1.5px solid var(--line); border-radius:16px; padding:18px; }
+  .step .n { display:inline-flex; width:30px; height:30px; border-radius:50%; background:var(--akzent); color:#fff; font-weight:700; align-items:center; justify-content:center; margin-bottom:10px; }
+  .step h3 { margin:0 0 6px; font-size:16px; }
+  .step p { margin:0; color:var(--mut); font-size:14px; }
+  .feat { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+  .feat div { background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px; }
+  .feat h3 { margin:0 0 4px; font-size:15px; }
+  .feat p { margin:0; font-size:13.5px; color:var(--mut); }
+  .tarife { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+  .tarif { background:var(--card); border:2px solid var(--line); border-radius:16px; padding:20px; }
+  .tarif.top { border-color:var(--akzent); }
+  .tarif .p { font-size:28px; font-weight:700; margin:4px 0; }
+  .tarif ul { padding-left:18px; margin:10px 0 14px; font-size:14px; color:var(--mut); }
+  .faq details { background:var(--card); border:1.5px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:8px; }
+  .faq summary { font-weight:700; cursor:pointer; }
+  .faq p { margin:8px 0 0; color:var(--mut); font-size:14px; }
+  footer { padding:26px 0 40px; color:var(--mut); font-size:12.5px; border-top:1.5px solid var(--line); margin-top:20px; }
+  footer a { color:var(--mut); }
+  @media (max-width:800px) { .hero { grid-template-columns:1fr; padding-top:16px; } .steps { grid-template-columns:1fr; } header nav .sek { display:none; } }
+</style>
+<script>
+  // Rückkehrer (Binder oder Konto im Browser) landen direkt in der App; ?landing=1 zeigt diese Seite trotzdem.
+  (function(){ try {
+    var q = new URLSearchParams(location.search);
+    if (location.hash || (!q.has('landing') && (localStorage.getItem('bp_token') || localStorage.getItem('bp_binder')))) {
+      location.replace('/app' + location.search + location.hash);
+    }
+  } catch (e) {} })();
+</script>
+<script>
+(function(){var K="mp_utm",P=["utm_source","utm_medium","utm_campaign","utm_content"],q=new URLSearchParams(location.search),u={},h=false;
+P.forEach(function(k){var v=q.get(k);if(v){u[k]=v;h=true}});
+if(h){document.cookie=K+"="+encodeURIComponent(JSON.stringify(u))+";max-age=7776000;path=/;SameSite=Lax"}
+function read(){var m=document.cookie.match(new RegExp("(?:^|; )"+K+"=([^;]*)"));try{return m?JSON.parse(decodeURIComponent(m[1])):{}}catch(e){return{}}}
+window.mpTrack=function(ev,ref){var t=read();try{navigator.sendBeacon?navigator.sendBeacon("https://agi-empire.com/api/mp/events",new Blob([JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}})],{type:"application/json"})):fetch("https://agi-empire.com/api/mp/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}}),keepalive:true})}catch(e){}};
+window.mpUtm=read;})();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg> Binderplan</a>
+    <nav>
+      <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel-Binder</a>
+      <a class="btn" href="/app">Binder planen – kostenlos</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Dein Pokémon-Binder, <em>Fach für Fach geplant</em> – mit echten Preisen.</h1>
+      <p class="lead">Master Set, Pokédex oder alle Karten deines Lieblings-Pokémon: Binderplan legt die Fächer an, zeigt Cardmarket-Preise in Euro, erstellt die Kaufliste und druckt Schwarz-Weiß-Platzhalter mit „Seite · Fach“-Beschriftung – bis die echte Karte drin liegt.</p>
+      <div class="cta">
+        <a class="btn" href="/app">Jetzt Binder planen</a>
+        <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel ansehen</a>
+      </div>
+      <div class="klein">Kostenlos, ohne Anmeldung starten · 23.000+ Karten, alle Ären, deutsch &amp; englisch · Japan-Sets inklusive</div>
+    </div>
+    <div class="shot"><img src="assets/planer.png" alt="Binderplan: Planer-Ansicht mit acht Binderseiten eines Master Sets" width="1200" height="750"></div>
+  </div>
+
+  <section>
+    <h2>So funktioniert’s</h2>
+    <p class="sub">Drei Schritte vom leeren Ordner zum fertigen Plan.</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3>Set oder Pokémon wählen</h3><p>Vorlagen für Master Sets, Pokédex-Binder und „alle Karten eines Pokémon“ – oder Karte für Karte suchen. Filter nach Ära, Set, Kartenart, Seltenheit und Typ.</p></div>
+      <div class="step"><span class="n">2</span><h3>Fächer anordnen</h3><p>Ziehen, sortieren, Seiten freilassen. 2×2 bis 5×5-Raster, Reverse Holo, 1st Edition und Sonderdrucke als eigene Fächer.</p></div>
+      <div class="step"><span class="n">3</span><h3>Drucken &amp; abhaken</h3><p>Platzhalter in 63 × 88 mm, 9 pro A4-Blatt, jedes mit „Seite · Fach“. Karte gekauft? Häkchen setzen – die Kaufliste zeigt nur noch, was fehlt.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shot"><img src="assets/werkbank.png" alt="Binderplan-Werkbank: Kartensuche links, Binderseite rechts" width="1400" height="875" loading="lazy"></div>
+  </section>
+
+  <section>
+    <h2>Was Binderplan kann</h2>
+    <p class="sub">Alles, was zwischen „ich will das Set“ und „der Binder ist voll“ liegt.</p>
+    <div class="feat">
+      <div><h3>Cardmarket-Preise in Euro</h3><p>Trendpreis je Karte, Holo-Preise, Gesamtwert des Binders und Preisverlauf – täglich aktualisiert.</p></div>
+      <div><h3>Kaufliste, die mitdenkt</h3><p>Nur die Karten, die noch fehlen – mit Preis und Summe, als CSV für Cardmarket-Wants oder den Kartenladen.</p></div>
+      <div><h3>Platzhalter zum Ausdrucken</h3><p>Schwarz-Weiß, maßhaltig, mit Wasserzeichen und Fach-Beschriftung. Oder die Checkliste ohne Bilder – seitenweise zum Abhaken.</p></div>
+      <div><h3>Vorlagen &amp; Import</h3><p>Master Set (mit Reverse Holos), Pokédex Gen 1–9, alle Karten eines Pokémon, Regenbogen-Sortierung. Listen aus TCG Collector, Collectr oder Cardmarket einfügen.</p></div>
+      <div><h3>Deutsch, Englisch, Japan</h3><p>Deutsche Namen und Bilder, englischer Katalog und die japanischen Sets mit Euro-Preisen – als eigener Set-Baum.</p></div>
+      <div><h3>Teilen &amp; auf jedem Gerät</h3><p>Binder als Link teilen (nur Ansicht), am Handy weiterplanen, hell oder dunkel.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Preise</h2>
+    <p class="sub">Planen ist kostenlos. Pro nimmt die Grenzen weg.</p>
+    <div class="tarife">
+      <div class="tarif"><strong>Kostenlos</strong><div class="p">0 €</div><ul><li>Planen ohne Anmeldung</li><li>Preise ansehen</li><li>2 gespeicherte Binder</li><li>1 Karten-PDF pro Monat, Checklisten unbegrenzt</li></ul><a class="btn sek" href="/app">Loslegen</a></div>
+      <div class="tarif top"><strong>Pro</strong><div class="p">3,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Unbegrenzte Binder &amp; PDFs</li><li>Preise sofort aktualisieren</li><li>Kaufliste als CSV</li><li>Jahr: 24,99 € (2 Monate geschenkt)</li></ul><a class="btn" href="/app?upgrade=1">Pro holen</a></div>
+      <div class="tarif"><strong>Lifetime</strong><div class="p">49,99 €</div><ul><li>Einmal zahlen, für immer Pro</li><li>Kein Abo, keine Verlängerung</li></ul><a class="btn sek" href="/app?upgrade=1">Einmal kaufen</a></div>
+    </div>
+    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:10px">Endpreise, keine Umsatzsteuer (§ 19 UStG). Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.</p>
+  </section>
+
+  <section class="faq">
+    <h2>Häufige Fragen</h2>
+    <details><summary>Darf ich die Platzhalter drucken?</summary><p>Ja – für den privaten Gebrauch als Platzhalter im eigenen Binder. Die Drucke sind schwarz-weiß, tragen ein Wasserzeichen und dürfen nicht verkauft, getauscht oder als echte Karten ausgegeben werden. Binderplan ist ein inoffizielles Fan-Werkzeug ohne Verbindung zu The Pokémon Company oder Nintendo.</p></details>
+    <details><summary>Woher kommen die Preise?</summary><p>Aus dem Cardmarket-Trend (Euro) über die TCGdex-Datenbank. Sie sind eine Orientierung, kein Angebot – bei alten Karten fehlt teils der Cardmarket-Eintrag, dann steht ein „?“.</p></details>
+    <details><summary>Warum sind manche Karten auf Englisch abgebildet?</summary><p>Für die alten WotC-Sets (Base Set, Jungle, Fossil …) gibt es keine deutschen Scans in der Datenbank. Diese Karten sind mit „EN“ gekennzeichnet; Name und Setnummer sind trotzdem deutsch.</p></details>
+    <details><summary>Brauche ich ein Konto?</summary><p>Zum Planen nicht. Ein kostenloses Konto brauchst du für den Karten-PDF-Export und um Binder auf mehreren Geräten zu sehen.</p></details>
+  </section>
+
+  <footer>
+    Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#datenschutz">Datenschutz</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
+  </footer>
+</div>
+</body>
+</html>

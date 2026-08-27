@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Binderplan – Pokémon-Binder planen &amp; drucken</title>
+<title>Binderplan – Werkbank</title>
+<meta name="robots" content="noindex">
+<script>
+(function(){var K="mp_utm",P=["utm_source","utm_medium","utm_campaign","utm_content"],q=new URLSearchParams(location.search),u={},h=false;
+P.forEach(function(k){var v=q.get(k);if(v){u[k]=v;h=true}});
+if(h){document.cookie=K+"="+encodeURIComponent(JSON.stringify(u))+";max-age=7776000;path=/;SameSite=Lax"}
+function read(){var m=document.cookie.match(new RegExp("(?:^|; )"+K+"=([^;]*)"));try{return m?JSON.parse(decodeURIComponent(m[1])):{}}catch(e){return{}}}
+window.mpTrack=function(ev,ref){var t=read();try{navigator.sendBeacon?navigator.sendBeacon("https://agi-empire.com/api/mp/events",new Blob([JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}})],{type:"application/json"})):fetch("https://agi-empire.com/api/mp/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}}),keepalive:true})}catch(e){}};
+window.mpUtm=read;})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
 <link rel="manifest" href="manifest.webmanifest">
@@ -247,43 +256,125 @@
     .modal { padding: 16px; }
     .tarife { flex-direction: column; }
   }
+  /* ---------- 2026-08-27: Kopfzeile, Filter, Onboarding, Detail, Varianten, Undo ---------- */
+  .mobil-only { display: none !important; }
+  .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }
+  .namefeld:hover, .namefeld:focus-within { background: var(--panel2); }
+  .namefeld .stift { color: var(--mut); font-size: 13px; }
+  .f-zweispaltig { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .f-mehr { font-size: 12.5px; padding: 8px 13px; justify-content: space-between; }
+  .f-mehr-box { display: flex; flex-direction: column; gap: 14px; }
+  .onb { background: var(--panel2); border-radius: 14px; padding: 12px 14px; font-size: 12.5px; }
+  .onb-titel { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+  .onb ol { margin: 0 0 10px; padding-left: 18px; color: var(--mut); line-height: 1.5; }
+  .onb-tpl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .onb-tpl button { background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; gap: 1px; }
+  .onb-tpl button:hover { border-color: var(--akzent); }
+  .onb-tpl strong { font-size: 12.5px; }
+  .onb-tpl span { font-size: 10.5px; color: var(--mut); }
+  .tk .plus { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); background: var(--akzent); color: #fff; border-radius: 999px;
+              padding: 5px 12px; font-size: 12px; font-weight: 700; opacity: 0; transition: opacity .12s; z-index: 3; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .tk:hover .plus { opacity: 1; }
+  .tk .plus:hover { background: var(--akzent-dunkel); }
+  .tk .enb { position: absolute; bottom: 46px; right: 5px; background: rgba(58,50,39,.75); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
+  .tk .jpb { position: absolute; bottom: 46px; left: 5px; background: #c0392b; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
+  @media (hover: none) { .tk .plus { opacity: 1; bottom: 40px; padding: 4px 10px; } }
+  .slot .vmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent); color: #fff; font-size: 7.5px; font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  body.sammeln .slot .hat-btn { opacity: 1; width: 22px; height: 22px; font-size: 12px; line-height: 19px; }
+  body.sammeln .slot.voll { cursor: pointer; }
+  body.sammeln .slot .raus { display: none; }
+  .preisbox { background: #f0f6ef; border: 1.5px solid #d3e4d0; border-radius: 10px; padding: 9px 12px; font-size: 12.5px; color: #2f5c3b; text-align: center; font-weight: 700; }
+  :root[data-theme="dark"] .preisbox { background: #22301f; border-color: #35502f; color: #9fd3ad; }
+  .toast { display: flex; align-items: center; gap: 12px; pointer-events: none; }
+  .toast.zeig { pointer-events: auto; }
+  .toast button { color: #ffb8a8; font-weight: 700; text-decoration: underline; padding: 0; }
+  /* Detail-Panel */
+  .detail .d-grid { display: grid; grid-template-columns: 260px 1fr; gap: 22px; }
+  .detail .d-bild { width: 100%; border-radius: 12px; display: block; background: var(--panel2); }
+  .detail h2 { font-size: 20px; margin: 0; }
+  .detail .d-meta { color: var(--mut); font-size: 13px; margin: 4px 0 12px; }
+  .detail .d-preise { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .detail .d-preis { background: var(--panel2); border-radius: 10px; padding: 8px 12px; min-width: 110px; }
+  .detail .d-preis .z { font-size: 18px; font-weight: 700; }
+  .detail .d-preis .l { font-size: 11px; color: var(--mut); font-weight: 600; }
+  .detail .spark { width: 100%; height: 56px; display: block; margin: 4px 0 12px; }
+  .detail .var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .detail .d-andere { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+  .detail .d-andere button { flex: 0 0 74px; padding: 0; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--line); background: var(--card); }
+  .detail .d-andere button:hover { border-color: var(--akzent); }
+  .detail .d-andere img { width: 100%; display: block; aspect-ratio: 63/88; object-fit: contain; background: var(--panel2); }
+  .detail .d-andere span { display: block; font-size: 9.5px; padding: 3px 4px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .imp-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .imp-tab td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  .imp-tab td.u { color: var(--akzent); }
+  .pl-akt:disabled { opacity: .4; }
+  .bcard .bthumbs { display: flex; gap: 4px; margin-bottom: 4px; }
+  .bcard .bthumbs img { width: 46px; aspect-ratio: 63/88; object-fit: contain; border-radius: 5px; background: var(--panel2); }
+  .bcard .bthumbs span { width: 46px; aspect-ratio: 63/88; border-radius: 5px; border: 1.5px dashed var(--slotrand); }
+  @media (max-width: 900px) {
+    .mobil-only { display: inline-flex !important; }
+    .desktop-only { display: none !important; }
+    .kopf { flex-wrap: nowrap; height: 54px; overflow: hidden; }
+    .kopf .logo-text { display: none; }
+    .kopf .namefeld { flex: 1; min-width: 0; }
+    .kopf input.bindername { order: 0; width: 100%; }
+    #wb-status { display: none; }
+    .kopf > .menuwrap:nth-of-type(1), .kopf > .menuwrap:nth-of-type(2) { order: 0; }
+    .detail .d-grid { grid-template-columns: 1fr; }
+    .detail .d-bild { max-width: 240px; margin: 0 auto; }
+    .onb-tpl { grid-template-columns: 1fr 1fr; }
+    .mnav .menu { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="sync-banner" class="sync-banner hidden"></div>
   <div class="kopf">
-    <div class="logo" onclick="if(S.user)startOeffnen()" style="cursor:pointer" title="Übersicht">
-      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
-      Binderplan
+    <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Übersicht">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
+      <span class="logo-text">Binderplan</span>
     </div>
-    <div class="menuwrap">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="menuToggle('menu-neu')" data-i18n="neu">+ Neu / Vorlagen</button>
+    <div class="menuwrap desktop-only">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="menuToggle('menu-neu')" data-i18n="neu">+ Neu</button>
       <div class="menu hidden" id="menu-neu">
         <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
         <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
         <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
+        <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
+        <div class="trenn"></div>
+        <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
       </div>
     </div>
     <div class="menuwrap">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="meineOeffnen()" data-i18n="meine">Meine Binder</button>
       <div class="menu hidden" id="menu-meine"></div>
     </div>
-    <input class="bindername" id="wb-name" placeholder="Name des Binders">
+    <label class="namefeld" title="Name des Binders – zum Ändern anklicken">
+      <span class="stift" aria-hidden="true">✎</span>
+      <input class="bindername" id="wb-name" placeholder="Name des Binders">
+    </label>
     <span id="wb-status" style="font-size:11.5px;color:var(--mut)"></span>
     <div style="flex:1"></div>
-    <label class="schalter"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-    <div class="lang-toggle">
-      <button id="lang-de" class="on" onclick="setLang('de')">DE</button>
-      <button id="lang-en" onclick="setLang('en')">EN</button>
+    <label class="schalter desktop-only" title="Cardmarket-Trendpreise in Euro einblenden"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
+    <div class="menuwrap">
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen">⚙</button>
+      <div class="menu hidden" id="menu-einst" style="min-width:200px">
+        <div style="padding:6px 12px 2px;font-size:11px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.06em" data-i18n="pf_sprache">Sprache</div>
+        <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
+        <div style="padding:6px 12px 2px;font-size:11px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.06em" data-i18n="pf_design">Design</div>
+        <button id="theme-btn" onclick="themeWechsel()"></button>
+        <div class="trenn"></div>
+        <button class="mobil-only" onclick="preisToggleMobil()"><span data-i18n="preise">Preise</span> <span id="preis-mobil-stand"></span></button>
+        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+      </div>
     </div>
-    <button class="btn sekundaer" style="font-size:12px;padding:6px 11px" id="theme-btn" onclick="themeWechsel()" title="Hell / Dunkel"></button>
-    <button class="btn sekundaer" style="font-size:13px;padding:7px 14px" onclick="planerOeffnen()" data-i18n="planer">Planer</button>
+    <button class="btn sekundaer desktop-only" style="font-size:13px;padding:7px 14px" onclick="planerOeffnen()" data-i18n="planer">Planer</button>
     <div class="menuwrap">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
       <div class="menu hidden" id="menu-konto"></div>
     </div>
-    <div class="menuwrap">
+    <div class="menuwrap desktop-only">
       <button class="btn" style="font-size:13px" onclick="menuToggle('menu-export')">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
         <span data-i18n="pdf">Drucken</span>
@@ -292,7 +383,7 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">PDF – alle Karten (S/W)</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">PDF – nur fehlende Karten</button>
         <div class="trenn"></div>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste ohne Bilder (zählt nicht als Export)</button>
+        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste (seitenweise, ohne Bilder)</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <div class="trenn"></div>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
@@ -307,35 +398,34 @@
         <div class="f-lbl" data-i18n="f_suche">Suche</div>
         <input type="search" class="feld" id="f-suche" placeholder="Karte oder Pokémon …">
       </div>
+      <div class="f-zweispaltig">
+        <div><div class="f-lbl" data-i18n="f_aera">Ära</div><select class="feld" id="f-serie"></select></div>
+        <div><div class="f-lbl">Set</div><select class="feld" id="f-set"></select></div>
+      </div>
       <div>
         <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
         <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak">
         <datalist id="dex-namen"></datalist>
       </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_aera">Ära</div>
-        <select class="feld" id="f-serie"></select>
-      </div>
-      <div>
-        <div class="f-lbl">Set</div>
-        <select class="feld" id="f-set"></select>
-      </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_art">Kartenart</div>
-        <div class="f-chips" id="f-kinds"></div>
-      </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
-        <select class="feld" id="f-rarity"></select>
-      </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_typ">Typ</div>
-        <div class="f-chips" id="f-typen"></div>
-      </div>
-      <div>
-        <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
-        <select class="feld" id="f-sort"></select>
-        <label class="schalter" style="margin-top:8px"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label>
+      <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Mehr Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
+      <div id="f-mehr" class="hidden f-mehr-box">
+        <div>
+          <div class="f-lbl" data-i18n="f_art">Kartenart</div>
+          <div class="f-chips" id="f-kinds"></div>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
+          <select class="feld" id="f-rarity"></select>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_typ">Typ</div>
+          <div class="f-chips" id="f-typen"></div>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
+          <select class="feld" id="f-sort"></select>
+          <label class="schalter" style="margin-top:8px"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label>
+        </div>
       </div>
       <button class="btn sekundaer" style="font-size:12.5px;padding:8px 13px" onclick="filterReset()" data-i18n="f_reset">Filter zurücksetzen</button>
       <div style="margin-top:auto;font-size:10.5px;color:var(--mut)">
@@ -349,7 +439,8 @@
     <div class="spalte-mitte">
       <div class="kopfzeile">
         <span id="erg-anzahl">–</span>
-        <div style="flex:1"></div>
+        <span class="mobil-only" style="flex:1"></span>
+        <div style="flex:1" class="desktop-only"></div>
         <div class="menuwrap">
           <button class="btn sekundaer" style="font-size:12px;padding:6px 12px" onclick="menuToggle('menu-alle')" id="btn-alle" data-i18n="alle">+ Alle Treffer …</button>
           <div class="menu hidden" id="menu-alle">
@@ -366,12 +457,39 @@
     <div class="spalte-binder">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
         <div style="font-size:13.5px;font-weight:700" data-i18n="binder">Binder</div>
-        <select class="feld" id="wb-layout" style="width:auto" onchange="layoutWechsel(this.value)"></select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn sekundaer mobil-only" style="font-size:12px;padding:5px 10px" onclick="menuToggle('menu-neu-m')" data-i18n="neu">+ Neu</button>
+          <div class="menuwrap mobil-only">
+            <div class="menu hidden" id="menu-neu-m" style="right:auto;left:0">
+              <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
+              <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
+              <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
+              <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
+              <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
+            </div>
+          </div>
+          <select class="feld" id="wb-layout" style="width:auto" onchange="layoutWechsel(this.value)"></select>
+        </div>
       </div>
       <div class="binder-groesse desktop-only" title="Größe der Binder-Übersicht">
+        <span data-i18n="ansicht">Ansicht</span>
         <span>–</span>
         <input type="range" id="wb-groesse" min="324" max="680" step="20" oninput="binderBreite(this.value)">
         <span>+</span>
+      </div>
+      <div id="wb-onb" class="onb hidden">
+        <div class="onb-titel" data-i18n="onb_t">So geht’s</div>
+        <ol>
+          <li data-i18n="onb_1">Set wählen oder Karte suchen</li>
+          <li data-i18n="onb_2">Auf „+“ tippen – die Karte landet hier im Fach</li>
+          <li data-i18n="onb_3">Drucken, abhaken, Kaufliste mitnehmen</li>
+        </ol>
+        <div class="onb-tpl">
+          <button onclick="modalOeffnen('modal-master')"><strong data-i18n="tpl_master">Master Set</strong><span data-i18n="tpl_master_u">jede Karte eines Sets</span></button>
+          <button onclick="modalOeffnen('modal-dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
+          <button onclick="modalOeffnen('modal-poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
+          <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
+        </div>
       </div>
       <div class="slots" id="wb-slots"></div>
       <div class="seiten-nav">
@@ -381,12 +499,13 @@
       </div>
       <div style="font-size:12px;color:var(--mut);text-align:center" id="wb-fortschritt"></div>
       <div id="wb-sammel" class="hidden">
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px">
-          <span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--mut);margin-bottom:4px">
+          <label class="schalter" style="font-size:11.5px" title="Fächer anklicken = als „hab ich“ markieren"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammel-Modus</span></label>
+          <span><span data-i18n="gesammelt">Gesammelt</span> <strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></span>
         </div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
-      <div id="wb-preise" class="hidden" style="background:#f0f6ef;border:1.5px solid #d3e4d0;border-radius:10px;padding:9px 12px;font-size:12.5px;color:#2f5c3b;text-align:center;font-weight:700"></div>
+      <div id="wb-preise" class="hidden preisbox"></div>
       <div style="flex:1"></div>
       <div style="font-size:11px;color:var(--mut);line-height:1.5" data-i18n="hilfe">Karten ziehen zum Umsortieren, ✕ entfernt. Gedruckt wird in 63 × 88 mm mit „Seite · Fach“-Beschriftung.</div>
       <button class="btn sekundaer" style="font-size:12px;padding:7px 13px" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
@@ -406,7 +525,7 @@
     </button>
     <button id="mnav-binder" onclick="mobilAnsicht('binder')">
       <span class="mzahl" id="mnav-binder-zahl">0</span>
-      <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
+      <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       <span data-i18n="m_binder">Binder</span>
     </button>
     <button id="mnav-planer" onclick="planerOeffnen()">
@@ -422,7 +541,7 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">PDF – alle Karten (S/W)</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">PDF – nur fehlende Karten</button>
         <div class="trenn"></div>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste ohne Bilder (zählt nicht als Export)</button>
+        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste (seitenweise, ohne Bilder)</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <div class="trenn"></div>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
@@ -439,7 +558,11 @@
     <div class="unter" data-i18n="m_master_u">Jede Karte des Sets einmal, sortiert nach Setnummer.</div>
     <input type="search" class="feld" id="set-suche" placeholder="Set suchen …" oninput="zeichneSetliste()">
     <div class="setliste" id="set-liste"></div>
-    <label class="schalter" style="margin-top:14px"><input type="checkbox" id="opt-reverse"><span data-i18n="m_reverse">Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)</span></label>
+    <div class="f-zweispaltig" style="margin-top:12px">
+      <div><div class="f-lbl" data-i18n="f_sort">Sortierung</div>
+        <select class="feld" id="opt-master-sort"><option value="nummer" data-i18n="s_nummer">Setnummer</option><option value="typ" data-i18n="s_rainbow">Regenbogen (nach Typ)</option><option value="dex" data-i18n="s_dex">Pokédex-Nummer</option></select></div>
+      <div style="display:flex;align-items:flex-end"><label class="schalter"><input type="checkbox" id="opt-reverse"><span data-i18n="m_reverse">Reverse Holos zusätzlich (Karte erscheint doppelt)</span></label></div>
+    </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="masterErstellen()" data-i18n="anlegen">Binder anlegen</button>
@@ -462,6 +585,51 @@
   </div>
 </div>
 
+<!-- Modal: Ein Pokémon – alle Karten -->
+<div class="overlay hidden" id="modal-poke">
+  <div class="modal" style="width:min(520px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="m_poke_t">Ein Pokémon – alle Karten</h2>
+    <div class="unter" data-i18n="m_poke_u">Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.</div>
+    <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
+    <input class="feld" id="poke-name" list="dex-namen" placeholder="z. B. Glurak" oninput="pokeInfo()">
+    <div style="font-size:13px;color:var(--mut);margin-top:10px" id="poke-info"></div>
+    <label class="schalter" style="margin-top:12px"><input type="checkbox" id="poke-jp"><span data-i18n="m_poke_jp">Japanische Karten dazunehmen</span></label>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="pokeErstellen()" data-i18n="anlegen">Binder anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Import -->
+<div class="overlay hidden" id="modal-import">
+  <div class="modal" style="width:min(720px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="m_import_t">Liste importieren</h2>
+    <div class="unter" data-i18n="m_import_u">Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.</div>
+    <textarea class="feld" id="import-text" rows="7" placeholder="sv1 25&#10;Glurak 4/102&#10;1x Charizard (Base Set) 4" style="resize:vertical;font-family:ui-monospace,monospace;font-size:12.5px"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <label class="btn sekundaer" style="font-size:12.5px;padding:7px 12px"><span data-i18n="import_datei">Datei wählen (.csv/.txt)</span><input type="file" accept=".csv,.txt,text/plain,text/csv" style="display:none" onchange="importDatei(this)"></label>
+      <button class="btn sekundaer" style="font-size:12.5px;padding:7px 12px" onclick="importPruefen()" data-i18n="import_pruefen">Prüfen</button>
+      <span id="import-stand" style="font-size:12.5px;color:var(--mut)"></span>
+    </div>
+    <div id="import-vorschau" style="margin-top:12px;max-height:280px;overflow-y:auto"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" id="import-btn" onclick="importUebernehmen()" disabled data-i18n="import_btn">In den Binder</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Kartendetail -->
+<div class="overlay hidden" id="modal-detail">
+  <div class="modal detail" style="width:min(820px,96vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <div id="detail-inhalt"></div>
+  </div>
+</div>
+
 <!-- Modal: Anmelden / Registrieren -->
 <div class="overlay hidden" id="modal-auth">
   <div class="modal" style="width:min(420px,94vw)">
@@ -478,7 +646,7 @@
     <input class="feld" id="auth-pw" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
     <label class="schalter hidden" id="auth-agb" style="margin-top:12px;align-items:flex-start">
       <input type="checkbox" id="auth-agb-check" style="margin-top:2px">
-      <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung (Links unten links auf der Seite).</span>
+      <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung.</span>
     </label>
     <button id="auth-vergessen" onclick="passwortVergessen()" style="font-size:12px;color:var(--mut);text-decoration:underline;margin-top:10px;padding:0" data-i18n="pw_vergessen">Passwort vergessen?</button>
     <div id="auth-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
@@ -523,14 +691,15 @@
     <button class="btn sekundaer" style="font-size:13px" onclick="planerSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
     <div style="font-size:14px;font-weight:700" id="planer-titel"></div>
     <div style="flex:1"></div>
+    <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
     <span style="font-size:12.5px;color:var(--mut)"><span data-i18n="auswahl">Auswahl</span>: <strong id="planer-anzahl">0</strong></span>
-    <select class="feld" id="planer-sortkey" style="width:auto"></select>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlSortieren()" data-i18n="sortieren">Auswahl sortieren</button>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
+    <select class="feld pl-akt" id="planer-sortkey" style="width:auto"></select>
+    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlSortieren()" data-i18n="sortieren">Auswahl sortieren</button>
+    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
+    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
+    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
+    <button class="btn sekundaer pl-akt" style="font-size:12.5px" onclick="auswahlLeeren()" data-i18n="aufheben">Auswahl aufheben</button>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="auswahlLeeren()" data-i18n="aufheben">Auswahl aufheben</button>
   </div>
   <div class="planer-rumpf" id="planer-rumpf"></div>
 </div>
@@ -539,7 +708,7 @@
 <div id="startseite" class="seite-voll hidden">
   <div class="planer-kopf">
     <div class="logo" style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700">
-      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="8" r="2.2"></circle></svg>
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       Binderplan
     </div>
     <div style="flex:1"></div>
@@ -565,6 +734,7 @@
   <div class="seite-rumpf" style="max-width:640px">
     <div class="pf-block">
       <h3 data-i18n="pf_konto">Konto</h3>
+      <div class="pf-zeile"><span data-i18n="pf_name">Anzeigename</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
       <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
@@ -606,7 +776,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
 'use strict';
@@ -614,7 +784,21 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
-    neu: '+ Neu / Vorlagen', m_leer: 'Leerer Binder', m_master: 'Master Set …', m_dex: 'Pokédex-Binder …',
+    undo: 'Rückgängig', undo_ok: 'Rückgängig gemacht.', hinzugefuegt_1: 'Karte im Binder',
+    f_mehr: 'Mehr Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus', m_poke: 'Ein Pokémon – alle Karten …',
+    m_import: 'Liste importieren …', m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
+    m_poke_jp: 'Japanische Karten dazunehmen', alle_karten: 'alle Karten', s_rainbow: 'Regenbogen (nach Typ)',
+    m_import_t: 'Liste importieren', m_import_u: 'Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.',
+    import_datei: 'Datei wählen (.csv/.txt)', import_pruefen: 'Prüfen', import_btn: 'In den Binder', imp_erkannt: 'erkannt', imp_unklar: 'unklar', imp_kein_treffer: 'kein Treffer',
+    onb_t: 'So geht’s', onb_1: 'Set wählen oder Karte suchen', onb_2: 'Auf „+“ tippen – die Karte landet hier im Fach', onb_3: 'Drucken, abhaken, Kaufliste mitnehmen',
+    tpl_master: 'Master Set', tpl_master_u: 'jede Karte eines Sets', tpl_dex: 'Pokédex', tpl_dex_u: 'ein Fach je Pokémon', tpl_poke: 'Ein Pokémon', tpl_poke_u: 'alle Karten, chronologisch', tpl_import: 'Import', tpl_import_u: 'Liste aus anderem Tool',
+    variante: 'Variante / Fach', v_normal: 'Normal', v_reverse: 'Reverse Holo', v_holo: 'Holo', v_first: '1st Edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
+    zustand_ph: 'Zustand (z. B. NM, PSA 10)', in_binder: 'In den Binder', im_binder: 'im Binder', andere_drucke: 'Andere Drucke dieses Pokémon',
+    preis_trend: 'Cardmarket-Trend', preis_holo: 'Holo-Trend', preis_laden: 'Preis wird geladen …', verlauf: 'Preisverlauf', tage: 'Tage', verlauf_bald: 'Preisverlauf entsteht ab jetzt täglich.',
+    bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
+    pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
+    ex_check: 'Checkliste (seitenweise, ohne Bilder)', neu: '+ Neu',
+    neu_alt: '+ Neu / Vorlagen', m_leer: 'Leerer Binder', m_master: 'Master Set …', m_dex: 'Pokédex-Binder …',
     meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', pdf: 'Drucken',
     f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
     f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
@@ -651,7 +835,7 @@ const T = {
     agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
     konto: 'Konto', tarif_frei: 'Kostenlos', upgrade: 'Auf Pro upgraden', abo_verwalten: 'Abo verwalten',
     ex_alle: 'PDF – alle Karten (S/W)', ex_fehlend: 'PDF – nur fehlende Karten',
-    ex_check: 'Checkliste ohne Bilder (zählt nicht als Export)', ex_kauf: 'Kaufliste als CSV (Pro)',
+    ex_check_alt: 'Checkliste ohne Bilder (zählt nicht als Export)', ex_kauf: 'Kaufliste als CSV (Pro)',
     ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
     gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
     gate_pdf: 'Für den PDF-Export brauchst du ein kostenloses Konto — dein erster Export ist frei.',
@@ -690,7 +874,21 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
-    neu: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
+    undo: 'Undo', undo_ok: 'Undone.', hinzugefuegt_1: 'Card added',
+    f_mehr: 'More filters', ansicht: 'Size', sammeln: 'Collect mode', m_poke: 'One Pokémon – all cards …',
+    m_import: 'Import list …', m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
+    m_poke_jp: 'Include Japanese cards', alle_karten: 'all cards', s_rainbow: 'Rainbow (by type)',
+    m_import_t: 'Import a list', m_import_u: 'One card per line – e.g. “sv1 25”, “Charizard 4/102”, “1x Charizard (Base Set) 4” or the CSV exports of TCG Collector, Collectr and Cardmarket wants.',
+    import_datei: 'Choose file (.csv/.txt)', import_pruefen: 'Check', import_btn: 'Add to binder', imp_erkannt: 'matched', imp_unklar: 'unclear', imp_kein_treffer: 'no match',
+    onb_t: 'How it works', onb_1: 'Pick a set or search a card', onb_2: 'Tap “+” – the card lands in a slot here', onb_3: 'Print, tick off, take the buy list',
+    tpl_master: 'Master set', tpl_master_u: 'every card of a set', tpl_dex: 'Pokédex', tpl_dex_u: 'one slot per Pokémon', tpl_poke: 'One Pokémon', tpl_poke_u: 'all cards, chronological', tpl_import: 'Import', tpl_import_u: 'list from another tool',
+    variante: 'Variant / slot', v_normal: 'Normal', v_reverse: 'Reverse holo', v_holo: 'Holo', v_first: '1st edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
+    zustand_ph: 'Condition (e.g. NM, PSA 10)', in_binder: 'Add to binder', im_binder: 'in binder', andere_drucke: 'Other prints of this Pokémon',
+    preis_trend: 'Cardmarket trend', preis_holo: 'Holo trend', preis_laden: 'loading price …', verlauf: 'Price history', tage: 'days', verlauf_bald: 'Price history builds up daily from now on.',
+    bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
+    pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
+    ex_check: 'Checklist (page by page, no images)', neu: '+ New',
+    neu_alt: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
     meine: 'My binders', preise: 'Prices', planer: 'Planner', pdf: 'Print',
     f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
     f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
@@ -727,7 +925,7 @@ const T = {
     agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
     konto: 'Account', tarif_frei: 'Free', upgrade: 'Upgrade to Pro', abo_verwalten: 'Manage subscription',
     ex_alle: 'PDF – all cards (B/W)', ex_fehlend: 'PDF – missing cards only',
-    ex_check: 'Checklist without images (does not count as export)', ex_kauf: 'Buy list as CSV (Pro)',
+    ex_check_alt: 'Checklist without images (does not count as export)', ex_kauf: 'Buy list as CSV (Pro)',
     ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
     gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
     gate_pdf: 'PDF export needs a free account — your first export is free.',
@@ -771,7 +969,7 @@ const t = (k) => T[LANG][k] || T.de[k] || k;
 
 // ---------- Zustand ----------
 const S = {
-  meta: null, binder: null, pokedex: null, preise: {}, preiseAn: false,
+  meta: null, binder: null, pokedex: null, preise: {}, preiseHolo: {}, preiseAn: false,
   ergebnisse: [], gesamt: 0, offset: 0, seite: 0, speicherTimer: null,
   auswahl: new Set(),
   token: localStorage.getItem('bp_token') || '', user: null, nurAnsicht: false,
@@ -827,7 +1025,7 @@ const imgUrl = (id, extra) => 'api/img/card/' + encodeURIComponent(id) + '?lang=
 
 let toastTimer = null;
 function toast(text) {
-  const el = $('toast'); el.textContent = text; el.classList.add('zeig');
+  const el = $('toast'); $('toast-text').textContent = text; $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 2600);
 }
 
@@ -875,7 +1073,7 @@ function setLang(lang) {
   $('lang-en').classList.toggle('on', lang === 'en');
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   themeAnwenden();
-  baueFilterLeiste();
+  baueFilterLeiste(); mehrFilterZahl();
   zeichneErgebnisse();
   zeichneBinder();
   baueDexNamen();
@@ -939,17 +1137,18 @@ async function boot() {
     } catch (e) {}
   }
   const zeigeStart = S.user && (!hash || hash === 'start');
-  if (!S.binder && !zeigeStart) await neuLeer(true);
+  if (!S.binder && !zeigeStart) S.binder = lokalerBinder();   // wird erst mit der ersten Karte gespeichert
   if (S.binder) binderAnzeigen();
+  mehrFilterZahl();
   sucheNeu();
   if (zeigeStart) startOeffnen();
+  if (new URLSearchParams(location.search).get('upgrade')) { history.replaceState(null, '', location.pathname + location.hash); upgradeOeffnen(''); }
 }
 
 function ansichtAktivieren() {
   document.querySelector('.spalte-filter').classList.add('hidden');
   document.querySelector('.spalte-mitte').classList.add('hidden');
-  document.querySelectorAll('[onclick="planerOeffnen()"]').forEach((el) => el.classList.add('hidden'));
-  document.querySelector('[onclick="binderLeeren()"]').classList.add('hidden');
+  document.querySelectorAll('[onclick="planerOeffnen()"], [onclick="binderLeeren()"], #wb-sammel, .mobil-only').forEach((el) => el.classList.add('hidden'));
   // Mobil: direkt die Binder-Ansicht zeigen, Such-/Filter-Knöpfe ausblenden
   document.body.classList.add('binder-an');
   ['mnav-filter', 'mnav-suche', 'mnav-binder'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
@@ -983,7 +1182,7 @@ function setToken(token) {
 function kontoAnzeigen() {
   const btn = $('btn-konto');
   if (S.user) {
-    btn.textContent = S.user.email.split('@')[0] + (S.user.plan !== 'free' ? ' ★' : '');
+    btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? ' ★' : '');
   } else {
     btn.textContent = t('anmelden');
   }
@@ -999,7 +1198,7 @@ function kontoMenue() {
     <div style="padding:9px 12px;font-size:12px;color:var(--mut)">${u.email}<br>
       <strong style="color:var(--ink)">${planLbl}</strong> · ${exporte} ${t('exporte_uebrig')}</div>
     <div class="trenn"></div>
-    <button onclick="startOeffnen()">🗂 ${t('start')}</button>
+    <button onclick="startOeffnen()">${t('start')}</button>
     <button onclick="profilOeffnen()">${t('profil')}</button>
     <div class="trenn"></div>
     ${u.plan === 'free' ? `<button onclick="upgradeOeffnen('')">${t('upgrade')} ★</button>` : ''}
@@ -1070,6 +1269,7 @@ async function authAbsenden() {
     });
     setToken(d.token);
     S.user = d.user;
+    if (authModus === 'reg' && window.mpTrack) { try { mpTrack('signup', String(d.user.email).slice(0, 3) + '…'); } catch (e) {} }
     // Anonyme Binder dem Konto zuordnen
     const ids = binderIds();
     if (ids.length) {
@@ -1120,12 +1320,12 @@ async function startOeffnen() {
   $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
   location.hash = 'start';
-  $('st-gruss').textContent = t('hallo') + ', ' + S.user.email.split('@')[0] + '!';
+  $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
   await startLaden();
 }
 function startSchliessen() {
   $('startseite').classList.add('hidden');
-  if (S.binder) location.hash = 'binder/' + S.binder.id;
+  if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
   else neuLeer(true);
 }
 async function startLaden() {
@@ -1140,7 +1340,10 @@ async function startLaden() {
   const modeLbl = { master: t('mode_master'), dex: t('mode_dex'), custom: t('mode_custom') };
   $('st-grid').innerHTML = liste.map((b) => {
     const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
+    const thumbs = (b.vorschau || []).map((id) => `<img loading="lazy" src="${imgUrl(id)}" alt="">`).join('')
+      + (b.dex_vorschau || []).slice(0, 3 - (b.vorschau || []).length).map((d) => `<img loading="lazy" src="api/img/dex/${d}" alt="" style="object-fit:contain;padding:4px">`).join('');
     return `<div class="bcard" onclick="startBinderOeffnen('${b.id}')">
+      <div class="bthumbs">${thumbs || '<span></span><span></span><span></span>'}</div>
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">🗑</span></div>
@@ -1173,7 +1376,7 @@ async function startNeu(art) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (art === 'leer') { $('startseite').classList.add('hidden'); await neuLeer(); return; }
   $('startseite').classList.add('hidden');
-  if (S.binder) location.hash = 'binder/' + S.binder.id;
+  if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
   modalOeffnen(art === 'master' ? 'modal-master' : 'modal-dex');
 }
 
@@ -1192,6 +1395,7 @@ function profilFuellen() {
   const u = S.user;
   if (!u) return;
   $('pf-email').textContent = u.email;
+  $('pf-name').value = u.name || '';
   $('pf-plan').textContent = u.plan === 'free' ? t('tarif_frei') : (u.plan === 'lifetime' ? 'Lifetime ★' : 'Pro ★');
   $('pf-binder').textContent = u.binder_anzahl + ' / ' + (u.binder_limit == null ? '∞' : u.binder_limit);
   $('pf-exporte').textContent = u.exporte_limit == null ? '∞' : Math.max(0, u.exporte_limit - u.exporte_benutzt) + ' / ' + u.exporte_limit;
@@ -1241,7 +1445,7 @@ function syncBanner() {
 }
 
 function binderAnzeigen() {
-  location.hash = 'binder/' + S.binder.id;
+  if (S.binder.id) location.hash = 'binder/' + S.binder.id;
   $('wb-name').value = S.binder.name;
   S.seite = 0; S.preise = {};
   zeichneLayouts();
@@ -1291,7 +1495,10 @@ async function binderSpeichernNeu(name, mode, items, options) {
 }
 
 async function neuLeer(still) {
-  if (!await binderSpeichernNeu(t('neuer_binder'), 'custom', [], {})) return;
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Leerer Binder = nur lokal; die DB-Zeile entsteht mit der ersten Karte (keine leeren Gast-Binder mehr)
+  S.binder = lokalerBinder();
+  binderAnzeigen(); zeichneErgebnisse();
   if (!still) { modalSchliessen(); toast(t('angelegt')); }
 }
 
@@ -1326,7 +1533,11 @@ async function masterErstellen() {
   const s = S.meta.sets.find((x) => x.id === wzSet);
   const name = 'Master Set ' + ((LANG === 'en' ? s.name_en : s.name) || s.name_en || wzSet);
   const d = await api('api/sets/' + wzSet + '/cards');
-  let items = d.karten.map((k) => ({ type: 'card', id: k.id }));
+  const sortkey = $('opt-master-sort').value;
+  const karten = d.karten.slice();
+  if (sortkey === 'typ') karten.sort((a, b) => ((a.types[0] || 'zz') + String(parseInt(a.local_id) || 0).padStart(5, '0')).localeCompare((b.types[0] || 'zz') + String(parseInt(b.local_id) || 0).padStart(5, '0')));
+  if (sortkey === 'dex') karten.sort((a, b) => (a.dex || 99999) - (b.dex || 99999));
+  let items = karten.map((k) => ({ type: 'card', id: k.id }));
   const options = {};
   if ($('opt-reverse').checked) {
     options.reverse = true;
@@ -1398,7 +1609,7 @@ function baueFilterLeiste() {
     `<button class="chip ${filter.typ === en ? 'on' : ''}" data-typ="${en}" onclick="typToggle('${en}')">${T[LANG].typen[en]}</button>`).join('');
   // Ären chronologisch (vom Server in echter Ären-Ordnung geliefert)
   $('f-serie').innerHTML = `<option value="">${t('alle_aeren')}</option>` + (S.meta.series || []).map((s) =>
-    `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name} (${s.von}–${s.bis || ''})</option>`).join('');
+    `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name}${s.von ? ` (${s.von}–${s.bis || ''})` : ''}</option>`).join('');
   // Sets (nach Ära gefiltert, chronologisch)
   baueSetSelect();
   // Seltenheiten
@@ -1435,18 +1646,18 @@ async function ladePokedex() {
 function kindToggle(k) {
   filter.kinds.has(k) ? filter.kinds.delete(k) : filter.kinds.add(k);
   document.querySelectorAll('[data-kind]').forEach((el) => el.classList.toggle('on', filter.kinds.has(el.dataset.kind)));
-  sucheNeu();
+  mehrFilterZahl(); sucheNeu();
 }
 function typToggle(ty) {
   filter.typ = filter.typ === ty ? '' : ty;
   document.querySelectorAll('[data-typ]').forEach((el) => el.classList.toggle('on', el.dataset.typ === filter.typ));
-  sucheNeu();
+  mehrFilterZahl(); sucheNeu();
 }
 function filterReset() {
   Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc' });
   filter.kinds.clear();
   $('f-suche').value = ''; $('f-dex').value = ''; $('f-absteigend').checked = false;
-  baueFilterLeiste();
+  baueFilterLeiste(); mehrFilterZahl();
   sucheNeu();
 }
 
@@ -1493,8 +1704,11 @@ function zeichneErgebnisse() {
   $('btn-alle').title = S.gesamt > 2000 ? t('zu_viele') : '';
   $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
     const n = anzahlImBinder(k.id);
-    return `<div class="tk" onclick="kartAdd(${i})" title="${nm(k)}">
+    const enb = LANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
+    const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
+    return `<div class="tk" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
+      <button class="plus" onclick="event.stopPropagation();kartAdd(${i})">＋ ${t('in_binder')}</button>${enb}${jpb}
       ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Reverse Holo">R+</span>` : ''}
       ${n ? `<span class="anz">${n}</span>` : ''}
       <div class="tk-name">${nm(k)}</div>
@@ -1506,8 +1720,7 @@ function zeichneErgebnisse() {
 function kartAdd(i, variant) {
   const k = S.ergebnisse[i];
   if (!k || !S.binder) return;
-  S.binder.items.push({ type: 'card', id: k.id, variant: variant || 'normal' });
-  speichern(); zeichneBinder(); zeichneErgebnisse();
+  kartAddId(k.id, variant);
 }
 
 async function alleHinzufuegen(naechsteSeite) {
@@ -1518,14 +1731,16 @@ async function alleHinzufuegen(naechsteSeite) {
     const d = await api('api/cards/ids?' + p);
     if (!d.ids.length) return;
     if (d.ids.length > 300 && !confirm(d.ids.length + ' ' + t('bestaetigen_viele'))) return;
+    merken('alle');
     if (naechsteSeite) {
       const pp = proSeite();
       const rest = S.binder.items.length % pp;
       if (rest) for (let x = 0; x < pp - rest; x++) S.binder.items.push({ type: 'empty' });
     }
     for (const id of d.ids) S.binder.items.push({ type: 'card', id });
+    if (!await binderAnlegenWennNoetig()) return;
     speichern(); zeichneBinder(); zeichneErgebnisse();
-    toast(d.ids.length + ' ' + t('hinzugefuegt'));
+    toastUndo(d.ids.length + ' ' + t('hinzugefuegt'));
   } catch (e) { toast('?'); }
 }
 
@@ -1571,16 +1786,17 @@ function bildFehlt(img) {
 function slotExtras(item, idx) {
   if (S.nurAnsicht) {
     let html = '';
-    if (item && item.variant === 'reverse') html += '<span class="rmark">REV</span>';
+    if (item && VMARK[item.variant]) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
     return html;
   }
   let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})">✕</button>`;
   if (item && item.type !== 'empty') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
-  if (item && item.variant === 'reverse') html += '<span class="rmark">REV</span>';
-  if (S.preiseAn && item && item.type === 'card' && S.preise[item.id] != null) {
-    html += `<span class="preis">${S.preise[item.id].toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
+  if (item && VMARK[item.variant]) html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
+  if (S.preiseAn && item && item.type === 'card') {
+    const p = preisFuer(item);
+    if (p != null) html += `<span class="preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
   }
   return html;
 }
@@ -1614,10 +1830,12 @@ function zeichneBinder() {
     const item = S.binder.items[idx];
     if (!item) { html += '<div class="slot">+</div>'; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
-    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}">
+    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
       ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
+  // Leerer Binder: Einstieg erklären und die Vorlagen zeigen
+  $('wb-onb').classList.toggle('hidden', S.nurAnsicht || S.binder.items.length > 0);
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty').length;
   const gesammelt = S.binder.items.filter((i) => i.have).length;
@@ -1635,10 +1853,12 @@ function seiteWechsel(d) {
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
   zeichneBinder();
 }
-function slotEntfernen(idx) { S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); }
+function slotEntfernen(idx) { merken('raus'); S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); toastUndo(t('entfernen')); }
 function binderLeeren() {
-  if (!S.binder.items.length || !confirm(t('bestaetigen_leeren'))) return;
+  if (!S.binder.items.length) return;
+  merken('leeren');
   S.binder.items = []; S.seite = 0; speichern(); zeichneBinder(); zeichneErgebnisse();
+  toastUndo(t('leeren'));
 }
 
 let dragIdx = null;
@@ -1659,22 +1879,17 @@ function dragDrop(ev) {
 // ---------- Preise ----------
 async function preiseUmschalten() {
   S.preiseAn = $('preis-toggle').checked;
-  if (S.preiseAn && !S.user) {
-    S.preiseAn = false;
-    $('preis-toggle').checked = false;
-    return loginOeffnen(t('gate_preise'));
-  }
   $('wb-preise').classList.toggle('hidden', !S.preiseAn);
   if (S.preiseAn) await preiseLaden();
   zeichneBinder();
 }
 async function preiseLaden() {
   const ids = [...new Set(S.binder.items.filter((i) => i.type === 'card').map((i) => i.id))];
-  if (!ids.length) return;
+  if (!ids.length) { $('wb-preise').textContent = t('gesamt') + ': 0,00 €'; return; }
   $('wb-preise').textContent = '…';
   try {
     const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
-    Object.assign(S.preise, d.preise);
+    Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
     if (d.gedrosselt) toast(t('preise_morgen'));
     else if (d.offen > 0) toast(t('preise_offen'));
   } catch (e) {
@@ -1683,12 +1898,17 @@ async function preiseLaden() {
   }
   zeichnePreisSumme();
 }
+// Holo-Varianten bekommen den Holo-Trend, wenn Cardmarket einen kennt
+function preisFuer(item) {
+  if (item.variant === 'holo' || item.variant === 'reverse') { const h = S.preiseHolo[item.id]; if (h != null) return h; }
+  return S.preise[item.id];
+}
 function zeichnePreisSumme() {
   if (!S.preiseAn) return;
   let summe = 0; let fehlen = 0;
   for (const i of S.binder.items) {
     if (i.type !== 'card') continue;
-    const p = S.preise[i.id];
+    const p = preisFuer(i);
     if (p == null) fehlen++; else summe += p;
   }
   const fmt = summe.toFixed(2).replace('.', LANG === 'de' ? ',' : '.');
@@ -1727,6 +1947,7 @@ function zeichnePlaner() {
       <div class="slots" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${slots}</div></div>`;
   }
   $('planer-rumpf').innerHTML = html;
+  planerAktionen();
 }
 
 let letzterKlick = null;
@@ -1762,9 +1983,12 @@ function auswahlVerschieben(wohin) {
 }
 function auswahlEntfernen() {
   if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  merken('auswahl');
+  const n = S.auswahl.size;
   S.binder.items = S.binder.items.filter((_, i) => !S.auswahl.has(i));
   S.auswahl.clear();
   speichern(); zeichnePlaner(); zeichneErgebnisse();
+  toastUndo(n + ' ' + t('entfernen'));
 }
 function leereSeite() {
   const pp = proSeite();
@@ -1809,6 +2033,7 @@ async function auswahlSortieren() {
 // ---------- Speichern & PDF ----------
 function speichern() {
   if (!S.binder || S.nurAnsicht) return;
+  if (!S.binder.id) { if (S.binder.items.length) binderAnlegenWennNoetig(); return; }
   $('wb-status').textContent = t('speichert');
   clearTimeout(S.speicherTimer);
   S.speicherTimer = setTimeout(async () => {
@@ -1821,6 +2046,7 @@ function speichern() {
 
 async function _binderSichern() {
   if (S.nurAnsicht) return;
+  if (!S.binder.id && !await binderAnlegenWennNoetig()) return;
   clearTimeout(S.speicherTimer);
   S.binder.options = { ...(S.binder.options || {}), sprache: LANG };
   await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
@@ -1832,6 +2058,11 @@ async function exportPdf(variante, nurFehlende) {
   if (!S.binder.items.length) return toast(t('binder_leer'));
   if (!S.user) return loginOeffnen(t('gate_pdf'));
   try { await _binderSichern(); } catch (e) { if (gate(e)) return; }
+  if ((variante || 'karten') === 'karten') {
+    // Schritt 1: Bilder parallel in den Cache (früher lief das sequenziell im PDF → Minuten)
+    toast(t('pdf_bilder'));
+    try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten`, { method: 'POST' }); } catch (e) { if (gate(e)) return; }
+  }
   toast(t('pdf_dauert'));
   const url = `api/binders/${S.binder.id}/pdf?variante=${variante || 'karten'}&nur_fehlende=${nurFehlende ? 1 : 0}`;
   try {
@@ -1844,6 +2075,7 @@ async function exportPdf(variante, nurFehlende) {
       return;
     }
     window.open(URL.createObjectURL(await r.blob()), '_blank');
+    toast(t('pdf_fertig'));
     if (S.user && S.user.exporte_limit != null && (variante || 'karten') === 'karten') {
       S.user.exporte_benutzt += 1;
     }
@@ -1892,10 +2124,224 @@ $('f-dex').addEventListener('input', () => {
 });
 $('f-serie').addEventListener('change', () => { filter.serie = $('f-serie').value; filter.set = ''; baueSetSelect(); sucheNeu(); });
 $('f-set').addEventListener('change', () => { filter.set = $('f-set').value; sucheNeu(); });
-$('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').value; sucheNeu(); });
-$('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; sucheNeu(); });
-$('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; sucheNeu(); });
+$('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').value; mehrFilterZahl(); sucheNeu(); });
+$('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; mehrFilterZahl(); sucheNeu(); });
+$('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; mehrFilterZahl(); sucheNeu(); });
+$('poke-name').addEventListener('focus', ladePokedex);
 $('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; speichern(); } });
+
+
+// ============================================================================
+// 2026-08-27: Undo, Sammel-Modus, Detail-Panel, Varianten, Import, Vorlagen,
+// Gast-Binder erst bei der ersten Karte, PDF-Vorbereitung, Anzeigename.
+// ============================================================================
+
+// ---------- Rückgängig ----------
+let undo = null;   // { label, items, seite }
+function merken(label) {
+  if (!S.binder) return;
+  undo = { label, items: JSON.parse(JSON.stringify(S.binder.items)), binderId: S.binder.id };
+}
+function toastUndo(text) {
+  const el = $('toast'); $('toast-text').textContent = text;
+  const b = $('toast-undo'); b.textContent = t('undo'); b.classList.toggle('hidden', !undo);
+  el.classList.add('zeig');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('zeig'); b.classList.add('hidden'); }, 7000);
+}
+function rueckgaengig() {
+  if (!undo || !S.binder || undo.binderId !== S.binder.id) return;
+  S.binder.items = undo.items; undo = null;
+  $('toast').classList.remove('zeig'); $('toast-undo').classList.add('hidden');
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toast(t('undo_ok'));
+}
+
+// ---------- Gast-Binder: erst anlegen, wenn die erste Karte kommt ----------
+function lokalerBinder() {
+  return { id: null, name: t('neuer_binder'), mode: 'custom', layout: (S.binder && S.binder.layout) || '3x3', options: {}, items: [] };
+}
+async function binderAnlegenWennNoetig() {
+  if (!S.binder || S.binder.id) return true;
+  let res;
+  try {
+    res = await api('api/binders', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: S.binder.name, mode: S.binder.mode, layout: S.binder.layout, options: S.binder.options || {}, items: S.binder.items }) });
+  } catch (e) { if (!gate(e)) toast(e.message); return false; }
+  S.binder.id = res.id;
+  merkeBinderId(res.id);
+  location.hash = 'binder/' + res.id;
+  return true;
+}
+
+// ---------- Sammel-Modus ----------
+function sammelnToggle() {
+  document.body.classList.toggle('sammeln', $('sammel-toggle').checked);
+  zeichneBinder();
+}
+function slotKlick(idx) {
+  if (document.body.classList.contains('sammeln')) hatToggle(idx);
+}
+
+// ---------- Filter: „Mehr Filter“ ----------
+let mehrFilterOffen = false;
+function mehrFilterToggle(an) {
+  mehrFilterOffen = an !== undefined ? an : !mehrFilterOffen;
+  $('f-mehr').classList.toggle('hidden', !mehrFilterOffen);
+  $('f-mehr-caret').textContent = mehrFilterOffen ? '▴' : '▾';
+}
+function mehrFilterZahl() {
+  const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.rarity ? 1 : 0) + (filter.sort !== 'datum' || filter.richtung !== 'asc' ? 1 : 0);
+  const el = $('f-mehr-zahl'); if (el) el.textContent = n ? `(${n})` : '';
+  const btn = $('f-mehr-btn'); if (btn) btn.style.borderColor = n ? 'var(--akzent)' : '';
+}
+
+// ---------- Kartendetail ----------
+const VARIANTEN = ['normal', 'reverse', 'holo', 'first', 'pokeball', 'masterball'];
+const VMARK = { reverse: 'REV', holo: 'HOLO', first: '1ST', pokeball: 'PB', masterball: 'MB' };
+let detailKarte = null; let detailVariante = 'normal';
+async function detailOeffnen(idOrIdx) {
+  const id = typeof idOrIdx === 'number' ? (S.ergebnisse[idOrIdx] || {}).id : idOrIdx;
+  if (!id) return;
+  modalOeffnen('modal-detail');
+  $('detail-inhalt').innerHTML = `<div style="padding:40px;text-align:center;color:var(--mut)">…</div>`;
+  let k;
+  try { k = await api('api/cards/' + encodeURIComponent(id) + '/detail'); } catch (e) { $('detail-inhalt').textContent = '?'; return; }
+  detailKarte = k; detailVariante = 'normal';
+  const fmt = (v) => v == null ? '?' : v.toFixed(2).replace('.', LANG === 'de' ? ',' : '.') + ' €';
+  const preis = k.preis || {};
+  const verlauf = (k.verlauf || []).filter((v) => v.eur != null);
+  let spark = '';
+  if (verlauf.length >= 2) {
+    const ys = verlauf.map((v) => v.eur); const min = Math.min(...ys), max = Math.max(...ys);
+    const pts = ys.map((y, i) => `${(i / (ys.length - 1) * 100).toFixed(1)},${(52 - (max === min ? 26 : (y - min) / (max - min) * 44 + 4)).toFixed(1)}`).join(' ');
+    spark = `<svg class="spark" viewBox="0 0 100 56" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--gruen)" stroke-width="2"/></svg>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:-8px;margin-bottom:10px"><span>${verlauf[0].datum}</span><span>${t('verlauf')} · ${verlauf.length} ${t('tage')}</span><span>${verlauf[verlauf.length - 1].datum}</span></div>`;
+  } else spark = `<div style="font-size:11.5px;color:var(--mut);margin-bottom:10px">${t('verlauf_bald')}</div>`;
+  const varChip = (v) => {
+    const erlaubt = v === 'normal' || (v === 'reverse' && k.reverse) || (v === 'holo' && (k.holo || preis.eur_holo)) || (v === 'first' && k.first) || v === 'pokeball' || v === 'masterball';
+    return `<button class="chip ${detailVariante === v ? 'on' : ''}" style="${erlaubt ? '' : 'opacity:.45'}" onclick="detailVariante='${v}';zeichneDetailChips()">${t('v_' + v)}</button>`;
+  };
+  const andere = (k.andere || []).map((a) => `<button onclick="detailOeffnen('${a.id}')" title="${esc(nm(a))} · ${esc(setNm(a))}"><img loading="lazy" src="${imgUrl(a.id)}" alt=""><span>${esc(setNm(a))} · ${esc(a.local_id || '')}</span></button>`).join('');
+  const cm = 'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
+  $('detail-inhalt').innerHTML = `
+    <div class="d-grid">
+      <div><img class="d-bild" src="${imgUrl(k.id, '&variante=high')}" alt="" onerror="this.src='${imgUrl(k.id)}'">
+        ${k.img_lang && k.img_lang !== 'de' && LANG === 'de' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
+      <div>
+        <h2>${esc(nm(k))}</h2>
+        <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · 🇯🇵' : ''}</div>
+        <div class="d-preise">
+          <div class="d-preis"><div class="z">${fmt(preis.eur)}</div><div class="l">${t('preis_trend')}</div></div>
+          ${preis.eur_holo ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
+          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div></div>
+        </div>
+        ${spark}
+        <div class="f-lbl">${t('variante')}</div>
+        <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="feld" id="detail-zustand" style="width:150px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
+          <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
+          <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
+        </div>
+        ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
+      </div>
+    </div>`;
+  if (preis.eur == null) {   // Preis nachladen, falls noch nie geholt
+    try { const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [k.id] }) });
+      if (d.preise[k.id] != null && detailKarte && detailKarte.id === k.id) { detailKarte.preis = { eur: d.preise[k.id], eur_holo: d.holo[k.id] }; detailOeffnen(k.id); }
+    } catch (e) {}
+  }
+}
+function zeichneDetailChips() {
+  document.querySelectorAll('#detail-chips .chip').forEach((c, i) => c.classList.toggle('on', VARIANTEN[i] === detailVariante));
+}
+function detailHinzufuegen() {
+  if (!detailKarte || !S.binder) return;
+  const zustand = ($('detail-zustand').value || '').trim();
+  kartAddId(detailKarte.id, detailVariante, zustand);
+  $('detail-anz').textContent = anzahlImBinder(detailKarte.id) + '× ' + t('im_binder');
+}
+async function kartAddId(id, variant, zustand) {
+  if (!S.binder) return;
+  merken('add');
+  const item = { type: 'card', id, variant: variant || 'normal' };
+  if (zustand) item.zustand = zustand;
+  S.binder.items.push(item);
+  if (!await binderAnlegenWennNoetig()) { S.binder.items.pop(); return; }
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  toastUndo(t('hinzugefuegt_1'));
+}
+
+// ---------- Vorlage: ein Pokémon – alle Karten ----------
+function pokeInfo() {
+  const v = ($('poke-name').value || '').trim().toLowerCase();
+  const p = (S.pokedex || []).find((x) => x.name.toLowerCase() === v || (x.name_en || '').toLowerCase() === v);
+  $('poke-info').textContent = p ? `#${String(p.dex).padStart(3, '0')} ${LANG === 'en' ? p.name_en : p.name}` : '';
+  $('poke-info').dataset.dex = p ? p.dex : '';
+}
+async function pokeErstellen() {
+  await ladePokedex(); pokeInfo();
+  const dex = Number($('poke-info').dataset.dex || 0);
+  if (!dex) return toast(t('erst_waehlen'));
+  const p = S.pokedex.find((x) => x.dex === dex);
+  const d = await api('api/cards/ids?dex=' + dex + '&sort=datum&limit=2000&region=intl');
+  let ids = d.ids;
+  if ($('poke-jp').checked) { try { ids = ids.concat((await api('api/cards/ids?dex=' + dex + '&sort=datum&limit=2000&region=jp')).ids); } catch (e) {} }
+  if (!ids.length) return toast('0');
+  if (!await binderSpeichernNeu((LANG === 'en' ? p.name_en : p.name) + ' – ' + t('alle_karten'), 'custom', ids.map((id) => ({ type: 'card', id })), { dex })) return;
+  modalSchliessen(); toast(ids.length + ' ' + t('angelegt'));
+}
+
+// ---------- Import ----------
+let importTreffer = [];
+function importOeffnen() { document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden')); modalOeffnen('modal-import'); $('import-vorschau').innerHTML = ''; $('import-btn').disabled = true; }
+function importDatei(inp) {
+  const f = inp.files && inp.files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => { $('import-text').value = r.result; importPruefen(); }; r.readAsText(f);
+}
+async function importPruefen() {
+  const text = $('import-text').value; if (!text.trim()) return;
+  $('import-stand').textContent = '…';
+  try {
+    const d = await api('api/import/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+    importTreffer = d.treffer;
+    $('import-stand').textContent = `${d.treffer.length} ${t('imp_erkannt')}${d.unklar.length ? ` · ${d.unklar.length} ${t('imp_unklar')}` : ''}`;
+    $('import-vorschau').innerHTML = `<table class="imp-tab">${d.treffer.map((x) => `<tr><td>${esc(x.zeile)}</td><td>→ <strong>${esc(x.name)}</strong> · ${esc(x.set_name || '')} ${esc(x.local_id || '')}${x.sicher ? '' : ' <span style="color:var(--mut)">?</span>'}</td></tr>`).join('')}
+      ${d.unklar.map((z) => `<tr><td class="u">${esc(z)}</td><td class="u">${t('imp_kein_treffer')}</td></tr>`).join('')}</table>`;
+    $('import-btn').disabled = !d.treffer.length;
+  } catch (e) { $('import-stand').textContent = '?'; }
+}
+async function importUebernehmen() {
+  if (!importTreffer.length || !S.binder) return;
+  merken('import');
+  for (const x of importTreffer) S.binder.items.push({ type: 'card', id: x.id });
+  if (!await binderAnlegenWennNoetig()) return;
+  speichern(); zeichneBinder(); zeichneErgebnisse(); modalSchliessen();
+  toastUndo(importTreffer.length + ' ' + t('hinzugefuegt'));
+}
+
+// ---------- Anzeigename ----------
+async function nameSpeichern() {
+  try {
+    const d = await api('api/auth/profil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('pf-name').value }) });
+    S.user = d.user; kontoAnzeigen(); toast(t('gespeichert'));
+  } catch (e) { toast(e.message); }
+}
+function anzeigeName() { return S.user ? (S.user.name || S.user.email.split('@')[0]) : ''; }
+
+// ---------- Mobil: Preise über das ⚙-Menü ----------
+function preisToggleMobil() {
+  const cb = $('preis-toggle'); cb.checked = !cb.checked; preiseUmschalten();
+  $('preis-mobil-stand').textContent = cb.checked ? '✓' : '';
+}
+
+// ---------- Planer: Aktionen nur mit Auswahl ----------
+function planerAktionen() {
+  const n = S.auswahl.size;
+  document.querySelectorAll('.pl-akt').forEach((el) => { el.disabled = n === 0; });
+  $('planer-hinweis').textContent = n ? '' : t('planer_hinweis');
+}
 
 boot();
 </script>

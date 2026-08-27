@@ -270,11 +270,21 @@ def init_db():
         "ALTER TABLE binders ADD COLUMN user_id INTEGER",
         "ALTER TABLE users ADD COLUMN reset_token TEXT",
         "ALTER TABLE users ADD COLUMN reset_bis TEXT",
+        # 2026-08-27: Anzeigename, Export-Kulanz, Holo-Preise, Japan-Region, Erstauflage
+        "ALTER TABLE users ADD COLUMN name TEXT",
+        "ALTER TABLE users ADD COLUMN letzter_export TEXT",   # 'binder_id:JJJJ-MM-TT HH:MM:SS'
+        "ALTER TABLE card_prices ADD COLUMN eur_holo REAL",
+        "ALTER TABLE sets ADD COLUMN region TEXT DEFAULT 'intl'",
+        "ALTER TABLE cards ADD COLUMN region TEXT DEFAULT 'intl'",
+        "ALTER TABLE cards ADD COLUMN has_first INTEGER DEFAULT 0",
+        "ALTER TABLE pokemon ADD COLUMN name_ja TEXT",
+        "ALTER TABLE cards ADD COLUMN name_ja TEXT",
     ):
         try:
             con.execute(alter)
         except sqlite3.OperationalError:
             pass
+    con.execute("CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(region)")   # erst nach dem ALTER möglich
     con.commit()
     con.close()
 
@@ -499,17 +509,18 @@ def _sync_pokedex(client, con):
             d = client.get(f"https://pokeapi.co/api/v2/pokemon-species/{dex_id}").json()
             name_de = next((n["name"] for n in d.get("names", []) if n["language"]["name"] == "de"), None)
             name_en = next((n["name"] for n in d.get("names", []) if n["language"]["name"] == "en"), None)
-            return dex_id, name_de, name_en or (d.get("name") or "").capitalize()
+            name_ja = next((n["name"] for n in d.get("names", []) if n["language"]["name"] == "ja"), None)
+            return dex_id, name_de, name_en or (d.get("name") or "").capitalize(), name_ja
         except Exception:
-            return dex_id, None, None
+            return dex_id, None, None, None
 
     with ThreadPoolExecutor(8) as pool:
-        for dex_id, name_de, name_en in pool.map(fetch, ids):
+        for dex_id, name_de, name_en, name_ja in pool.map(fetch, ids):
             SYNC["done"] += 1
             gen = next((g for g, lo, hi in GEN_RANGES if lo <= dex_id <= hi), None)
             con.execute(
-                "INSERT OR REPLACE INTO pokemon (dex_id,name_de,name_en,gen) VALUES (?,?,?,?)",
-                (dex_id, name_de or (name_en or "").capitalize(), name_en, gen),
+                "INSERT OR REPLACE INTO pokemon (dex_id,name_de,name_en,gen,name_ja) VALUES (?,?,?,?,?)",
+                (dex_id, name_de or (name_en or "").capitalize(), name_en, gen, name_ja),
             )
     con.commit()
 
@@ -539,6 +550,154 @@ def run_sync():
         _sync_lock.release()
 
 
+# --- Japan (TCGdex „ja“) ----------------------------------------------------
+# Japanische Sets laufen als eigener Set-Baum (region='jp'): Namen japanisch,
+# Bilder über dieselbe CDN, Pokédex-Nummer per Namensabgleich mit den
+# japanischen Pokémon-Namen aus der PokéAPI (TCGdex liefert für ja keine
+# GraphQL-Details). Cardmarket-Preise kommen über dasselbe pricing-Feld.
+
+def _ja_pokemon_namen(con):
+    rows = con.execute("SELECT dex_id, name_ja FROM pokemon WHERE name_ja IS NOT NULL").fetchall()
+    # längste Namen zuerst, damit „リザードン“ nicht auf „リザード“ matcht
+    return sorted(((r["name_ja"], r["dex_id"]) for r in rows), key=lambda x: -len(x[0]))
+
+
+def _ja_dex_fuer_name(name, namen):
+    n = (name or "")
+    for jn, dex in namen:
+        if jn and jn in n:
+            return dex
+    return None
+
+
+def _ja_kinds(name):
+    n = name or ""
+    kinds = []
+    if "ex" in n and n.endswith("ex"):
+        kinds.append("ex")
+    if n.endswith("V"):
+        kinds.append("v")
+    if n.endswith("VMAX"):
+        kinds = ["vmax"]
+    if n.endswith("VSTAR"):
+        kinds = ["vstar"]
+    if n.endswith("GX"):
+        kinds.append("gx")
+    if "エネルギー" in n:
+        kinds = ["energie"]
+    return kinds or ["pokemon"]
+
+
+def run_sync_ja():
+    """Japanische Sets + Karten einmalig laden (Admin-Endpunkt / automatisch, wenn leer)."""
+    if not _sync_lock.acquire(blocking=False):
+        return
+    con = get_db()
+    try:
+        SYNC.update(running=True, error=None, step="Japan: Sets laden", done=0, total=0)
+        namen = _ja_pokemon_namen(con)
+        with httpx.Client(timeout=60, headers=UA) as client:
+            sets = client.get(f"{TCGDEX}/ja/sets").json()
+            SYNC["total"] = len(sets)
+
+            def fetch(sid):
+                try:
+                    return client.get(f"{TCGDEX}/ja/sets/{sid}").json()
+                except Exception:
+                    return None
+
+            with ThreadPoolExecutor(4) as pool:
+                for d in pool.map(fetch, [x["id"] for x in sets]):
+                    SYNC["done"] += 1
+                    if not d or "id" not in d:
+                        continue
+                    serie = d.get("serie") or {}
+                    cc = d.get("cardCount") or {}
+                    con.execute(
+                        "INSERT OR REPLACE INTO sets (id,name,serie_id,serie_name,release_date,total,official,symbol,name_en,serie_name_en,region)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,'jp')",
+                        (d["id"], d.get("name"), serie.get("id"), serie.get("name"), d.get("releaseDate"),
+                         cc.get("total"), cc.get("official"), d.get("symbol"), d.get("name"), serie.get("name")))
+                    for c in d.get("cards") or []:
+                        dex = _ja_dex_fuer_name(c.get("name"), namen)
+                        kinds = _ja_kinds(c.get("name"))
+                        con.execute(
+                            "INSERT OR REPLACE INTO cards (id,set_id,local_id,local_num,name_de,name_en,name_ja,image_de,image_en,"
+                            "category,kind,kinds,dex_ids,first_dex,types,release_date,region)"
+                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'jp')",
+                            (c["id"], d["id"], c.get("localId"), _local_num(c.get("localId")),
+                             None, None, c.get("name"), None, c.get("image"),
+                             "Energy" if "energie" in kinds else "Pokemon", kinds[0], json.dumps(kinds),
+                             json.dumps([dex] if dex else []), dex, "[]", d.get("releaseDate")))
+                    con.commit()
+        # lateinische Namen (DE/EN) aus dem Pokédex nachziehen, damit die Suche „Glurak“ auch JP-Karten findet
+        con.execute(
+            "UPDATE cards SET name_de = (SELECT name_de FROM pokemon WHERE pokemon.dex_id = cards.first_dex),"
+            " name_en = (SELECT name_en FROM pokemon WHERE pokemon.dex_id = cards.first_dex)"
+            " WHERE region = 'jp' AND first_dex IS NOT NULL")
+        con.commit()
+        SYNC["step"] = "fertig"
+    except Exception as exc:
+        SYNC["error"] = str(exc)[:500]
+    finally:
+        SYNC["running"] = False
+        con.close()
+        _sync_lock.release()
+
+
+@app.post("/api/admin/sync_ja")
+def admin_sync_ja(key: str = ""):
+    if not _admin_key() or key != _admin_key():
+        raise HTTPException(403, "Falscher Schlüssel")
+    threading.Thread(target=run_sync_ja, daemon=True).start()
+    return {"gestartet": True}
+
+
+def _preishistorie_job():
+    """Täglich: alle bekannten Preise auffrischen und in die Historie schreiben."""
+    con = get_db()
+    ids = [r["card_id"] for r in con.execute("SELECT card_id FROM card_prices ORDER BY updated_at LIMIT 3000")]
+    con.close()
+    if not ids:
+        return
+    with httpx.Client(timeout=20, headers=UA) as client:
+        with ThreadPoolExecutor(6) as pool:
+            ergebnisse = list(pool.map(lambda c: _fetch_price(client, c), ids))
+    con = get_db()
+    for cid, eur, holo in ergebnisse:
+        con.execute("INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at) VALUES (?,?,?,datetime('now'))",
+                    (cid, eur, holo))
+        if eur is not None:
+            con.execute("INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)", (cid, _heute(), eur))
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
+    con.commit()
+    con.close()
+
+
+def _aufraeumen_job():
+    """Leere Gast-Binder (ohne Konto, ohne Karten, älter als 2 Tage) entfernen."""
+    con = get_db()
+    con.execute("DELETE FROM binders WHERE user_id IS NULL AND (items IS NULL OR items = '[]')"
+                " AND created_at < datetime('now', '-2 days')")
+    con.commit()
+    con.close()
+
+
+def _hintergrund_takt():
+    import time as _time
+    while True:
+        try:
+            _aufraeumen_job()
+            con = get_db()
+            letzter = con.execute("SELECT value FROM kv WHERE key='preishistorie_lauf'").fetchone()
+            con.close()
+            if not letzter or letzter["value"] < datetime_str_vor(23):
+                _preishistorie_job()
+        except Exception:
+            pass
+        _time.sleep(3600)
+
+
 def _maybe_autosync():
     con = get_db()
     n = con.execute("SELECT COUNT(*) c FROM cards").fetchone()["c"]
@@ -547,6 +706,7 @@ def _maybe_autosync():
         threading.Thread(target=run_sync, daemon=True).start()
     else:
         _maybe_backfill()
+    threading.Thread(target=_hintergrund_takt, daemon=True).start()
 
 
 threading.Thread(target=_maybe_autosync, daemon=True).start()
@@ -703,10 +863,19 @@ def meta():
     sets = []
     vorhandene_aeren = set()
     for r in con.execute(
-        "SELECT id,name,name_en,serie_id,serie_name,serie_name_en,release_date,total,official,symbol"
+        "SELECT id,name,name_en,serie_id,serie_name,serie_name_en,release_date,total,official,symbol,region"
         " FROM sets ORDER BY release_date IS NULL, release_date"
     ):
         d = dict(r)
+        d["region"] = d.get("region") or "intl"
+        # Promos, Jumbo-Karten, McDonald's & Co. sind keine Sammel-Sets – sie wandern
+        # in der Set-Liste ans Ende ihrer Ära (vorher stand „Miscellaneous Promos“ ganz oben)
+        d["promo"] = bool(re.search(r"promo|jumbo|misc|mcdonald|trainer kit|pop series|deck|starter", (d.get("name_en") or d.get("name") or ""), re.I)
+                          or (d["serie_id"] in ("pop", "tk", "mc", "misc")))
+        if d["region"] == "jp":
+            d["aera"] = "jp"; d["aera_name"] = "Japan"; d["aera_name_en"] = "Japan"
+            sets.append(d)
+            continue
         d["name"] = SET_NAME_FIX_DE.get(d["id"], d["name"]) or d["name_en"]
         d["serie_name"] = SERIE_NAME_FIX_DE.get(d["serie_id"], d["serie_name"]) or d["serie_name_en"]
         aera = _aera_fuer_set(d["serie_id"], d["release_date"])
@@ -716,13 +885,15 @@ def meta():
         d["aera_name_en"] = info["name_en"]
         vorhandene_aeren.add(aera)
         sets.append(d)
-    # Ären-Reihenfolge, innerhalb einer Ära chronologisch (TCG Pocket ans Ende)
-    sets.sort(key=lambda s: (AERA_ORDNUNG[s["aera"]], s["release_date"] or "9999"))
+    # Ären-Reihenfolge, innerhalb einer Ära erst Sammel-Sets chronologisch, dann Promos; Japan als eigener Baum
+    sets.sort(key=lambda s: (AERA_ORDNUNG.get(s["aera"], 99), s["promo"], s["release_date"] or "9999"))
     series = [
         {"id": a["id"], "name": a["name"], "name_en": a["name_en"],
          "von": a["von"], "bis": a["bis"]}
         for a in AEREN if a["id"] in vorhandene_aeren
     ]
+    if any(x["region"] == "jp" for x in sets):
+        series.append({"id": "jp", "name": "Japan (日本)", "name_en": "Japan (日本)", "von": "", "bis": ""})
     rarities = [
         {"rarity": r["rarity"], "anzahl": r["c"]}
         for r in con.execute(
@@ -754,11 +925,16 @@ SORTS = {
 }
 
 
-def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0):
+def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, region="intl"):
     where, params = [], []
     if q:
-        where.append("(name_de LIKE ? OR name_en LIKE ?)")
-        params += [f"%{q}%", f"%{q}%"]
+        where.append("(name_de LIKE ? OR name_en LIKE ? OR name_ja LIKE ?)")
+        params += [f"%{q}%", f"%{q}%", f"%{q}%"]
+    if serie == "jp":
+        region = "jp"; serie = ""
+    if region in ("intl", "jp"):
+        where.append("COALESCE(cards.region,'intl') = ?")
+        params.append(region)
     if set_id:
         where.append("set_id = ?")
         params.append(set_id)
@@ -798,10 +974,17 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0):
 
 
 def _card_brief(row):
+    keys = row.keys()
+    name_ja = row["name_ja"] if "name_ja" in keys else None
+    region = (row["region"] if "region" in keys else None) or "intl"
     return {
         "id": row["id"],
-        "name": row["name_de"] or row["name_en"],
-        "name_en": row["name_en"] or row["name_de"],
+        "name": (row["name_de"] or row["name_en"] or name_ja) if region != "jp" else (f"{name_ja} · {row['name_de']}" if row["name_de"] else name_ja),
+        "name_en": (row["name_en"] or row["name_de"] or name_ja) if region != "jp" else (f"{name_ja} · {row['name_en']}" if row["name_en"] else name_ja),
+        "region": region,
+        # Welche Sprache das Bild hat: alte WotC-Sets haben bei TCGdex keine deutschen Scans
+        "img_lang": "de" if row["image_de"] else ("en" if row["image_en"] else ("alt" if ("image_alt" in keys and row["image_alt"]) else None)),
+        "holo": bool(row["has_holo"]), "first": bool(row["has_first"]) if "has_first" in keys else False,
         "set_id": row["set_id"],
         "set_name": SET_NAME_FIX_DE.get(row["set_id"], row["set_name"]) or row["set_name_en"],
         "set_name_en": row["set_name_en"] or row["set_name"],
@@ -826,9 +1009,9 @@ _CARD_SELECT = (
 def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
           kind: str = "", rarity: str = "", dex: int = 0,
           sort: str = "datum", richtung: str = "asc",
-          limit: int = 60, offset: int = 0):
+          limit: int = 60, offset: int = 0, region: str = "intl"):
     limit = max(1, min(limit, 300))
-    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex)
+    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region)
     con = get_db()
     total = con.execute(f"SELECT COUNT(*) c FROM cards{sql_where}", params).fetchone()["c"]
     rows = con.execute(
@@ -843,9 +1026,9 @@ def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
 def card_ids(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
              kind: str = "", rarity: str = "", dex: int = 0,
              sort: str = "datum", richtung: str = "asc",
-             limit: int = 1000):
+             limit: int = 1000, region: str = "intl"):
     limit = max(1, min(limit, 2000))
-    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex)
+    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region)
     con = get_db()
     rows = con.execute(
         f"SELECT id FROM cards{sql_where} ORDER BY {order} LIMIT ?",
@@ -883,6 +1066,135 @@ def set_cards(set_id: str):
     if not rows:
         raise HTTPException(404, "Set unbekannt oder noch nicht synchronisiert")
     return {"karten": [_card_brief(r) for r in rows]}
+
+
+@app.get("/api/cards/{card_id}/detail")
+def card_detail(card_id: str):
+    """Alles für das Detail-Panel: Karte, Set, Preise (normal/holo), Verlauf, andere Drucke desselben Pokémon."""
+    con = get_db()
+    r = con.execute(f"{_CARD_SELECT} WHERE cards.id = ?", (card_id,)).fetchone()
+    if not r:
+        con.close()
+        raise HTTPException(404, "Karte unbekannt")
+    k = _card_brief(r)
+    k["category"] = r["category"]; k["stage"] = r["stage"]; k["suffix"] = r["suffix"]
+    k["reverse"] = bool(r["has_reverse"]); k["normal"] = bool(r["has_normal"])
+    sr = con.execute("SELECT id, name, name_en, release_date, total, official, serie_id, region FROM sets WHERE id = ?", (r["set_id"],)).fetchone()
+    k["set"] = dict(sr) if sr else None
+    if k["set"]:
+        k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
+    pr = con.execute("SELECT eur, eur_holo, updated_at FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
+    k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"]} if pr else None
+    k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
+        "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
+    andere = []
+    if r["first_dex"]:
+        for a in con.execute(
+            f"{_CARD_SELECT} WHERE first_dex = ? AND cards.id != ? AND COALESCE(cards.region,'intl') = ?"
+            " ORDER BY release_date DESC LIMIT 24", (r["first_dex"], card_id, k["region"])):
+            andere.append(_card_brief(a))
+        k["andere_gesamt"] = con.execute("SELECT COUNT(*) c FROM cards WHERE first_dex = ?", (r["first_dex"],)).fetchone()["c"]
+    k["andere"] = andere
+    con.close()
+    return k
+
+
+# --- Import (Listen aus anderen Tools) ---------------------------------------
+# Versteht je Zeile: „sv1 25“, „SV1-025“, „4/102 Charizard“, „Charizard 4/102“,
+# „1x Glurak (Base Set) 4“, TCG-Collector/Collectr-CSV (Name;Set;Nummer …) und
+# Cardmarket-Wants („1 Charizard (Base Set)“). Ergebnis: Treffer + unklare Zeilen.
+
+_SET_CODES = None
+
+
+def _set_codes():
+    """Set-ID ↔ gängige Kürzel/Namen (klein, ohne Sonderzeichen)."""
+    global _SET_CODES
+    if _SET_CODES is not None:
+        return _SET_CODES
+    con = get_db()
+    codes = {}
+    # japanische Sets zuerst, internationale überschreiben: „sv1“ meint das internationale Set, nicht SV1 (JP)
+    for r in con.execute("SELECT id, name, name_en, region FROM sets ORDER BY CASE WHEN region='jp' THEN 0 ELSE 1 END"):
+        for key in (r["id"], r["name"], r["name_en"], SET_NAME_FIX_DE.get(r["id"])):
+            if key:
+                codes[re.sub(r"[^a-z0-9]", "", key.lower())] = r["id"]
+    con.close()
+    _SET_CODES = codes
+    return codes
+
+
+def _import_zeile(zeile, con):
+    z = zeile.strip()
+    if not z or z.lower().startswith(("name;", "name,", "card name", "quantity", "menge")):
+        return None
+    z = re.sub(r"^\s*\d+\s*[x×]\s*", "", z)          # „2x “ vorne weg
+    z = re.sub(r"^\s*\d+\s+(?=[A-Za-zÄÖÜäöü])", "", z)  # „1 Charizard …“
+    codes = _set_codes()
+    sep = ";" if z.count(";") >= 2 else ("," if z.count(",") >= 2 else ("\t" if "\t" in z else None))
+    name = setname = nummer = None
+    total = None   # „4/102“: die Set-Größe grenzt das Set ein, wenn kein Setname dabeisteht
+    mt = re.search(r"\b(\d{1,3})\s*/\s*(\d{2,3})\b", z)
+    if mt:
+        total = int(mt.group(2))
+    if sep:
+        teile = [p.strip().strip('"') for p in z.split(sep)]
+        name = teile[0]
+        for p in teile[1:]:
+            if re.fullmatch(r"[A-Za-z]{0,4}\d{1,3}[a-z]?(/\d+)?", p) and nummer is None:
+                nummer = p.split("/")[0]
+            elif p and setname is None and not re.fullmatch(r"[\d.,€$ ]+", p):
+                setname = p
+    else:
+        m = re.match(r"^([a-z0-9]{2,8})[-\s](\d{1,3}[a-z]?)$", z, re.I)     # sv1-025 / sv1 25
+        if m:
+            setname, nummer = m.group(1), m.group(2)
+        else:
+            m = re.match(r"^(.*?)\s*\((.+?)\)\s*(\d{1,3})?(?:/\d+)?\s*$", z)  # Name (Set) 4
+            if m:
+                name, setname, nummer = m.group(1).strip(), m.group(2).strip(), m.group(3)
+            else:
+                m = re.match(r"^(?:(\d{1,3})/\d+\s+)?(.*?)(?:\s+(\d{1,3})/\d+)?$", z)  # 4/102 Name | Name 4/102
+                if m:
+                    nummer = m.group(1) or m.group(3)
+                    name = m.group(2).strip()
+    set_id = codes.get(re.sub(r"[^a-z0-9]", "", (setname or "").lower())) if setname else None
+    where, params = [], []
+    if set_id:
+        where.append("set_id = ?"); params.append(set_id)
+    else:
+        where.append("COALESCE(cards.region,'intl') = 'intl'")
+        if total:
+            where.append("set_id IN (SELECT id FROM sets WHERE official = ? OR total = ?)"); params += [total, total]
+    if nummer:
+        where.append("local_num = ?"); params.append(_local_num(nummer))
+    if name:
+        where.append("(name_de LIKE ? OR name_en LIKE ?)"); params += [f"%{name}%", f"%{name}%"]
+    if not where:
+        return {"zeile": zeile, "id": None}
+    rows = con.execute(f"{_CARD_SELECT} WHERE {' AND '.join(where)} ORDER BY release_date DESC LIMIT 3", params).fetchall()
+    if not rows and name and set_id:   # Name passt nicht zur Nummer → Nummer + Set reicht
+        rows = con.execute(f"{_CARD_SELECT} WHERE set_id = ? AND local_num = ? LIMIT 1", (set_id, _local_num(nummer or ""))).fetchall()
+    if not rows:
+        return {"zeile": zeile, "id": None}
+    k = _card_brief(rows[0])
+    return {"zeile": zeile, "id": k["id"], "name": k["name"], "set_name": k["set_name"], "local_id": k["local_id"],
+            "sicher": bool(set_id and nummer) or len(rows) == 1}
+
+
+@app.post("/api/import/parse")
+async def import_parse(request: Request):
+    data = await request.json()
+    text = str(data.get("text") or "")[:200000]
+    con = get_db()
+    treffer, unklar = [], []
+    for zeile in text.splitlines()[:2000]:
+        e = _import_zeile(zeile, con)
+        if e is None:
+            continue
+        (treffer if e["id"] else unklar).append(e)
+    con.close()
+    return {"treffer": treffer, "unklar": [u["zeile"] for u in unklar]}
 
 
 @app.get("/api/pokedex")
@@ -978,7 +1290,7 @@ def _user_info(user):
     con.close()
     pro = _ist_pro(user)
     return {
-        "email": user["email"], "plan": user["plan"],
+        "email": user["email"], "plan": user["plan"], "name": user.get("name") or "",
         "binder_anzahl": anzahl, "binder_limit": None if pro else FREE_BINDER_LIMIT,
         "exporte_benutzt": _exporte_benutzt(user),
         "exporte_limit": None if pro else FREE_EXPORT_LIMIT,
@@ -1183,6 +1495,20 @@ async def konto_loeschen(request: Request):
     return {"ok": True}
 
 
+@app.post("/api/auth/profil")
+async def profil_aendern(request: Request):
+    """Anzeigename (statt E-Mail-Präfix in Begrüßung und Kopfzeile)."""
+    user = _require_user(request)
+    data = await request.json()
+    name = str(data.get("name") or "").strip()[:40]
+    con = get_db()
+    con.execute("UPDATE users SET name = ? WHERE id = ?", (name, user["id"]))
+    con.commit()
+    user = dict(con.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone())
+    con.close()
+    return {"user": _user_info(user)}
+
+
 @app.get("/api/auth/me")
 def auth_me(request: Request):
     user = _current_user(request)
@@ -1337,56 +1663,80 @@ async def stripe_webhook(request: Request):
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
 
 def _fetch_price(client, card_id):
+    """→ (card_id, eur, eur_holo). Japanische IDs (Großbuchstaben) laufen über den ja-Pfad."""
+    lang = "ja" if card_id[:1].isupper() else "en"
     try:
-        d = client.get(f"{TCGDEX}/en/cards/{card_id}").json()
+        d = client.get(f"{TCGDEX}/{lang}/cards/{card_id}").json()
         cm = (d.get("pricing") or {}).get("cardmarket") or {}
+        eur = holo = None
         for key in ("trend", "avg30", "avg", "low"):
             if cm.get(key) is not None:
-                return card_id, round(float(cm[key]), 2)
+                eur = round(float(cm[key]), 2); break
+        for key in ("trend-holo", "avg30-holo", "avg-holo", "low-holo"):
+            if cm.get(key):
+                holo = round(float(cm[key]), 2); break
+        return card_id, eur, holo
     except Exception:
         pass
-    return card_id, None
+    return card_id, None, None
 
 
 @app.post("/api/preise")
 async def preise(request: Request):
     """EUR-Preise (Cardmarket-Trend) für Karten-IDs; fehlende werden nachgeladen.
-    Nur mit Konto; Free-Konten aktualisieren 1x pro Tag (Cache wird immer geliefert)."""
-    user = _require_user(request)
+
+    Preise sind der Kern-Nutzen und deshalb auch ohne Konto sichtbar: Gäste bekommen
+    den Cache plus bis zu 120 frische Preise je Anfrage (globales Tagesbudget),
+    Free-Konten aktualisieren 1x pro Tag, Pro sofort und unbegrenzt."""
+    user = _current_user(request)
     data = await request.json()
     ids = list(dict.fromkeys(str(i) for i in (data.get("ids") or [])))[:1500]
-    frei_gedrosselt = not _ist_pro(user) and user.get("preise_tag") == _heute()
+    frei_gedrosselt = bool(user) and not _ist_pro(user) and user.get("preise_tag") == _heute()
     con = get_db()
-    result, fehlt = {}, []
+    result, holo, fehlt = {}, {}, []
     for start in range(0, len(ids), 500):
         chunk = ids[start:start + 500]
         rows = con.execute(
-            "SELECT card_id, eur, updated_at FROM card_prices WHERE card_id IN (%s)"
+            "SELECT card_id, eur, eur_holo, updated_at FROM card_prices WHERE card_id IN (%s)"
             % ",".join("?" * len(chunk)), chunk).fetchall()
-        frisch = {r["card_id"]: r for r in rows
-                  if (r["updated_at"] or "") >= (datetime_str_vor(24))}
+        alle = {r["card_id"]: r for r in rows}
         for cid in chunk:
-            if cid in frisch:
-                result[cid] = frisch[cid]["eur"]
+            r = alle.get(cid)
+            if r and (r["updated_at"] or "") >= datetime_str_vor(24):
+                result[cid] = r["eur"]; holo[cid] = r["eur_holo"]
             else:
+                if r:   # alter Preis ist besser als keiner, bis der frische da ist
+                    result[cid] = r["eur"]; holo[cid] = r["eur_holo"]
                 fehlt.append(cid)
-    nachgeladen = [] if frei_gedrosselt else fehlt[:400]
+    if not user:
+        tag = con.execute("SELECT value FROM kv WHERE key='gast_preise'").fetchone()
+        heute, zaehler = (tag["value"].split(":") + ["0"])[:2] if tag and ":" in tag["value"] else (_heute(), "0")
+        budget = 2500 - (int(zaehler) if heute == _heute() else 0)
+        nachgeladen = fehlt[:max(0, min(120, budget))]
+    else:
+        nachgeladen = [] if frei_gedrosselt else fehlt[:400]
     if nachgeladen:
         with httpx.Client(timeout=20, headers=UA) as client:
             with ThreadPoolExecutor(8) as pool:
-                for cid, eur in pool.map(lambda c: _fetch_price(client, c), nachgeladen):
-                    result[cid] = eur
+                for cid, eur, eur_holo in pool.map(lambda c: _fetch_price(client, c), nachgeladen):
+                    result[cid] = eur; holo[cid] = eur_holo
                     con.execute(
-                        "INSERT OR REPLACE INTO card_prices (card_id, eur, updated_at)"
-                        " VALUES (?,?,datetime('now'))", (cid, eur))
+                        "INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at)"
+                        " VALUES (?,?,?,datetime('now'))", (cid, eur, eur_holo))
                     if eur is not None:
                         con.execute(
                             "INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)",
                             (cid, _heute(), eur))
-        con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
+        if user:
+            con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
+        else:
+            tag = con.execute("SELECT value FROM kv WHERE key='gast_preise'").fetchone()
+            heute, zaehler = (tag["value"].split(":") + ["0"])[:2] if tag and ":" in tag["value"] else (_heute(), "0")
+            neu = (int(zaehler) if heute == _heute() else 0) + len(nachgeladen)
+            con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('gast_preise', ?)", (f"{_heute()}:{neu}",))
         con.commit()
     con.close()
-    return {"preise": result, "offen": max(0, len(fehlt) - len(nachgeladen)),
+    return {"preise": result, "holo": holo, "offen": max(0, len(fehlt) - len(nachgeladen)),
             "gedrosselt": frei_gedrosselt}
 
 
@@ -1616,6 +1966,8 @@ def binder_list(request: Request, ids: str = ""):
             "anzahl": len(items),
             "gesammelt": sum(1 for i in items if i.get("have")),
             "updated_at": r["updated_at"],
+            "vorschau": [i.get("id") for i in items if i.get("type") == "card" and i.get("id")][:3],
+            "dex_vorschau": [i.get("dex") for i in items if i.get("type") == "dex"][:3],
         })
     return {"binder": result}
 
@@ -1627,6 +1979,10 @@ from reportlab.lib.pagesizes import A4  # noqa: E402
 from reportlab.lib.units import mm  # noqa: E402
 from reportlab.lib.utils import ImageReader  # noqa: E402
 from reportlab.pdfgen import canvas as pdfcanvas  # noqa: E402
+
+# Varianten je Fach (Kurzbezeichnung für Druck und Listen)
+VARIANT_LABELS = {"reverse": "Reverse Holo", "holo": "Holo", "first": "1st Edition",
+                  "pokeball": "Poké Ball", "masterball": "Master Ball"}
 
 CARD_W = 63 * mm
 CARD_H = 88 * mm
@@ -1763,14 +2119,40 @@ def _pdf_wasserzeichen(c, x, y, lang):
     c.restoreState()
 
 
-def _zaehle_export(user):
+def _zaehle_export(user, binder_id):
+    """Free-Export abbuchen – aber nicht, wenn derselbe Binder in den letzten 30 Minuten
+    schon exportiert wurde (abgebrochener Download, zweiter Versuch, Drucker-Panne)."""
     if _ist_pro(user):
         return
+    letzter = (user.get("letzter_export") or "").split(":", 1)
+    if len(letzter) == 2 and letzter[0] == binder_id and letzter[1] >= datetime_str_vor(0.5):
+        return
     con = get_db()
-    con.execute("UPDATE users SET exports_monat = ? WHERE id = ?",
-                (f"{_monat_key()}:{_exporte_benutzt(user) + 1}", user["id"]))
+    con.execute("UPDATE users SET exports_monat = ?, letzter_export = ? WHERE id = ?",
+                (f"{_monat_key()}:{_exporte_benutzt(user) + 1}",
+                 f"{binder_id}:{datetime_str_vor(0)}", user["id"]))
     con.commit()
     con.close()
+
+
+def _bilder_vorladen(card_ids, lang):
+    """Hochauflösende Bilder parallel in den Cache holen (vorher lief das im PDF
+    sequenziell: 64 Karten ≈ 40 s). → Anzahl fehlender Bilder."""
+    ids = list(dict.fromkeys(i for i in card_ids if i))
+    with ThreadPoolExecutor(8) as pool:
+        pfade = list(pool.map(lambda c: _card_image_path(c, lang), ids))
+    return sum(1 for p in pfade if p is None)
+
+
+@app.post("/api/binders/{binder_id}/pdf_vorbereiten")
+def binder_pdf_vorbereiten(binder_id: str, request: Request):
+    """Schritt 1 des Exports: Bilder laden (parallel), damit das PDF danach in Sekunden kommt."""
+    _require_user(request)
+    binder = _load_binder(binder_id)
+    lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
+    ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
+    fehlend = _bilder_vorladen(ids, lang) if ids else 0
+    return {"karten": len(ids), "ohne_bild": fehlend}
 
 
 @app.get("/api/binders/{binder_id}/pdf")
@@ -1801,6 +2183,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     pokemon_names = {r["dex_id"]: (r[namensspalte] or r["name_de"])
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
     con.close()
+    _bilder_vorladen(card_ids, lang)
 
     buf = io.BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=A4)
@@ -1874,8 +2257,11 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
             label = f"Page {binder_page} · Slot {slot}"
         else:
             label = f"Seite {binder_page} · Fach {slot}"
-        if variant == "reverse":
-            label += " · Reverse Holo"
+        vl = VARIANT_LABELS.get(variant)
+        if vl:
+            label += " · " + vl
+        if item.get("zustand"):
+            label += " · " + str(item["zustand"])[:12]
         c.drawCentredString(x + CARD_W / 2, y - 2.6 * mm, label)
         cell += 1
 
@@ -1892,7 +2278,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     )
     con.commit()
     con.close()
-    _zaehle_export(user)
+    _zaehle_export(user, binder_id)
 
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
     return Response(
@@ -1934,7 +2320,7 @@ def _binder_zeilen(binder, lang):
             setn = (k.get("set_name_en") if lang == "en" else k.get("set_name")) or ""
             zeilen.append({"pos": pos, "name": name, "set": setn, "nr": k.get("local_id") or "",
                            "eur": preise.get(item.get("id")), "have": bool(item.get("have")),
-                           "variant": item.get("variant") or ""})
+                           "variant": item.get("variant") or "", "zustand": item.get("zustand") or ""})
     return zeilen
 
 
@@ -1960,8 +2346,28 @@ def _checkliste_pdf(binder, lang, nur_fehlende):
         y = page_h - 28 * mm
 
     neue_seite()
+    gesamt = len(zeilen); hab = sum(1 for z in zeilen if z["have"])
+    c.setFont("Helvetica", 9)
+    c.setFillGray(0.45)
+    c.drawString(18 * mm, y, (f"{hab} von {gesamt} gesammelt · Preise: Cardmarket-Trend" if lang == "de"
+                              else f"{hab} of {gesamt} collected · prices: Cardmarket trend"))
+    y -= 8 * mm
+    letzte_seite = None
+    seiten_summe = 0.0
     c.setFont("Helvetica", 9.5)
     for z in zeilen:
+        seite = z["pos"].split("·")[0]
+        if seite != letzte_seite:
+            # Kopfzeile je Binderseite – so hakt man Seite für Seite ab
+            if y < 30 * mm:
+                c.showPage(); neue_seite()
+            y -= 2 * mm
+            c.setFillGray(0.93); c.rect(18 * mm, y - 1.6 * mm, page_w - 36 * mm, 6 * mm, fill=1, stroke=0)
+            c.setFillGray(0.2); c.setFont("Helvetica-Bold", 9.5)
+            c.drawString(20 * mm, y, ("Seite " if lang == "de" else "Page ") + seite)
+            c.setFont("Helvetica", 9.5)
+            y -= 7 * mm
+            letzte_seite = seite
         if y < 18 * mm:
             c.showPage()
             neue_seite()
@@ -1969,20 +2375,28 @@ def _checkliste_pdf(binder, lang, nur_fehlende):
         c.setFillGray(0.15)
         c.setLineWidth(0.7)
         c.setStrokeGray(0.3)
-        c.rect(18 * mm, y - 1, 3.4 * mm, 3.4 * mm)
+        c.rect(20 * mm, y - 1, 3.4 * mm, 3.4 * mm)
         if z["have"]:
             c.setFont("Helvetica-Bold", 9)
-            c.drawString(18.6 * mm, y - 0.4, "X")
+            c.drawString(20.6 * mm, y - 0.4, "X")
             c.setFont("Helvetica", 9.5)
-        c.drawString(25 * mm, y, z["pos"])
-        name = z["name"] + (" (Reverse)" if z["variant"] == "reverse" else "")
-        c.drawString(38 * mm, y, name[:42])
+        c.drawString(27 * mm, y, z["pos"].split("·")[1])
+        extra = VARIANT_LABELS.get(z["variant"], "")
+        name = z["name"] + (f" ({extra})" if extra else "") + (f" · {z['zustand']}" if z.get("zustand") else "")
+        c.drawString(36 * mm, y, name[:46])
         c.setFillGray(0.45)
-        c.drawString(118 * mm, y, (z["set"] or "")[:28])
-        c.drawRightString(page_w - 30 * mm, y, z["nr"])
+        c.drawString(122 * mm, y, ((z["set"] or "") + (" " + z["nr"] if z["nr"] else ""))[:30])
         if z["eur"] is not None:
-            c.drawRightString(page_w - 18 * mm, y, f"{z['eur']:.2f}€")
+            c.drawRightString(page_w - 18 * mm, y, f"{z['eur']:.2f} €")
+            seiten_summe += z["eur"]
         y -= 6.2 * mm
+    summe = sum(z["eur"] or 0 for z in zeilen); fehlend = sum((z["eur"] or 0) for z in zeilen if not z["have"])
+    if y < 26 * mm:
+        c.showPage(); neue_seite()
+    y -= 4 * mm
+    c.setFont("Helvetica-Bold", 9.5); c.setFillGray(0.2)
+    c.drawRightString(page_w - 18 * mm, y, (f"Gesamt {summe:.2f} € · noch zu kaufen {fehlend:.2f} €" if lang == "de"
+                                          else f"Total {summe:.2f} € · still to buy {fehlend:.2f} €"))
     c.save()
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
     return Response(buf.getvalue(), media_type="application/pdf",
@@ -2025,8 +2439,25 @@ def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
 
 @app.get("/")
+def landing():
+    """Startseite: erklärt das Werkzeug (SEO, Teilen); Rückkehrer leitet sie per JS in die App."""
+    return FileResponse(BASE / "landing.html", media_type="text/html")
+
+
+@app.get("/app")
 def index():
     return FileResponse(BASE / "index.html", media_type="text/html")
+
+
+@app.get("/assets/{name}")
+def asset(name: str):
+    """Bilder der Startseite (assets/ im Repo)."""
+    if not re.fullmatch(r"[a-z0-9_-]+\.(png|webp|jpg|svg)", name):
+        raise HTTPException(404)
+    f = BASE / "assets" / name
+    if not f.exists():
+        raise HTTPException(404)
+    return FileResponse(f, headers=IMG_HEADERS)
 
 
 @app.get("/recht")
