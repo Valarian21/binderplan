@@ -2031,7 +2031,7 @@ function zeichneErgebnisse() {
     const enb = KLANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
     const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
     return `<div class="tk" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
-      <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
+      <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
       <button class="plus" onclick="event.stopPropagation();kartAdd(${i})">＋ ${t('in_binder')}</button>${enb}${jpb}
       ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Reverse Holo">R+</span>` : ''}
       ${n ? `<span class="anz">${n}</span>` : ''}
