@@ -28,6 +28,7 @@ CACHE = BASE / "cache"
 (CACHE / "cards" / "low").mkdir(parents=True, exist_ok=True)
 (CACHE / "cards" / "high").mkdir(parents=True, exist_ok=True)
 (CACHE / "dex").mkdir(parents=True, exist_ok=True)
+(CACHE / "cards" / "print").mkdir(parents=True, exist_ok=True)
 
 TCGDEX = "https://api.tcgdex.net/v2"
 UA = {"User-Agent": "Binderplan/1.0 (privates Sammler-Tool)"}
@@ -279,12 +280,23 @@ def init_db():
         "ALTER TABLE cards ADD COLUMN has_first INTEGER DEFAULT 0",
         "ALTER TABLE pokemon ADD COLUMN name_ja TEXT",
         "ALTER TABLE cards ADD COLUMN name_ja TEXT",
+        # 2026-08-27 (Filter-Ausbau): Illustrator, Regulation Mark, HP, Entwicklung, Trainer-/Energie-Typ
+        "ALTER TABLE cards ADD COLUMN illustrator TEXT",
+        "ALTER TABLE cards ADD COLUMN regulation_mark TEXT",
+        "ALTER TABLE cards ADD COLUMN hp INTEGER",
+        "ALTER TABLE cards ADD COLUMN evolve_from TEXT",
+        "ALTER TABLE cards ADD COLUMN trainer_type TEXT",
+        "ALTER TABLE cards ADD COLUMN energy_type TEXT",
+        "ALTER TABLE pokemon ADD COLUMN familie INTEGER",     # PokéAPI-Entwicklungskette
+        "ALTER TABLE pokemon ADD COLUMN evo_stufe INTEGER",
     ):
         try:
             con.execute(alter)
         except sqlite3.OperationalError:
             pass
     con.execute("CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(region)")   # erst nach dem ALTER möglich
+    con.execute("CREATE INDEX IF NOT EXISTS idx_cards_illu ON cards(illustrator)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_pokemon_familie ON pokemon(familie)")
     con.commit()
     con.close()
 
@@ -653,6 +665,94 @@ def admin_sync_ja(key: str = ""):
     return {"gestartet": True}
 
 
+# --- Kartendetails nachladen (Illustrator, Regulation Mark, HP, Entwicklung, Trainer-/Energie-Typ) -------
+# Einmalig per GraphQL-Massenabfrage (24 Seiten à 1.000 Karten). Japanische Karten haben das nicht.
+
+def _norm_illustrator(name):
+    """TCGdex führt Künstler in mehreren Schreibweisen („miki kudo“/„Miki Kudo“, doppelte Anführungszeichen)."""
+    n = re.sub(r"\s+", " ", (name or "").replace('"', "").replace("“", "").replace("”", "")).strip()
+    if not n:
+        return None
+    if n == n.lower():
+        n = " ".join(w.capitalize() for w in n.split(" "))
+    return n
+
+
+def run_backfill_details():
+    if not _sync_lock.acquire(blocking=False):
+        return
+    con = get_db()
+    try:
+        SYNC.update(running=True, error=None, step="Kartendetails (Künstler …)", done=0, total=24)
+        query = ("query($p: Int!) { cards(pagination: {page: $p, itemsPerPage: 1000}, filters: {}) "
+                 "{ id illustrator regulationMark hp evolveFrom trainerType energyType variants { firstEdition } } }")
+        page = 1
+        with httpx.Client(timeout=90, headers=UA) as client:
+            while True:
+                r = client.post(f"{TCGDEX}/graphql", json={"query": query, "variables": {"p": page}})
+                cards = ((r.json().get("data") or {}).get("cards") or [])
+                if not cards:
+                    break
+                for c in cards:
+                    con.execute(
+                        "UPDATE cards SET illustrator=?, regulation_mark=?, hp=?, evolve_from=?, trainer_type=?, energy_type=?,"
+                        " has_first=? WHERE id=?",
+                        (_norm_illustrator(c.get("illustrator")), c.get("regulationMark"), c.get("hp"), c.get("evolveFrom"),
+                         c.get("trainerType"), c.get("energyType"),
+                         1 if (c.get("variants") or {}).get("firstEdition") else 0, c["id"]))
+                con.commit()
+                SYNC["done"] = page
+                if len(cards) < 1000:
+                    break
+                page += 1
+        # Entwicklungsketten (PokéAPI): Familie + Stufe je Pokémon
+        SYNC["step"] = "Entwicklungsketten"
+        with httpx.Client(timeout=60, headers=UA) as client:
+            liste = client.get("https://pokeapi.co/api/v2/evolution-chain?limit=1000").json().get("results", [])
+            SYNC["total"] = len(liste); SYNC["done"] = 0
+
+            def fetch(url):
+                try:
+                    return client.get(url).json()
+                except Exception:
+                    return None
+
+            def walk(knoten, stufe, out):
+                m = re.search(r"/(\d+)/?$", (knoten.get("species") or {}).get("url", ""))
+                if m:
+                    out.append((int(m.group(1)), stufe))
+                for e in knoten.get("evolves_to") or []:
+                    walk(e, stufe + 1, out)
+
+            with ThreadPoolExecutor(6) as pool:
+                for d in pool.map(fetch, [x["url"] for x in liste]):
+                    SYNC["done"] += 1
+                    if not d or "chain" not in d:
+                        continue
+                    out = []
+                    walk(d["chain"], 0, out)
+                    for dex, stufe in out:
+                        con.execute("UPDATE pokemon SET familie=?, evo_stufe=? WHERE dex_id=?", (d["id"], stufe, dex))
+            con.commit()
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('details_backfill', datetime('now'))")
+        con.commit()
+        SYNC["step"] = "fertig"
+    except Exception as exc:
+        SYNC["error"] = str(exc)[:500]
+    finally:
+        SYNC["running"] = False
+        con.close()
+        _sync_lock.release()
+
+
+@app.post("/api/admin/backfill_details")
+def admin_backfill_details(key: str = ""):
+    if not _admin_key() or key != _admin_key():
+        raise HTTPException(403, "Falscher Schlüssel")
+    threading.Thread(target=run_backfill_details, daemon=True).start()
+    return {"gestartet": True}
+
+
 def _preishistorie_job():
     """Täglich: alle bekannten Preise auffrischen und in die Historie schreiben."""
     con = get_db()
@@ -706,6 +806,12 @@ def _maybe_autosync():
         threading.Thread(target=run_sync, daemon=True).start()
     else:
         _maybe_backfill()
+        con = get_db()
+        fehlt = con.execute("SELECT COUNT(*) c FROM cards WHERE region='intl' AND illustrator IS NULL").fetchone()["c"]
+        done = con.execute("SELECT value FROM kv WHERE key='details_backfill'").fetchone()
+        con.close()
+        if fehlt > 5000 and not done:
+            threading.Thread(target=run_backfill_details, daemon=True).start()
     threading.Thread(target=_hintergrund_takt, daemon=True).start()
 
 
@@ -902,9 +1008,22 @@ def meta():
         )
     ]
     last_sync = con.execute("SELECT value FROM kv WHERE key='last_sync'").fetchone()
+    illustrators = [{"name": r["illustrator"], "anzahl": r["c"]} for r in con.execute(
+        "SELECT illustrator, COUNT(*) c FROM cards WHERE illustrator IS NOT NULL GROUP BY illustrator HAVING c >= 3 ORDER BY c DESC")]
+    regmarks = [r["regulation_mark"] for r in con.execute(
+        "SELECT DISTINCT regulation_mark FROM cards WHERE regulation_mark IS NOT NULL AND regulation_mark != 'None' ORDER BY regulation_mark")]
+    trainer_types = [r["trainer_type"] for r in con.execute(
+        "SELECT trainer_type FROM cards WHERE trainer_type IS NOT NULL GROUP BY trainer_type ORDER BY COUNT(*) DESC")]
+    jahre = con.execute("SELECT MIN(substr(release_date,1,4)) a, MAX(substr(release_date,1,4)) b FROM cards WHERE release_date IS NOT NULL AND region='intl'").fetchone()
+    familien = con.execute("SELECT COUNT(*) c FROM pokemon WHERE familie IS NOT NULL").fetchone()["c"]
     con.close()
     return {
         "sync": {**SYNC, "last": last_sync["value"] if last_sync else None},
+        "illustrators": illustrators,
+        "rarity_groups": [{"id": k, **{x: v[x] for x in ("name", "name_en")}} for k, v in RARITY_GROUPS.items()],
+        "presets": [{"id": k, "name": v["name"], "name_en": v["name_en"]} for k, v in PRESETS.items()],
+        "regmarks": regmarks, "trainer_types": trainer_types,
+        "jahre": [int(jahre["a"] or 1999), int(jahre["b"] or 2026)], "familien": familien,
         "counts": counts,
         "sets": sets,
         "series": series,
@@ -912,6 +1031,50 @@ def meta():
         "types": TYPES_DE,
         "gens": [{"gen": g, "von": lo, "bis": hi} for g, lo, hi in GEN_RANGES],
     }
+
+
+# --- Seltenheits-Gruppen & Sammel-Schnellauswahlen ---------------------------
+# 39 Roh-Seltenheiten (inkl. TCG Pocket „One Diamond“ …) sind kein Filter, den ein Sammler
+# versteht – die Gruppen entsprechen dem Sprachgebrauch: Illustration Rares, Full Arts, Secret/Gold …
+RARITY_GROUPS = {
+    "common":       {"name": "Common", "name_en": "Common", "werte": ["Common", "One Diamond"]},
+    "uncommon":     {"name": "Uncommon", "name_en": "Uncommon", "werte": ["Uncommon", "Two Diamond"]},
+    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection", "Three Diamond", "Four Diamond"]},
+    "ultra":        {"name": "Ultra Rare / Full Art", "name_en": "Ultra Rare / Full Art", "werte": ["Ultra Rare", "Full Art Trainer", "Two Star"]},
+    "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare", "One Star", "Three Star"]},
+    "secret":       {"name": "Secret / Gold / Rainbow", "name_en": "Secret / Gold / Rainbow", "werte": ["Secret Rare", "Hyper rare", "Mega Hyper Rare", "Crown", "Black White Rare"]},
+    "shiny":        {"name": "Shiny", "name_en": "Shiny", "werte": ["Shiny rare", "Shiny rare V", "Shiny rare VMAX", "Shiny Ultra Rare", "One Shiny", "Two Shiny"]},
+    "special":      {"name": "Radiant / Amazing / ACE SPEC", "name_en": "Radiant / Amazing / ACE SPEC", "werte": ["Radiant Rare", "Amazing Rare", "ACE SPEC Rare"]},
+    "promo":        {"name": "Promo", "name_en": "Promo", "werte": ["Promo"]},
+}
+# Beliebte Sammelthemen als Pokédex-Listen (Grundformen; Entwicklungen kommen über die Familie dazu)
+PRESETS = {
+    "starter":   {"name": "Starter", "name_en": "Starters", "dex": [1, 4, 7, 152, 155, 158, 252, 255, 258, 387, 390, 393, 495, 498, 501, 650, 653, 656, 722, 725, 728, 810, 813, 816, 906, 909, 912], "familie": True},
+    "legendary": {"name": "Legendäre & Mysteriöse", "name_en": "Legendary & Mythical", "dex": [144, 145, 146, 150, 151, 243, 244, 245, 249, 250, 251, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491, 492, 493, 494, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 716, 717, 718, 719, 720, 721, 772, 773, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 905, 1001, 1002, 1003, 1004, 1007, 1008, 1014, 1015, 1016, 1017, 1020, 1021, 1022, 1023, 1024, 1025], "familie": False},
+    "eevee":     {"name": "Evoli & Entwicklungen", "name_en": "Eeveelutions", "dex": [133, 134, 135, 136, 196, 197, 470, 471, 700], "familie": False},
+    "baby":      {"name": "Baby-Pokémon", "name_en": "Baby Pokémon", "dex": [172, 173, 174, 175, 236, 238, 239, 240, 298, 360, 406, 433, 438, 439, 440, 446, 447, 458, 848], "familie": False},
+    "pikachu":   {"name": "Pikachu-Familie", "name_en": "Pikachu family", "dex": [25, 26, 172], "familie": False},
+}
+
+
+def _familie_dex(con, dex_ids):
+    """Alle Pokédex-Nummern der Entwicklungsfamilien der gegebenen Pokémon."""
+    if not dex_ids:
+        return []
+    fams = [r["familie"] for r in con.execute(
+        "SELECT DISTINCT familie FROM pokemon WHERE dex_id IN (%s) AND familie IS NOT NULL" % ",".join("?" * len(dex_ids)), list(dex_ids))]
+    if not fams:
+        return list(dex_ids)
+    return [r["dex_id"] for r in con.execute(
+        "SELECT dex_id FROM pokemon WHERE familie IN (%s) ORDER BY familie, evo_stufe, dex_id" % ",".join("?" * len(fams)), fams)]
+
+
+def _dex_frag(dexe):
+    """WHERE-Fragment: Karte gehört zu einem der Pokémon (first_dex reicht – Mehrfach-Dex sind selten)."""
+    dexe = [int(d) for d in dexe]
+    if not dexe:
+        return "0", []
+    return "first_dex IN (%s)" % ",".join("?" * len(dexe)), dexe
 
 
 # --- Kartensuche ------------------------------------------------------------
@@ -925,8 +1088,39 @@ SORTS = {
 }
 
 
-def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, region="intl"):
+def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, region="intl",
+                illustrator="", rgroup="", trainer_type="", regmark="", first=0, jahr_von=0, jahr_bis=0,
+                preset="", familie=0):
     where, params = [], []
+    if illustrator:
+        where.append("illustrator = ?"); params.append(illustrator)
+    if rgroup:
+        werte = []
+        for g in rgroup.split(","):
+            werte += RARITY_GROUPS.get(g, {}).get("werte", [])
+        if werte:
+            where.append("rarity IN (%s)" % ",".join("?" * len(werte))); params += werte
+    if trainer_type:
+        where.append("trainer_type = ?"); params.append(trainer_type)
+    if regmark:
+        marks = [m for m in regmark.split(",") if m]
+        where.append("regulation_mark IN (%s)" % ",".join("?" * len(marks))); params += marks
+    if first:
+        where.append("has_first = 1")
+    if jahr_von:
+        where.append("release_date >= ?"); params.append(f"{int(jahr_von)}-01-01")
+    if jahr_bis:
+        where.append("release_date <= ?"); params.append(f"{int(jahr_bis)}-12-31")
+    if preset in PRESETS or familie:
+        con = get_db()
+        if familie:
+            dexe = _familie_dex(con, [int(familie)])
+        else:
+            pr = PRESETS[preset]
+            dexe = _familie_dex(con, pr["dex"]) if pr["familie"] else pr["dex"]
+        con.close()
+        frag, dp = _dex_frag(dexe)
+        where.append(frag); params += dp
     if q:
         where.append("(name_de LIKE ? OR name_en LIKE ? OR name_ja LIKE ?)")
         params += [f"%{q}%", f"%{q}%", f"%{q}%"]
@@ -989,6 +1183,8 @@ def _card_brief(row):
         # Welche Sprache das Bild hat: alte WotC-Sets haben bei TCGdex keine deutschen Scans
         "img_lang": "de" if row["image_de"] else ("en" if row["image_en"] else ("alt" if ("image_alt" in keys and row["image_alt"]) else None)),
         "holo": bool(row["has_holo"]), "first": bool(row["has_first"]) if "has_first" in keys else False,
+        "illustrator": row["illustrator"] if "illustrator" in keys else None,
+        "regmark": row["regulation_mark"] if "regulation_mark" in keys else None,
         "set_id": row["set_id"],
         "set_name": SET_NAME_FIX_DE.get(row["set_id"], row["set_name"]) or row["set_name_en"],
         "set_name_en": row["set_name_en"] or row["set_name"],
@@ -1013,9 +1209,12 @@ _CARD_SELECT = (
 def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
           kind: str = "", rarity: str = "", dex: int = 0,
           sort: str = "datum", richtung: str = "asc",
-          limit: int = 60, offset: int = 0, region: str = "intl"):
+          limit: int = 60, offset: int = 0, region: str = "intl",
+          illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
+          jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0):
     limit = max(1, min(limit, 300))
-    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region)
+    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
+                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis, preset, familie)
     con = get_db()
     total = con.execute(f"SELECT COUNT(*) c FROM cards{sql_where}", params).fetchone()["c"]
     rows = con.execute(
@@ -1030,9 +1229,12 @@ def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
 def card_ids(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
              kind: str = "", rarity: str = "", dex: int = 0,
              sort: str = "datum", richtung: str = "asc",
-             limit: int = 1000, region: str = "intl"):
+             limit: int = 1000, region: str = "intl",
+             illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
+             jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0):
     limit = max(1, min(limit, 2000))
-    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region)
+    sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
+                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis, preset, familie)
     con = get_db()
     rows = con.execute(
         f"SELECT id FROM cards{sql_where} ORDER BY {order} LIMIT ?",
@@ -1082,6 +1284,13 @@ def card_detail(card_id: str):
         raise HTTPException(404, "Karte unbekannt")
     k = _card_brief(r)
     k["category"] = r["category"]; k["stage"] = r["stage"]; k["suffix"] = r["suffix"]
+    k["hp"] = r["hp"] if "hp" in r.keys() else None
+    k["evolve_from"] = r["evolve_from"] if "evolve_from" in r.keys() else None
+    k["trainer_type"] = r["trainer_type"] if "trainer_type" in r.keys() else None
+    if r["first_dex"]:
+        fam = _familie_dex(con, [r["first_dex"]])
+        k["familie"] = [{"dex": d, "name": n} for d, n in con.execute(
+            "SELECT dex_id, name_de FROM pokemon WHERE dex_id IN (%s) ORDER BY evo_stufe, dex_id" % ",".join("?" * len(fam)), fam)] if len(fam) > 1 else []
     k["reverse"] = bool(r["has_reverse"]); k["normal"] = bool(r["has_normal"])
     sr = con.execute("SELECT id, name, name_en, release_date, total, official, serie_id, region FROM sets WHERE id = ?", (r["set_id"],)).fetchone()
     k["set"] = dict(sr) if sr else None
@@ -1994,6 +2203,35 @@ GUTTER = 4 * mm
 COLS, ROWS = 3, 3
 
 
+PRINT_W = 744   # 63 mm bei 300 dpi
+
+
+def _print_image_path(card_id, lang="de"):
+    """Graustufen-JPEG in Druckauflösung, gecacht. Vorher wurde jedes Bild im PDF-Lauf
+    in voller Auflösung konvertiert und verlustfrei eingebettet (26 MB, 34 s für 64 Karten)."""
+    safe = re.sub(r"[^A-Za-z0-9._%-]", "_", card_id)
+    suffix = "" if lang != "en" else ".en"
+    target = CACHE / "cards" / "print" / f"{safe}{suffix}.jpg"
+    if target.exists():
+        return target
+    quelle = _card_image_path(card_id, lang)
+    if not quelle:
+        return None
+    try:
+        img = Image.open(quelle)
+        if img.mode in ("RGBA", "P", "LA"):
+            bg = Image.new("RGB", img.size, "white")
+            bg.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[-1])
+            img = bg
+        gray = ImageOps.autocontrast(img.convert("L"), cutoff=1)
+        if gray.width > PRINT_W:
+            gray = gray.resize((PRINT_W, int(gray.height * PRINT_W / gray.width)), Image.LANCZOS)
+        gray.save(target, "JPEG", quality=84, optimize=True)
+        return target
+    except Exception:
+        return None
+
+
 def _grayscale_reader(path: Path):
     img = Image.open(path)
     if img.mode in ("RGBA", "P", "LA"):
@@ -2144,7 +2382,7 @@ def _bilder_vorladen(card_ids, lang):
     sequenziell: 64 Karten ≈ 40 s). → Anzahl fehlender Bilder."""
     ids = list(dict.fromkeys(i for i in card_ids if i))
     with ThreadPoolExecutor(8) as pool:
-        pfade = list(pool.map(lambda c: _card_image_path(c, lang), ids))
+        pfade = list(pool.map(lambda c: _print_image_path(c, lang), ids))
     return sum(1 for p in pfade if p is None)
 
 
@@ -2167,8 +2405,11 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     if variante == "checkliste":
         return _checkliste_pdf(binder, lang, bool(nur_fehlende))
-    # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten
-    if not _ist_pro(user) and _exporte_benutzt(user) >= FREE_EXPORT_LIMIT:
+    # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten – ein zweiter Abruf desselben Binders
+    # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei
+    letzter = (user.get("letzter_export") or "").split(":", 1)
+    kulanz = len(letzter) == 2 and letzter[0] == binder_id and letzter[1] >= datetime_str_vor(0.5)
+    if not _ist_pro(user) and not kulanz and _exporte_benutzt(user) >= FREE_EXPORT_LIMIT:
         raise HTTPException(402, detail={"code": "limit_export"})
 
     con = get_db()
@@ -2236,10 +2477,10 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
             _draw_dex_cell(c, x, y, item, pokemon_names)
         else:
             card = card_rows.get(item.get("id"))
-            path = _card_image_path(item.get("id"), lang) if card else None
+            path = _print_image_path(item.get("id"), lang) if card else None
             if path:
                 try:
-                    c.drawImage(_grayscale_reader(path), x, y, CARD_W, CARD_H)
+                    c.drawImage(str(path), x, y, CARD_W, CARD_H)   # JPEG-Pfad → DCT direkt eingebettet
                 except Exception:
                     path = None
             if not path:

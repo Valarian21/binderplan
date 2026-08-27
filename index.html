@@ -301,6 +301,15 @@ window.mpUtm=read;})();
   body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: 13px; }
   body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
   .st-leer { margin-top: 10px; }
+  #f-presets .chip { font-size: 11.5px; padding: 3px 9px; }
+  .chip.klein { font-size: 11px; padding: 3px 8px; }
+  .d-illu { color: var(--akzent); cursor: pointer; font-weight: 700; }
+  .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: 12.5px; }
+  .detail .d-grid > div { min-width: 0; }
+  .d-fam .btn { white-space: nowrap; }
+  .toast.arbeit::before { content: ""; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: dreh .8s linear infinite; flex-shrink: 0; }
+  @keyframes dreh { to { transform: rotate(360deg); } }
+  .toast a { color: #ffb8a8; font-weight: 700; }
   .mnav .menu button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: 13.5px; padding: 10px 14px; }
   body.nur-ansicht .bp-tools label:nth-of-type(2) { display: none !important; }
   .st-leer .onb-tpl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
@@ -399,6 +408,7 @@ window.mpUtm=read;})();
         <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
         <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
         <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
+        <button onclick="modalOeffnen('modal-kuenstler')" data-i18n="m_illu">Künstler-Binder …</button>
         <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
       </div>
     </div>
@@ -455,16 +465,35 @@ window.mpUtm=read;})();
         <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak">
         <datalist id="dex-namen"></datalist>
       </div>
+      <div>
+        <div class="f-lbl" data-i18n="f_illu">Künstler</div>
+        <input class="feld" id="f-illu" list="illu-namen" placeholder="z. B. Mitsuhiro Arita">
+        <datalist id="illu-namen"></datalist>
+        <div class="f-chips" id="f-illu-chips" style="margin-top:6px"></div>
+      </div>
+      <div>
+        <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
+        <div class="f-chips" id="f-rgroup"></div>
+      </div>
       <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Mehr Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
       <div id="f-mehr" class="hidden f-mehr-box">
+        <div>
+          <div class="f-lbl" data-i18n="f_sonder">Sonderdrucke</div>
+          <div class="f-chips" id="f-sonder"></div>
+        </div>
         <div>
           <div class="f-lbl" data-i18n="f_art">Kartenart</div>
           <div class="f-chips" id="f-kinds"></div>
         </div>
-        <div>
-          <div class="f-lbl" data-i18n="f_rarity">Seltenheit</div>
-          <select class="feld" id="f-rarity"></select>
+        <div class="f-zweispaltig">
+          <div><div class="f-lbl" data-i18n="f_trainer">Trainer-Typ</div><select class="feld" id="f-trainer"></select></div>
+          <div><div class="f-lbl" data-i18n="f_jahr">Jahr von – bis</div><div style="display:flex;gap:6px"><input class="feld" id="f-jahr-von" type="number" min="1996" max="2030" placeholder="1999"><input class="feld" id="f-jahr-bis" type="number" min="1996" max="2030" placeholder="2026"></div></div>
         </div>
+        <div>
+          <div class="f-lbl" title="Turnierlegalität: Buchstabe unten links auf der Karte" data-i18n="f_regmark">Regulation Mark</div>
+          <div class="f-chips" id="f-regmark"></div>
+        </div>
+        <select class="feld hidden" id="f-rarity"></select>
         <div>
           <div class="f-lbl" data-i18n="f_typ">Typ</div>
           <div class="f-chips" id="f-typen"></div>
@@ -487,6 +516,7 @@ window.mpUtm=read;})();
     <div class="spalte-mitte">
       <div class="kopfzeile">
         <span id="erg-anzahl">–</span>
+        <div class="f-chips" id="f-presets" style="gap:4px"></div>
         <span class="mobil-only" style="flex:1"></span>
         <div style="flex:1" class="desktop-only"></div>
         <div class="menuwrap">
@@ -536,6 +566,7 @@ window.mpUtm=read;})();
           <button onclick="modalOeffnen('modal-master')"><strong data-i18n="tpl_master">Master Set</strong><span data-i18n="tpl_master_u">jede Karte eines Sets</span></button>
           <button onclick="modalOeffnen('modal-dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
           <button onclick="modalOeffnen('modal-poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
+          <button onclick="modalOeffnen('modal-kuenstler')"><strong data-i18n="tpl_illu">Künstler</strong><span data-i18n="tpl_illu_u">alle Karten eines Illustrators</span></button>
           <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
         </div>
       </div>
@@ -641,10 +672,29 @@ window.mpUtm=read;})();
     <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
     <input class="feld" id="poke-name" list="dex-namen" placeholder="z. B. Glurak" oninput="pokeInfo()">
     <div style="font-size:13px;color:var(--mut);margin-top:10px" id="poke-info"></div>
+    <div class="f-lbl" style="margin-top:12px" data-i18n="m_poke_umfang">Umfang</div>
+    <select class="feld" id="poke-umfang"><option value="einzeln" data-i18n="m_poke_einzeln">Nur dieses Pokémon</option><option value="familie" data-i18n="m_poke_familie">Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)</option></select>
     <label class="schalter" style="margin-top:12px"><input type="checkbox" id="poke-jp"><span data-i18n="m_poke_jp">Japanische Karten dazunehmen</span></label>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="pokeErstellen()" data-i18n="anlegen">Binder anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Künstler-Binder -->
+<div class="overlay hidden" id="modal-kuenstler">
+  <div class="modal" style="width:min(520px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="m_illu_t">Künstler-Binder</h2>
+    <div class="unter" data-i18n="m_illu_u">Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.</div>
+    <div class="f-lbl" data-i18n="f_illu">Künstler</div>
+    <input class="feld" id="illu-name" list="illu-namen" placeholder="z. B. Mitsuhiro Arita" oninput="illuInfo()">
+    <div class="f-chips" id="illu-top" style="margin-top:8px"></div>
+    <div style="font-size:13px;color:var(--mut);margin-top:10px" id="illu-info"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="kuenstlerErstellen()" data-i18n="anlegen">Binder anlegen</button>
     </div>
   </div>
 </div>
@@ -869,6 +919,11 @@ const T = {
     bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
+    f_illu: 'Künstler', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
+    m_illu: 'Künstler-Binder …', m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
+    tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
+    illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
+    first_ed: '1st Edition', alle_trainer: 'Alle', pdf_erzeugt: 'PDF wird erzeugt …', pdf_oeffnen: 'PDF öffnen', pdf_geladen: 'PDF heruntergeladen –',
     neu_lbl: 'Neu anlegen', raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Ziehen sortiert um, ⋯ am Fach für freie Plätze, ✕ entfernt.',
     mehr_nav: 'Mehr', gewaehlt: 'gewählt', zu_leer: 'Fächer freimachen', eigener_binder: 'Eigenen Binder planen',
     name_t: 'Wie sollen wir dich nennen?', name_u: 'Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.', spaeter: 'Später',
@@ -967,6 +1022,11 @@ const T = {
     bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
     pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
+    f_illu: 'Artist', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
+    m_illu: 'Artist binder …', m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
+    tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
+    illu_karten: 'cards', d_illu: 'Illustration', d_regmark: 'Regulation mark', d_fam: 'Evolution line', d_fam_btn: 'Evolution line as binder', d_illu_btn: 'All by this artist',
+    first_ed: '1st edition', alle_trainer: 'All', pdf_erzeugt: 'Generating PDF …', pdf_oeffnen: 'Open PDF', pdf_geladen: 'PDF downloaded –',
     neu_lbl: 'Create new', raster: 'Grid', auffuellen: 'Fill page with empty slots', hilfe2: 'Drag to reorder, ⋯ on a slot for free slots, ✕ removes.',
     mehr_nav: 'More', gewaehlt: 'selected', zu_leer: 'Free the slots', eigener_binder: 'Plan your own binder',
     name_t: 'What should we call you?', name_u: 'Shown in the greeting – change it any time in your profile.', spaeter: 'Later',
@@ -1063,7 +1123,8 @@ const S = {
 };
 const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
-const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc' };
+const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc',
+  illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '' };
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1728,7 +1789,22 @@ function baueFilterLeiste() {
     `<option value="${s.id}" ${filter.serie === s.id ? 'selected' : ''}>${LANG === 'en' ? (s.name_en || s.name) : s.name}${s.von ? ` (${s.von}–${s.bis || ''})` : ''}</option>`).join('');
   // Sets (nach Ära gefiltert, chronologisch)
   baueSetSelect();
-  // Seltenheiten
+  // Seltenheits-Gruppen (statt 39 Rohwerten)
+  $('f-rgroup').innerHTML = (S.meta.rarity_groups || []).map((g) =>
+    `<button class="chip klein ${filter.rgroup.has(g.id) ? 'on' : ''}" data-rg="${g.id}" onclick="rgroupToggle('${g.id}')">${LANG === 'en' ? g.name_en : g.name}</button>`).join('');
+  // Künstler: die meistgesammelten als Chips, alle per Autovervollständigung
+  const top = (S.meta.illustrators || []).slice(0, 6);
+  $('f-illu-chips').innerHTML = top.map((i) => `<button class="chip klein ${filter.illustrator === i.name ? 'on' : ''}" data-illu="${esc(i.name)}" onclick="illuSetzen('${esc(i.name).replace(/'/g, "\\'")}')">${esc(i.name)}</button>`).join('');
+  $('illu-namen').innerHTML = (S.meta.illustrators || []).map((i) => `<option value="${esc(i.name)}">${i.anzahl} ${t('illu_karten')}</option>`).join('');
+  if ($('illu-top')) $('illu-top').innerHTML = (S.meta.illustrators || []).slice(0, 8).map((i) => `<button class="chip klein" onclick="$('illu-name').value='${esc(i.name).replace(/'/g, "\\'")}';illuInfo()">${esc(i.name)}</button>`).join('');
+  // Sonderdrucke
+  $('f-sonder').innerHTML = `<button class="chip ${filter.first ? 'on' : ''}" onclick="filter.first=!filter.first;baueFilterLeiste();mehrFilterZahl();sucheNeu()">${t('first_ed')}</button>`;
+  // Trainer-Typ, Regulation Mark
+  $('f-trainer').innerHTML = `<option value="">${t('alle_trainer')}</option>` + (S.meta.trainer_types || []).map((x) => `<option value="${esc(x)}" ${filter.trainer === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  $('f-regmark').innerHTML = (S.meta.regmarks || []).map((m) => `<button class="chip klein ${filter.regmark.has(m) ? 'on' : ''}" onclick="filter.regmark.has('${m}')?filter.regmark.delete('${m}'):filter.regmark.add('${m}');baueFilterLeiste();mehrFilterZahl();sucheNeu()">${esc(m)}</button>`).join('');
+  // Schnellauswahl über den Treffern
+  $('f-presets').innerHTML = (S.meta.presets || []).map((p) => `<button class="chip ${filter.preset === p.id ? 'on' : ''}" onclick="filter.preset=filter.preset==='${p.id}'?'':'${p.id}';baueFilterLeiste();sucheNeu()">${LANG === 'en' ? p.name_en : p.name}</button>`).join('');
+  // Seltenheiten (Rohwerte, versteckt – Detail-Panel zeigt sie)
   $('f-rarity').innerHTML = `<option value="">${t('alle_rar')}</option>` + (S.meta.rarities || []).map((r) =>
     `<option value="${r.rarity.replace(/"/g, '&quot;')}" ${filter.rarity === r.rarity ? 'selected' : ''}>${r.rarity} (${r.anzahl})</option>`).join('');
   // Sortierung
@@ -1759,6 +1835,17 @@ async function ladePokedex() {
   baueDexNamen();
 }
 
+function rgroupToggle(g) {
+  filter.rgroup.has(g) ? filter.rgroup.delete(g) : filter.rgroup.add(g);
+  document.querySelectorAll('[data-rg]').forEach((el) => el.classList.toggle('on', filter.rgroup.has(el.dataset.rg)));
+  sucheNeu();
+}
+function illuSetzen(name) {
+  filter.illustrator = filter.illustrator === name ? '' : name;
+  $('f-illu').value = filter.illustrator;
+  document.querySelectorAll('[data-illu]').forEach((el) => el.classList.toggle('on', el.dataset.illu === filter.illustrator));
+  sucheNeu();
+}
 function kindToggle(k) {
   filter.kinds.has(k) ? filter.kinds.delete(k) : filter.kinds.add(k);
   document.querySelectorAll('[data-kind]').forEach((el) => el.classList.toggle('on', filter.kinds.has(el.dataset.kind)));
@@ -1770,9 +1857,9 @@ function typToggle(ty) {
   mehrFilterZahl(); sucheNeu();
 }
 function filterReset() {
-  Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc' });
-  filter.kinds.clear();
-  $('f-suche').value = ''; $('f-dex').value = ''; $('f-absteigend').checked = false;
+  Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc', illustrator: '', trainer: '', first: false, jahrVon: 0, jahrBis: 0, preset: '' });
+  filter.kinds.clear(); filter.rgroup.clear(); filter.regmark.clear();
+  $('f-suche').value = ''; $('f-dex').value = ''; $('f-illu').value = ''; $('f-jahr-von').value = ''; $('f-jahr-bis').value = ''; $('f-absteigend').checked = false;
   baueFilterLeiste(); mehrFilterZahl();
   sucheNeu();
 }
@@ -1786,6 +1873,14 @@ function filterParams() {
   if (filter.rarity) p.set('rarity', filter.rarity);
   if (filter.dex) p.set('dex', String(filter.dex));
   if (filter.kinds.size) p.set('kind', [...filter.kinds].join(','));
+  if (filter.illustrator) p.set('illustrator', filter.illustrator);
+  if (filter.rgroup.size) p.set('rgroup', [...filter.rgroup].join(','));
+  if (filter.trainer) p.set('trainer_type', filter.trainer);
+  if (filter.regmark.size) p.set('regmark', [...filter.regmark].join(','));
+  if (filter.first) p.set('first', '1');
+  if (filter.jahrVon) p.set('jahr_von', String(filter.jahrVon));
+  if (filter.jahrBis) p.set('jahr_bis', String(filter.jahrBis));
+  if (filter.preset) p.set('preset', filter.preset);
   p.set('sort', filter.sort); p.set('richtung', filter.richtung);
   return p;
 }
@@ -2208,29 +2303,43 @@ async function exportPdf(variante, nurFehlende) {
   if (!S.binder.items.length) return toast(t('binder_leer'));
   if (!S.user) return loginOeffnen(t('gate_pdf'));
   try { await _binderSichern(); } catch (e) { if (gate(e)) return; }
-  if ((variante || 'karten') === 'karten') {
-    // Schritt 1: Bilder parallel in den Cache (früher lief das sequenziell im PDF → Minuten)
-    toast(t('pdf_bilder'));
-    try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten`, { method: 'POST' }); } catch (e) { if (gate(e)) return; }
+  const karten = (variante || 'karten') === 'karten';
+  if (karten) {
+    // Schritt 1: Bilder parallel in den Druck-Cache (Graustufen-JPEG in Druckauflösung)
+    arbeitToast(t('pdf_bilder'));
+    try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten`, { method: 'POST' }); } catch (e) { arbeitToastEnde(); if (gate(e)) return; }
   }
-  toast(t('pdf_dauert'));
+  arbeitToast(t('pdf_erzeugt'));
   const url = `api/binders/${S.binder.id}/pdf?variante=${variante || 'karten'}&nur_fehlende=${nurFehlende ? 1 : 0}`;
   try {
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + S.token } });
     if (!r.ok) {
+      arbeitToastEnde();
       let code = null;
       try { code = ((await r.json()).detail || {}).code; } catch (e) {}
       const err = new Error('Export'); err.code = code;
       if (!gate(err)) toast('Export fehlgeschlagen (' + r.status + ')');
       return;
     }
-    window.open(URL.createObjectURL(await r.blob()), '_blank');
-    toast(t('pdf_fertig'));
-    if (S.user && S.user.exporte_limit != null && (variante || 'karten') === 'karten') {
-      S.user.exporte_benutzt += 1;
-    }
-  } catch (e) { toast('Export fehlgeschlagen'); }
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    // Download statt window.open: ein Popup nach längerem Warten blockieren viele Browser
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = (S.binder.name || 'binder').replace(/[^\wäöüÄÖÜß -]/g, '') + (karten ? '' : '-checkliste') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    arbeitToastEnde();
+    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> (${(blob.size / 1e6).toFixed(1)} MB)`;
+    $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
+    if (S.user && S.user.exporte_limit != null && karten) S.user.exporte_benutzt += 1;
+  } catch (e) { arbeitToastEnde(); toast('Export fehlgeschlagen'); }
 }
+// Dauerhafter Arbeits-Hinweis (Spinner) – verschwindet erst mit arbeitToastEnde()
+function arbeitToast(text) {
+  const el = $('toast'); $('toast-text').textContent = text; $('toast-undo').classList.add('hidden');
+  el.classList.add('zeig', 'arbeit'); clearTimeout(toastTimer);
+}
+function arbeitToastEnde() { const el = $('toast'); el.classList.remove('arbeit', 'zeig'); }
 
 async function kaufliste() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -2278,6 +2387,10 @@ $('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').v
 $('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; mehrFilterZahl(); sucheNeu(); });
 $('f-absteigend').addEventListener('change', () => { filter.richtung = $('f-absteigend').checked ? 'desc' : 'asc'; mehrFilterZahl(); sucheNeu(); });
 $('poke-name').addEventListener('focus', ladePokedex);
+$('f-illu').addEventListener('input', () => { filter.illustrator = $('f-illu').value.trim(); document.querySelectorAll('[data-illu]').forEach((el) => el.classList.toggle('on', el.dataset.illu === filter.illustrator)); clearTimeout(suchTimer); suchTimer = setTimeout(sucheNeu, 350); });
+$('f-trainer').addEventListener('change', () => { filter.trainer = $('f-trainer').value; mehrFilterZahl(); sucheNeu(); });
+$('f-jahr-von').addEventListener('change', () => { filter.jahrVon = Number($('f-jahr-von').value) || 0; mehrFilterZahl(); sucheNeu(); });
+$('f-jahr-bis').addEventListener('change', () => { filter.jahrBis = Number($('f-jahr-bis').value) || 0; mehrFilterZahl(); sucheNeu(); });
 $('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; $('bw-name').textContent = S.binder.name || t('neuer_binder'); speichern(); } });
 
 
@@ -2418,7 +2531,7 @@ function mehrFilterToggle(an) {
   $('f-mehr-caret').textContent = mehrFilterOffen ? '▴' : '▾';
 }
 function mehrFilterZahl() {
-  const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.rarity ? 1 : 0) + (filter.sort !== 'datum' || filter.richtung !== 'asc' ? 1 : 0);
+  const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.trainer ? 1 : 0) + filter.regmark.size + (filter.first ? 1 : 0) + (filter.jahrVon || filter.jahrBis ? 1 : 0) + (filter.sort !== 'datum' || filter.richtung !== 'asc' ? 1 : 0);
   const el = $('f-mehr-zahl'); if (el) el.textContent = n ? `(${n})` : '';
   const btn = $('f-mehr-btn'); if (btn) btn.style.borderColor = n ? 'var(--akzent)' : '';
 }
@@ -2457,7 +2570,9 @@ async function detailOeffnen(idOrIdx) {
         ${k.img_lang && k.img_lang !== 'de' && LANG === 'de' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
       <div>
         <h2>${esc(nm(k))}</h2>
-        <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · 🇯🇵' : ''}</div>
+        <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · 🇯🇵' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
+        ${k.illustrator ? `<div class="d-meta" style="margin-top:-8px">${t('d_illu')}: <span class="d-illu" onclick="modalSchliessen();illuSetzen('${esc(k.illustrator).replace(/'/g, "\\'")}');mobilAnsicht('suche')" title="${t('d_illu_btn')}">${esc(k.illustrator)}</span></div>` : ''}
+        ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent);color:var(--akzent)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
         <div class="d-preise">
           <div class="d-preis"><div class="z">${fmt(preis.eur)}</div><div class="l">${t('preis_trend')}</div></div>
           ${preis.eur_holo ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
@@ -2512,12 +2627,35 @@ async function pokeErstellen() {
   const dex = Number($('poke-info').dataset.dex || 0);
   if (!dex) return toast(t('erst_waehlen'));
   const p = S.pokedex.find((x) => x.dex === dex);
-  const d = await api('api/cards/ids?dex=' + dex + '&sort=datum&limit=2000&region=intl');
+  const fam = $('poke-umfang').value === 'familie';
+  const q = (fam ? 'familie=' : 'dex=') + dex + '&sort=datum&limit=2000';
+  const d = await api('api/cards/ids?' + q + '&region=intl');
   let ids = d.ids;
-  if ($('poke-jp').checked) { try { ids = ids.concat((await api('api/cards/ids?dex=' + dex + '&sort=datum&limit=2000&region=jp')).ids); } catch (e) {} }
+  if ($('poke-jp').checked) { try { ids = ids.concat((await api('api/cards/ids?' + q + '&region=jp')).ids); } catch (e) {} }
   if (!ids.length) return toast('0');
-  if (!await binderSpeichernNeu((LANG === 'en' ? p.name_en : p.name) + ' – ' + t('alle_karten'), 'custom', ids.map((id) => ({ type: 'card', id })), { dex })) return;
+  const name = (LANG === 'en' ? p.name_en : p.name) + ' – ' + (fam ? t('d_fam') : t('alle_karten'));
+  if (!await binderSpeichernNeu(name, 'custom', ids.map((id) => ({ type: 'card', id })), { dex, familie: fam })) return;
   modalSchliessen(); toast(ids.length + ' ' + t('angelegt'));
+}
+async function familieErstellen(dex) {
+  modalSchliessen(); await ladePokedex();
+  $('poke-name').value = nm(S.pokedex.find((x) => x.dex === dex) || {}); $('poke-umfang').value = 'familie';
+  modalOeffnen('modal-poke'); pokeInfo();
+}
+function illuInfo() {
+  const v = ($('illu-name').value || '').trim().toLowerCase();
+  const i = (S.meta.illustrators || []).find((x) => x.name.toLowerCase() === v);
+  $('illu-info').textContent = i ? `${i.name} · ${i.anzahl} ${t('illu_karten')}` : '';
+  $('illu-info').dataset.name = i ? i.name : '';
+}
+async function kuenstlerErstellen() {
+  illuInfo();
+  const name = $('illu-info').dataset.name;
+  if (!name) return toast(t('erst_waehlen'));
+  const d = await api('api/cards/ids?illustrator=' + encodeURIComponent(name) + '&sort=datum&limit=2000&region=intl');
+  if (!d.ids.length) return toast('0');
+  if (!await binderSpeichernNeu(name, 'custom', d.ids.map((id) => ({ type: 'card', id })), { illustrator: name })) return;
+  modalSchliessen(); toast(d.ids.length + ' ' + t('angelegt'));
 }
 
 // ---------- Import ----------
