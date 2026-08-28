@@ -410,7 +410,69 @@ def _regionen(cols, rows, anker, anzahl):
     return worte
 
 
-def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback=""):
+def _zonen(cols, rows, anker):
+    """Jedes freie Fach der nächstgelegenen Karte zuordnen → {slot: card_id} + Nachbarpaare der Zonen.
+    Bei mehreren Karten scheitert „eine gemeinsame Szene“; jede Karte bekommt stattdessen ihre eigene
+    Umgebung, und nur an den Zonengrenzen wird überblendet."""
+    karten = [(int(sl), cid) for sl, cid in anker.items()]
+    zone = {}
+    for slot in range(cols * rows):
+        if str(slot) in anker:
+            zone[slot] = anker[str(slot)]
+            continue
+        x, y = slot % cols, slot // cols
+        zone[slot] = min(karten, key=lambda k: ((x - k[0] % cols) ** 2 + (y - k[0] // cols) ** 2, k[0]))[1]
+    paare = set()
+    for slot in range(cols * rows):
+        x, y = slot % cols, slot // cols
+        for nx, ny in ((x + 1, y), (x, y + 1)):
+            if nx < cols and ny < rows:
+                a, b = zone[slot], zone[ny * cols + nx]
+                if a != b:
+                    paare.add(tuple(sorted((a, b))))
+    return zone, sorted(paare)
+
+
+REGIE_PROMPT = (
+    "You are an art director planning ONE 'extended art' page for a card collector. Several finished illustrations "
+    "sit on the page; the painter has to fill everything around them so the page reads as one coherent habitat, "
+    "WITHOUT merging the illustrations into a single averaged scene.\n\n"
+    "Write a short, concrete plan for the painter (English, max 160 words, no headings, no meta talk):\n"
+    "1. The common habitat, time of day and light direction that fits all sources with the fewest contradictions "
+    "(pick the dominant one, don't average).\n"
+    "2. For each neighbouring pair listed below: ONE concrete connective element that leads from one scene into the "
+    "other (e.g. 'a stream runs from the pond of A down between dense ferns into the forest floor of B').\n"
+    "3. What fills the outer corners far from any source.\n"
+    "Be visual and specific, name plants, water, rocks, light. Never mention cards, frames, grids or pockets."
+)
+
+
+def _regie(cols, rows, anker, namen, analysen):
+    """Kompositionsplan für Seiten mit mehreren Karten (reines Text-Modell, ≈ 0,5 ct)."""
+    zone, paare = _zonen(cols, rows, anker)
+    beschreibung = []
+    for slot, cid in sorted(anker.items(), key=lambda kv: int(kv[0])):
+        col, row = int(slot) % cols, int(slot) // cols
+        felder = [s for s, z in zone.items() if z == cid and str(s) not in anker]
+        beschreibung.append(
+            f"SOURCE {namen.get(cid) or cid} sits at row {row + 1}, column {col + 1}; its surrounding zone covers "
+            f"{len(felder)} neighbouring areas.\n{_analyse_text(analysen.get(cid))}")
+    nachbarn = "; ".join(f"{namen.get(a) or a} ↔ {namen.get(b) or b}" for a, b in paare) or "none"
+    text = (REGIE_PROMPT + "\n\nSOURCES:\n" + "\n\n".join(beschreibung)
+            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}")
+    try:
+        d = _openrouter({
+            "model": _dep["env"]().get("ARTWORK_REGIE_MODELL") or ANALYSE_MODELL,
+            "messages": [{"role": "user", "content": text}],
+            "usage": {"include": True},
+        }, timeout=90)
+        plan = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        return plan[:1600], float((d.get("usage") or {}).get("cost") or 0)
+    except Exception:
+        return "", 0.0
+
+
+def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback="", regie=""):
     """Interleaved content für das Bildmodell: Outpainting-Auftrag, Vorlage, Illustrations-Ausschnitte,
     Pokémon-Referenzen. Bewusst KEIN Wort über Binder, Fächer oder Raster (→ Gitterlinien) und kein
     „erweitere das Artwork“ (→ Kreatur wird dupliziert). Kurz und konkret hat im Vergleich am besten
@@ -421,10 +483,13 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
         + ("some rectangular parts are" if mehrere else "one rectangular part is")
         + " finished (the source illustration" + ("s" if mehrere else "") + "); every gray pixel is still unpainted. "
-        "Paint all gray areas so that the finished part" + ("s extend" if mehrere else " extends")
-        + " seamlessly in every direction: the same scene, same perspective and horizon height, same light, same "
-        "colors and the same painting technique continue outward without any visible transition – as if the source "
-        "were a crop from this bigger painting.\n"
+        + ("Paint all gray areas so that EACH finished part extends seamlessly into its own surroundings: around "
+           "each source, that source's own scene, perspective, light, colours and painting technique continue "
+           "outward without any visible transition – as if each source were a crop from this bigger painting. The "
+           "whole page shows ONE habitat, but every source keeps its own part of it.\n" if mehrere else
+           "Paint all gray areas so that the finished part extends seamlessly in every direction: the same scene, "
+           "same perspective and horizon height, same light, same colors and the same painting technique continue "
+           "outward without any visible transition – as if the source were a crop from this bigger painting.\n")
     )
     teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     n = 2
@@ -457,8 +522,7 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         "- Continue the surroundings: what is cut off at the edges of the finished part continues exactly there, at the "
         "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
         "calm – the source stays the most detailed and most important area.\n"
-        + ("- Several finished parts: they belong to ONE world with a single horizon, light and perspective; paint "
-           "believable transitions between them.\n" if mehrere else "")
+        + (_zonen_regeln(cols, rows, anker, namen, regie) if mehrere else "")
         + "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
         "Not a single gray pixel may remain.\n"
         "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
@@ -483,6 +547,32 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
     regeln += "Output exactly the same dimensions as IMAGE 1."
     teile.append({"type": "text", "text": regeln})
     return teile
+
+
+def _zonen_regeln(cols, rows, anker, namen, regie):
+    """Regeln für Seiten mit mehreren Karten: jede Karte behält ihre eigene Umgebung, überblendet wird
+    nur an den Grenzen. Der Versuch, alle Szenen zu einer zu verschmelzen, ergab Matsch."""
+    zone, _ = _zonen(cols, rows, anker)
+    orte = {}
+    for slot, cid in zone.items():
+        if str(slot) in anker:
+            continue
+        orte.setdefault(cid, []).append(f"row {slot // cols + 1}/column {slot % cols + 1}")
+    zeilen = "; ".join(f"the areas at {', '.join(v)} belong to {namen.get(k) or k}" for k, v in orte.items())
+    text = (
+        "- IMPORTANT – several sources: do NOT merge them into one averaged scene. Each source keeps its own "
+        f"landscape, colours, depth and light in the areas around it: {zeilen}. Continue each source's own scene "
+        "outward from its own edges, exactly as it looks there.\n"
+        "- Where two such areas meet, blend them with ONE believable connective element – dense vegetation, a slope, "
+        "mist, a stream, rocks, a fallen trunk – so the change of scenery reads as walking through one habitat, "
+        "never as a hard cut or a straight seam.\n"
+        "- Do not force one straight horizon across the whole painting: the sources are painted at different heights "
+        "and distances. Hide those differences behind foreground plants, terrain, haze or water instead of drawing a "
+        "single line through everything.\n"
+    )
+    if regie:
+        text += "- Follow this composition plan for the new areas:\n" + regie.strip() + "\n"
+    return text
 
 
 # --- Kontrolle (Vision-Modell prüft die Fortsetzung an den Kanten) ---------------------------------
@@ -702,6 +792,13 @@ def _job(artwork_id):
                 crop = crop.copy(); crop.thumbnail((1024, 1024))
                 bilder[cid] = crop
         con.close()
+        # Regie-Plan bei mehreren Karten (billiger Textschritt, verhindert den „alles-verschmolzen“-Matsch)
+        regie = ""
+        if len(dict.fromkeys(anker.values())) > 1:
+            regie, kr = _regie(cols, rows, anker, namen, analysen)
+            kosten += kr
+            if regie:
+                schritte.append({"regie": regie})
         # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten
         vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
         px0, py0, px1, py1 = geo["seite"]
@@ -732,7 +829,8 @@ def _job(artwork_id):
                 feedback = ""
                 quelle = next(iter(bilder.values()))
                 for versuch in range(2):
-                    teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_a, bilder, [], feedback)
+                    teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_a, bilder, [],
+                                          feedback, regie)
                     erg, kk, modell_a = _modell_aufruf(teile, modell, geo_a["ar"], groesse)
                     kosten += kk
                     if erg.size != (geo_a["cw"], geo_a["ch"]):
@@ -756,7 +854,7 @@ def _job(artwork_id):
                 if crop is not None:
                     canvas_b.paste(crop.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS), (box[0], box[1]))
         teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
-                              [] if stufen else pokemon)
+                              [] if stufen else pokemon, "", regie)
         erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
         kosten += kk
         schritte.append({"stufe": "B"})
