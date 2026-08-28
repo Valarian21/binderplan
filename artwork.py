@@ -49,6 +49,10 @@ MAX_POKEMON = 3
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
 STANDARD_GROESSE = "2K"
+# Modus: "schnell" = Analyse + ein Malschritt (~0,12 $), "stufen" = Ring → Kontrolle → Seite → Pokémon-Edit
+# (~0,33–0,46 $). Die Stufen brachten im Vergleich keinen sichtbaren Mehrwert (28.08.) – Standard ist "schnell";
+# per ARTWORK_MODUS=stufen in .env umschaltbar.
+STANDARD_MODUS = "schnell"
 STUFE_A_FAKTOR = 2.3      # Stufe A: Illustration um diesen Faktor erweitern (kleiner Schritt = genaue Geometrie)
 STUFE_A_MAX_ANTEIL = 0.8  # deckt Stufe A schon ≥ 80 % der Seite, entfällt Stufe B
 ANALYSE_MODELL = "google/gemini-3.5-flash"            # Vision-Analyse der Karte (≈ 0,5 ct)
@@ -678,7 +682,11 @@ def _job(artwork_id):
         geo = _geometrie(cols, rows, groesse)
         lang = row["sprache"] or "de"
         stil, wunsch = row["stil"], row["wunsch"] or ""
-        schritte = []
+        stufen = (_dep["env"]().get("ARTWORK_MODUS") or STANDARD_MODUS) == "stufen"
+        pokemon = json.loads(row["pokemon"] or "[]")
+        for p_ in pokemon:
+            p_["_bild"] = _pokemon_bild(p_["dex"])
+        schritte = [{"modus": "stufen" if stufen else "schnell"}]
         # 1. Analyse je Karte (gecacht) + Illustrations-Ausschnitte
         analysen, bilder, namen, kosten = {}, {}, {}, 0.0
         con = get_db()
@@ -702,7 +710,7 @@ def _job(artwork_id):
 
         # 2. Stufe A: kleiner Ring um die Illustration(en) – genaue Geometrie an den Kanten
         stufe_a = None
-        if fenster_seite:
+        if stufen and fenster_seite:
             ux0 = min(v[0] for v in fenster_seite.values()); uy0 = min(v[1] for v in fenster_seite.values())
             ux1 = max(v[2] for v in fenster_seite.values()); uy1 = max(v[3] for v in fenster_seite.values())
             cx, cy = (ux0 + ux1) / 2, (uy0 + uy1) / 2
@@ -747,7 +755,8 @@ def _job(artwork_id):
                 crop = bilder.get(anker[slot])
                 if crop is not None:
                     canvas_b.paste(crop.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS), (box[0], box[1]))
-        teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder, [])
+        teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
+                              [] if stufen else pokemon)
         erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
         kosten += kk
         schritte.append({"stufe": "B"})
@@ -761,10 +770,7 @@ def _job(artwork_id):
                              rand=max(24, round(min(stufe_a_box[2] - stufe_a_box[0], stufe_a_box[3] - stufe_a_box[1]) * 0.14)))
 
         # 4. Stufe C: Wunsch-Pokémon als Bearbeitung des fertigen Bilds (integriert sich besser als beim Malen ins Leere)
-        pokemon = json.loads(row["pokemon"] or "[]")
-        if pokemon:
-            for p_ in pokemon:
-                p_["_bild"] = _pokemon_bild(p_["dex"])
+        if pokemon and stufen:
             _karten_einsetzen(seite, anker, cols, geo, lang, offset=(px0, py0))
             canvas_c = Image.new("RGB", (geo["cw"], geo["ch"]), (128, 128, 128))
             canvas_c.paste(seite, (px0, py0))
