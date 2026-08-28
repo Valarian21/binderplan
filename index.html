@@ -420,6 +420,10 @@ window.mpUtm=read;})();
   .aw-hint { font-size: 11.5px; color: var(--mut); margin-top: 8px; line-height: 1.4; }
   .aw-stile { display: flex; flex-wrap: wrap; gap: 6px; }
   .aw-kont { font-size: 12px; color: var(--mut); margin: 12px 0 8px; }
+  .aw-poke-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .aw-poke-chips:empty { display: none; }
+  .aw-poke-chips .chip { display: inline-flex; align-items: center; gap: 6px; }
+  .aw-poke-chips .chip img { width: 22px; height: 22px; object-fit: contain; }
   .aw-fehler { color: var(--akzent); font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 1em; }
   .aw-lauf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 0; text-align: center; font-weight: 600; }
   .aw-lauf .aw-mini-vorschau { display: grid; gap: 4px; width: 150px; }
@@ -899,6 +903,9 @@ window.mpUtm=read;})();
         <div class="aw-stile" id="aw-stile"></div>
         <div class="feld-lbl" data-i18n="aw_wunsch">Wünsche (optional)</div>
         <textarea class="feld" id="aw-wunsch" rows="2" maxlength="400" data-i18n-ph="aw_wunsch_ph" placeholder="z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …"></textarea>
+        <div class="feld-lbl" data-i18n="aw_pokemon">Pokémon im Bild (optional)</div>
+        <div class="aw-poke-chips" id="aw-poke-chips"></div>
+        <input class="feld" id="aw-poke" list="dex-namen" autocomplete="off" data-i18n-ph="aw_pokemon_ph" placeholder="Name eingeben, Enter fügt hinzu (max. 3)" onkeydown="artworkPokeTaste(event)" onchange="artworkPokeAdd()">
         <div class="aw-kont" id="aw-kont"></div>
         <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()" data-i18n="aw_start">✦ Seite füllen</button>
         <div id="aw-fehler" class="aw-fehler"></div>
@@ -1031,6 +1038,7 @@ const T = {
     aw_t: 'Artwork-Seite gestalten', aw_menu: '🎨 Artwork-Seite gestalten …',
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
+    aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
     aw_laeuft: 'Die KI malt … das dauert etwa 30–60 Sekunden.', aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
@@ -1153,6 +1161,7 @@ const T = {
     aw_t: 'Design an artwork page', aw_menu: '🎨 Design an artwork page …',
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
+    aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
     aw_laeuft: 'The AI is painting … this takes about 30–60 seconds.', aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
@@ -2976,7 +2985,7 @@ function planerAktionen() {
 
 // ---------- Artwork-Seiten (KI erweitert das Kartenmotiv über die ganze Seite) ----------
 const AW_STILE = ['karte', 'comic', 'foto', 'aquarell', 'oel', 'anime', 'retro', 'pixel', 'neon', 'skizze', 'minimal', 'dunkel'];
-const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], kontingent: null };
+const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], kontingent: null, pokemon: [] };
 
 function artworkOeffnen(seite) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -2990,6 +2999,8 @@ function artworkOeffnen(seite) {
   for (let s = 0; s < pp; s++) { const it = S.binder.items[AW.seite * pp + s]; if (it && it.type === 'card') AW.anker.add(s); }
   $('aw-seite-nr').textContent = AW.seite + 1;
   $('aw-fehler').textContent = '';
+  AW.pokemon = []; zeichneArtworkPoke(); $('aw-poke').value = '';
+  if (!S.pokedex) ladePokedex().catch(() => {});
   artworkAnsicht('editor');
   zeichneArtworkGrid('aw-grid', true); zeichneArtworkStile();
   modalOeffnen('modal-artwork');
@@ -3047,7 +3058,7 @@ async function artworkStarten() {
   $('aw-start').disabled = true;
   try {
     const d = await api('api/artwork', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ binder_id: S.binder.id, seite: AW.seite, stil: AW.stil, wunsch: $('aw-wunsch').value.trim(), anker: [...AW.anker] }) });
+      body: JSON.stringify({ binder_id: S.binder.id, seite: AW.seite, stil: AW.stil, wunsch: $('aw-wunsch').value.trim(), anker: [...AW.anker], pokemon: AW.pokemon.map((p) => p.name_en) }) });
     zeichneArtworkGrid('aw-lauf-grid', false);
     artworkAnsicht('lauf');
     artworkPollen(d.id);
@@ -3078,7 +3089,8 @@ function artworkZeigen(aw) {
   $('aw-png').href = `api/artwork/${aw.id}/bild?v=voll`;
   const pp = (LAYOUTS[aw.layout] || [3, 3]).reduce((a, b) => a * b, 1);
   const k = Object.keys(aw.anker || {}).length;
-  $('aw-erg-info').textContent = t('aw_erg_info').replace('{k}', k).replace('{f}', pp - k).replace('{s}', t('stil_' + aw.stil));
+  $('aw-erg-info').textContent = t('aw_erg_info').replace('{k}', k).replace('{f}', pp - k).replace('{s}', t('stil_' + aw.stil))
+    + ((aw.pokemon || []).length ? ' · ' + aw.pokemon.map((p) => LANG === 'en' ? p.name_en : p.name_de).join(', ') : '');
   $('aw-seite-nr').textContent = aw.seite + 1;
   artworkAnsicht('ergebnis');
   document.querySelectorAll('#aw-galerie .aw-mini').forEach((el) => el.classList.toggle('on', el.dataset.id === aw.id));
@@ -3095,6 +3107,23 @@ async function artworkGalerieLaden() {
   $('aw-galerie-lbl').classList.toggle('hidden', !AW.liste.length);
   $('aw-galerie').innerHTML = AW.liste.map((a) => `<div class="aw-mini ${AW.aktuell && AW.aktuell.id === a.id ? 'on' : ''}" data-id="${a.id}" onclick="artworkZeigen(AW.liste.find((x) => x.id === '${a.id}'))">
     <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}</div>`).join('');
+}
+// Wunsch-Pokémon: Name aus der Pokédex-Liste → Chip mit Sprite
+function artworkPokeTaste(ev) { if (ev.key === 'Enter') { ev.preventDefault(); artworkPokeAdd(); } }
+function artworkPokeAdd() {
+  const feld = $('aw-poke'); const name = feld.value.trim().toLowerCase();
+  if (!name) return;
+  if (AW.pokemon.length >= 3) { $('aw-fehler').textContent = t('aw_pokemon_max'); return; }
+  const p = (S.pokedex || []).find((x) => (x.name || '').toLowerCase() === name || (x.name_en || '').toLowerCase() === name)
+    || (S.pokedex || []).find((x) => (x.name || '').toLowerCase().startsWith(name) || (x.name_en || '').toLowerCase().startsWith(name));
+  if (!p) { $('aw-fehler').textContent = t('aw_pokemon_unbekannt'); return; }
+  if (!AW.pokemon.some((x) => x.dex === p.dex)) AW.pokemon.push({ dex: p.dex, name: p.name, name_en: p.name_en });
+  feld.value = ''; $('aw-fehler').textContent = '';
+  zeichneArtworkPoke();
+}
+function artworkPokeWeg(dex) { AW.pokemon = AW.pokemon.filter((p) => p.dex !== dex); zeichneArtworkPoke(); }
+function zeichneArtworkPoke() {
+  $('aw-poke-chips').innerHTML = AW.pokemon.map((p) => `<button class="chip on" onclick="artworkPokeWeg(${p.dex})" title="✕"><img src="api/img/dex/${p.dex}" alt="">${esc(LANG === 'en' ? p.name_en : p.name)} ✕</button>`).join('');
 }
 function artworkNochmal() {
   $('aw-start').disabled = false; $('aw-fehler').textContent = '';

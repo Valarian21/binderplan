@@ -6,12 +6,18 @@
 # leeren Hüllen gesteckt ergibt das eine durchgehende Bildseite rund um die Originalkarte.
 #
 # Ablauf:
-#   1. Vorlage bauen: Seite in Modell-Seitenverhältnis, Kartenscans exakt an ihren Fächern,
-#      alles andere grau („hier malen“).
-#   2. Bildmodell (OpenRouter, Gemini „Nano Banana“) erweitert das Motiv im gewünschten Stil.
-#   3. Ergebnis auf Vorlagengröße bringen, Seite ausschneiden, Kartenscans pixelgenau
+#   1. Analyse je Karte (Vision-Modell, gecacht): Was zeigt die Illustration, was ist an
+#      welchem Rand abgeschnitten, Horizont, Licht, Palette – und wo genau sitzt das
+#      Illustrationsfenster auf der Karte (Box).
+#   2. Vorlage bauen: Seite im Modell-Seitenverhältnis. Von jeder Karte steht NUR das
+#      Illustrationsfenster an seiner echten Position – der Kartenrahmen bleibt grau, also
+#      „zu malen“. So setzt das Bildmodell die Szene direkt an den Bildkanten fort
+#      (echtes Outpainting); die echte Karte deckt später den Rahmenbereich wieder ab.
+#   3. Bildmodell (OpenRouter, Gemini „Nano Banana“) malt alles Graue: Beschreibung,
+#      Illustrations-Ausschnitte und Referenzbilder gewünschter Pokémon als Kontext.
+#   4. Ergebnis auf Vorlagengröße bringen, Seite ausschneiden, Kartenscans pixelgenau
 #      zurücksetzen → Ganzseiten-PNG + Vorschau.
-#   4. Druck-PDF: je Fach ein 63×88-mm-Ausschnitt (Kartenfächer werden ausgelassen, optional
+#   5. Druck-PDF: je Fach ein 63×88-mm-Ausschnitt (Kartenfächer werden ausgelassen, optional
 #      als Proxy mitgedruckt), 9 Ausschnitte pro A4, Beschriftung „Seite X · Fach Y“ in der Fuge.
 #
 # Läuft als Hintergrund-Job (30–90 s); das Frontend fragt den Status ab.
@@ -39,9 +45,11 @@ from reportlab.pdfgen import canvas as pdfcanvas
 # (eine Generierung kostet je nach Modell 0,05–0,15 € – unbegrenzt wäre nicht tragbar).
 FREE_ARTWORK_GESAMT = 1
 PRO_ARTWORK_MONAT = 20
+MAX_POKEMON = 3
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
 STANDARD_GROESSE = "2K"
+ANALYSE_MODELL = "google/gemini-3.5-flash"            # Vision-Analyse der Karte (≈ 0,5 ct)
 
 # Bildgröße je Fach/Fuge wie im Platzhalter-PDF (mm)
 KARTE_W, KARTE_H, FUGE = 63.0, 88.0, 4.0
@@ -54,23 +62,24 @@ SEITENVERHAELTNISSE = {
 }
 LANGE_SEITE = {"1K": 1024, "2K": 2048, "4K": 4096}
 
-# Stile: Schlüssel → Anweisung fürs Bildmodell (englisch – die Modelle folgen so am zuverlässigsten)
+# Stile: Schlüssel → Anweisung fürs Bildmodell. Der Stil ist NUR die Maltechnik – der Inhalt bleibt
+# immer die Fortsetzung der Kartenszene (steht so im Prompt).
 STILE = {
-    "karte": "Continue in exactly the visual style, technique, line quality and color palette of the card "
-             "illustration itself, so the extension is indistinguishable from the original artwork.",
-    "comic": "Bold comic-book style: strong ink outlines, flat cel shading, halftone dots, dynamic composition – "
-             "painted as ONE full-page splash illustration, never divided into comic panels.",
-    "foto": "Photorealistic: cinematic lighting, realistic materials, atmosphere and depth of field, "
-            "as if the scene were photographed in the real world.",
-    "aquarell": "Soft watercolor painting: wet washes, visible paper texture, gently bleeding edges, light colors.",
-    "oel": "Classical oil painting: visible brush strokes, rich impasto texture, dramatic chiaroscuro lighting.",
-    "anime": "Modern anime key-visual style: clean line art, vibrant cel shading, expressive dramatic lighting.",
-    "retro": "1990s classic Pokémon card illustration style: airbrushed, soft gradients, nostalgic, slightly grainy.",
-    "pixel": "Retro pixel art: 16-bit sprite aesthetic, limited palette, crisp visible pixels.",
-    "neon": "Neon synthwave: glowing magenta and cyan light, dark background, retro-futuristic grid and haze.",
-    "skizze": "Pencil sketch: graphite hatching on white paper, loose confident sketch lines, monochrome.",
-    "minimal": "Minimalist flat vector illustration: few colors, clean geometric shapes, calm negative space.",
-    "dunkel": "Dark fantasy: moody dramatic shadows, mystical atmosphere, deep saturated colors, epic scale.",
+    "karte": "Exactly the technique, line quality, brushwork and color palette of the card illustration itself – "
+             "the extension must be indistinguishable from the original artwork.",
+    "comic": "Bold comic-book rendering: strong ink outlines, flat cel shading, halftone dots – painted as ONE "
+             "full-page splash illustration, never divided into comic panels.",
+    "foto": "Photorealistic rendering: cinematic lighting, realistic materials, atmosphere and depth of field, "
+            "as if the card's scene were photographed in the real world.",
+    "aquarell": "Soft watercolor rendering: wet washes, visible paper texture, gently bleeding edges, light colors.",
+    "oel": "Classical oil-painting rendering: visible brush strokes, rich impasto texture, chiaroscuro lighting.",
+    "anime": "Modern anime key-visual rendering: clean line art, vibrant cel shading, expressive dramatic lighting.",
+    "retro": "1990s classic Pokémon card illustration rendering: airbrushed, soft gradients, nostalgic, slightly grainy.",
+    "pixel": "Retro pixel-art rendering: 16-bit sprite aesthetic, limited palette, crisp visible pixels.",
+    "neon": "Neon synthwave rendering: glowing magenta and cyan light, dark tones, retro-futuristic haze.",
+    "skizze": "Pencil-sketch rendering: graphite hatching on white paper, loose confident sketch lines, monochrome.",
+    "minimal": "Minimalist flat-vector rendering: few colors, clean geometric shapes, calm negative space.",
+    "dunkel": "Dark-fantasy rendering: moody dramatic shadows, mystical atmosphere, deep saturated colors, epic scale.",
 }
 
 # Wird von register() befüllt (Helfer aus main.py)
@@ -90,6 +99,35 @@ def _artwork_dir() -> Path:
     d = _dep["CACHE"] / "artwork"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _key():
+    key = _dep["env"]().get("OPENROUTER_KEY", "")
+    if not key:
+        raise RuntimeError("Kein OPENROUTER_KEY in .env")
+    return key
+
+
+def _openrouter(body, timeout=240):
+    r = httpx.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {_key()}", "Content-Type": "application/json",
+                 "HTTP-Referer": "https://binderplan.app", "X-Title": "Binderplan"},
+        json=body, timeout=timeout,
+    )
+    d = r.json()
+    if r.status_code != 200 or d.get("error"):
+        raise RuntimeError(f"Bildmodell: {(d.get('error') or {}).get('message') or r.status_code}")
+    return d
+
+
+def _data_url(img: Image.Image, fmt="PNG"):
+    buf = io.BytesIO()
+    if fmt == "JPEG":
+        img.convert("RGB").save(buf, "JPEG", quality=92)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    img.save(buf, "PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 # --- Kontingent ---------------------------------------------------------------
@@ -173,7 +211,7 @@ def _kartenbild(card_id, lang):
 
 
 def _karten_einsetzen(seite_img, anker, cols, geo, lang, offset=(0, 0)):
-    """Kartenscans exakt in ihre Fächer setzen (auf Vorlage und Ergebnis identisch)."""
+    """Kartenscans exakt in ihre Fächer setzen (auf dem Ergebnis, damit die Karte unangetastet bleibt)."""
     for slot, card_id in anker.items():
         bild = _kartenbild(card_id, lang)
         if not bild:
@@ -183,70 +221,241 @@ def _karten_einsetzen(seite_img, anker, cols, geo, lang, offset=(0, 0)):
         seite_img.paste(bild.resize((x1 - x0, y1 - y0), Image.LANCZOS), (x0, y0))
 
 
-def _vorlage(anker, cols, rows, geo, lang):
+# --- Karten-Analyse (Vision-Modell, gecacht) ---------------------------------------
+
+ANALYSE_PROMPT = (
+    "You see a scan of a Pokémon trading card. Analyze ONLY the illustration inside the picture window "
+    "(the artwork box); ignore the frame, name, HP, attacks and text. Answer with a single JSON object:\n"
+    '{"box": [ymin, xmin, ymax, xmax] of the illustration window in 0-1000 normalized coordinates of the whole image '
+    "(for full-art cards where the illustration covers the entire card use the card edges),\n"
+    '"subject": the main subject – species, pose, size within the frame, facing/moving direction,\n'
+    '"scene": setting and background elements with their placement (e.g. "volcano on the left, lava lake below"),\n'
+    '"edges": {"left": which BACKGROUND/scenery elements (never the creature) touch or are cut off at the left edge '
+    'and how they would continue beyond it, "right": ..., "top": ..., "bottom": ...},\n'
+    '"horizon": horizon height as a fraction of the illustration height from the top, or "none",\n'
+    '"perspective": camera angle (eye level / low angle / bird view) and depth cues,\n'
+    '"light": light direction, time of day, weather,\n'
+    '"palette": 3-5 dominant colors,\n'
+    '"technique": painting medium and technique (e.g. airbrush, watercolor, digital cel shading, 3D render),\n'
+    '"mood": mood in a few words}\n'
+    "Be concrete and visual; write in English. JSON only."
+)
+
+
+def _analyse(card_id, lang):
+    """Beschreibung + Box des Illustrationsfensters, je Karte einmal ermittelt und in der DB gecacht."""
+    get_db = _dep["get_db"]
+    con = get_db()
+    row = con.execute("SELECT daten FROM card_art_analysis WHERE card_id=? AND lang=?", (card_id, lang)).fetchone()
+    con.close()
+    if row:
+        try:
+            return json.loads(row["daten"])
+        except Exception:
+            pass
+    bild = _kartenbild(card_id, lang)
+    if not bild:
+        return None
+    klein = bild.copy()
+    klein.thumbnail((1024, 1024))
+    modell = _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL
+    try:
+        d = _openrouter({
+            "model": modell,
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": ANALYSE_PROMPT},
+                {"type": "image_url", "image_url": {"url": _data_url(klein, "JPEG")}},
+            ]}],
+            "response_format": {"type": "json_object"},
+            "usage": {"include": True},
+        }, timeout=90)
+        text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
+        daten = json.loads(text)
+        box = daten.get("box")
+        if not (isinstance(box, list) and len(box) == 4 and all(isinstance(v, (int, float)) for v in box)):
+            daten["box"] = None
+        else:
+            ymin, xmin, ymax, xmax = [max(0, min(1000, float(v))) for v in box]
+            # Plausibilität: Fenster deckt mindestens ein Viertel der Karte und liegt nicht auf dem Kopf
+            if xmax - xmin < 300 or ymax - ymin < 200:
+                daten["box"] = None
+            else:
+                daten["box"] = [ymin, xmin, ymax, xmax]
+        daten["_kosten"] = float((d.get("usage") or {}).get("cost") or 0)
+    except Exception as e:
+        return {"fehler": str(e)[:200], "box": None}
+    con = get_db()
+    con.execute("INSERT OR REPLACE INTO card_art_analysis (card_id, lang, daten, created_at) VALUES (?,?,?,?)",
+                (card_id, lang, json.dumps(daten), _now()))
+    con.commit()
+    con.close()
+    return daten
+
+
+def _illustration(card_id, lang, analyse):
+    """→ (Ausschnitt des Illustrationsfensters, Box in Kartenanteilen 0-1) oder (Kartenbild, None)."""
+    bild = _kartenbild(card_id, lang)
+    if not bild:
+        return None, None
+    box = (analyse or {}).get("box")
+    if not box:
+        return bild, None
+    ymin, xmin, ymax, xmax = [v / 1000 for v in box]
+    ymin, xmin, ymax, xmax = ymin + 0.012, xmin + 0.012, ymax - 0.012, xmax - 0.012
+    w, h = bild.size
+    crop = bild.crop((round(xmin * w), round(ymin * h), round(xmax * w), round(ymax * h)))
+    return crop, (xmin, ymin, xmax, ymax)
+
+
+def _vorlage(anker, cols, rows, geo, lang, analysen):
+    """Seite: NUR die Illustrationsfenster an ihrer echten Position, alles andere grau (= malen).
+    Der Kartenrahmen wird bewusst mitgemalt – die echte Karte deckt ihn später wieder ab, sodass die
+    Szene an den Kanten des Fensters nahtlos weitergeht."""
     img = Image.new("RGB", (geo["cw"], geo["ch"]), (128, 128, 128))
-    _karten_einsetzen(img, anker, cols, geo, lang)
-    return img
+    fenster = {}
+    for slot, card_id in anker.items():
+        crop, rel = _illustration(card_id, lang, analysen.get(card_id))
+        if not crop:
+            continue
+        x0, y0, x1, y1 = _fach_box(int(slot), cols, geo)
+        if rel:
+            bx0 = x0 + round(rel[0] * (x1 - x0)); by0 = y0 + round(rel[1] * (y1 - y0))
+            bx1 = x0 + round(rel[2] * (x1 - x0)); by1 = y0 + round(rel[3] * (y1 - y0))
+        else:
+            bx0, by0, bx1, by1 = x0, y0, x1, y1
+        img.paste(crop.resize((max(1, bx1 - bx0), max(1, by1 - by0)), Image.LANCZOS), (bx0, by0))
+        fenster[slot] = (bx0, by0, bx1, by1)
+    return img, fenster
+
+
+# --- Pokémon-Wünsche ---------------------------------------------------------------
+
+def _pokemon_aufloesen(namen):
+    """Eingegebene Namen (DE/EN/JP) → [{dex, name_en, name_de}] (max. MAX_POKEMON)."""
+    out, gesehen = [], set()
+    con = _dep["get_db"]()
+    for n in namen or []:
+        n = str(n).strip()
+        if not n:
+            continue
+        r = con.execute(
+            "SELECT dex_id, name_de, name_en FROM pokemon WHERE lower(name_de)=lower(?) OR lower(name_en)=lower(?)"
+            " OR name_ja=? LIMIT 1", (n, n, n)).fetchone()
+        if not r:
+            r = con.execute(
+                "SELECT dex_id, name_de, name_en FROM pokemon WHERE lower(name_de) LIKE lower(?) OR lower(name_en) LIKE lower(?)"
+                " ORDER BY dex_id LIMIT 1", (n + "%", n + "%")).fetchone()
+        if r and r["dex_id"] not in gesehen:
+            gesehen.add(r["dex_id"])
+            out.append({"dex": r["dex_id"], "name_en": r["name_en"] or r["name_de"], "name_de": r["name_de"]})
+        if len(out) >= MAX_POKEMON:
+            break
+    con.close()
+    return out
+
+
+def _pokemon_bild(dex):
+    pfad = _dep["dex_image_path"](dex)
+    if not pfad:
+        return None
+    try:
+        img = Image.open(pfad).convert("RGBA")
+        bg = Image.new("RGB", img.size, "white")
+        bg.paste(img, mask=img.split()[-1])
+        bg.thumbnail((512, 512))
+        return bg
+    except Exception:
+        return None
 
 
 # --- Prompt & Modellaufruf --------------------------------------------------------
 
-def _prompt(cols, rows, anker, stil, wunsch, namen):
-    plaetze = []
-    for slot, card_id in sorted(anker.items(), key=lambda kv: int(kv[0])):
-        col, row = int(slot) % cols, int(slot) // cols
-        plaetze.append(f"row {row + 1}, column {col + 1} ({namen.get(card_id) or 'trading card'})")
+def _analyse_text(a):
+    if not a or a.get("fehler"):
+        return "(no analysis available – study the illustration yourself)"
+    teile = []
+    for k in ("subject", "scene", "edges", "horizon", "perspective", "light", "palette", "technique", "mood"):
+        v = a.get(k)
+        if v:
+            lbl = "subject (already fully inside the illustration – never repeat it)" if k == "subject" else k
+            teile.append(f"{lbl}: {json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v}")
+    return "\n".join(teile)
+
+
+def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon):
+    """Interleaved content für das Bildmodell: Text, Leinwand, Illustrations-Ausschnitte, Pokémon-Referenzen.
+    Bewusst KEIN Wort über Binder, Fächer oder Raster – sonst malt das Modell Gitterlinien nach."""
     mehrere = len(anker) > 1
-    text = (
-        f"The attached image is a trading-card binder page with a grid of {cols} columns × {rows} rows of card pockets. "
-        f"{'Real cards are' if mehrere else 'A real card is'} already placed on it at: {'; '.join(plaetze)}. "
-        "Every gray area is empty and must be painted.\n\n"
-        "Task: paint all gray areas so that the illustration of the card"
-        + ("s continues seamlessly beyond their borders and all card scenes merge into ONE coherent, "
-           "continuous world that fills the whole page" if mehrere else
-           " continues seamlessly beyond its borders and fills the whole page as one coherent, continuous scene")
-        + " – extended background, environment, landscape, lighting, weather and effects, in the same mood and "
-        "perspective as the card art. The card must feel like a window into the larger painting.\n\n"
-        "Strict rules:\n"
-        "- Keep every card exactly where it is: identical position, size and content, including its frame and text.\n"
-        "- Do NOT add new cards, card frames, borders, panels, text, letters, numbers, logos or watermarks anywhere.\n"
-        "- The new areas contain only artwork, no grid lines and no gray left.\n"
-        "- The page is ONE single uninterrupted painting: do not divide it into panels, tiles, pockets or "
-        "framed sections – the pocket grid does not exist in the picture.\n"
-        "- Output exactly the same dimensions and layout as the input image.\n\n"
-        f"Style of the new artwork: {STILE.get(stil, STILE['karte'])}"
+    intro = (
+        "You are an illustrator creating 'extended art': a finished illustration is a small cut-out of one huge "
+        "painting, and you paint the missing rest of that painting so the illustration's scene continues seamlessly "
+        "beyond its edges in every direction.\n\n"
+        f"IMAGE 1 is the unfinished huge painting. The cut-out{'s are' if mehrere else ' is'} already in place at the "
+        "exact final position and size. Everything gray is unpainted and must be painted; the gray is flat empty "
+        "space and contains no structure, lines or shapes. The result is a flat digital painting seen straight on – "
+        "not a photo of a canvas, no wall, no frame, no mat.\n"
     )
+    teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
+    n = 2
+    for slot, card_id in sorted(anker.items(), key=lambda kv: int(kv[0])):
+        crop = bilder.get(card_id)
+        if crop is None:
+            continue
+        teile.append({"type": "text", "text": (
+            f"IMAGE {n} – close-up of the placed illustration ({namen.get(card_id) or 'source'}). This is the SOURCE "
+            f"scene you continue. Analysis:\n{_analyse_text(analysen.get(card_id))}")})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
+        n += 1
+    for p in pokemon:
+        bild = p.get("_bild")
+        if bild is None:
+            continue
+        teile.append({"type": "text", "text": f"IMAGE {n} – official reference artwork of {p['name_en']}. "
+                      "This Pokémon must appear in the new areas, drawn accurately after this reference."})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(bild, 'JPEG')}})
+        n += 1
+    regeln = (
+        "\nRULES FOR PAINTING THE GRAY AREAS:\n"
+        "1. The creature in the illustration is already COMPLETELY shown inside the illustration. Outside of it there "
+        "is NO creature of that species – do not paint it again in any size, pose, part, silhouette, reflection or "
+        "shadow. Outside the illustration there is only its surroundings: sky, ground, background, light, weather, "
+        "effects, scenery. This applies even if a wing or tail seems cut off at the edge – do NOT continue it.\n"
+        "2. Seamless continuation: at every edge of the illustration the painting carries on exactly – same colors, "
+        "textures, lighting, perspective, horizon height, time of day and brush style – so that no seam is visible. "
+        "Background elements that are cut off at an edge (a rock, a wave, a tree, a beam of light, a starburst) "
+        "continue precisely where they leave the illustration.\n"
+        "3. Composition: the original illustration remains the focal point and the most detailed area. The extension "
+        "is calmer and supports it – wide surroundings, depth, atmosphere, foreground and background of the same "
+        "world – so the illustration becomes a window into a much larger version of its own scene.\n"
+        + ("4. Several illustrations: their scenes merge into ONE continuous world with a single consistent horizon, "
+           "light and perspective; invent believable transitions between them.\n" if mehrere else "")
+        + "5. The canvas is ONE uninterrupted painting: no borders, frames, lines, panels, tiles, rectangles, "
+        "grids, text, letters, numbers, logos or watermarks anywhere. Not a single pixel of gray may remain.\n"
+        "6. Do not modify the placed illustration itself.\n"
+        f"7. Rendering style for the new areas: {STILE.get(stil, STILE['karte'])} The style changes only HOW it is "
+        "painted – WHAT is painted is still the direct continuation of the illustration's scene.\n"
+    )
+    if pokemon:
+        regeln += ("8. Add these Pokémon to the new areas, each exactly once: " + ", ".join(p["name_en"] for p in pokemon)
+                   + " – drawn accurately after its reference image, placed naturally in the scene at a plausible "
+                   "size, interacting with the environment, in the same rendering style, not overlapping the "
+                   "placed illustration.\n")
     if wunsch:
-        text += f"\n\nAdditional wishes from the collector: {wunsch.strip()[:400]}"
-    return text
+        regeln += f"\nAdditional wishes from the collector: {wunsch.strip()[:400]}\n"
+    regeln += "\nOutput exactly the same dimensions as IMAGE 1."
+    teile.append({"type": "text", "text": regeln})
+    return teile
 
 
-def _modell_aufruf(vorlage: Image.Image, prompt, modell, ar, groesse):
-    key = _dep["env"]().get("OPENROUTER_KEY", "")
-    if not key:
-        raise RuntimeError("Kein OPENROUTER_KEY in .env")
-    buf = io.BytesIO()
-    vorlage.save(buf, "PNG", optimize=True)
-    data_url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-    body = {
+def _modell_aufruf(teile, modell, ar, groesse):
+    d = _openrouter({
         "model": modell,
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": data_url}},
-        ]}],
+        "messages": [{"role": "user", "content": teile}],
         "modalities": ["image", "text"],
         "image_config": {"aspect_ratio": ar, "image_size": groesse},
         "usage": {"include": True},
-    }
-    r = httpx.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
-                 "HTTP-Referer": "https://binderplan.app", "X-Title": "Binderplan"},
-        json=body, timeout=240,
-    )
-    d = r.json()
-    if r.status_code != 200 or d.get("error"):
-        raise RuntimeError(f"Bildmodell: {(d.get('error') or {}).get('message') or r.status_code}")
+    })
     msg = (d.get("choices") or [{}])[0].get("message") or {}
     bilder = msg.get("images") or []
     url = (bilder[0].get("image_url") or {}).get("url") if bilder else None
@@ -271,17 +480,31 @@ def _job(artwork_id):
         anker = json.loads(row["anker"] or "{}")
         geo = _geometrie(cols, rows, row["groesse"])
         lang = row["sprache"] or "de"
-        vorlage = _vorlage(anker, cols, rows, geo, lang)
+        # 1. Analyse je Karte (gecacht) + Illustrations-Ausschnitte
+        analysen, bilder, namen, kosten = {}, {}, {}, 0.0
         con = get_db()
-        namen = {}
-        for cid in anker.values():
+        for cid in dict.fromkeys(anker.values()):
             r = con.execute("SELECT name_de, name_en FROM cards WHERE id = ?", (cid,)).fetchone()
             if r:
-                namen[cid] = f"Pokémon card «{r['name_en'] or r['name_de']}»"
+                namen[cid] = f"the Pokémon card «{r['name_en'] or r['name_de']}»"
+            a = _analyse(cid, lang)
+            analysen[cid] = a
+            kosten += float((a or {}).get("_kosten") or 0)
+            crop, _ = _illustration(cid, lang, a)
+            if crop is not None:
+                crop = crop.copy(); crop.thumbnail((1024, 1024))
+                bilder[cid] = crop
         con.close()
-        prompt = _prompt(cols, rows, anker, row["stil"], row["wunsch"] or "", namen)
-        ergebnis, kosten, modell = _modell_aufruf(vorlage, prompt, row["modell"], geo["ar"], row["groesse"])
-        # Ergebnis auf Vorlagenmaß bringen, Seite ausschneiden, Kartenscans pixelgenau zurücksetzen
+        # 2. Pokémon-Wünsche samt Referenzbild
+        pokemon = json.loads(row["pokemon"] or "[]")
+        for p in pokemon:
+            p["_bild"] = _pokemon_bild(p["dex"])
+        # 3. Vorlage + Prompt + Modell
+        vorlage, _ = _vorlage(anker, cols, rows, geo, lang, analysen)
+        teile = _prompt_teile(cols, rows, anker, row["stil"], row["wunsch"] or "", namen, analysen, vorlage, bilder, pokemon)
+        ergebnis, k, modell = _modell_aufruf(teile, row["modell"], geo["ar"], row["groesse"])
+        kosten += k
+        # 4. Ergebnis auf Vorlagenmaß bringen, Seite ausschneiden, echte Kartenscans pixelgenau darüber
         if ergebnis.size != (geo["cw"], geo["ch"]):
             ergebnis = ergebnis.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
         x0, y0, x1, y1 = geo["seite"]
@@ -375,9 +598,15 @@ def _artwork_row(artwork_id, user):
 
 
 def _payload(row):
+    try:
+        pokemon = [{"dex": p["dex"], "name_de": p.get("name_de"), "name_en": p.get("name_en")}
+                   for p in json.loads(row.get("pokemon") or "[]")]
+    except Exception:
+        pokemon = []
     return {
         "id": row["id"], "binder_id": row["binder_id"], "seite": row["seite"], "layout": row["layout"],
         "anker": json.loads(row["anker"] or "{}"), "stil": row["stil"], "wunsch": row["wunsch"] or "",
+        "pokemon": pokemon,
         "status": row["status"], "fehler": row["fehler"], "breite": row["breite"], "hoehe": row["hoehe"],
         "created_at": row["created_at"], "modell": row["modell"],
         "vorschau": f"api/artwork/{row['id']}/bild?v=vorschau" if row["status"] == "fertig" else None,
@@ -385,9 +614,9 @@ def _payload(row):
 
 
 def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, card_image_path,
-             pdf_wasserzeichen, env, CACHE):
+             dex_image_path, pdf_wasserzeichen, env, CACHE):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
-                load_binder=load_binder, card_image_path=card_image_path,
+                load_binder=load_binder, card_image_path=card_image_path, dex_image_path=dex_image_path,
                 pdf_wasserzeichen=pdf_wasserzeichen, env=env, CACHE=CACHE)
 
     con = get_db()
@@ -400,10 +629,14 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             created_at TEXT DEFAULT (datetime('now')), fertig_at TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_artworks_binder ON artworks(binder_id);
+        CREATE TABLE IF NOT EXISTS card_art_analysis (
+            card_id TEXT, lang TEXT, daten TEXT, created_at TEXT, PRIMARY KEY (card_id, lang)
+        );
         """
     )
     for alter in ("ALTER TABLE users ADD COLUMN artwork_monat TEXT",
-                  "ALTER TABLE users ADD COLUMN artwork_gesamt INTEGER DEFAULT 0"):
+                  "ALTER TABLE users ADD COLUMN artwork_gesamt INTEGER DEFAULT 0",
+                  "ALTER TABLE artworks ADD COLUMN pokemon TEXT"):
         try:
             con.execute(alter)
         except Exception:
@@ -417,7 +650,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     def artwork_stile(request: Request):
         user = current_user(request)
         return {"stile": list(STILE.keys()), "kontingent": _kontingent_info(user) if user else None,
-                "aktiv": bool(env().get("OPENROUTER_KEY"))}
+                "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
 
     @app.post("/api/artwork")
     async def artwork_start(request: Request):
@@ -449,6 +682,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             raise HTTPException(400, detail={"code": "kein_platz"})
         stil = data.get("stil") if data.get("stil") in STILE else "karte"
         wunsch = str(data.get("wunsch") or "")[:400]
+        pokemon = _pokemon_aufloesen(data.get("pokemon") if isinstance(data.get("pokemon"), list) else [])
         benutzt, limit, _ = _kontingent(user)
         if benutzt >= limit:
             raise HTTPException(402, detail={"code": "limit_artwork"})
@@ -466,16 +700,17 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             e = env()
             con = get_db()
             con.execute(
-                "INSERT INTO artworks (id,user_id,binder_id,seite,layout,anker,stil,wunsch,sprache,modell,groesse,status)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,'laeuft')",
-                (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch, sprache,
+                "INSERT INTO artworks (id,user_id,binder_id,seite,layout,anker,stil,wunsch,pokemon,sprache,modell,groesse,status)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft')",
+                (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch,
+                 json.dumps(pokemon), sprache,
                  e.get("ARTWORK_MODELL") or STANDARD_MODELL, e.get("ARTWORK_GROESSE") or STANDARD_GROESSE),
             )
             con.commit()
             con.close()
             _kontingent_buchen(user, +1)
         threading.Thread(target=_job, args=(artwork_id,), daemon=True).start()
-        return {"id": artwork_id, "status": "laeuft"}
+        return {"id": artwork_id, "status": "laeuft", "pokemon": pokemon}
 
     @app.get("/api/artwork")
     def artwork_liste(request: Request, binder_id: str = ""):

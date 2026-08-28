@@ -2867,7 +2867,8 @@ try:
     import artwork as _artwork  # noqa: E402
     _artwork_kennzahlen = _artwork.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user, ist_pro=_ist_pro,
-        load_binder=_load_binder, card_image_path=_card_image_path, pdf_wasserzeichen=_pdf_wasserzeichen,
+        load_binder=_load_binder, card_image_path=_card_image_path, dex_image_path=_dex_image_path,
+        pdf_wasserzeichen=_pdf_wasserzeichen,
         env=_env, CACHE=CACHE,
     )
 except Exception as _e:  # pragma: no cover
