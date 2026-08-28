@@ -429,7 +429,14 @@ window.mpUtm=read;})();
   .aw-lauf .aw-mini-vorschau { display: grid; gap: 4px; width: 150px; }
   .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent); border-radius: 50%; animation: dreh .9s linear infinite; }
   .aw-ergebnis { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
-  .aw-ergebnis img { max-width: min(100%, 440px); max-height: 68vh; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
+  .aw-vorschau { flex: 0 1 440px; max-width: 100%; }
+  .aw-vorschau img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
+  .aw-kacheln { display: grid; background: var(--panel2); padding: 10px; border-radius: 10px; }
+  .aw-kacheln .aw-kachel { position: relative; aspect-ratio: 63 / 88; overflow: hidden; border-radius: 3px; background: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .aw-kacheln .aw-kachel img { position: absolute; max-width: none; display: block; }
+  .aw-kacheln .aw-kachel span { position: absolute; left: 3px; bottom: 3px; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 5px; background: rgba(0,0,0,.6); color: #fff; }
+  .aw-kacheln .aw-kachel.karte span { background: var(--akzent); }
+  .aw-tabs { margin: 4px 0; }
   .aw-akt { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 230px; }
   .aw-akt .btn { justify-content: center; }
   .aw-privat { font-size: 11px; color: var(--mut); margin-top: 6px; line-height: 1.4; }
@@ -918,9 +925,13 @@ window.mpUtm=read;})();
       <span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 30–60 Sekunden.</span>
     </div>
     <div class="aw-ergebnis hidden" id="aw-ergebnis">
-      <img id="aw-bild" alt="">
+      <div class="aw-vorschau">
+        <div class="aw-kacheln" id="aw-kacheln"></div>
+        <img id="aw-bild" alt="" class="hidden">
+      </div>
       <div class="aw-akt">
         <div style="font-size:12.5px;color:var(--mut)" id="aw-erg-info"></div>
+        <div class="tab-leiste aw-tabs"><button id="aw-tab-faecher" class="on" onclick="artworkVorschau('faecher')" data-i18n="aw_ansicht_faecher">Fächer</button><button id="aw-tab-voll" onclick="artworkVorschau('voll')" data-i18n="aw_ansicht_voll">Ganze Seite</button></div>
         <label class="schalter" style="margin:4px 0"><input type="checkbox" id="aw-mit-karten"><span data-i18n="aw_pdf_mit">Kartenfächer als Proxy mitdrucken</span></label>
         <button class="btn" onclick="artworkPdf()" data-i18n="aw_pdf">Druckbogen (PDF)</button>
         <a class="btn sekundaer" id="aw-png" download data-i18n="aw_png">Ganze Seite als Bild</a>
@@ -1039,6 +1050,7 @@ const T = {
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
+    aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
     aw_laeuft: 'Die KI malt … das dauert etwa 30–60 Sekunden.', aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
@@ -1162,6 +1174,7 @@ const T = {
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
+    aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
     aw_laeuft: 'The AI is painting … this takes about 30–60 seconds.', aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
@@ -3083,9 +3096,34 @@ function artworkPollen(id) {
     } catch (e) { clearInterval(AW.poll); AW.poll = null; artworkAnsicht('editor'); $('aw-fehler').textContent = t('aw_fehler'); $('aw-start').disabled = false; }
   }, 3000);
 }
+// Fächer-Ansicht: die Seite in Fächer zerlegt, mit Fugen – so, wie sie gedruckt und eingesteckt aussieht.
+// Jedes Fach zeigt den passenden Ausschnitt des Seitenbilds (Bild in Prozent verschoben, 63×88 mm + 4 mm Fuge).
+function zeichneArtworkKacheln(aw) {
+  const [cols, rows] = LAYOUTS[aw.layout] || [3, 3];
+  const pw = cols * 63 + (cols - 1) * 4, ph = rows * 88 + (rows - 1) * 4;
+  const box = $('aw-kacheln');
+  let html = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const s = r * cols + c; const karte = aw.anker && aw.anker[String(s)];
+    html += `<div class="aw-kachel ${karte ? 'karte' : ''}"><img src="${aw.vorschau}" alt="" style="width:${(pw / 63 * 100).toFixed(3)}%;height:${(ph / 88 * 100).toFixed(3)}%;left:-${(c * 67 / 63 * 100).toFixed(3)}%;top:-${(r * 92 / 88 * 100).toFixed(3)}%"><span>${karte ? t('aw_karte') : t('aw_fach') + ' ' + (s + 1)}</span></div>`;
+  }
+  box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  box.innerHTML = html;
+  const fuge = () => { const k = box.querySelector('.aw-kachel'); if (k) box.style.gap = (k.clientWidth * 4 / 63) + 'px'; };
+  fuge(); requestAnimationFrame(fuge);
+}
+function artworkVorschau(w) {
+  AW.vorschauArt = w;
+  $('aw-kacheln').classList.toggle('hidden', w !== 'faecher');
+  $('aw-bild').classList.toggle('hidden', w !== 'voll');
+  $('aw-tab-faecher').classList.toggle('on', w === 'faecher');
+  $('aw-tab-voll').classList.toggle('on', w === 'voll');
+}
 function artworkZeigen(aw) {
   AW.aktuell = aw;
   $('aw-bild').src = aw.vorschau;
+  zeichneArtworkKacheln(aw);
+  artworkVorschau(AW.vorschauArt || 'faecher');
   $('aw-png').href = `api/artwork/${aw.id}/bild?v=voll`;
   const pp = (LAYOUTS[aw.layout] || [3, 3]).reduce((a, b) => a * b, 1);
   const k = Object.keys(aw.anker || {}).length;

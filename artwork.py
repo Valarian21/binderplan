@@ -383,18 +383,42 @@ def _analyse_text(a):
     return "\n".join(teile)
 
 
+def _regionen(cols, rows, anker, anzahl):
+    """Je Wunsch-Pokémon eine feste Region der Seite (in Worten) – eine Ortsangabe verhindert, dass das
+    Modell dasselbe Pokémon mehrfach verteilt. Wahl: freies Fach mit größtem Abstand zu den Karten und zu
+    schon vergebenen Regionen, bei Gleichstand weiter unten (Boden)."""
+    belegt = [(int(s) % cols, int(s) // cols) for s in anker]
+    frei = [(s % cols, s // cols) for s in range(cols * rows) if str(s) not in anker]
+    gewaehlt, worte = [], []
+    for _ in range(anzahl):
+        if not frei:
+            break
+        def score(f):
+            d = min([abs(f[0] - b[0]) + abs(f[1] - b[1]) for b in belegt + gewaehlt] or [0])
+            return (d, f[1], -abs(f[0] - (cols - 1) / 2))
+        best = max(frei, key=score)
+        frei.remove(best); gewaehlt.append(best)
+        zeile = "upper" if best[1] == 0 else ("lower" if best[1] == rows - 1 else "middle")
+        spalte = "left" if best[0] == 0 else ("right" if best[0] == cols - 1 else "center")
+        worte.append(f"{zeile} {spalte}" if not (zeile == "middle" and spalte == "center") else "center")
+    return worte
+
+
 def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon):
-    """Interleaved content für das Bildmodell: Text, Leinwand, Illustrations-Ausschnitte, Pokémon-Referenzen.
-    Bewusst KEIN Wort über Binder, Fächer oder Raster – sonst malt das Modell Gitterlinien nach."""
+    """Interleaved content für das Bildmodell: Outpainting-Auftrag, Vorlage, Illustrations-Ausschnitte,
+    Pokémon-Referenzen. Bewusst KEIN Wort über Binder, Fächer oder Raster (→ Gitterlinien) und kein
+    „erweitere das Artwork“ (→ Kreatur wird dupliziert). Kurz und konkret hat im Vergleich am besten
+    abgeschnitten (Horizont, Licht und Wasserlinien laufen exakt weiter)."""
     mehrere = len(anker) > 1
+    kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
     intro = (
-        "You are an illustrator creating 'extended art': a finished illustration is a small cut-out of one huge "
-        "painting, and you paint the missing rest of that painting so the illustration's scene continues seamlessly "
-        "beyond its edges in every direction.\n\n"
-        f"IMAGE 1 is the unfinished huge painting. The cut-out{'s are' if mehrere else ' is'} already in place at the "
-        "exact final position and size. Everything gray is unpainted and must be painted; the gray is flat empty "
-        "space and contains no structure, lines or shapes. The result is a flat digital painting seen straight on – "
-        "not a photo of a canvas, no wall, no frame, no mat.\n"
+        "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
+        + ("some rectangular parts are" if mehrere else "one rectangular part is")
+        + " finished (the source illustration" + ("s" if mehrere else "") + "); every gray pixel is still unpainted. "
+        "Paint all gray areas so that the finished part" + ("s extend" if mehrere else " extends")
+        + " seamlessly in every direction: the same scene, same perspective and horizon height, same light, same "
+        "colors and the same painting technique continue outward without any visible transition – as if the source "
+        "were a crop from this bigger painting.\n"
     )
     teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     n = 2
@@ -402,48 +426,52 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         crop = bilder.get(card_id)
         if crop is None:
             continue
+        col, row = int(slot) % cols, int(slot) // cols
+        wo = f" (the one at row {row + 1}, column {col + 1} of IMAGE 1)" if mehrere else ""
         teile.append({"type": "text", "text": (
-            f"IMAGE {n} – close-up of the placed illustration ({namen.get(card_id) or 'source'}). This is the SOURCE "
-            f"scene you continue. Analysis:\n{_analyse_text(analysen.get(card_id))}")})
+            f"IMAGE {n} – the source illustration{wo} in close-up, for reference of details, technique and colors. "
+            f"Its creature is {namen.get(card_id) or 'the main creature'}.\n{_analyse_text(analysen.get(card_id))}")})
         teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
         n += 1
     for p in pokemon:
-        bild = p.get("_bild")
-        if bild is None:
+        if p.get("_bild") is None:
             continue
-        teile.append({"type": "text", "text": f"IMAGE {n} – official reference artwork of {p['name_en']}. "
-                      "This Pokémon must appear in the new areas, drawn accurately after this reference."})
-        teile.append({"type": "image_url", "image_url": {"url": _data_url(bild, 'JPEG')}})
+        teile.append({"type": "text", "text": (
+            f"IMAGE {n} – reference for the anatomy and colors of {p['name_en']} ONLY. Do not copy this picture: "
+            "no white background, no cut-out look, not this pose.")})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(p["_bild"], 'JPEG')}})
         n += 1
+    erlaubt = ", ".join(p["name_en"] for p in pokemon) if pokemon else "none"
     regeln = (
-        "\nRULES FOR PAINTING THE GRAY AREAS:\n"
-        "1. The creature in the illustration is already COMPLETELY shown inside the illustration. Outside of it there "
-        "is NO creature of that species – do not paint it again in any size, pose, part, silhouette, reflection or "
-        "shadow. Outside the illustration there is only its surroundings: sky, ground, background, light, weather, "
-        "effects, scenery. This applies even if a wing or tail seems cut off at the edge – do NOT continue it.\n"
-        "2. Seamless continuation: at every edge of the illustration the painting carries on exactly – same colors, "
-        "textures, lighting, perspective, horizon height, time of day and brush style – so that no seam is visible. "
-        "Background elements that are cut off at an edge (a rock, a wave, a tree, a beam of light, a starburst) "
-        "continue precisely where they leave the illustration.\n"
-        "3. Composition: the original illustration remains the focal point and the most detailed area. The extension "
-        "is calmer and supports it – wide surroundings, depth, atmosphere, foreground and background of the same "
-        "world – so the illustration becomes a window into a much larger version of its own scene.\n"
-        + ("4. Several illustrations: their scenes merge into ONE continuous world with a single consistent horizon, "
-           "light and perspective; invent believable transitions between them.\n" if mehrere else "")
-        + "5. The canvas is ONE uninterrupted painting: no borders, frames, lines, panels, tiles, rectangles, "
-        "grids, text, letters, numbers, logos or watermarks anywhere. Not a single pixel of gray may remain.\n"
-        "6. Do not modify the placed illustration itself.\n"
-        f"7. Rendering style for the new areas: {STILE.get(stil, STILE['karte'])} The style changes only HOW it is "
-        "painted – WHAT is painted is still the direct continuation of the illustration's scene.\n"
+        "\nRules:\n"
+        f"- {' and '.join(kreaturen) if kreaturen else 'The creature of the source illustration'} appear"
+        f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
+        + ("s" if mehrere else "") + " – not again, not partially, not as shadow, reflection or silhouette. "
+        f"Creatures allowed in the new areas: {erlaubt}. Everything else outside is only the world the scene lives in.\n"
+        "- Continue the surroundings: what is cut off at the edges of the finished part continues exactly there, at the "
+        "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
+        "calm – the source stays the most detailed and most important area.\n"
+        + ("- Several finished parts: they belong to ONE world with a single horizon, light and perspective; paint "
+           "believable transitions between them.\n" if mehrere else "")
+        + "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
+        "Not a single gray pixel may remain.\n"
+        "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
+        f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; what "
+        "is painted stays the continuation of the source scene.\n"
     )
     if pokemon:
-        regeln += ("8. Add these Pokémon to the new areas, each exactly once: " + ", ".join(p["name_en"] for p in pokemon)
-                   + " – drawn accurately after its reference image, placed naturally in the scene at a plausible "
-                   "size, interacting with the environment, in the same rendering style, not overlapping the "
-                   "placed illustration.\n")
+        regionen = _regionen(cols, rows, anker, len(pokemon))
+        plaetze = "; ".join(f"ONE single {p['name_en']} in the {regionen[i] if i < len(regionen) else 'free'} "
+                            "region of the painting" for i, p in enumerate(pokemon))
+        regeln += ("- Add " + plaetze + " – and nowhere else; the painting contains exactly one of each. Paint it "
+                   "as a real inhabitant of this scene: in exactly the same technique, lit by the scene's light "
+                   "with cast shadows and reflections, standing / sitting / swimming / flying ON or IN the "
+                   "environment (feet on the ground, splashing water, wind in fur), partly overlapped by foreground "
+                   "elements where natural, seen from the scene's perspective, doing something that fits the moment "
+                   "(watching the source creature, playing, resting). Never a floating cut-out.\n")
     if wunsch:
-        regeln += f"\nAdditional wishes from the collector: {wunsch.strip()[:400]}\n"
-    regeln += "\nOutput exactly the same dimensions as IMAGE 1."
+        regeln += f"- Wishes from the collector: {wunsch.strip()[:400]}\n"
+    regeln += "Output exactly the same dimensions as IMAGE 1."
     teile.append({"type": "text", "text": regeln})
     return teile
 
@@ -486,7 +514,7 @@ def _job(artwork_id):
         for cid in dict.fromkeys(anker.values()):
             r = con.execute("SELECT name_de, name_en FROM cards WHERE id = ?", (cid,)).fetchone()
             if r:
-                namen[cid] = f"the Pokémon card «{r['name_en'] or r['name_de']}»"
+                namen[cid] = r["name_en"] or r["name_de"]
             a = _analyse(cid, lang)
             analysen[cid] = a
             kosten += float((a or {}).get("_kosten") or 0)
