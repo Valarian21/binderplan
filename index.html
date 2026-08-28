@@ -404,6 +404,47 @@ window.mpUtm=read;})();
     .onb-tpl { grid-template-columns: 1fr 1fr; }
     .mnav .menu { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
   }
+
+  /* Artwork-Seite (KI) */
+  .aw-wrap { display: flex; gap: 20px; flex-wrap: wrap; }
+  .aw-links { flex: 0 0 300px; max-width: 100%; }
+  .aw-rechts { flex: 1 1 280px; min-width: 240px; }
+  .aw-grid { display: grid; gap: 5px; background: var(--panel2); padding: 7px; border-radius: 12px; }
+  .aw-fach { position: relative; aspect-ratio: 63 / 88; border-radius: 5px; overflow: hidden; background: var(--card); display: flex; align-items: center; justify-content: center; color: var(--mut); border: 1px dashed var(--slotrand); }
+  .aw-fach.ki { background: var(--card); color: #9b6fd6; font-size: 20px; border-color: #9b6fd680; }
+  .aw-fach.karte { cursor: pointer; border-style: solid; }
+  .aw-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .aw-fach.uebermalt img { opacity: .3; filter: grayscale(.7); }
+  .aw-fach .aw-badge { position: absolute; left: 3px; right: 3px; bottom: 3px; font-size: 9.5px; font-weight: 700; text-align: center; padding: 2px 3px; border-radius: 6px; background: rgba(0,0,0,.66); color: #fff; line-height: 1.2; }
+  .aw-fach.uebermalt .aw-badge { background: #9b6fd6; }
+  .aw-hint { font-size: 11.5px; color: var(--mut); margin-top: 8px; line-height: 1.4; }
+  .aw-stile { display: flex; flex-wrap: wrap; gap: 6px; }
+  .aw-kont { font-size: 12px; color: var(--mut); margin: 12px 0 8px; }
+  .aw-fehler { color: var(--akzent); font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 1em; }
+  .aw-lauf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 0; text-align: center; font-weight: 600; }
+  .aw-lauf .aw-mini-vorschau { display: grid; gap: 4px; width: 150px; }
+  .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent); border-radius: 50%; animation: dreh .9s linear infinite; }
+  .aw-ergebnis { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .aw-ergebnis img { max-width: min(100%, 440px); max-height: 68vh; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
+  .aw-akt { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 230px; }
+  .aw-akt .btn { justify-content: center; }
+  .aw-privat { font-size: 11px; color: var(--mut); margin-top: 6px; line-height: 1.4; }
+  .aw-galerie { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .aw-galerie .aw-mini { width: 72px; cursor: pointer; text-align: center; font-size: 10px; color: var(--mut); line-height: 1.2; }
+  .aw-galerie .aw-mini img { width: 100%; border-radius: 6px; border: 2px solid transparent; display: block; margin-bottom: 2px; }
+  .aw-galerie .aw-mini.on img { border-color: var(--akzent); }
+  .aw-galerie-lbl { font-size: 12px; font-weight: 700; margin-top: 18px; }
+  .btn.aw-cta { background: linear-gradient(120deg, #7c4dd6, #c04a9a); border: 0; }
+  .btn.aw-cta:hover { filter: brightness(1.08); }
+  #aw-png { text-decoration: none; }
+  #modal-artwork h2 { padding-right: 40px; }
+  @media (max-width: 900px) {
+    .aw-links { flex-basis: 100%; }
+    .aw-grid { max-width: 200px; margin: 0 auto; }
+    .aw-fach .aw-badge { font-size: 8px; padding: 1px 2px; }
+    #modal-artwork h2 { font-size: 16px; }
+    .aw-ergebnis img { max-height: 50vh; }
+  }
 </style>
 </head>
 <body>
@@ -446,6 +487,7 @@ window.mpUtm=read;})();
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
+        <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
         <div class="trenn"></div>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
@@ -581,6 +623,7 @@ window.mpUtm=read;})();
               <div class="trenn"></div>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
+              <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
               <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
               <div class="trenn"></div>
               <button class="gefahr" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
@@ -608,6 +651,7 @@ window.mpUtm=read;})();
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
+        <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite">🎨</button>
       </div>
       <div id="wb-sammel" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
@@ -647,6 +691,7 @@ window.mpUtm=read;})();
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
+        <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
         <div class="trenn"></div>
@@ -832,8 +877,53 @@ window.mpUtm=read;})();
       <tr><td data-i18n="up_r3">Checkliste &amp; Preise ansehen</td><td>✓</td><td>✓</td></tr>
       <tr><td data-i18n="up_r4">Preise sofort aktualisieren</td><td data-i18n="up_r4f">1× täglich</td><td>✓</td></tr>
       <tr><td data-i18n="up_r5">Kaufliste als CSV</td><td>–</td><td>✓</td></tr>
+      <tr><td data-i18n="aw_up_r">KI-Artwork-Seiten</td><td data-i18n="aw_up_f">1 Probeseite</td><td data-i18n="aw_up_p">20 / Monat</td></tr>
     </table>
     <div style="font-size:11px;color:var(--mut);margin-top:14px" data-i18n="up_recht">Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.</div>
+  </div>
+</div>
+
+<!-- Modal: Artwork-Seite (KI erweitert das Kartenmotiv über die ganze Binder-Seite) -->
+<div class="overlay hidden" id="modal-artwork">
+  <div class="modal" style="width:min(980px,96vw)">
+    <button class="modal-x" onclick="artworkSchliessen()" title="Schließen">✕</button>
+    <h2>🎨 <span data-i18n="aw_t">Artwork-Seite gestalten</span> · <span data-i18n="seite">Seite</span> <span id="aw-seite-nr">1</span></h2>
+    <div class="unter" data-i18n="aw_u">Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.</div>
+    <div class="aw-wrap" id="aw-editor">
+      <div class="aw-links">
+        <div class="aw-grid" id="aw-grid"></div>
+        <div class="aw-hint" data-i18n="aw_leer_hint">Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.</div>
+      </div>
+      <div class="aw-rechts">
+        <div class="feld-lbl" style="margin-top:0" data-i18n="aw_stil">Stil</div>
+        <div class="aw-stile" id="aw-stile"></div>
+        <div class="feld-lbl" data-i18n="aw_wunsch">Wünsche (optional)</div>
+        <textarea class="feld" id="aw-wunsch" rows="2" maxlength="400" data-i18n-ph="aw_wunsch_ph" placeholder="z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …"></textarea>
+        <div class="aw-kont" id="aw-kont"></div>
+        <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()" data-i18n="aw_start">✦ Seite füllen</button>
+        <div id="aw-fehler" class="aw-fehler"></div>
+        <div class="aw-privat" data-i18n="aw_privat">KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.</div>
+      </div>
+    </div>
+    <div class="aw-lauf hidden" id="aw-lauf">
+      <div class="aw-mini-vorschau" id="aw-lauf-grid"></div>
+      <div class="aw-spin"></div>
+      <span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 30–60 Sekunden.</span>
+    </div>
+    <div class="aw-ergebnis hidden" id="aw-ergebnis">
+      <img id="aw-bild" alt="">
+      <div class="aw-akt">
+        <div style="font-size:12.5px;color:var(--mut)" id="aw-erg-info"></div>
+        <label class="schalter" style="margin:4px 0"><input type="checkbox" id="aw-mit-karten"><span data-i18n="aw_pdf_mit">Kartenfächer als Proxy mitdrucken</span></label>
+        <button class="btn" onclick="artworkPdf()" data-i18n="aw_pdf">Druckbogen (PDF)</button>
+        <a class="btn sekundaer" id="aw-png" download data-i18n="aw_png">Ganze Seite als Bild</a>
+        <button class="btn sekundaer" onclick="artworkNochmal()" data-i18n="aw_nochmal">Nochmal – anderer Stil</button>
+        <button class="btn sekundaer" style="color:var(--akzent)" onclick="artworkLoeschen()" data-i18n="aw_loeschen">Löschen</button>
+        <div class="aw-privat" data-i18n="aw_druck_hint">Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.</div>
+      </div>
+    </div>
+    <div class="aw-galerie-lbl hidden" id="aw-galerie-lbl" data-i18n="aw_galerie">Bisherige Artwork-Seiten dieses Binders</div>
+    <div class="aw-galerie" id="aw-galerie"></div>
   </div>
 </div>
 
@@ -938,6 +1028,23 @@ window.mpUtm=read;})();
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    aw_t: 'Artwork-Seite gestalten', aw_menu: '🎨 Artwork-Seite gestalten …',
+    aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
+    aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
+    aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
+    aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
+    aw_laeuft: 'Die KI malt … das dauert etwa 30–60 Sekunden.', aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
+    aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
+    aw_kont_monat: 'Noch {n} von {m} Artwork-Seiten in diesem Monat.', aw_kont_frei: 'Deine Probeseite ist kostenlos – Pro-Konten erzeugen 20 Seiten im Monat.',
+    aw_kont_leer: 'Kontingent aufgebraucht.', aw_kont_leer_frei: 'Probeseite verbraucht – mit Pro gibt es 20 Artwork-Seiten im Monat.',
+    gate_artwork: 'Deine kostenlose Probeseite ist verbraucht.', aw_login: 'Zum Erzeugen von Artwork-Seiten bitte anmelden – die erste Seite ist kostenlos.',
+    aw_kein_anker: 'Lege zuerst mindestens eine Karte in ein Fach dieser Seite.', aw_kein_platz: 'Auf dieser Seite ist kein Fach frei, das die KI füllen könnte.',
+    aw_laeuft_schon: 'Es läuft bereits eine Artwork-Seite – bitte kurz warten.', aw_fehler: 'Das hat leider nicht geklappt', aw_geloescht: 'Artwork gelöscht.',
+    aw_privat: 'KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.',
+    aw_druck_hint: 'Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.',
+    aw_up_r: 'KI-Artwork-Seiten', aw_up_f: '1 Probeseite', aw_up_p: '20 / Monat', aw_erg_info: '{k} Karte(n) · {f} Fächer mit Artwork · {s}',
+    stil_karte: 'Wie die Karte', stil_comic: 'Comic', stil_foto: 'Fotorealistisch', stil_aquarell: 'Aquarell', stil_oel: 'Ölgemälde', stil_anime: 'Anime',
+    stil_retro: 'Retro 90er', stil_pixel: 'Pixel-Art', stil_neon: 'Neon', stil_skizze: 'Bleistift', stil_minimal: 'Minimal', stil_dunkel: 'Dark Fantasy',
     undo: 'Rückgängig', undo_ok: 'Rückgängig gemacht.', hinzugefuegt_1: 'Karte im Binder',
     f_mehr: 'Erweiterte Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus', m_poke: 'Ein Pokémon – alle Karten …',
     m_import: 'Liste importieren …', m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
@@ -1043,6 +1150,23 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    aw_t: 'Design an artwork page', aw_menu: '🎨 Design an artwork page …',
+    aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
+    aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
+    aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
+    aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
+    aw_laeuft: 'The AI is painting … this takes about 30–60 seconds.', aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
+    aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
+    aw_kont_monat: '{n} of {m} artwork pages left this month.', aw_kont_frei: 'Your trial page is free – Pro accounts create 20 pages per month.',
+    aw_kont_leer: 'Quota used up.', aw_kont_leer_frei: 'Trial page used – Pro gives you 20 artwork pages per month.',
+    gate_artwork: 'Your free trial page has been used.', aw_login: 'Please sign in to create artwork pages – the first one is free.',
+    aw_kein_anker: 'Place at least one card in a pocket of this page first.', aw_kein_platz: 'There is no free pocket on this page for the AI to fill.',
+    aw_laeuft_schon: 'An artwork page is already being generated – please wait a moment.', aw_fehler: 'That did not work', aw_geloescht: 'Artwork deleted.',
+    aw_privat: 'AI image for private use. The original card stays untouched in its pocket; the cut-outs are labelled “Page · Slot”.',
+    aw_druck_hint: 'Print on heavy paper (≥ 200 g) or photo paper, cut along the grey lines, slide into the empty sleeves.',
+    aw_up_r: 'AI artwork pages', aw_up_f: '1 trial page', aw_up_p: '20 / month', aw_erg_info: '{k} card(s) · {f} pockets with artwork · {s}',
+    stil_karte: 'Like the card', stil_comic: 'Comic', stil_foto: 'Photorealistic', stil_aquarell: 'Watercolor', stil_oel: 'Oil painting', stil_anime: 'Anime',
+    stil_retro: 'Retro 90s', stil_pixel: 'Pixel art', stil_neon: 'Neon', stil_skizze: 'Pencil', stil_minimal: 'Minimal', stil_dunkel: 'Dark fantasy',
     undo: 'Undo', undo_ok: 'Undone.', hinzugefuegt_1: 'Card added',
     f_mehr: 'Advanced filters', ansicht: 'Size', sammeln: 'Collect mode', m_poke: 'One Pokémon – all cards …',
     m_import: 'Import list …', m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
@@ -1277,6 +1401,12 @@ function setLang(lang) {
   zeichneBinder();
   baueDexNamen();
   document.querySelectorAll('.lang-stand').forEach((el) => { el.textContent = lang.toUpperCase(); });
+  if (S.user) kontoAnzeigen();
+  if ($('modal-artwork') && !$('modal-artwork').classList.contains('hidden') && S.binder) {
+    zeichneArtworkStile(); zeichneArtworkGrid('aw-grid', true); artworkKontingentText();
+    if (AW.aktuell) artworkZeigen(AW.aktuell);
+    artworkGalerieLaden();
+  }
 }
 
 // ---------- Start ----------
@@ -2291,6 +2421,7 @@ function zeichnePlaner() {
     }
     html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
       <span class="ps-akt">
+        <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">🎨</button>
         <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">☑</button>
         <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
         <button onclick="seiteVerschieben(${seite},1)" title="${t('s_seite_runter')}" ${seite === seiten - 1 ? 'disabled' : ''}>↓</button>
@@ -2841,6 +2972,159 @@ function planerAktionen() {
   $('planer-bar').classList.toggle('hidden', n === 0);
   $('planer-anzahl').textContent = n;
   $('planer-hinweis').textContent = n ? '' : t('planer_hinweis');
+}
+
+// ---------- Artwork-Seiten (KI erweitert das Kartenmotiv über die ganze Seite) ----------
+const AW_STILE = ['karte', 'comic', 'foto', 'aquarell', 'oel', 'anime', 'retro', 'pixel', 'neon', 'skizze', 'minimal', 'dunkel'];
+const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], kontingent: null };
+
+function artworkOeffnen(seite) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.binder || S.nurAnsicht) return;
+  if (!S.user) return loginOeffnen(t('aw_login'));
+  if (!S.binder.items.length) return toast(t('binder_leer'));
+  AW.seite = seite == null ? S.seite : seite;
+  AW.aktuell = null; clearInterval(AW.poll);
+  const pp = proSeite();
+  AW.anker = new Set();
+  for (let s = 0; s < pp; s++) { const it = S.binder.items[AW.seite * pp + s]; if (it && it.type === 'card') AW.anker.add(s); }
+  $('aw-seite-nr').textContent = AW.seite + 1;
+  $('aw-fehler').textContent = '';
+  artworkAnsicht('editor');
+  zeichneArtworkGrid('aw-grid', true); zeichneArtworkStile();
+  modalOeffnen('modal-artwork');
+  artworkGalerieLaden();
+}
+function artworkSchliessen() { clearInterval(AW.poll); AW.poll = null; modalSchliessen(); }
+
+function artworkAnsicht(w) {
+  $('aw-editor').classList.toggle('hidden', w !== 'editor');
+  $('aw-lauf').classList.toggle('hidden', w !== 'lauf');
+  $('aw-ergebnis').classList.toggle('hidden', w !== 'ergebnis');
+}
+
+// Seitenraster: Kartenfächer (Anker) ↔ „KI übermalt“, leere Fächer = werden gemalt
+function zeichneArtworkGrid(ziel, interaktiv) {
+  const pp = proSeite();
+  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  let html = '';
+  for (let s = 0; s < pp; s++) {
+    const it = S.binder.items[AW.seite * pp + s];
+    if (it && it.type === 'card') {
+      const bleibt = AW.anker.has(s);
+      html += `<div class="aw-fach karte ${bleibt ? '' : 'uebermalt'}" ${interaktiv ? `onclick="artworkAnkerToggle(${s})"` : ''} title="${t(bleibt ? 'aw_karte_bleibt' : 'aw_ki_fuellt')}">
+        <img src="${imgUrl(it.id)}" alt="">${interaktiv ? `<span class="aw-badge">${t(bleibt ? 'aw_karte_bleibt' : 'aw_ki_fuellt')}</span>` : ''}</div>`;
+    } else {
+      html += `<div class="aw-fach ki">✦</div>`;
+    }
+  }
+  const box = $(ziel);
+  box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  box.innerHTML = html;
+}
+function artworkAnkerToggle(s) {
+  AW.anker.has(s) ? AW.anker.delete(s) : AW.anker.add(s);
+  $('aw-fehler').textContent = '';
+  zeichneArtworkGrid('aw-grid', true);
+}
+function zeichneArtworkStile() {
+  $('aw-stile').innerHTML = AW_STILE.map((k) => `<button class="chip ${AW.stil === k ? 'on' : ''}" onclick="AW.stil='${k}';zeichneArtworkStile()">${t('stil_' + k)}</button>`).join('');
+}
+function artworkKontingentText() {
+  const k = AW.kontingent; const el = $('aw-kont');
+  if (!k) { el.textContent = ''; return; }
+  if (k.zeitraum === 'monat') el.textContent = k.frei ? t('aw_kont_monat').replace('{n}', k.frei).replace('{m}', k.limit) : t('aw_kont_leer');
+  else el.textContent = k.frei ? t('aw_kont_frei') : t('aw_kont_leer_frei');
+  $('aw-start').disabled = !k.frei;
+}
+
+async function artworkStarten() {
+  const pp = proSeite();
+  $('aw-fehler').textContent = '';
+  if (!AW.anker.size) { $('aw-fehler').textContent = t('aw_kein_anker'); return; }
+  if (AW.anker.size >= pp) { $('aw-fehler').textContent = t('aw_kein_platz'); return; }
+  try { await _binderSichern(); } catch (e) { if (gate(e)) return; $('aw-fehler').textContent = t('fehler_speichern'); return; }
+  $('aw-start').disabled = true;
+  try {
+    const d = await api('api/artwork', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ binder_id: S.binder.id, seite: AW.seite, stil: AW.stil, wunsch: $('aw-wunsch').value.trim(), anker: [...AW.anker] }) });
+    zeichneArtworkGrid('aw-lauf-grid', false);
+    artworkAnsicht('lauf');
+    artworkPollen(d.id);
+  } catch (e) {
+    $('aw-start').disabled = false;
+    if (e.code === 'limit_artwork') return upgradeOeffnen(t('gate_artwork'));
+    if (e.code === 'login') return loginOeffnen(t('aw_login'));
+    const texte = { kein_anker: 'aw_kein_anker', kein_platz: 'aw_kein_platz', artwork_laeuft: 'aw_laeuft_schon' };
+    $('aw-fehler').textContent = texte[e.code] ? t(texte[e.code]) : (t('aw_fehler') + ' (' + (e.message || e.status) + ')');
+  }
+}
+function artworkPollen(id) {
+  clearInterval(AW.poll);
+  AW.poll = setInterval(async () => {
+    try {
+      const d = await api('api/artwork/' + id);
+      if (d.status === 'laeuft') return;
+      clearInterval(AW.poll); AW.poll = null;
+      AW.kontingent = d.kontingent; artworkKontingentText();
+      if (d.status === 'fertig') { await artworkGalerieLaden(); artworkZeigen(d); }
+      else { artworkAnsicht('editor'); $('aw-fehler').textContent = t('aw_fehler') + (d.fehler ? ': ' + d.fehler : ''); $('aw-start').disabled = false; }
+    } catch (e) { clearInterval(AW.poll); AW.poll = null; artworkAnsicht('editor'); $('aw-fehler').textContent = t('aw_fehler'); $('aw-start').disabled = false; }
+  }, 3000);
+}
+function artworkZeigen(aw) {
+  AW.aktuell = aw;
+  $('aw-bild').src = aw.vorschau;
+  $('aw-png').href = `api/artwork/${aw.id}/bild?v=voll`;
+  const pp = (LAYOUTS[aw.layout] || [3, 3]).reduce((a, b) => a * b, 1);
+  const k = Object.keys(aw.anker || {}).length;
+  $('aw-erg-info').textContent = t('aw_erg_info').replace('{k}', k).replace('{f}', pp - k).replace('{s}', t('stil_' + aw.stil));
+  $('aw-seite-nr').textContent = aw.seite + 1;
+  artworkAnsicht('ergebnis');
+  document.querySelectorAll('#aw-galerie .aw-mini').forEach((el) => el.classList.toggle('on', el.dataset.id === aw.id));
+}
+async function artworkGalerieLaden() {
+  try {
+    const d = await api('api/artwork?binder_id=' + encodeURIComponent(S.binder.id || ''));
+    AW.liste = d.artworks.filter((a) => a.status === 'fertig');
+    AW.kontingent = d.kontingent; artworkKontingentText();
+    // Läuft noch ein Job (Modal zwischendurch geschlossen)? Dann dort weitermachen
+    const laufend = d.artworks.find((a) => a.status === 'laeuft');
+    if (laufend && !AW.poll) { zeichneArtworkGrid('aw-lauf-grid', false); artworkAnsicht('lauf'); artworkPollen(laufend.id); }
+  } catch (e) { AW.liste = []; }
+  $('aw-galerie-lbl').classList.toggle('hidden', !AW.liste.length);
+  $('aw-galerie').innerHTML = AW.liste.map((a) => `<div class="aw-mini ${AW.aktuell && AW.aktuell.id === a.id ? 'on' : ''}" data-id="${a.id}" onclick="artworkZeigen(AW.liste.find((x) => x.id === '${a.id}'))">
+    <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}</div>`).join('');
+}
+function artworkNochmal() {
+  $('aw-start').disabled = false; $('aw-fehler').textContent = '';
+  artworkKontingentText();
+  artworkAnsicht('editor');
+}
+async function artworkPdf() {
+  if (!AW.aktuell) return;
+  arbeitToast(t('pdf_erzeugt'));
+  try {
+    const r = await fetch(`api/artwork/${AW.aktuell.id}/pdf?mit_karten=${$('aw-mit-karten').checked ? 1 : 0}`, { headers: { Authorization: 'Bearer ' + S.token } });
+    if (!r.ok) { arbeitToastEnde(); return toast(t('aw_fehler') + ' (' + r.status + ')'); }
+    const blob = await r.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = `artwork-${t('seite').toLowerCase()}-${AW.aktuell.seite + 1}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    arbeitToastEnde();
+    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> (${(blob.size / 1e6).toFixed(1)} MB)`;
+    $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
+  } catch (e) { arbeitToastEnde(); toast(t('aw_fehler')); }
+}
+async function artworkLoeschen() {
+  if (!AW.aktuell) return;
+  try { await api('api/artwork/' + AW.aktuell.id, { method: 'DELETE' }); } catch (e) { return toast(t('aw_fehler')); }
+  AW.aktuell = null;
+  toast(t('aw_geloescht'));
+  await artworkGalerieLaden();
+  artworkNochmal();
 }
 
 boot();

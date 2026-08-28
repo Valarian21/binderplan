@@ -1086,7 +1086,18 @@ def admin_stats(key: str = ""):
         {"label": "Neu (7T)", "value": neu7, "color": "green" if neu7 else None},
         {"label": "PDF-Exporte", "value": int(pdfs["value"]) if pdfs else 0},
         {"label": "Karten im Katalog", "value": karten},
-    ]}
+    ] + _artwork_kpis()}
+
+
+def _artwork_kpis():
+    if not globals().get("_artwork_kennzahlen"):
+        return []
+    try:
+        n, kosten = _artwork_kennzahlen()
+        return [{"label": "Artwork-Seiten", "value": n, "color": "purple" if n else None},
+                {"label": "Artwork-Kosten", "value": f"{kosten:.2f} $"}]
+    except Exception:
+        return []
 
 
 @app.get("/api/meta")
@@ -2845,6 +2856,23 @@ def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
     fname = re.sub(r"[^A-Za-z0-9äöüÄÖÜß _-]", "", binder["name"]) or "binder"
     return Response(text.encode("utf-8-sig"), media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{fname}-kaufliste.{ext}"'})
+
+
+# --- KI-Artwork-Seiten (eigenes Modul artwork.py, eingehängt wie eine Integration) ----
+#
+# Bindet Tabelle `artworks`, Kontingent-Spalten in `users` und die Endpunkte /api/artwork/*
+# ein. Ein Fehler dort darf den Start der App nicht blockieren.
+
+try:
+    import artwork as _artwork  # noqa: E402
+    _artwork_kennzahlen = _artwork.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user, ist_pro=_ist_pro,
+        load_binder=_load_binder, card_image_path=_card_image_path, pdf_wasserzeichen=_pdf_wasserzeichen,
+        env=_env, CACHE=CACHE,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Artwork-Modul nicht geladen:", _e)
+    _artwork_kennzahlen = None
 
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
