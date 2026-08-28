@@ -49,6 +49,8 @@ MAX_POKEMON = 3
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
 STANDARD_GROESSE = "2K"
+STUFE_A_FAKTOR = 2.3      # Stufe A: Illustration um diesen Faktor erweitern (kleiner Schritt = genaue Geometrie)
+STUFE_A_MAX_ANTEIL = 0.8  # deckt Stufe A schon ≥ 80 % der Seite, entfällt Stufe B
 ANALYSE_MODELL = "google/gemini-3.5-flash"            # Vision-Analyse der Karte (≈ 0,5 ct)
 
 # Bildgröße je Fach/Fuge wie im Platzhalter-PDF (mm)
@@ -404,7 +406,7 @@ def _regionen(cols, rows, anker, anzahl):
     return worte
 
 
-def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon):
+def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback=""):
     """Interleaved content für das Bildmodell: Outpainting-Auftrag, Vorlage, Illustrations-Ausschnitte,
     Pokémon-Referenzen. Bewusst KEIN Wort über Binder, Fächer oder Raster (→ Gitterlinien) und kein
     „erweitere das Artwork“ (→ Kreatur wird dupliziert). Kurz und konkret hat im Vergleich am besten
@@ -471,9 +473,174 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
                    "(watching the source creature, playing, resting). Never a floating cut-out.\n")
     if wunsch:
         regeln += f"- Wishes from the collector: {wunsch.strip()[:400]}\n"
+    if feedback:
+        regeln += ("\nA previous attempt was rejected by a reviewer for these problems – avoid them this time: "
+                   + feedback + "\n")
     regeln += "Output exactly the same dimensions as IMAGE 1."
     teile.append({"type": "text", "text": regeln})
     return teile
+
+
+# --- Kontrolle (Vision-Modell prüft die Fortsetzung an den Kanten) ---------------------------------
+
+PRUEF_PROMPT = (
+    "You are a strict art director checking an 'extended art' painting. IMAGE 1 is the source: the illustration of "
+    "a trading card (it may include the card's frame, name, text boxes and symbols – that is expected and NOT a "
+    "problem; a real card will cover that area later). IMAGE 2 is a larger painting into which the source was "
+    "embedded (at its center); everything around it was painted to continue the source's SCENE. Judge only the "
+    "painted surroundings, never the card itself, its frame, its text or the straight edges of the card rectangle.\n"
+    "Check strictly:\n"
+    "1. At every edge of the embedded source, do the background elements continue consistently – same lines, angles "
+    "and heights (e.g. a pool edge, horizon, wall, railing, shoreline, beam of light continuing exactly where it "
+    "leaves the source)? Name every element that breaks, bends, jumps or ends abruptly.\n"
+    "2. Is the source's creature painted again anywhere outside the source (any size, part, shadow, reflection)?\n"
+    "3. Are there frames, borders, straight seams, tiles, panels, text, or gray areas?\n"
+    "4. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
+    'Answer with JSON only: {"ok": true|false, "probleme": ["concrete problem with location", ...]}. '
+    "ok is true unless the surroundings clearly fail to continue the scene (minor softness, the card's own frame, "
+    "text or rectangular edge are never problems)."
+)
+
+
+def _pruefen(quelle: Image.Image, ergebnis: Image.Image):
+    """→ (ok, probleme) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht)."""
+    try:
+        q = quelle.copy(); q.thumbnail((768, 768))
+        e = ergebnis.copy(); e.thumbnail((1024, 1024))
+        d = _openrouter({
+            "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": PRUEF_PROMPT},
+                {"type": "text", "text": "IMAGE 1 – source:"},
+                {"type": "image_url", "image_url": {"url": _data_url(q, "JPEG")}},
+                {"type": "text", "text": "IMAGE 2 – extended painting:"},
+                {"type": "image_url", "image_url": {"url": _data_url(e, "JPEG")}},
+            ]}],
+            "response_format": {"type": "json_object"},
+            "usage": {"include": True},
+        }, timeout=90)
+        text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
+        j = json.loads(text)
+        probleme = [str(x)[:200] for x in (j.get("probleme") or [])][:6]
+        return bool(j.get("ok")) or not probleme, probleme, float((d.get("usage") or {}).get("cost") or 0)
+    except Exception:
+        return True, [], 0.0
+
+
+# --- Stufe C: Wunsch-Pokémon als Bearbeitung des fertigen Bilds ------------------------------------
+
+def _pokemon_teile(seite_canvas: Image.Image, pokemon, regionen, stil, namen_kreaturen):
+    intro = (
+        "EDIT TASK on a finished painting (IMAGE 1). Keep the painting exactly as it is – same composition, colors, "
+        "light and every existing element – and add only what is listed below. Gray margins, if any, are outside "
+        "the painting: simply extend the painting into them.\n"
+    )
+    teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(seite_canvas)}}]
+    n = 2
+    for p in pokemon:
+        if p.get("_bild") is None:
+            continue
+        teile.append({"type": "text", "text": (
+            f"IMAGE {n} – reference for the anatomy and colors of {p['name_en']} ONLY. Do not copy this picture: "
+            "no white background, no cut-out look, not this pose.")})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(p["_bild"], 'JPEG')}})
+        n += 1
+    plaetze = "; ".join(f"exactly ONE {p['name_en']} in the {regionen[i] if i < len(regionen) else 'free'} region"
+                        for i, p in enumerate(pokemon))
+    regeln = (
+        f"\nAdd: {plaetze} – nowhere else; the painting must contain exactly one of each and no other new creature. "
+        + (f"Do not add or alter {' / '.join(namen_kreaturen)}. " if namen_kreaturen else "")
+        + "Paint each added Pokémon as a real inhabitant of this scene: in exactly the same painting technique "
+        f"({STILE.get(stil, STILE['karte'])}), at a plausible size for its distance, lit by the scene's light with "
+        "cast shadow and reflection, standing / sitting / swimming / flying ON or IN the environment (feet on the "
+        "ground, splashing water, wind in fur), partly overlapped by foreground elements where natural, seen from "
+        "the scene's perspective, doing something that fits the moment. Never a floating cut-out.\n"
+        "Do not add text, frames, borders or lines. Output exactly the same dimensions as IMAGE 1."
+    )
+    teile.append({"type": "text", "text": regeln})
+    return teile
+
+
+# --- Geometrie-Helfer für die Stufen ---------------------------------------------------------------
+
+def _canvas_fuer(w, h, groesse):
+    """Leinwand im nächstgelegenen Modell-Seitenverhältnis für eine Region w×h → (cw, ch, skala, box)."""
+    ar = _verhaeltnis_waehlen(w, h)
+    r = SEITENVERHAELTNISSE[ar]
+    lang = LANGE_SEITE.get(groesse, 2048)
+    cw, ch = (lang, round(lang / r)) if r >= 1 else (round(lang * r), lang)
+    skala = min((cw - 16) / w, (ch - 16) / h)
+    sw, sh = round(w * skala), round(h * skala)
+    ox, oy = (cw - sw) // 2, (ch - sh) // 2
+    return {"ar": ar, "cw": cw, "ch": ch, "skala": skala, "seite": (ox, oy, ox + sw, oy + sh)}
+
+
+def _farben_angleichen(teil: Image.Image, referenz: Image.Image):
+    """Mittelwert/Streuung je Kanal von teil an referenz angleichen (Reinhard-Transfer in RGB) – Stufe B malt
+    dieselbe Region oft etwas heller/kühler; ohne Angleich bleibt beim Zurücksetzen von Stufe A ein Rechteck."""
+    from PIL import ImageStat
+    teil = teil.convert("RGB"); referenz = referenz.convert("RGB").resize(teil.size)
+    st, sr = ImageStat.Stat(teil), ImageStat.Stat(referenz)
+    kanaele = []
+    for i, band in enumerate(teil.split()):
+        m_t, s_t = st.mean[i], max(st.stddev[i], 1e-3)
+        m_r, s_r = sr.mean[i], sr.stddev[i]
+        faktor = max(0.6, min(1.6, s_r / s_t))
+        # nur zur Hälfte angleichen – A behält Charakter, B-Ton bestimmt die Richtung
+        f = 1 + (faktor - 1) * 0.5
+        off = (m_r - m_t) * 0.5
+        kanaele.append(band.point(lambda v, f=f, m=m_t, o=off: max(0, min(255, round((v - m) * f + m + o)))))
+    return Image.merge("RGB", kanaele)
+
+
+def _weich_einsetzen(ziel: Image.Image, teil: Image.Image, box, rand):
+    """Teilbild mit weich auslaufendem Rand in ziel einsetzen (verdeckt die Naht zwischen den Stufen)."""
+    from PIL import ImageFilter
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    if w <= 0 or h <= 0:
+        return
+    teil = teil.resize((w, h), Image.LANCZOS)
+    maske = Image.new("L", (w, h), 0)
+    innen = max(1, rand)
+    maske.paste(255, (innen, innen, w - innen, h - innen))
+    maske = maske.filter(ImageFilter.GaussianBlur(max(1, rand / 2)))
+    ziel.paste(teil, (x0, y0), maske)
+
+
+def kachel(artwork_id, slot):
+    """Ausschnitt eines Fachs (RGB) aus der fertigen Seite – für Binder-Ansicht und Platzhalter-PDF."""
+    con = _dep["get_db"]()
+    row = con.execute("SELECT layout, status FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+    con.close()
+    if not row or row["status"] != "fertig":
+        return None
+    pfad = _artwork_dir() / f"{artwork_id}.png"
+    if not pfad.exists():
+        return None
+    cols, rows = [int(v) for v in row["layout"].split("x")]
+    if slot < 0 or slot >= cols * rows:
+        return None
+    seite = Image.open(pfad).convert("RGB")
+    pw, ph = _seite_mm(cols, rows)
+    sx, sy = seite.width / pw, seite.height / ph
+    fx, fy = _fach_mm(slot, cols)
+    return seite.crop((round(fx * sx), round(fy * sy), round((fx + KARTE_W) * sx), round((fy + KARTE_H) * sy)))
+
+
+def kachel_reader(artwork_id, slot):
+    """ReportLab-ImageReader für ein Artwork-Fach (JPEG), None wenn nicht verfügbar."""
+    try:
+        tile = kachel(artwork_id, int(slot))
+    except Exception:
+        return None
+    if tile is None:
+        return None
+    buf = io.BytesIO()
+    tile.save(buf, "JPEG", quality=90)
+    buf.seek(0)
+    return ImageReader(buf)
 
 
 def _modell_aufruf(teile, modell, ar, groesse):
@@ -506,8 +673,12 @@ def _job(artwork_id):
     try:
         cols, rows = [int(v) for v in row["layout"].split("x")]
         anker = json.loads(row["anker"] or "{}")
-        geo = _geometrie(cols, rows, row["groesse"])
+        groesse = row["groesse"]
+        modell = row["modell"]
+        geo = _geometrie(cols, rows, groesse)
         lang = row["sprache"] or "de"
+        stil, wunsch = row["stil"], row["wunsch"] or ""
+        schritte = []
         # 1. Analyse je Karte (gecacht) + Illustrations-Ausschnitte
         analysen, bilder, namen, kosten = {}, {}, {}, 0.0
         con = get_db()
@@ -523,29 +694,99 @@ def _job(artwork_id):
                 crop = crop.copy(); crop.thumbnail((1024, 1024))
                 bilder[cid] = crop
         con.close()
-        # 2. Pokémon-Wünsche samt Referenzbild
+        # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten
+        vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
+        px0, py0, px1, py1 = geo["seite"]
+        sw, sh = px1 - px0, py1 - py0
+        fenster_seite = {k: (v[0] - px0, v[1] - py0, v[2] - px0, v[3] - py0) for k, v in fenster.items()}
+
+        # 2. Stufe A: kleiner Ring um die Illustration(en) – genaue Geometrie an den Kanten
+        stufe_a = None
+        if fenster_seite:
+            ux0 = min(v[0] for v in fenster_seite.values()); uy0 = min(v[1] for v in fenster_seite.values())
+            ux1 = max(v[2] for v in fenster_seite.values()); uy1 = max(v[3] for v in fenster_seite.values())
+            cx, cy = (ux0 + ux1) / 2, (uy0 + uy1) / 2
+            hw, hh = (ux1 - ux0) / 2 * STUFE_A_FAKTOR, (uy1 - uy0) / 2 * STUFE_A_FAKTOR
+            R = (max(0, round(cx - hw)), max(0, round(cy - hh)), min(sw, round(cx + hw)), min(sh, round(cy + hh)))
+            rw, rh = R[2] - R[0], R[3] - R[1]
+            if rw > 0 and rh > 0 and (rw * rh) / (sw * sh) < STUFE_A_MAX_ANTEIL:
+                geo_a = _canvas_fuer(rw, rh, groesse)
+                ax0, ay0 = geo_a["seite"][0], geo_a["seite"][1]
+                k = geo_a["skala"]
+                canvas_a = Image.new("RGB", (geo_a["cw"], geo_a["ch"]), (128, 128, 128))
+                for slot, box in fenster_seite.items():
+                    crop = bilder.get(anker[slot])
+                    if crop is None:
+                        continue
+                    bx0 = ax0 + round((box[0] - R[0]) * k); by0 = ay0 + round((box[1] - R[1]) * k)
+                    bx1 = ax0 + round((box[2] - R[0]) * k); by1 = ay0 + round((box[3] - R[1]) * k)
+                    canvas_a.paste(crop.resize((max(1, bx1 - bx0), max(1, by1 - by0)), Image.LANCZOS), (bx0, by0))
+                feedback = ""
+                quelle = next(iter(bilder.values()))
+                for versuch in range(2):
+                    teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_a, bilder, [], feedback)
+                    erg, kk, modell_a = _modell_aufruf(teile, modell, geo_a["ar"], groesse)
+                    kosten += kk
+                    if erg.size != (geo_a["cw"], geo_a["ch"]):
+                        erg = erg.resize((geo_a["cw"], geo_a["ch"]), Image.LANCZOS)
+                    stufe_a = erg.crop(geo_a["seite"]).resize((rw, rh), Image.LANCZOS)
+                    ok, probleme, kp = _pruefen(quelle, stufe_a)
+                    kosten += kp
+                    schritte.append({"stufe": "A", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
+                    if ok or versuch == 1:
+                        break
+                    feedback = "; ".join(probleme)
+                stufe_a_box = R
+
+        # 3. Stufe B: ganze Seite – Vorlage enthält das Ergebnis von Stufe A (oder nur die Fenster)
+        canvas_b = vorlage
+        if stufe_a is not None:
+            canvas_b = vorlage.copy()
+            canvas_b.paste(stufe_a, (px0 + stufe_a_box[0], py0 + stufe_a_box[1]))
+            for slot, box in fenster.items():   # Fenster pixelgenau zurück
+                crop = bilder.get(anker[slot])
+                if crop is not None:
+                    canvas_b.paste(crop.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS), (box[0], box[1]))
+        teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder, [])
+        erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
+        kosten += kk
+        schritte.append({"stufe": "B"})
+        if erg.size != (geo["cw"], geo["ch"]):
+            erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
+        seite = erg.crop(geo["seite"])
+        if stufe_a is not None:   # Stufe A weich zurücksetzen – sie ist die geometrisch genauere Fassung
+            referenz = seite.crop(stufe_a_box)
+            angeglichen = _farben_angleichen(stufe_a, referenz)
+            _weich_einsetzen(seite, angeglichen, stufe_a_box,
+                             rand=max(24, round(min(stufe_a_box[2] - stufe_a_box[0], stufe_a_box[3] - stufe_a_box[1]) * 0.14)))
+
+        # 4. Stufe C: Wunsch-Pokémon als Bearbeitung des fertigen Bilds (integriert sich besser als beim Malen ins Leere)
         pokemon = json.loads(row["pokemon"] or "[]")
-        for p in pokemon:
-            p["_bild"] = _pokemon_bild(p["dex"])
-        # 3. Vorlage + Prompt + Modell
-        vorlage, _ = _vorlage(anker, cols, rows, geo, lang, analysen)
-        teile = _prompt_teile(cols, rows, anker, row["stil"], row["wunsch"] or "", namen, analysen, vorlage, bilder, pokemon)
-        ergebnis, k, modell = _modell_aufruf(teile, row["modell"], geo["ar"], row["groesse"])
-        kosten += k
-        # 4. Ergebnis auf Vorlagenmaß bringen, Seite ausschneiden, echte Kartenscans pixelgenau darüber
-        if ergebnis.size != (geo["cw"], geo["ch"]):
-            ergebnis = ergebnis.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
-        x0, y0, x1, y1 = geo["seite"]
-        seite = ergebnis.crop((x0, y0, x1, y1))
-        _karten_einsetzen(seite, anker, cols, geo, lang, offset=(x0, y0))
+        if pokemon:
+            for p_ in pokemon:
+                p_["_bild"] = _pokemon_bild(p_["dex"])
+            _karten_einsetzen(seite, anker, cols, geo, lang, offset=(px0, py0))
+            canvas_c = Image.new("RGB", (geo["cw"], geo["ch"]), (128, 128, 128))
+            canvas_c.paste(seite, (px0, py0))
+            regionen = _regionen(cols, rows, anker, len(pokemon))
+            teile = _pokemon_teile(canvas_c, pokemon, regionen, stil, list(namen.values()))
+            erg, kk, _ = _modell_aufruf(teile, modell, geo["ar"], groesse)
+            kosten += kk
+            schritte.append({"stufe": "C", "pokemon": [p_["name_en"] for p_ in pokemon], "regionen": regionen})
+            if erg.size != (geo["cw"], geo["ch"]):
+                erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
+            seite = erg.crop(geo["seite"])
+
+        # 5. Echte Kartenscans pixelgenau darüber, speichern
+        _karten_einsetzen(seite, anker, cols, geo, lang, offset=(px0, py0))
         d = _artwork_dir()
         seite.save(d / f"{artwork_id}.png", "PNG", optimize=True)
         vorschau = seite.copy()
         vorschau.thumbnail((900, 900), Image.LANCZOS)
         vorschau.save(d / f"{artwork_id}.vorschau.webp", "WEBP", quality=82)
         con = get_db()
-        con.execute("UPDATE artworks SET status='fertig', modell=?, kosten_usd=?, breite=?, hoehe=?, fertig_at=?"
-                    " WHERE id=?", (modell, kosten, seite.width, seite.height, _now(), artwork_id))
+        con.execute("UPDATE artworks SET status='fertig', modell=?, kosten_usd=?, breite=?, hoehe=?, fertig_at=?, schritte=?"
+                    " WHERE id=?", (modell_b, kosten, seite.width, seite.height, _now(), json.dumps(schritte), artwork_id))
         con.commit()
         con.close()
     except Exception as e:  # Fehler festhalten, Kontingent zurückbuchen
@@ -637,6 +878,7 @@ def _payload(row):
         "pokemon": pokemon,
         "status": row["status"], "fehler": row["fehler"], "breite": row["breite"], "hoehe": row["hoehe"],
         "created_at": row["created_at"], "modell": row["modell"],
+        "schritte": json.loads(row["schritte"]) if row.get("schritte") else [],
         "vorschau": f"api/artwork/{row['id']}/bild?v=vorschau" if row["status"] == "fertig" else None,
     }
 
@@ -664,7 +906,8 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     )
     for alter in ("ALTER TABLE users ADD COLUMN artwork_monat TEXT",
                   "ALTER TABLE users ADD COLUMN artwork_gesamt INTEGER DEFAULT 0",
-                  "ALTER TABLE artworks ADD COLUMN pokemon TEXT"):
+                  "ALTER TABLE artworks ADD COLUMN pokemon TEXT",
+                  "ALTER TABLE artworks ADD COLUMN schritte TEXT"):
         try:
             con.execute(alter)
         except Exception:
@@ -761,7 +1004,16 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
 
     @app.get("/api/artwork/{artwork_id}/bild")
     def artwork_bild(artwork_id: str, request: Request, v: str = "vorschau"):
-        row = _artwork_row(artwork_id, current_user(request))
+        # Vorschau ist ohne Konto abrufbar (unratbare ID) – sie steckt als Fach-Kachel in geteilten Binder-Ansichten
+        if v == "vorschau":
+            con = get_db()
+            r = con.execute("SELECT * FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+            con.close()
+            if not r:
+                raise HTTPException(404, "Artwork nicht gefunden")
+            row = dict(r)
+        else:
+            row = _artwork_row(artwork_id, current_user(request))
         if row["status"] != "fertig":
             raise HTTPException(404, "Noch nicht fertig")
         d = _artwork_dir()

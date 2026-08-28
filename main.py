@@ -2618,7 +2618,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     ]
 
     gesammelt = sum(1 for i in binder["items"] if i.get("have"))
-    gesamt = sum(1 for i in binder["items"] if i.get("type") != "empty")
+    gesamt = sum(1 for i in binder["items"] if i.get("type") not in ("empty", "art"))
     if lang == "de":
         stats = [
             f"{gesamt} Karten geplant · {gesammelt} bereits gesammelt",
@@ -2647,7 +2647,15 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         slot = idx % per_page + 1
         variant = item.get("variant") or "normal"
 
-        if item.get("type") == "dex":
+        if item.get("type") == "art":
+            # Artwork-Fach (KI-Seite): farbiger Ausschnitt, kein Wasserzeichen
+            reader = (globals().get("_artwork").kachel_reader(item.get("artwork"), item.get("slot") or 0)
+                      if globals().get("_artwork_kennzahlen") else None)
+            if reader:
+                c.drawImage(reader, x, y, CARD_W, CARD_H)
+            else:
+                _draw_placeholder(c, x, y, [("Artwork", 12, True)])
+        elif item.get("type") == "dex":
             _draw_dex_cell(c, x, y, item, pokemon_names)
         else:
             card = card_rows.get(item.get("id"))
@@ -2676,6 +2684,8 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
             label = f"Page {binder_page} · Slot {slot}"
         else:
             label = f"Seite {binder_page} · Fach {slot}"
+        if item.get("type") == "art":
+            label += " · Artwork"
         vl = VARIANT_LABELS.get(variant)
         if vl:
             label += " · " + vl
@@ -2728,7 +2738,7 @@ def _binder_zeilen(binder, lang):
     per_page = LAYOUTS.get(binder["layout"], 9)
     zeilen = []
     for idx, item in enumerate(binder["items"]):
-        if item.get("type") == "empty":
+        if item.get("type") in ("empty", "art"):
             continue
         pos = f"{idx // per_page + 1}·{idx % per_page + 1}"
         if item.get("type") == "dex":

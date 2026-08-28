@@ -104,6 +104,9 @@ window.mpUtm=read;})();
   .slot.voll { border: 1.5px solid var(--slotrand); background: var(--card); cursor: grab; }
   .slot.leer-item { border-style: dotted; background: rgba(255,255,255,.5); cursor: grab; color: var(--mut); font-size: 10px; }
   .slot img { width: 100%; height: 100%; object-fit: contain; }
+  .slot .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+  .slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .slot.art { border-style: solid; border-color: #9b6fd6; }
   .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
   .slot .dexzelle img { width: 52%; height: auto; }
   .slot .dexzelle span { font-size: 8px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
@@ -933,6 +936,7 @@ window.mpUtm=read;})();
         <div style="font-size:12.5px;color:var(--mut)" id="aw-erg-info"></div>
         <div class="tab-leiste aw-tabs"><button id="aw-tab-faecher" class="on" onclick="artworkVorschau('faecher')" data-i18n="aw_ansicht_faecher">Fächer</button><button id="aw-tab-voll" onclick="artworkVorschau('voll')" data-i18n="aw_ansicht_voll">Ganze Seite</button></div>
         <label class="schalter" style="margin:4px 0"><input type="checkbox" id="aw-mit-karten"><span data-i18n="aw_pdf_mit">Kartenfächer als Proxy mitdrucken</span></label>
+        <button class="btn aw-cta" onclick="artworkUebernehmen()" data-i18n="aw_uebernehmen">In den Binder übernehmen</button>
         <button class="btn" onclick="artworkPdf()" data-i18n="aw_pdf">Druckbogen (PDF)</button>
         <a class="btn sekundaer" id="aw-png" download data-i18n="aw_png">Ganze Seite als Bild</a>
         <button class="btn sekundaer" onclick="artworkNochmal()" data-i18n="aw_nochmal">Nochmal – anderer Stil</button>
@@ -1051,9 +1055,11 @@ const T = {
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
     aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
+    aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
+    s_artwork: '🎨 Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
-    aw_laeuft: 'Die KI malt … das dauert etwa 30–60 Sekunden.', aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
+    aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
     aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
     aw_kont_monat: 'Noch {n} von {m} Artwork-Seiten in diesem Monat.', aw_kont_frei: 'Deine Probeseite ist kostenlos – Pro-Konten erzeugen 20 Seiten im Monat.',
     aw_kont_leer: 'Kontingent aufgebraucht.', aw_kont_leer_frei: 'Probeseite verbraucht – mit Pro gibt es 20 Artwork-Seiten im Monat.',
@@ -1175,9 +1181,11 @@ const T = {
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
     aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
+    aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
+    s_artwork: '🎨 Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
-    aw_laeuft: 'The AI is painting … this takes about 30–60 seconds.', aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
+    aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
     aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
     aw_kont_monat: '{n} of {m} artwork pages left this month.', aw_kont_frei: 'Your trial page is free – Pro accounts create 20 pages per month.',
     aw_kont_leer: 'Quota used up.', aw_kont_leer_frei: 'Trial page used – Pro gives you 20 artwork pages per month.',
@@ -2244,12 +2252,21 @@ function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return 
 function slotInhalt(item) {
   if (!item) return '+';
   if (item.type === 'empty') return `<span>${t('leer_slot')}</span>`;
+  if (item.type === 'art') return artKachel(item);
   if (item.type === 'dex') {
     const p = (S.pokedex || []).find((x) => x.dex === item.dex);
     const name = p ? (LANG === 'en' ? p.name_en : p.name) : (item.name || '#' + item.dex);
     return `<div class="dexzelle"><img loading="lazy" src="api/img/dex/${item.dex}" alt=""><span>#${String(item.dex).padStart(3, '0')} ${name}</span></div>`;
   }
   return `<img loading="lazy" src="${imgUrl(item.id)}" alt="" data-cid="${item.id}" onerror="bildFehlt(this)">`;
+}
+
+// Artwork-Fach: Ausschnitt der KI-Seite (Bild in Prozent verschoben – 63×88 mm Fach, 4 mm Fuge)
+function artKachel(item) {
+  const [cols, rows] = LAYOUTS[item.layout] || [3, 3];
+  const pw = cols * 63 + (cols - 1) * 4, ph = rows * 88 + (rows - 1) * 4;
+  const c = item.slot % cols, r = Math.floor(item.slot / cols);
+  return `<div class="artfach"><img loading="lazy" src="api/artwork/${encodeURIComponent(item.artwork)}/bild?v=vorschau" alt="" style="width:${(pw / 63 * 100).toFixed(3)}%;height:${(ph / 88 * 100).toFixed(3)}%;left:-${(c * 67 / 63 * 100).toFixed(3)}%;top:-${(r * 92 / 88 * 100).toFixed(3)}%"></div>`;
 }
 
 function bildFehlt(img) {
@@ -2267,9 +2284,10 @@ function slotExtras(item, idx) {
   }
   let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})" title="${t('s_entfernen')}">✕</button>
     <button class="mehr" onclick="event.stopPropagation();slotMenue(event,${idx})" title="${t('s_frei_davor')} / ${t('s_details')}">⋯</button>`;
-  if (item && item.type !== 'empty') {
+  if (item && item.type !== 'empty' && item.type !== 'art') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
+  if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">🎨</span>`;
   if (item && VMARK[item.variant]) html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
   if (item && item.sprache && item.sprache !== 'de') html += `<span class="vmark spmark" title="${t('kartensprache')}">${item.sprache.toUpperCase()}</span>`;
   if (S.preiseAn && item && item.type === 'card') {
@@ -2281,7 +2299,7 @@ function slotExtras(item, idx) {
 
 function hatToggle(idx) {
   const item = S.binder.items[idx];
-  if (!item) return;
+  if (!item || item.type === 'art') return;
   item.have = !item.have;
   speichern();
   zeichneBinder();
@@ -2308,7 +2326,7 @@ function zeichneBinder() {
     const item = S.binder.items[idx];
     if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
-    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
+    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
       ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
@@ -2318,7 +2336,7 @@ function zeichneBinder() {
   $('wb-slots').classList.toggle('hidden', leer);
   $('wb-nav').classList.toggle('hidden', leer);
   // Sammel-Fortschritt
-  const sammelbar = S.binder.items.filter((i) => i.type !== 'empty').length;
+  const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
   const gesammelt = S.binder.items.filter((i) => i.have).length;
   $('wb-sammel').classList.toggle('hidden', sammelbar === 0 || !document.body.classList.contains('sammeln'));
   if (sammelbar) {
@@ -2334,7 +2352,7 @@ function seiteWechsel(d) {
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
   zeichneBinder();
 }
-function slotEntfernen(idx) { merken('raus'); S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); toastUndo(t('entfernen')); }
+function slotEntfernen(idx) { if (S.binder.items[idx] && S.binder.items[idx].type === 'art') return fachFreimachen(idx); merken('raus'); S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); toastUndo(t('entfernen')); }
 function binderLeeren() {
   if (!S.binder.items.length) return;
   merken('leeren');
@@ -2436,7 +2454,7 @@ function zeichnePlaner() {
       const idx = seite * pp + s;
       const item = S.binder.items[idx];
       if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
-      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.have ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
+      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${item.have ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
         draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
         ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
         ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
@@ -2517,6 +2535,7 @@ async function auswahlSortieren() {
   }
   const wert = (item) => {
     if (item.type === 'empty') return ['￿'];
+    if (item.type === 'art') return ['￿', '1'];
     if (item.type === 'dex') {
       if (key === 'dex') return [String(item.dex).padStart(5, '0')];
       const p = (S.pokedex || []).find((x) => x.dex === item.dex);
@@ -2726,6 +2745,7 @@ function slotMenue(ev, idx) {
   const r = ev.currentTarget.getBoundingClientRect();
   m.innerHTML = `
     ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${Math.floor(idx / proSeite())})">${t('s_artwork')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
     ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ↻</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
@@ -3144,7 +3164,7 @@ async function artworkGalerieLaden() {
   } catch (e) { AW.liste = []; }
   $('aw-galerie-lbl').classList.toggle('hidden', !AW.liste.length);
   $('aw-galerie').innerHTML = AW.liste.map((a) => `<div class="aw-mini ${AW.aktuell && AW.aktuell.id === a.id ? 'on' : ''}" data-id="${a.id}" onclick="artworkZeigen(AW.liste.find((x) => x.id === '${a.id}'))">
-    <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}</div>`).join('');
+    <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}${artworkImBinder(a.id) ? ' · ✓ ' + t('aw_im_binder') : ''}</div>`).join('');
 }
 // Wunsch-Pokémon: Name aus der Pokédex-Liste → Chip mit Sprite
 function artworkPokeTaste(ev) { if (ev.key === 'Enter') { ev.preventDefault(); artworkPokeAdd(); } }
@@ -3185,9 +3205,31 @@ async function artworkPdf() {
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
   } catch (e) { arbeitToastEnde(); toast(t('aw_fehler')); }
 }
+// Artwork-Fächer in die Binder-Seite eintragen: leere/übermalte Fächer → {type:'art'}; Kartenfächer bleiben
+function artworkUebernehmen() {
+  const aw = AW.aktuell; if (!aw || !S.binder) return;
+  if (aw.layout !== S.binder.layout) return toast(t('aw_layout_anders'));
+  const pp = proSeite();
+  merken('artwork');
+  while (S.binder.items.length < (aw.seite + 1) * pp) S.binder.items.push({ type: 'empty' });
+  for (let s = 0; s < pp; s++) {
+    if (aw.anker && aw.anker[String(s)]) continue;
+    S.binder.items[aw.seite * pp + s] = { type: 'art', artwork: aw.id, slot: s, layout: aw.layout };
+  }
+  S.seite = aw.seite;
+  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  artworkSchliessen();
+  toastUndo(t('aw_uebernommen'));
+}
+function artworkImBinder(id) { return S.binder ? S.binder.items.some((i) => i.type === 'art' && i.artwork === id) : false; }
 async function artworkLoeschen() {
   if (!AW.aktuell) return;
   try { await api('api/artwork/' + AW.aktuell.id, { method: 'DELETE' }); } catch (e) { return toast(t('aw_fehler')); }
+  // Verweise im aktuellen Binder auflösen (Fach wird wieder leer)
+  if (S.binder && artworkImBinder(AW.aktuell.id)) {
+    S.binder.items = S.binder.items.map((i) => (i.type === 'art' && i.artwork === AW.aktuell.id) ? { type: 'empty' } : i);
+    speichern(); zeichneBinder();
+  }
   AW.aktuell = null;
   toast(t('aw_geloescht'));
   await artworkGalerieLaden();
