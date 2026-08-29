@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Verträge hier kündigen · Binderplan</title>
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="/assets/quicksand.css">
+<style>
+  :root { --bg:#faf7f2; --card:#fff; --ink:#3a3227; --mut:#8b8175; --line:#e8e0d4; --akzent:#d97757; --gruen:#4a9d6e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1917; --card:#262220; --ink:#f0ebe4; --mut:#a09488; --line:#3a3430; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Quicksand',system-ui,-apple-system,'Segoe UI',sans-serif; line-height:1.6; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 32px 20px 60px; }
+  a { color: var(--akzent); }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .unter { color: var(--mut); font-size: 14px; margin-bottom: 26px; }
+  .karte { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  label { display:block; font-size:13px; font-weight:700; margin:16px 0 5px; }
+  input, select, textarea { width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px;
+    background:var(--bg); color:var(--ink); font:inherit; font-size:14px; }
+  textarea { resize: vertical; min-height: 70px; }
+  .btn { width:100%; margin-top:22px; padding:13px; border:0; border-radius:10px; background:var(--akzent);
+    color:#fff; font:inherit; font-weight:800; font-size:15px; cursor:pointer; }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:disabled { opacity:.55; cursor:default; }
+  .hinweis { font-size:12px; color:var(--mut); margin-top:14px; }
+  .ergebnis { margin-top:20px; padding:16px; border-radius:12px; font-size:14px; display:none; }
+  .ergebnis.ok { background:#4a9d6e1a; border:1px solid var(--gruen); display:block; }
+  .ergebnis.info { background:#d977571a; border:1px solid var(--akzent); display:block; }
+  .fuss { margin-top:28px; font-size:12px; color:var(--mut); text-align:center; }
+  .fuss a { color: var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Verträge hier kündigen</h1>
+  <div class="unter">Hier kündigst du dein Binderplan-Abo – ohne Anmeldung, in einem Schritt.</div>
+
+  <div class="karte">
+    <form id="form" onsubmit="absenden(event)">
+      <label for="art">Was möchtest du kündigen?</label>
+      <select id="art">
+        <option value="abo">Binderplan Plus oder Pro (laufendes Abo)</option>
+        <option value="sonstiges">Etwas anderes</option>
+      </select>
+
+      <label for="email">E-Mail-Adresse deines Kontos *</label>
+      <input id="email" type="email" required placeholder="name@beispiel.de" autocomplete="email">
+
+      <label for="name">Vor- und Nachname (optional)</label>
+      <input id="name" type="text" autocomplete="name">
+
+      <label for="zeitpunkt">Kündigung zum</label>
+      <select id="zeitpunkt">
+        <option value="ende">nächstmöglichen Zeitpunkt (Ende der Laufzeit)</option>
+        <option value="sofort">sofort, falls möglich</option>
+      </select>
+
+      <label for="notiz">Nachricht (optional)</label>
+      <textarea id="notiz" maxlength="500" placeholder="Zum Beispiel der Grund deiner Kündigung – freiwillig."></textarea>
+
+      <button class="btn" id="senden" type="submit">Jetzt kündigen</button>
+      <div class="hinweis">
+        Wir bestätigen deine Kündigung sofort auf dieser Seite und zusätzlich per E-Mail.
+        Dein Zugang bleibt bis zum Ende der bezahlten Laufzeit bestehen; danach läuft dein Konto
+        kostenlos weiter. Bereits gekaufte Credits bleiben erhalten.
+      </div>
+    </form>
+    <div class="ergebnis" id="ergebnis"></div>
+  </div>
+
+  <div class="fuss">
+    <a href="/">Startseite</a> · <a href="/recht#impressum">Impressum</a> ·
+    <a href="/recht#agb">AGB</a> · <a href="/recht#widerruf">Widerruf</a> ·
+    <a href="/recht#datenschutz">Datenschutz</a>
+  </div>
+</div>
+
+<script>
+'use strict';
+async function absenden(ev) {
+  ev.preventDefault();
+  const btn = document.getElementById('senden');
+  const box = document.getElementById('ergebnis');
+  btn.disabled = true; btn.textContent = 'Wird gesendet …';
+  const daten = {
+    email: document.getElementById('email').value.trim(),
+    notiz: [document.getElementById('art').value, document.getElementById('zeitpunkt').value,
+            document.getElementById('name').value, document.getElementById('notiz').value]
+           .filter(Boolean).join(' | '),
+  };
+  try {
+    const r = await fetch('/api/kuendigung', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten),
+    });
+    const d = await r.json();
+    document.getElementById('form').style.display = 'none';
+    if (d.gekuendigt) {
+      box.className = 'ergebnis ok';
+      box.innerHTML = '<strong>Deine Kündigung ist eingegangen.</strong><br>'
+        + 'Dein Abo endet am ' + (d.bis || 'Ende der Laufzeit') + '. Bis dahin kannst du alles weiter nutzen. '
+        + 'Es wird nichts mehr abgebucht.'
+        + (d.mail ? '<br>Eine Bestätigung ist per E-Mail unterwegs.' : '');
+    } else {
+      box.className = 'ergebnis info';
+      box.innerHTML = '<strong>Deine Nachricht ist eingegangen.</strong><br>'
+        + 'Zu dieser E-Mail-Adresse ist aktuell kein laufendes Abo hinterlegt – es wird also '
+        + 'ohnehin nichts abgebucht. Falls du mit einer anderen Adresse bezahlt hast, sende das '
+        + 'Formular bitte noch einmal damit ab oder schreib uns an '
+        + '<a href="mailto:schulte.marcel1995@gmail.com">schulte.marcel1995@gmail.com</a>.';
+    }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Jetzt kündigen';
+    box.className = 'ergebnis info';
+    box.innerHTML = 'Das hat leider nicht geklappt. Bitte schreib uns kurz an '
+      + '<a href="mailto:schulte.marcel1995@gmail.com">schulte.marcel1995@gmail.com</a> – '
+      + 'deine Kündigung gilt auch per E-Mail.';
+  }
+}
+</script>
+</body>
+</html>

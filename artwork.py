@@ -41,11 +41,13 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
 
-# Kontingente: Free-Konten dürfen eine Probeseite erzeugen, Pro/Lifetime 20 je Monat
-# (eine Generierung kostet je nach Modell 0,05–0,15 € – unbegrenzt wäre nicht tragbar).
-FREE_ARTWORK_GESAMT = 1
-PRO_ARTWORK_MONAT = 20
+# Abgerechnet wird in Credits (siehe abo.artwork_preis) – gestaffelt nach Ankerkarten,
+# weil jede weitere Karte eine Analyse und ein weiteres Bild im Prompt bedeutet.
 MAX_POKEMON = 3
+
+# Notbremse: Tagesdeckel für Modellkosten über alle Nutzer. Schützt vor Ausreißern und
+# davor, dass ein Fehler in einer Schleife das OpenRouter-Guthaben leerräumt.
+TAGESLIMIT_USD = 25.0
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
 STANDARD_GROESSE = "2K"
@@ -136,33 +138,24 @@ def _data_url(img: Image.Image, fmt="PNG"):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-# --- Kontingent ---------------------------------------------------------------
+# --- Credits & Kostendeckel ---------------------------------------------------
 
-def _kontingent(user):
-    """→ (benutzt, limit, zeitraum) – zeitraum 'monat' (Pro) oder 'gesamt' (Free-Probeseite)."""
-    if _dep["ist_pro"](user):
-        teil = (user.get("artwork_monat") or "").split(":")
-        benutzt = int(teil[1]) if len(teil) == 2 and teil[0] == _monat() else 0
-        return benutzt, PRO_ARTWORK_MONAT, "monat"
-    return int(user.get("artwork_gesamt") or 0), FREE_ARTWORK_GESAMT, "gesamt"
+def _preis(anker_anzahl, groesse):
+    return _dep["abo"].artwork_preis(anker_anzahl, groesse)
 
 
-def _kontingent_buchen(user, delta):
+def _tageskosten():
     con = _dep["get_db"]()
-    if _dep["ist_pro"](user):
-        benutzt, _, _ = _kontingent(user)
-        con.execute("UPDATE users SET artwork_monat = ? WHERE id = ?",
-                    (f"{_monat()}:{max(0, benutzt + delta)}", user["id"]))
-    else:
-        con.execute("UPDATE users SET artwork_gesamt = MAX(0, COALESCE(artwork_gesamt, 0) + ?) WHERE id = ?",
-                    (delta, user["id"]))
-    con.commit()
+    wert = con.execute("SELECT COALESCE(SUM(kosten_usd),0) s FROM artworks"
+                       " WHERE created_at >= date('now')").fetchone()["s"]
     con.close()
+    return float(wert or 0)
 
 
-def _kontingent_info(user):
-    benutzt, limit, zeitraum = _kontingent(user)
-    return {"benutzt": benutzt, "limit": limit, "zeitraum": zeitraum, "frei": max(0, limit - benutzt)}
+class ModellBezahlt(Exception):
+    """Das Bildmodell hat geantwortet (und damit Kosten verursacht), aber kein Bild
+    geliefert – etwa wegen eines Inhaltsfilters. Solche Läufe werden nicht erstattet,
+    sonst ließen sich über den Wunsch-Text beliebig Kosten erzeugen."""
 
 
 # --- Geometrie ----------------------------------------------------------------
@@ -749,7 +742,7 @@ def _modell_aufruf(teile, modell, ar, groesse):
     bilder = msg.get("images") or []
     url = (bilder[0].get("image_url") or {}).get("url") if bilder else None
     if not url or not url.startswith("data:image"):
-        raise RuntimeError("Das Bildmodell hat kein Bild geliefert" + (f": {str(msg.get('content'))[:160]}" if msg.get("content") else "."))
+        raise ModellBezahlt("Das Bildmodell hat kein Bild geliefert" + (f": {str(msg.get('content'))[:160]}" if msg.get("content") else "."))
     roh = base64.b64decode(url.split(",", 1)[1])
     kosten = float((d.get("usage") or {}).get("cost") or 0)
     return Image.open(io.BytesIO(roh)).convert("RGB"), kosten, d.get("model") or modell
@@ -893,14 +886,18 @@ def _job(artwork_id):
                     " WHERE id=?", (modell_b, kosten, seite.width, seite.height, _now(), json.dumps(schritte), artwork_id))
         con.commit()
         con.close()
-    except Exception as e:  # Fehler festhalten, Kontingent zurückbuchen
+    except Exception as e:
+        # Credits zurückgeben, wenn der Fehler vor bzw. beim Bezahlvorgang auftrat.
+        # Hat das Modell dagegen geantwortet und nur kein Bild geliefert (ModellBezahlt),
+        # sind die Kosten bereits entstanden – dann wird nicht erstattet.
+        erstatten = not isinstance(e, ModellBezahlt)
         con = get_db()
-        con.execute("UPDATE artworks SET status='fehler', fehler=? WHERE id=?", (str(e)[:300], artwork_id))
-        user = con.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+        con.execute("UPDATE artworks SET status='fehler', fehler=? WHERE id=?",
+                    (("Kein Bild erzeugt: " if not erstatten else "") + str(e)[:280], artwork_id))
         con.commit()
         con.close()
-        if user:
-            _kontingent_buchen(dict(user), -1)
+        if erstatten and row["credits"]:
+            _dep["abo"].gutschrift(row["user_id"], row["credits"], "erstattung_fehler", artwork_id)
 
 
 # --- PDF ------------------------------------------------------------------------
@@ -981,17 +978,17 @@ def _payload(row):
         "anker": json.loads(row["anker"] or "{}"), "stil": row["stil"], "wunsch": row["wunsch"] or "",
         "pokemon": pokemon,
         "status": row["status"], "fehler": row["fehler"], "breite": row["breite"], "hoehe": row["hoehe"],
-        "created_at": row["created_at"], "modell": row["modell"],
+        "created_at": row["created_at"], "modell": row["modell"], "credits": row.get("credits") or 0,
         "schritte": json.loads(row["schritte"]) if row.get("schritte") else [],
         "vorschau": f"api/artwork/{row['id']}/bild?v=vorschau" if row["status"] == "fertig" else None,
     }
 
 
 def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, card_image_path,
-             dex_image_path, pdf_wasserzeichen, env, CACHE):
+             dex_image_path, pdf_wasserzeichen, env, CACHE, abo):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
                 load_binder=load_binder, card_image_path=card_image_path, dex_image_path=dex_image_path,
-                pdf_wasserzeichen=pdf_wasserzeichen, env=env, CACHE=CACHE)
+                pdf_wasserzeichen=pdf_wasserzeichen, env=env, CACHE=CACHE, abo=abo)
 
     con = get_db()
     con.executescript(
@@ -1011,7 +1008,8 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     for alter in ("ALTER TABLE users ADD COLUMN artwork_monat TEXT",
                   "ALTER TABLE users ADD COLUMN artwork_gesamt INTEGER DEFAULT 0",
                   "ALTER TABLE artworks ADD COLUMN pokemon TEXT",
-                  "ALTER TABLE artworks ADD COLUMN schritte TEXT"):
+                  "ALTER TABLE artworks ADD COLUMN schritte TEXT",
+                  "ALTER TABLE artworks ADD COLUMN credits INTEGER DEFAULT 0"):
         try:
             con.execute(alter)
         except Exception:
@@ -1024,7 +1022,10 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     @app.get("/api/artwork/stile")
     def artwork_stile(request: Request):
         user = current_user(request)
-        return {"stile": list(STILE.keys()), "kontingent": _kontingent_info(user) if user else None,
+        return {"stile": list(STILE.keys()),
+                "konto": _dep["abo"].konto_info(_dep["abo"].auffrischen(user)) if user else None,
+                "preis_basis": _dep["abo"].ARTWORK_BASIS, "preis_je_karte": _dep["abo"].ARTWORK_JE_KARTE,
+                "preis_max": _dep["abo"].ARTWORK_MAX,
                 "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
 
     @app.post("/api/artwork")
@@ -1058,11 +1059,13 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
         stil = data.get("stil") if data.get("stil") in STILE else "karte"
         wunsch = str(data.get("wunsch") or "")[:400]
         pokemon = _pokemon_aufloesen(data.get("pokemon") if isinstance(data.get("pokemon"), list) else [])
-        benutzt, limit, _ = _kontingent(user)
-        if benutzt >= limit:
-            raise HTTPException(402, detail={"code": "limit_artwork"})
         if not env().get("OPENROUTER_KEY"):
             raise HTTPException(503, "Artwork-Funktion ist nicht eingerichtet")
+        if _tageskosten() > TAGESLIMIT_USD:
+            raise HTTPException(503, detail={"code": "tageslimit"})
+        e = env()
+        groesse = e.get("ARTWORK_GROESSE") or STANDARD_GROESSE
+        kosten_credits = _preis(len(anker), groesse)
         with _jobs_lock:
             con = get_db()
             laufend = con.execute("SELECT COUNT(*) c FROM artworks WHERE user_id=? AND status='laeuft'",
@@ -1072,20 +1075,21 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 raise HTTPException(409, detail={"code": "artwork_laeuft"})
             artwork_id = secrets.token_urlsafe(9)
             sprache = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
-            e = env()
+            # Erst abbuchen, dann starten – schlägt die Buchung fehl (402), läuft nichts an
+            _dep["abo"].abbuchen(user, kosten_credits, "artwork", artwork_id)
             con = get_db()
             con.execute(
-                "INSERT INTO artworks (id,user_id,binder_id,seite,layout,anker,stil,wunsch,pokemon,sprache,modell,groesse,status)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft')",
+                "INSERT INTO artworks (id,user_id,binder_id,seite,layout,anker,stil,wunsch,pokemon,"
+                "sprache,modell,groesse,status,credits)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft',?)",
                 (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch,
-                 json.dumps(pokemon), sprache,
-                 e.get("ARTWORK_MODELL") or STANDARD_MODELL, e.get("ARTWORK_GROESSE") or STANDARD_GROESSE),
+                 json.dumps(pokemon), sprache, e.get("ARTWORK_MODELL") or STANDARD_MODELL,
+                 groesse, kosten_credits),
             )
             con.commit()
             con.close()
-            _kontingent_buchen(user, +1)
         threading.Thread(target=_job, args=(artwork_id,), daemon=True).start()
-        return {"id": artwork_id, "status": "laeuft", "pokemon": pokemon}
+        return {"id": artwork_id, "status": "laeuft", "pokemon": pokemon, "credits": kosten_credits}
 
     @app.get("/api/artwork")
     def artwork_liste(request: Request, binder_id: str = ""):
@@ -1095,15 +1099,16 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             "SELECT * FROM artworks WHERE user_id = ? AND (? = '' OR binder_id = ?) AND status != 'fehler'"
             " ORDER BY created_at DESC LIMIT 60", (user["id"], binder_id, binder_id)).fetchall()
         con.close()
-        return {"artworks": [_payload(dict(r)) for r in rows], "kontingent": _kontingent_info(user)}
+        return {"artworks": [_payload(dict(r)) for r in rows],
+                "konto": _dep["abo"].konto_info(user)}
 
     @app.get("/api/artwork/{artwork_id}")
     def artwork_status(artwork_id: str, request: Request):
         user = require_user(request)
         row = _artwork_row(artwork_id, user)
         out = _payload(row)
-        # Nutzer nach dem Job aktuell nachladen (Kontingent kann zurückgebucht worden sein)
-        out["kontingent"] = _kontingent_info(current_user(request) or user)
+        # Nutzer frisch laden – bei einem Fehlschlag wurden die Credits zurückgebucht
+        out["konto"] = _dep["abo"].konto_info(current_user(request) or user)
         return out
 
     @app.get("/api/artwork/{artwork_id}/bild")

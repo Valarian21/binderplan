@@ -5,16 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Binderplan – Werkbank</title>
 <meta name="robots" content="noindex">
-<script>
-(function(){var K="mp_utm",P=["utm_source","utm_medium","utm_campaign","utm_content"],q=new URLSearchParams(location.search),u={},h=false;
-P.forEach(function(k){var v=q.get(k);if(v){u[k]=v;h=true}});
-if(h){document.cookie=K+"="+encodeURIComponent(JSON.stringify(u))+";max-age=7776000;path=/;SameSite=Lax"}
-function read(){var m=document.cookie.match(new RegExp("(?:^|; )"+K+"=([^;]*)"));try{return m?JSON.parse(decodeURIComponent(m[1])):{}}catch(e){return{}}}
-window.mpTrack=function(ev,ref){var t=read();try{navigator.sendBeacon?navigator.sendBeacon("https://agi-empire.com/api/mp/events",new Blob([JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}})],{type:"application/json"})):fetch("https://agi-empire.com/api/mp/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}}),keepalive:true})}catch(e){}};
-window.mpUtm=read;})();
-</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/assets/quicksand.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <meta name="theme-color" content="#e85d43">
@@ -450,6 +441,43 @@ window.mpUtm=read;})();
   .aw-galerie-lbl { font-size: 12px; font-weight: 700; margin-top: 18px; }
   .btn.aw-cta { background: linear-gradient(120deg, #7c4dd6, #c04a9a); border: 0; }
   .btn.aw-cta:hover { filter: brightness(1.08); }
+  /* Tarife & Credits */
+  .tarif-schalter { display: inline-flex; background: var(--panel2); border-radius: 99px; padding: 3px; margin: 0 auto 16px; }
+  .tarif-schalter button { padding: 6px 16px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--mut); }
+  .tarif-schalter button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .tarif-spar { font-size: 11px; color: var(--gruen); font-weight: 700; }
+  .tarif-karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tk-tarif { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .tk-tarif.empfohlen { border-color: var(--akzent); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+  .tk-tarif .tk-name { font-weight: 800; font-size: 15px; }
+  .tk-tarif .tk-preis { font-size: 26px; font-weight: 800; line-height: 1.1; margin: 6px 0 0; }
+  .tk-tarif .tk-preis small { font-size: 13px; font-weight: 600; color: var(--mut); }
+  .tk-tarif .tk-credits { font-size: 12.5px; color: #9b6fd6; font-weight: 700; }
+  .tk-tarif ul { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 5px; }
+  .tk-tarif li::before { content: "✓ "; color: var(--gruen); font-weight: 800; }
+  .tk-tarif li.aus { color: var(--mut); }
+  .tk-tarif li.aus::before { content: "– "; color: var(--mut); }
+  .tk-tarif .btn { margin-top: 12px; justify-content: center; }
+  .tk-tarif .empf-band { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--akzent); color: #fff; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+  .pakete { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .paket { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; }
+  .paket:hover { border-color: var(--akzent); }
+  .paket .p-cr { font-weight: 800; font-size: 17px; color: #9b6fd6; }
+  .paket .p-eur { font-weight: 700; margin-top: 2px; }
+  .paket .p-je { font-size: 11px; color: var(--mut); }
+  .credit-chip { display: inline-flex; align-items: center; gap: 4px; background: #9b6fd61a; color: #7c4dd6; border-radius: 99px; padding: 3px 9px; font-size: 12px; font-weight: 800; }
+  .bestell-box { border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel2); }
+  .bestell-zeile { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .bestell-zeile.gesamt { font-weight: 800; font-size: 15px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  .zustimmung { display: flex; gap: 8px; align-items: flex-start; font-size: 11.5px; margin-top: 12px; line-height: 1.45; }
+  .zustimmung input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--akzent); flex-shrink: 0; }
+  .buchungen { max-height: 220px; overflow-y: auto; font-size: 12px; }
+  .buchungen div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .buchungen .plus { color: var(--gruen); font-weight: 700; }
+  .buchungen .minus { color: var(--mut); font-weight: 700; }
+  @media (max-width: 720px) {
+    .tarif-karten, .pakete { grid-template-columns: 1fr; }
+  }
   #aw-png { text-decoration: none; }
   #modal-artwork h2 { padding-right: 40px; }
   @media (max-width: 900px) {
@@ -516,6 +544,7 @@ window.mpUtm=read;})();
         <button id="theme-btn" onclick="themeWechsel()"></button>
         <div class="trenn"></div>
         <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
       </div>
     </div>
     <div class="menuwrap">
@@ -712,6 +741,7 @@ window.mpUtm=read;})();
         <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
         <button onclick="themeWechsel()"><span data-i18n="pf_design">Design</span>: <span class="theme-stand"></span></button>
         <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
       </div>
     </div>
   </div>
@@ -860,40 +890,45 @@ window.mpUtm=read;})();
   </div>
 </div>
 
-<!-- Modal: Upgrade -->
+<!-- Modal: Tarife & Credits -->
 <div class="overlay hidden" id="modal-upgrade">
-  <div class="modal" style="width:min(560px,94vw)">
+  <div class="modal" style="width:min(860px,96vw)">
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
-    <h2 data-i18n="up_t">Binderplan Pro</h2>
-    <div class="unter" id="up-grund" data-i18n="up_u">Unbegrenzte Binder &amp; Exporte, tagesaktuelle Preise und die Kaufliste.</div>
-    <div class="tarife">
-      <div class="tarif" onclick="checkout('monat')">
-        <div style="font-weight:700" data-i18n="up_monat">Monat</div>
-        <div class="preis-gross">3,99 €</div>
-        <div class="klein" data-i18n="up_monat_k">monatlich kündbar</div>
-      </div>
-      <div class="tarif" onclick="checkout('jahr')" style="border-color:var(--akzent)">
-        <span class="empf" data-i18n="up_empf">Beliebt · 2 Monate geschenkt</span>
-        <div style="font-weight:700" data-i18n="up_jahr">Jahr</div>
-        <div class="preis-gross">24,99 €</div>
-        <div class="klein" data-i18n="up_jahr_k">= 2,08 € im Monat</div>
-      </div>
-      <div class="tarif" onclick="checkout('lifetime')">
-        <div style="font-weight:700">Lifetime</div>
-        <div class="preis-gross">49,99 €</div>
-        <div class="klein" data-i18n="up_life_k">einmal zahlen, für immer</div>
+    <h2 data-i18n="up_t">Mehr aus deinem Binder holen</h2>
+    <div class="unter" id="up-grund" data-i18n="up_u">Unbegrenzt planen und drucken – und Credits für KI-Artwork-Seiten.</div>
+    <div style="text-align:center">
+      <div class="tarif-schalter">
+        <button id="tz-monat" class="on" onclick="tarifZeitraum('monat')" data-i18n="mtl">Monatlich</button>
+        <button id="tz-jahr" onclick="tarifZeitraum('jahr')"><span data-i18n="jaehrl">Jährlich</span> <span class="tarif-spar" data-i18n="spar">−17 %</span></button>
       </div>
     </div>
-    <table class="up-tab">
-      <tr><th></th><th data-i18n="tarif_frei">Kostenlos</th><th>Pro</th></tr>
-      <tr><td data-i18n="up_r1">Gespeicherte Binder</td><td>2</td><td>∞</td></tr>
-      <tr><td data-i18n="up_r2">Platzhalter-PDF</td><td data-i18n="up_r2f">1 / Monat</td><td>∞</td></tr>
-      <tr><td data-i18n="up_r3">Checkliste &amp; Preise ansehen</td><td>✓</td><td>✓</td></tr>
-      <tr><td data-i18n="up_r4">Preise sofort aktualisieren</td><td data-i18n="up_r4f">1× täglich</td><td>✓</td></tr>
-      <tr><td data-i18n="up_r5">Kaufliste als CSV</td><td>–</td><td>✓</td></tr>
-      <tr><td data-i18n="aw_up_r">KI-Artwork-Seiten</td><td data-i18n="aw_up_f">1 Probeseite</td><td data-i18n="aw_up_p">20 / Monat</td></tr>
-    </table>
-    <div style="font-size:11px;color:var(--mut);margin-top:14px" data-i18n="up_recht">Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.</div>
+    <div class="tarif-karten" id="tarif-karten"></div>
+    <h3 style="margin:22px 0 2px;font-size:15px" data-i18n="pak_t">Credits einzeln kaufen</h3>
+    <div class="unter" style="margin-bottom:8px" data-i18n="pak_u">Ohne Abo, ohne Verfall – ideal, wenn du nur ab und zu eine Artwork-Seite gestaltest.</div>
+    <div class="pakete" id="paket-karten"></div>
+    <div style="font-size:11px;color:var(--mut);margin-top:16px" data-i18n="up_recht">Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple&nbsp;Pay, Google&nbsp;Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.</div>
+  </div>
+</div>
+
+<!-- Modal: Bestellübersicht (Button-Lösung § 312j BGB) -->
+<div class="overlay hidden" id="modal-bestellung">
+  <div class="modal" style="width:min(520px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="best_t">Bestellung prüfen</h2>
+    <div class="unter" data-i18n="best_u">Bitte prüfe deine Bestellung. Danach geht es zur Zahlung bei Stripe.</div>
+    <div class="bestell-box" id="bestell-box"></div>
+    <label class="zustimmung">
+      <input type="checkbox" id="best-agb">
+      <span id="best-agb-text"></span>
+    </label>
+    <label class="zustimmung">
+      <input type="checkbox" id="best-widerruf">
+      <span id="best-widerruf-text"></span>
+    </label>
+    <div id="best-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
+    <button class="btn" id="best-senden" style="width:100%;justify-content:center;margin-top:14px;font-size:15px"
+            onclick="bestellungAbsenden()" data-i18n="best_btn">Zahlungspflichtig bestellen</button>
+    <div style="font-size:11px;color:var(--mut);margin-top:10px;text-align:center" data-i18n="best_hin">Weiterleitung zu Stripe. Wir speichern keine Zahlungsdaten.</div>
   </div>
 </div>
 
@@ -1005,11 +1040,17 @@ window.mpUtm=read;})();
       <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_exporte">PDF-Exporte diesen Monat übrig</span><span class="wert" id="pf-exporte"></span></div>
+      <div class="pf-zeile"><span data-i18n="guthaben">Guthaben</span><span class="wert" id="pf-credits"></span></div>
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn hidden" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Auf Pro upgraden</span> ★</button>
-        <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Abo verwalten</button>
+        <button class="btn" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Tarif &amp; Credits</span> ★</button>
+        <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Rechnungen &amp; Zahlungsmittel</button>
+        <button class="btn sekundaer hidden" id="pf-kuend" onclick="aboKuendigen()" style="font-size:13px"></button>
         <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
       </div>
+    </div>
+    <div class="pf-block">
+      <h3 data-i18n="journal">Letzte Buchungen</h3>
+      <div class="buchungen" id="pf-journal"></div>
     </div>
     <div class="pf-block">
       <h3 data-i18n="pf_einstellungen">Einstellungen</h3>
@@ -1030,10 +1071,13 @@ window.mpUtm=read;})();
       <h3 data-i18n="pf_recht">Rechtliches</h3>
       <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)">Impressum</a> ·
         <a href="recht#agb" target="_blank" style="color:var(--mut)">AGB</a> ·
-        <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a></div>
+        <a href="recht#widerruf" target="_blank" style="color:var(--mut)">Widerruf</a> ·
+        <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a> ·
+        <a href="/kuendigen" target="_blank" style="color:var(--mut)">Verträge kündigen</a></div>
     </div>
     <div class="pf-block gefahr">
       <h3 data-i18n="pf_gefahr">Konto löschen</h3>
+      <button class="btn sekundaer" style="font-size:13px;margin-bottom:14px" onclick="datenExport()" data-i18n="pf_export">Meine Daten herunterladen</button>
       <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px" data-i18n="pf_loeschen_hint">Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.</div>
       <div class="feld-lbl" data-i18n="pf_loeschen_pw">Zum Bestätigen Passwort eingeben</div>
       <input class="feld" id="pf-del-pw" type="password" autocomplete="new-password">
@@ -1054,9 +1098,29 @@ const T = {
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
-    aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
+    aw_kosten_hin: 'für diese Seite · du hast {s}', aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
     aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
     s_artwork: '🎨 Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
+    pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
+    pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
+    preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise 1× am Tag aktualisieren',
+    kaufliste_csv: 'Kaufliste als CSV', zum_start: 'zum Start', beliebt: 'Beliebt',
+    up_recht_kurz: 'Endpreise, keine Umsatzsteuer (§ 19 UStG).',
+    best_agb_html: 'Ich akzeptiere die <a href="recht#agb" target="_blank">AGB</a> und habe die <a href="recht#datenschutz" target="_blank">Datenschutzerklärung</a> sowie die <a href="recht#widerruf" target="_blank">Widerrufsbelehrung</a> gelesen.',
+    gate_credits: 'Dafür brauchst du {n} Credits, du hast {s}.', gate_tageslimit: 'Die KI-Werkstatt ist heute ausgelastet – bitte morgen noch einmal versuchen.',
+    mtl: 'Monatlich', jaehrl: 'Jährlich', spar: '−17 %', pro_monat: 'im Monat', pro_jahr: 'im Jahr',
+    pak_t: 'Credits einzeln kaufen', pak_u: 'Ohne Abo, ohne Verfall – ideal, wenn du nur ab und zu eine Artwork-Seite gestaltest.',
+    best_t: 'Bestellung prüfen', best_u: 'Bitte prüfe deine Bestellung. Danach geht es zur Zahlung bei Stripe.',
+    best_btn: 'Zahlungspflichtig bestellen', best_hin: 'Weiterleitung zu Stripe. Wir speichern keine Zahlungsdaten.',
+    best_leistung: 'Leistung', best_laufzeit: 'Laufzeit', best_gesamt: 'Gesamt heute', best_verlaengert: 'verlängert sich automatisch, jederzeit zum Laufzeitende kündbar',
+    best_einmalig: 'Einmalzahlung, kein Abo', best_fehlt: 'Bitte bestätige beide Punkte, um fortzufahren.',
+    credits: 'Credits', credits_kaufen: 'Credits kaufen', kein_guthaben: 'Nicht genug Credits',
+    guthaben: 'Guthaben', guthaben_abo: 'davon monatlich', guthaben_gekauft: 'davon gekauft',
+    journal: 'Letzte Buchungen', j_start: 'Startguthaben', j_kauf: 'Credits gekauft', j_artwork: 'Artwork-Seite',
+    j_abo_guthaben: 'Monatsguthaben', j_erstattung_fehler: 'Rückbuchung (fehlgeschlagen)', j_erstattung: 'Erstattung', j_test: 'Korrektur',
+    waehlen: 'Wählen', aktuell: 'Dein Tarif', kuendigen: 'Abo kündigen', kuendigen_frage: 'Abo wirklich zum Laufzeitende kündigen?',
+    gekuendigt: 'Gekündigt zum', reaktivieren: 'Kündigung zurücknehmen', reaktiviert: 'Dein Abo läuft weiter.',
+    abo_bis: 'Verlängert sich am', tarif_wechseln: 'Tarif wechseln', zahlung_offen: 'Zahlung offen – bitte Zahlungsmittel prüfen.',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
     aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
@@ -1135,7 +1199,7 @@ const T = {
     anmelden: 'Anmelden', registrieren: 'Registrieren', anmelden_t: 'Anmelden', passwort: 'Passwort',
     agb_text: 'Ich akzeptiere die AGB und die Datenschutzerklärung.',
     agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
-    konto: 'Konto', tarif_frei: 'Kostenlos', upgrade: 'Auf Pro upgraden', abo_verwalten: 'Abo verwalten',
+    konto: 'Konto', tarif_frei: 'Kostenlos', upgrade: 'Tarif & Credits', abo_verwalten: 'Abo verwalten',
     ex_alle_alt: 'PDF – alle Karten (S/W)', ex_fehlend_alt: 'PDF – nur fehlende Karten',
     ex_check_alt: 'Checkliste ohne Bilder (zählt nicht als Export)', ex_kauf: 'Kaufliste als CSV (Pro)',
     ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
@@ -1146,12 +1210,12 @@ const T = {
     gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
     gate_preise: 'Für Preise brauchst du ein kostenloses Konto.',
     preise_morgen: 'Free-Konto: Preise wurden heute schon aktualisiert — morgen wieder (oder mit Pro sofort).',
-    zahlung_ok: 'Zahlung erfolgreich — willkommen bei Pro! 🎉', zahlung_abbruch: 'Zahlung abgebrochen.',
+    zahlung_ok: 'Zahlung erfolgreich — vielen Dank! 🎉', zahlung_abbruch: 'Zahlung abgebrochen.',
     willkommen: 'Willkommen!', uebernommen: 'Binder wurden deinem Konto zugeordnet.',
-    up_t: 'Binderplan Pro', up_u: 'Unbegrenzte Binder & Exporte, tagesaktuelle Preise und die Kaufliste.',
+    up_t: 'Mehr aus deinem Binder holen', up_u: 'Unbegrenzt planen und drucken – und Credits für KI-Artwork-Seiten.',
     up_monat: 'Monat', up_monat_k: 'monatlich kündbar', up_jahr: 'Jahr', up_jahr_k: '= 2,08 € im Monat',
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
-    up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.',
+    up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
@@ -1180,9 +1244,29 @@ const T = {
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
-    aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
+    aw_kosten_hin: 'for this page · you have {s}', aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
     aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
     s_artwork: '🎨 Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
+    pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
+    pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
+    preise_live: 'Refresh prices any time', preise_tag: 'Refresh prices once a day',
+    kaufliste_csv: 'Shopping list as CSV', zum_start: 'to start with', beliebt: 'Popular',
+    up_recht_kurz: 'Final prices, no VAT (§ 19 UStG, German small business rule).',
+    best_agb_html: 'I accept the <a href="recht#agb" target="_blank">terms</a> and have read the <a href="recht#datenschutz" target="_blank">privacy policy</a> and the <a href="recht#widerruf" target="_blank">right of withdrawal</a>.',
+    gate_credits: 'This needs {n} credits, you have {s}.', gate_tageslimit: 'The AI workshop is busy today – please try again tomorrow.',
+    mtl: 'Monthly', jaehrl: 'Yearly', spar: '−17 %', pro_monat: 'per month', pro_jahr: 'per year',
+    pak_t: 'Buy credits separately', pak_u: 'No subscription, no expiry – ideal if you only make an artwork page now and then.',
+    best_t: 'Review your order', best_u: 'Please review your order. Payment is handled by Stripe.',
+    best_btn: 'Order with obligation to pay', best_hin: 'You will be redirected to Stripe. We never store payment details.',
+    best_leistung: 'Product', best_laufzeit: 'Term', best_gesamt: 'Total today', best_verlaengert: 'renews automatically, cancel any time to the end of the term',
+    best_einmalig: 'One-off payment, no subscription', best_fehlt: 'Please confirm both points to continue.',
+    credits: 'Credits', credits_kaufen: 'Buy credits', kein_guthaben: 'Not enough credits',
+    guthaben: 'Balance', guthaben_abo: 'monthly allowance', guthaben_gekauft: 'purchased',
+    journal: 'Recent entries', j_start: 'Welcome credits', j_kauf: 'Credits purchased', j_artwork: 'Artwork page',
+    j_abo_guthaben: 'Monthly allowance', j_erstattung_fehler: 'Refund (failed run)', j_erstattung: 'Refund', j_test: 'Correction',
+    waehlen: 'Choose', aktuell: 'Your plan', kuendigen: 'Cancel subscription', kuendigen_frage: 'Really cancel at the end of the term?',
+    gekuendigt: 'Cancelled as of', reaktivieren: 'Undo cancellation', reaktiviert: 'Your subscription continues.',
+    abo_bis: 'Renews on', tarif_wechseln: 'Change plan', zahlung_offen: 'Payment pending – please check your payment method.',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
     aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
@@ -1261,7 +1345,7 @@ const T = {
     anmelden: 'Sign in', registrieren: 'Sign up', anmelden_t: 'Sign in', passwort: 'Password',
     agb_text: 'I accept the terms of service and the privacy policy.',
     agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
-    konto: 'Account', tarif_frei: 'Free', upgrade: 'Upgrade to Pro', abo_verwalten: 'Manage subscription',
+    konto: 'Account', tarif_frei: 'Free', upgrade: 'Plans & credits', abo_verwalten: 'Manage subscription',
     ex_alle_alt: 'PDF – all cards (B/W)', ex_fehlend_alt: 'PDF – missing cards only',
     ex_check_alt: 'Checklist without images (does not count as export)', ex_kauf: 'Buy list as CSV (Pro)',
     ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
@@ -1272,12 +1356,12 @@ const T = {
     gate_pro: 'This feature is part of Binderplan Pro.',
     gate_preise: 'Prices need a free account.',
     preise_morgen: 'Free account: prices were already refreshed today — again tomorrow (or instantly with Pro).',
-    zahlung_ok: 'Payment successful — welcome to Pro! 🎉', zahlung_abbruch: 'Payment cancelled.',
+    zahlung_ok: 'Payment successful — thank you! 🎉', zahlung_abbruch: 'Payment cancelled.',
     willkommen: 'Welcome!', uebernommen: 'Your binders were linked to your account.',
-    up_t: 'Binderplan Pro', up_u: 'Unlimited binders & exports, daily prices and the buy list.',
+    up_t: 'Get more out of your binder', up_u: 'Plan and print without limits – plus credits for AI artwork pages.',
     up_monat: 'Month', up_monat_k: 'cancel monthly', up_jahr: 'Year', up_jahr_k: '= €2.08 per month',
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
-    up_recht: 'Final prices; no VAT charged under German small business rules (§ 19 UStG). Payments via Stripe, subscriptions cancellable anytime for the end of the term.',
+    up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
@@ -1344,10 +1428,10 @@ async function api(pfad, opts) {
     let code = null; let msg = 'API ' + r.status;
     try {
       const d = await r.json();
-      if (d.detail && d.detail.code) code = d.detail.code;
+      if (d.detail && d.detail.code) { code = d.detail.code; var detail = d.detail; }
       else if (typeof d.detail === 'string') msg = d.detail;
     } catch (e) {}
-    const err = new Error(msg); err.code = code; err.status = r.status;
+    const err = new Error(msg); err.code = code; err.status = r.status; err.detail = typeof detail !== 'undefined' ? detail : null;
     throw err;
   }
   return r.json();
@@ -1359,6 +1443,12 @@ function gate(err) {
   if (err.code === 'limit_binder') { upgradeOeffnen(t('gate_binder')); return true; }
   if (err.code === 'limit_export') { upgradeOeffnen(t('gate_export')); return true; }
   if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro')); return true; }
+  if (err.code === 'keine_credits') {
+    const d = err.detail || {};
+    upgradeOeffnen(t('gate_credits').replace('{n}', d.benoetigt || '').replace('{s}', d.saldo || 0));
+    return true;
+  }
+  if (err.code === 'tageslimit') { toast(t('gate_tageslimit')); return true; }
   return false;
 }
 const nm = (k) => (KLANG === 'en' ? (k.name_en || k.name) : (k.name || k.name_en)) || '';
@@ -1553,18 +1643,20 @@ function kontoMenue() {
   if (!S.user) return loginOeffnen('');
   menuToggle('menu-konto');
   const u = S.user;
-  const planLbl = u.plan === 'free' ? t('tarif_frei') : (u.plan === 'lifetime' ? 'Lifetime ★' : 'Pro ★');
+  const planLbl = u.plan_name || t('tarif_frei');
   const exporte = u.exporte_limit == null ? '∞' : `${Math.max(0, u.exporte_limit - u.exporte_benutzt)}/${u.exporte_limit}`;
   $('menu-konto').innerHTML = `
     <div class="konto-mail"><strong style="color:var(--ink)">${esc(anzeigeName())}</strong><br>${esc(u.email)}<br>
-      ${planLbl} · ${exporte} ${t('exporte_uebrig')}</div>
+      ${planLbl}${u.plan !== 'free' ? ' ★' : ''} · ${exporte} ${t('exporte_uebrig')}<br>
+      <span class="credit-chip" style="margin-top:5px">✦ ${u.credits || 0} ${t('credits')}</span></div>
     <div class="trenn"></div>
     <button onclick="startOeffnen()">${t('start')}</button>
     <button onclick="profilOeffnen()">${t('profil')}</button>
     <div class="trenn"></div>
-    ${u.plan === 'free' ? `<button onclick="upgradeOeffnen('')">${t('upgrade')} ★</button>` : ''}
-    ${u.plan === 'pro' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
+    <button onclick="upgradeOeffnen('')">${u.plan === 'free' ? t('upgrade') + ' ★' : t('credits_kaufen')}</button>
+    ${u.plan !== 'free' && u.plan !== 'lifetime' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
     <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
     <button onclick="abmelden()">${t('abmelden')}</button>`;
 }
 
@@ -1631,7 +1723,6 @@ async function authAbsenden() {
     });
     setToken(d.token);
     S.user = d.user;
-    if (authModus === 'reg' && window.mpTrack) { try { mpTrack('signup', String(d.user.email).slice(0, 3) + '…'); } catch (e) {} }
     const nameFragen = authModus === 'reg';
     // Anonyme Binder dem Konto zuordnen
     const ids = binderIds();
@@ -1664,17 +1755,110 @@ async function abmelden() {
   location.href = location.pathname;
 }
 
+// ---------- Tarife, Credits, Bestellung ----------
+const TARIF = { daten: null, zeitraum: 'monat', auswahl: null };
+
+async function tarifeLaden() {
+  if (TARIF.daten) return TARIF.daten;
+  TARIF.daten = await api('api/tarife');
+  return TARIF.daten;
+}
 function upgradeOeffnen(grund) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  if (!S.user) return loginOeffnen(grund);
-  if (grund) $('up-grund').textContent = grund + ' ' + t('up_u');
+  if (!S.user) return loginOeffnen(grund || t('aw_login'));
+  $('up-grund').textContent = grund ? grund + ' ' + t('up_u') : t('up_u');
   $('modal-upgrade').classList.remove('hidden');
+  tarifeLaden().then(zeichneTarife).catch(() => toast(t('aw_fehler')));
 }
-async function checkout(tarif) {
+function tarifZeitraum(z) {
+  TARIF.zeitraum = z;
+  $('tz-monat').classList.toggle('on', z === 'monat');
+  $('tz-jahr').classList.toggle('on', z === 'jahr');
+  zeichneTarife();
+}
+function zeichneTarife() {
+  const d = TARIF.daten; if (!d) return;
+  const jahr = TARIF.zeitraum === 'jahr';
+  const mein = (S.user || {}).plan || 'free';
+  $('tarif-karten').innerHTML = d.tarife.map((tf) => {
+    const preis = jahr ? tf.preis_jahr : tf.preis_monat;
+    const ist = mein === tf.id;
+    const zeilen = [];
+    zeilen.push(`<li>${tf.binder == null ? t('unbegrenzt_binder') : tf.binder + ' ' + t('binder_wort')}</li>`);
+    zeilen.push(`<li>${tf.exporte == null ? t('unbegrenzt_pdf') : tf.exporte + ' ' + t('pdf_monat')}</li>`);
+    zeilen.push(`<li>${t('checkliste_frei')}</li>`);
+    zeilen.push(`<li class="${tf.preise_live ? '' : 'aus'}">${tf.preise_live ? t('preise_live') : t('preise_tag')}</li>`);
+    zeilen.push(`<li class="${tf.kaufliste ? '' : 'aus'}">${t('kaufliste_csv')}</li>`);
+    const cr = tf.credits ? `${tf.credits} ${t('credits')} ${t('pro_monat')}`
+      : `${d.start_credits} ${t('credits')} ${t('zum_start')}`;
+    return `<div class="tk-tarif ${tf.id === 'plus' ? 'empfohlen' : ''}">
+      ${tf.id === 'plus' ? `<span class="empf-band">${t('beliebt')}</span>` : ''}
+      <div class="tk-name">${esc(tf.name)}</div>
+      <div class="tk-preis">${preis ? preis.toFixed(2).replace('.', ',') + ' €' : '0 €'}
+        <small>${preis ? (jahr ? t('pro_jahr') : t('pro_monat')) : ''}</small></div>
+      <div class="tk-credits">✦ ${cr}</div>
+      <ul>${zeilen.join('')}</ul>
+      ${ist ? `<button class="btn sekundaer" disabled>${t('aktuell')}</button>`
+        : (preis ? `<button class="btn" onclick="bestellungOeffnen('${tf.id}','${jahr ? 'jahr' : 'monat'}')">${t('waehlen')}</button>` : '')}
+    </div>`;
+  }).join('');
+  $('paket-karten').innerHTML = d.pakete.map((pk) => `
+    <div class="paket" onclick="bestellungOeffnen('paket','${pk.id}')">
+      <div class="p-cr">${pk.credits} ${t('credits')}</div>
+      <div class="p-eur">${pk.preis.toFixed(2).replace('.', ',')} €</div>
+      <div class="p-je">${(pk.preis / pk.credits * 100).toFixed(1).replace('.', ',')} ct / ${t('credits').slice(0, -1)}</div>
+    </div>`).join('');
+}
+
+// Bestellübersicht: Pflicht nach § 312j BGB (Button-Lösung) samt beider Zustimmungen
+function bestellungOeffnen(art, variante) {
+  const d = TARIF.daten; if (!d) return;
+  TARIF.auswahl = { art, variante };
+  let name, betrag, laufzeit;
+  if (art === 'paket') {
+    const pk = d.pakete.find((x) => x.id === variante);
+    name = `${pk.credits} ${t('credits')}`; betrag = pk.preis; laufzeit = t('best_einmalig');
+  } else {
+    const tf = d.tarife.find((x) => x.id === art);
+    betrag = variante === 'jahr' ? tf.preis_jahr : tf.preis_monat;
+    name = `Binderplan ${tf.name} – ${variante === 'jahr' ? t('jaehrl') : t('mtl')}`;
+    laufzeit = `${variante === 'jahr' ? t('jaehrl') : t('mtl')}, ${t('best_verlaengert')}`;
+  }
+  $('bestell-box').innerHTML = `
+    <div class="bestell-zeile"><span>${t('best_leistung')}</span><strong>${esc(name)}</strong></div>
+    <div class="bestell-zeile"><span>${t('best_laufzeit')}</span><span style="text-align:right;max-width:60%">${laufzeit}</span></div>
+    ${art !== 'paket' ? `<div class="bestell-zeile"><span>✦ ${t('credits')}</span><strong>${d.tarife.find((x) => x.id === art).credits} ${t('pro_monat')}</strong></div>` : ''}
+    <div class="bestell-zeile gesamt"><span>${t('best_gesamt')}</span><span>${betrag.toFixed(2).replace('.', ',')} €</span></div>
+    <div style="font-size:11px;color:var(--mut);margin-top:6px">${t('up_recht_kurz')}</div>`;
+  $('best-agb-text').innerHTML = t('best_agb_html');
+  $('best-widerruf-text').textContent = d.widerruf_text;
+  $('best-agb').checked = false; $('best-widerruf').checked = false;
+  $('best-fehler').textContent = '';
+  $('best-senden').disabled = false;
+  $('modal-upgrade').classList.add('hidden');
+  $('modal-bestellung').classList.remove('hidden');
+}
+async function bestellungAbsenden() {
+  if (!$('best-agb').checked || !$('best-widerruf').checked) {
+    $('best-fehler').textContent = t('best_fehlt'); return;
+  }
+  $('best-senden').disabled = true;
   try {
-    const d = await api('api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tarif }) });
+    const d = await api('api/stripe/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...TARIF.auswahl, agb: true, widerruf: true }),
+    });
     location.href = d.url;
-  } catch (e) { if (!gate(e)) toast(e.message); }
+  } catch (e) {
+    $('best-senden').disabled = false;
+    if (!gate(e)) $('best-fehler').textContent = e.message || t('aw_fehler');
+  }
+}
+async function creditsOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.user) return loginOeffnen('');
+  await tarifeLaden();
+  upgradeOeffnen('');
 }
 async function aboVerwalten() {
   try {
@@ -1777,15 +1961,63 @@ function profilFuellen() {
   if (!u) return;
   $('pf-email').textContent = u.email;
   $('pf-name').value = u.name || '';
-  $('pf-plan').textContent = u.plan === 'free' ? t('tarif_frei') : (u.plan === 'lifetime' ? 'Lifetime ★' : 'Pro ★');
+  $('pf-plan').textContent = (u.plan_name || t('tarif_frei')) + (u.plan !== 'free' ? ' ★' : '')
+    + (u.abo_kuendigt && u.abo_bis ? ` · ${t('gekuendigt')} ${u.abo_bis}` : (u.abo_bis ? ` · ${t('abo_bis')} ${u.abo_bis}` : ''));
+  if ($('pf-credits')) {
+    $('pf-credits').innerHTML = `<span class="credit-chip">✦ ${u.credits || 0} ${t('credits')}</span>`
+      + (u.credits_monat ? ` <span style="font-size:11.5px;color:var(--mut)">(${u.credits_abo || 0} ${t('guthaben_abo')}, ${u.credits_gekauft || 0} ${t('guthaben_gekauft')})</span>` : '');
+  }
+  if ($('pf-kuend')) {
+    $('pf-kuend').classList.toggle('hidden', u.plan === 'free' || u.plan === 'lifetime');
+    $('pf-kuend').textContent = u.abo_kuendigt ? t('reaktivieren') : t('kuendigen');
+  }
+  journalLaden();
   $('pf-binder').textContent = u.binder_anzahl + ' / ' + (u.binder_limit == null ? '∞' : u.binder_limit);
   $('pf-exporte').textContent = u.exporte_limit == null ? '∞' : Math.max(0, u.exporte_limit - u.exporte_benutzt) + ' / ' + u.exporte_limit;
-  $('pf-upgrade').classList.toggle('hidden', u.plan !== 'free');
-  $('pf-abo').classList.toggle('hidden', u.plan !== 'pro');
+  $('pf-upgrade').classList.toggle('hidden', false);
+  $('pf-upgrade').textContent = u.plan === 'free' ? t('upgrade') : t('credits_kaufen');
+  $('pf-abo').classList.toggle('hidden', u.plan === 'free' || u.plan === 'lifetime');
   $('pf-life').classList.toggle('hidden', u.plan !== 'lifetime');
   $('pf-lang-de').classList.toggle('on', LANG === 'de');
   $('pf-lang-en').classList.toggle('on', LANG === 'en');
   themeAnwenden();
+}
+async function datenExport() {
+  // Auskunft nach Art. 15/20 DSGVO als JSON-Datei
+  try {
+    const r = await fetch('api/auth/export', { headers: { Authorization: 'Bearer ' + S.token } });
+    if (!r.ok) return toast(t('aw_fehler'));
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'binderplan-daten.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { toast(t('aw_fehler')); }
+}
+async function journalLaden() {
+  const box = $('pf-journal'); if (!box) return;
+  try {
+    const d = await api('api/credits');
+    S.user = { ...S.user, ...d.konto };
+    box.innerHTML = d.buchungen.length ? d.buchungen.map((b) => `<div>
+        <span>${t('j_' + b.grund) || b.grund}<br><span style="color:var(--mut);font-size:11px">${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
+        <span class="${b.delta > 0 ? 'plus' : 'minus'}">${b.delta > 0 ? '+' : ''}${b.delta}</span></div>`).join('')
+      : `<div style="color:var(--mut)">–</div>`;
+  } catch (e) { box.innerHTML = ''; }
+}
+async function aboKuendigen() {
+  const u = S.user || {};
+  try {
+    if (u.abo_kuendigt) {
+      await api('api/abo/reaktivieren', { method: 'POST' });
+      toast(t('reaktiviert'));
+    } else {
+      if (!confirm(t('kuendigen_frage'))) return;
+      const d = await api('api/abo/kuendigen', { method: 'POST' });
+      toast(`${t('gekuendigt')} ${d.bis}`);
+    }
+    const me = await api('api/auth/me');
+    S.user = me.user; profilFuellen(); kontoAnzeigen();
+  } catch (e) { toast(e.message || t('aw_fehler')); }
 }
 async function pwAendern() {
   const alt = $('pf-pw-alt').value, neu = $('pf-pw-neu').value;
@@ -3018,7 +3250,7 @@ function planerAktionen() {
 
 // ---------- Artwork-Seiten (KI erweitert das Kartenmotiv über die ganze Seite) ----------
 const AW_STILE = ['karte', 'comic', 'foto', 'aquarell', 'oel', 'anime', 'retro', 'pixel', 'neon', 'skizze', 'minimal', 'dunkel'];
-const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], kontingent: null, pokemon: [] };
+const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], konto: null, pokemon: [], preise: null };
 
 function artworkOeffnen(seite) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -3034,6 +3266,10 @@ function artworkOeffnen(seite) {
   $('aw-fehler').textContent = '';
   AW.pokemon = []; zeichneArtworkPoke(); $('aw-poke').value = '';
   if (!S.pokedex) ladePokedex().catch(() => {});
+  if (!AW.preise) api('api/artwork/stile').then((d) => {
+    AW.preise = { basis: d.preis_basis, je_karte: d.preis_je_karte, max: d.preis_max };
+    AW.konto = d.konto; artworkKontingentText();
+  }).catch(() => {});
   artworkAnsicht('editor');
   zeichneArtworkGrid('aw-grid', true); zeichneArtworkStile();
   modalOeffnen('modal-artwork');
@@ -3070,16 +3306,27 @@ function artworkAnkerToggle(s) {
   AW.anker.has(s) ? AW.anker.delete(s) : AW.anker.add(s);
   $('aw-fehler').textContent = '';
   zeichneArtworkGrid('aw-grid', true);
+  artworkKontingentText();
 }
 function zeichneArtworkStile() {
   $('aw-stile').innerHTML = AW_STILE.map((k) => `<button class="chip ${AW.stil === k ? 'on' : ''}" onclick="AW.stil='${k}';zeichneArtworkStile()">${t('stil_' + k)}</button>`).join('');
 }
+// Was diese Seite kostet: Grundpreis + Zuschlag je Ankerkarte (mehr Karten = mehr Modellkosten)
+function artworkPreis() {
+  const p = AW.preise;
+  if (!p) return 10;
+  return Math.min(p.max, p.basis + Math.max(0, AW.anker.size - 2) * p.je_karte);
+}
 function artworkKontingentText() {
-  const k = AW.kontingent; const el = $('aw-kont');
+  const k = AW.konto; const el = $('aw-kont');
+  const kosten = artworkPreis();
   if (!k) { el.textContent = ''; return; }
-  if (k.zeitraum === 'monat') el.textContent = k.frei ? t('aw_kont_monat').replace('{n}', k.frei).replace('{m}', k.limit) : t('aw_kont_leer');
-  else el.textContent = k.frei ? t('aw_kont_frei') : t('aw_kont_leer_frei');
-  $('aw-start').disabled = !k.frei;
+  const reicht = k.credits >= kosten;
+  el.innerHTML = `<span class="credit-chip">✦ ${kosten} ${t('credits')}</span> `
+    + `<span style="color:${reicht ? 'var(--mut)' : 'var(--akzent)'}">${t('aw_kosten_hin')
+        .replace('{s}', k.credits)}</span>`
+    + (reicht ? '' : ` · <a href="#" onclick="event.preventDefault();upgradeOeffnen('')" style="color:var(--akzent);font-weight:700">${t('credits_kaufen')}</a>`);
+  $('aw-start').disabled = !reicht;
 }
 
 async function artworkStarten() {
@@ -3097,7 +3344,11 @@ async function artworkStarten() {
     artworkPollen(d.id);
   } catch (e) {
     $('aw-start').disabled = false;
-    if (e.code === 'limit_artwork') return upgradeOeffnen(t('gate_artwork'));
+    if (e.code === 'keine_credits' || e.code === 'limit_artwork') {
+      const dt = e.detail || {};
+      return upgradeOeffnen(t('gate_credits').replace('{n}', dt.benoetigt || artworkPreis()).replace('{s}', dt.saldo || 0));
+    }
+    if (e.code === 'tageslimit') { $('aw-fehler').textContent = t('gate_tageslimit'); return; }
     if (e.code === 'login') return loginOeffnen(t('aw_login'));
     const texte = { kein_anker: 'aw_kein_anker', kein_platz: 'aw_kein_platz', artwork_laeuft: 'aw_laeuft_schon' };
     $('aw-fehler').textContent = texte[e.code] ? t(texte[e.code]) : (t('aw_fehler') + ' (' + (e.message || e.status) + ')');
@@ -3110,7 +3361,8 @@ function artworkPollen(id) {
       const d = await api('api/artwork/' + id);
       if (d.status === 'laeuft') return;
       clearInterval(AW.poll); AW.poll = null;
-      AW.kontingent = d.kontingent; artworkKontingentText();
+      AW.konto = d.konto; if (S.user && d.konto) S.user = { ...S.user, ...d.konto };
+      artworkKontingentText();
       if (d.status === 'fertig') { await artworkGalerieLaden(); artworkZeigen(d); }
       else { artworkAnsicht('editor'); $('aw-fehler').textContent = t('aw_fehler') + (d.fehler ? ': ' + d.fehler : ''); $('aw-start').disabled = false; }
     } catch (e) { clearInterval(AW.poll); AW.poll = null; artworkAnsicht('editor'); $('aw-fehler').textContent = t('aw_fehler'); $('aw-start').disabled = false; }
@@ -3157,7 +3409,8 @@ async function artworkGalerieLaden() {
   try {
     const d = await api('api/artwork?binder_id=' + encodeURIComponent(S.binder.id || ''));
     AW.liste = d.artworks.filter((a) => a.status === 'fertig');
-    AW.kontingent = d.kontingent; artworkKontingentText();
+    AW.konto = d.konto; if (S.user && d.konto) S.user = { ...S.user, ...d.konto };
+    artworkKontingentText();
     // Läuft noch ein Job (Modal zwischendurch geschlossen)? Dann dort weitermachen
     const laufend = d.artworks.find((a) => a.status === 'laeuft');
     if (laufend && !AW.poll) { zeichneArtworkGrid('aw-lauf-grid', false); artworkAnsicht('lauf'); artworkPollen(laufend.id); }

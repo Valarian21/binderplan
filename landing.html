@@ -10,13 +10,17 @@
 <meta property="og:description" content="Master Set, Pokédex oder Lieblings-Pokémon: Binder planen, Cardmarket-Preise in Euro sehen, Platzhalter drucken, Karten abhaken.">
 <meta property="og:url" content="https://binderplan.app/">
 <meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/assets/quicksand.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <meta name="theme-color" content="#e85d43">
+<meta property="og:image" content="https://binderplan.app/assets/hero.png">
+<meta property="og:site_name" content="Binderplan">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://binderplan.app/assets/hero.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/","inLanguage":"de","description":"Pokémon-Sammelbinder planen: Master Set, Pokédex, Cardmarket-Preise in Euro, Kaufliste und druckbare Platzhalter.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Kostenlos"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Pro monatlich"},{"@type":"Offer","price":"49.99","priceCurrency":"EUR","name":"Lifetime"}]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/","inLanguage":"de","description":"Pokémon-Sammelbinder planen: Master Set, Pokédex, Cardmarket-Preise in Euro, Kaufliste und druckbare Platzhalter.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Gratis"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Plus monatlich"},{"@type":"Offer","price":"7.99","priceCurrency":"EUR","name":"Pro monatlich"}]}
 </script>
 <style>
   :root { --bg:#fdf8f1; --ink:#3a3227; --mut:#8c7f6c; --line:#eadfd0; --card:#fff; --akzent:#e85d43; --akzent-dunkel:#c74630; --gruen:#4f9d69; --panel2:#f6efe4; }
@@ -72,14 +76,6 @@
       location.replace('/app' + location.search + location.hash);
     }
   } catch (e) {} })();
-</script>
-<script>
-(function(){var K="mp_utm",P=["utm_source","utm_medium","utm_campaign","utm_content"],q=new URLSearchParams(location.search),u={},h=false;
-P.forEach(function(k){var v=q.get(k);if(v){u[k]=v;h=true}});
-if(h){document.cookie=K+"="+encodeURIComponent(JSON.stringify(u))+";max-age=7776000;path=/;SameSite=Lax"}
-function read(){var m=document.cookie.match(new RegExp("(?:^|; )"+K+"=([^;]*)"));try{return m?JSON.parse(decodeURIComponent(m[1])):{}}catch(e){return{}}}
-window.mpTrack=function(ev,ref){var t=read();try{navigator.sendBeacon?navigator.sendBeacon("https://agi-empire.com/api/mp/events",new Blob([JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}})],{type:"application/json"})):fetch("https://agi-empire.com/api/mp/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({project:"47a70767-fbe6-4657-b406-2de088282896",event:ev||"signup",userRef:ref||"",utm:{source:t.utm_source||"",medium:t.utm_medium||"",campaign:t.utm_campaign||"",content:t.utm_content||""}}),keepalive:true})}catch(e){}};
-window.mpUtm=read;})();
 </script>
 </head>
 <body>
@@ -137,11 +133,12 @@ window.mpUtm=read;})();
     <h2>Preise</h2>
     <p class="sub">Planen ist kostenlos. Pro nimmt die Grenzen weg.</p>
     <div class="tarife">
-      <div class="tarif"><strong>Kostenlos</strong><div class="p">0 €</div><ul><li>Planen ohne Anmeldung</li><li>Preise ansehen</li><li>2 gespeicherte Binder</li><li>1 Karten-PDF pro Monat, Checklisten unbegrenzt</li></ul><a class="btn sek" href="/app">Loslegen</a></div>
-      <div class="tarif top"><strong>Pro</strong><div class="p">3,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Unbegrenzte Binder &amp; PDFs</li><li>Preise sofort aktualisieren</li><li>Kaufliste als CSV</li><li>Jahr: 24,99 € (2 Monate geschenkt)</li></ul><a class="btn" href="/app?upgrade=1">Pro holen</a></div>
-      <div class="tarif"><strong>Lifetime</strong><div class="p">49,99 €</div><ul><li>Einmal zahlen, für immer Pro</li><li>Kein Abo, keine Verlängerung</li></ul><a class="btn sek" href="/app?upgrade=1">Einmal kaufen</a></div>
+      <div class="tarif"><strong>Gratis</strong><div class="p">0 €</div><ul><li>Planen ohne Anmeldung</li><li>3 gespeicherte Binder</li><li>2 Platzhalter-PDFs pro Monat, Checklisten unbegrenzt</li><li>20 Credits zum Ausprobieren (2 Artwork-Seiten)</li></ul><a class="btn sek" href="/app">Loslegen</a></div>
+      <div class="tarif top"><strong>Plus</strong><div class="p">3,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Unbegrenzte Binder &amp; Drucke</li><li>Preise jederzeit aktualisieren, Kaufliste als CSV</li><li><b>80 Credits im Monat</b> = 8 Artwork-Seiten</li><li>Jahr: 39,99 € (2 Monate geschenkt)</li></ul><a class="btn" href="/app?upgrade=1">Plus holen</a></div>
+      <div class="tarif"><strong>Pro</strong><div class="p">7,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Alles aus Plus</li><li><b>200 Credits im Monat</b> = 20 Artwork-Seiten</li><li>Jahr: 79,99 € (2 Monate geschenkt)</li></ul><a class="btn sek" href="/app?upgrade=1">Pro holen</a></div>
     </div>
-    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:10px">Endpreise, keine Umsatzsteuer (§ 19 UStG). Zahlung über Stripe, Abos jederzeit zum Laufzeitende kündbar.</p>
+    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:10px">Credits gibt es auch einzeln: 100 für 4,99 €, 250 für 10,99 €, 600 für 23,99 € – ohne Abo, ohne Verfall. Eine Artwork-Seite kostet 10 Credits (bei mehr als zwei Karten auf der Seite je Karte 2 mehr, höchstens 30).</p>
+    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:6px">Endpreise, gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple&nbsp;Pay, Google&nbsp;Pay, Klarna). Abos verlängern sich automatisch und sind <a href="/kuendigen">jederzeit zum Laufzeitende kündbar</a>.</p>
   </section>
 
   <section class="faq">
@@ -149,11 +146,13 @@ window.mpUtm=read;})();
     <details><summary>Darf ich die Platzhalter drucken?</summary><p>Ja – für den privaten Gebrauch als Platzhalter im eigenen Binder. Die Drucke sind schwarz-weiß, tragen ein Wasserzeichen und dürfen nicht verkauft, getauscht oder als echte Karten ausgegeben werden. Binderplan ist ein inoffizielles Fan-Werkzeug ohne Verbindung zu The Pokémon Company oder Nintendo.</p></details>
     <details><summary>Woher kommen die Preise?</summary><p>Aus dem Cardmarket-Trend (Euro) über die TCGdex-Datenbank. Sie sind eine Orientierung, kein Angebot – bei alten Karten fehlt teils der Cardmarket-Eintrag, dann steht ein „?“.</p></details>
     <details><summary>Warum sind manche Karten auf Englisch abgebildet?</summary><p>Für die alten WotC-Sets (Base Set, Jungle, Fossil …) gibt es keine deutschen Scans in der Datenbank. Diese Karten sind mit „EN“ gekennzeichnet; Name und Setnummer sind trotzdem deutsch.</p></details>
+    <details><summary>Was sind Credits?</summary><p>Credits sind die Verrechnungseinheit für die KI-Artwork-Seiten – nur dafür, alles andere ist im Tarif enthalten. Eine Artwork-Seite kostet 10 Credits; liegen mehr als zwei Karten auf der Seite, kommen je Karte 2 dazu (höchstens 30). Was eine Seite kostet, siehst du vor dem Start. Klappt eine Erzeugung technisch nicht, bekommst du die Credits automatisch zurück. Einzeln gekaufte Credits verfallen nie.</p></details>
+    <details><summary>Wie kündige ich?</summary><p>Mit zwei Klicks unter <a href="/kuendigen">binderplan.app/kuendigen</a> – ohne Anmeldung. Dein Zugang bleibt bis zum Ende der bezahlten Laufzeit, danach läuft dein Konto kostenlos weiter. Gekaufte Credits behältst du.</p></details>
     <details><summary>Brauche ich ein Konto?</summary><p>Zum Planen nicht. Ein kostenloses Konto brauchst du für den Karten-PDF-Export und um Binder auf mehreren Geräten zu sehen.</p></details>
   </section>
 
   <footer>
-    Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#datenschutz">Datenschutz</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
+    Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#widerruf">Widerruf</a> · <a href="recht#datenschutz">Datenschutz</a> · <a href="/kuendigen">Verträge hier kündigen</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
   </footer>
 </div>
 </body>

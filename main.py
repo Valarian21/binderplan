@@ -15,6 +15,7 @@ import re
 import secrets
 import sqlite3
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -905,12 +906,50 @@ def _preishistorie_job():
 
 
 def _aufraeumen_job():
-    """Leere Gast-Binder (ohne Konto, ohne Karten, älter als 2 Tage) entfernen."""
+    """Leere Gast-Binder (ohne Konto, ohne Karten, älter als 2 Tage) und abgelaufene
+    Sitzungen entfernen."""
     con = get_db()
     con.execute("DELETE FROM binders WHERE user_id IS NULL AND (items IS NULL OR items = '[]')"
                 " AND created_at < datetime('now', '-2 days')")
+    # Sitzungen laufen nach einem Jahr ab; verwaiste (Konto gelöscht) fliegen sofort raus
+    con.execute("DELETE FROM sessions WHERE created_at < datetime('now', '-365 days')"
+                " OR user_id NOT IN (SELECT id FROM users)")
+    con.execute("DELETE FROM stripe_events WHERE verarbeitet_am < datetime('now', '-90 days')")
     con.commit()
     con.close()
+
+
+# Obergrenzen für den Bild-Cache (MB). Karten-/Sprite-Bilder sind jederzeit nachladbar,
+# deshalb dürfen die ältesten weg, sobald es eng wird. Artwork-Bilder gehören Nutzern und
+# werden hier nie angefasst — die verschwinden nur mit dem Artwork oder dem Konto.
+CACHE_GRENZEN = {"cards/low": 400, "cards/high": 600, "cards/print": 400, "dex": 200, "sym": 50}
+
+
+def _cache_job():
+    """Bild-Cache auf die Obergrenzen stutzen (älteste Zugriffe zuerst). Ohne das wächst
+    er unbegrenzt — der Katalog hat 33.700 Karten in zwei Sprachen."""
+    for teil, grenze_mb in CACHE_GRENZEN.items():
+        ordner = CACHE.joinpath(*teil.split("/"))
+        if not ordner.is_dir():
+            continue
+        try:
+            dateien = [(f, f.stat()) for f in ordner.iterdir() if f.is_file()]
+        except OSError:
+            continue
+        gesamt = sum(st.st_size for _, st in dateien)
+        grenze = grenze_mb * 1024 * 1024
+        if gesamt <= grenze:
+            continue
+        # am längsten nicht gelesen zuerst löschen
+        for f, st in sorted(dateien, key=lambda x: x[1].st_atime):
+            try:
+                f.unlink()
+                gesamt -= st.st_size
+            except OSError:
+                pass
+            if gesamt <= grenze * 0.9:
+                break
+        print(f"Cache {teil}: auf {gesamt/1024/1024:.0f} MB gestutzt")
 
 
 def _hintergrund_takt():
@@ -918,6 +957,7 @@ def _hintergrund_takt():
     while True:
         try:
             _aufraeumen_job()
+            _cache_job()
             con = get_db()
             letzter = con.execute("SELECT value FROM kv WHERE key='preishistorie_lauf'").fetchone()
             con.close()
@@ -1597,17 +1637,39 @@ def pokedex(gens: str = ""):
 
 # --- Konten, Limits & Abos --------------------------------------------------
 #
-# Free-Konto: 2 gespeicherte Binder, 1 Karten-PDF pro Monat, Preis-Abruf 1x/Tag.
-# Pro/Lifetime: alles unbegrenzt + Kaufliste. Checklisten-PDF (ohne Kartenbilder)
-# zählt bewusst nicht als Export. Anonyme Binder (user_id NULL) bleiben frei
-# planbar — das Gate sitzt am PDF-Export.
+# Die Tarife stehen in abo.py (Gratis / Plus / Pro) und werden von dort gelesen —
+# hier gibt es bewusst keine zweite Wahrheit mehr. Gratis: 3 Binder, 2 Karten-PDFs
+# im Monat, Preis-Abruf 1x/Tag. Plus/Pro: alles unbegrenzt + Kaufliste + monatliche
+# Credits fürs KI-Artwork. Checklisten-PDF (ohne Kartenbilder) zählt bewusst nicht
+# als Export. Anonyme Binder (user_id NULL) bleiben frei planbar — das Gate sitzt
+# am PDF-Export.
 
 import hashlib  # noqa: E402
 
-FREE_BINDER_LIMIT = 2
-FREE_EXPORT_LIMIT = 1
+import abo  # noqa: E402
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+# Einfache Drossel je IP: Registrierung und Anmeldung sind teuer (PBKDF2 mit 120.000 Runden)
+# und jedes neue Konto bringt Start-Credits — ohne Bremse ließe sich beides ausnutzen.
+_versuche = {}
+LIMITS = {"register": (5, 3600), "login": (12, 900), "reset": (5, 3600)}
+
+
+def _drossel(request: Request, was: str):
+    grenze, fenster = LIMITS[was]
+    ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+          or (request.client.host if request.client else "?"))
+    jetzt = time.time()
+    schluessel = f"{was}:{ip}"
+    treffer = [t for t in _versuche.get(schluessel, []) if jetzt - t < fenster]
+    if len(treffer) >= grenze:
+        raise HTTPException(429, "Zu viele Versuche. Bitte warte einen Moment.")
+    treffer.append(jetzt)
+    _versuche[schluessel] = treffer
+    if len(_versuche) > 5000:      # Speicher begrenzen
+        for k in [k for k, v in _versuche.items() if not [t for t in v if jetzt - t < 3600]][:2000]:
+            _versuche.pop(k, None)
 
 
 def _env():
@@ -1650,7 +1712,16 @@ def _require_user(request: Request):
 
 
 def _ist_pro(user) -> bool:
-    return (user or {}).get("plan") in ("pro", "lifetime")
+    """Bezahlter Tarif (Plus, Pro oder Lifetime-Altbestand)."""
+    return abo.ist_bezahlt(user)
+
+
+def _limit_binder(user):
+    return abo.limit_binder(user)
+
+
+def _limit_exporte(user):
+    return abo.limit_exporte(user)
 
 
 def _monat_key():
@@ -1669,16 +1740,20 @@ def _exporte_benutzt(user) -> int:
 
 
 def _user_info(user):
+    """Kontostand fürs Frontend. Frischt nebenbei das monatliche Abo-Guthaben auf,
+    damit ein verpasstes Stripe-Event niemanden ohne Credits zurücklässt."""
+    user = abo.auffrischen(user) or user
     con = get_db()
     anzahl = con.execute("SELECT COUNT(*) c FROM binders WHERE user_id = ?", (user["id"],)).fetchone()["c"]
     con.close()
-    pro = _ist_pro(user)
     return {
         "email": user["email"], "plan": user["plan"], "name": user.get("name") or "",
-        "binder_anzahl": anzahl, "binder_limit": None if pro else FREE_BINDER_LIMIT,
+        "binder_anzahl": anzahl, "binder_limit": _limit_binder(user),
         "exporte_benutzt": _exporte_benutzt(user),
-        "exporte_limit": None if pro else FREE_EXPORT_LIMIT,
+        "exporte_limit": _limit_exporte(user),
+        "kaufliste": abo.darf_kaufliste(user),
         "stripe": bool(_env().get("STRIPE_SECRET_KEY")),
+        **abo.konto_info(user),
     }
 
 
@@ -1728,6 +1803,7 @@ def _mail_konfiguriert() -> bool:
 @app.post("/api/auth/passwort_vergessen")
 async def passwort_vergessen(request: Request):
     """Reset-Link mailen. Antwortet immer gleich, verrät also nicht, ob die E-Mail existiert."""
+    _drossel(request, "reset")
     if not _mail_konfiguriert():
         raise HTTPException(503, detail={"code": "mail"})
     data = await request.json()
@@ -1785,6 +1861,7 @@ async def passwort_neu(request: Request):
 
 @app.post("/api/auth/register")
 async def auth_register(request: Request):
+    _drossel(request, "register")
     data = await request.json()
     email = str(data.get("email") or "").strip().lower()
     pw = str(data.get("passwort") or "")
@@ -1803,6 +1880,11 @@ async def auth_register(request: Request):
         con.close()
         raise HTTPException(400, "Für diese E-Mail gibt es schon ein Konto — bitte anmelden.")
     token = _neue_session(con, cur.lastrowid)
+    # Willkommensguthaben, damit die KI-Artwork-Funktion ohne Kauf ausprobierbar ist
+    con.execute("UPDATE users SET credits = ? WHERE id = ?", (abo.START_CREDITS, cur.lastrowid))
+    con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
+                " VALUES (?,?,?,?,?,datetime('now'))",
+                (cur.lastrowid, abo.START_CREDITS, "start", "", abo.START_CREDITS))
     con.commit()
     user = dict(con.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone())
     con.close()
@@ -1811,6 +1893,7 @@ async def auth_register(request: Request):
 
 @app.post("/api/auth/login")
 async def auth_login(request: Request):
+    _drossel(request, "login")
     data = await request.json()
     email = str(data.get("email") or "").strip().lower()
     pw = str(data.get("passwort") or "")
@@ -1862,21 +1945,64 @@ async def passwort_aendern(request: Request):
 
 @app.post("/api/auth/konto_loeschen")
 async def konto_loeschen(request: Request):
-    """Konto samt aller Binder und Sitzungen endgültig löschen (DSGVO)."""
+    """Konto endgültig löschen (Art. 17 DSGVO): Binder, Artworks samt Bilddateien, Sitzungen
+    und Credit-Buchungen. Ein laufendes Abo wird dabei automatisch gekündigt — die Löschung
+    darf nicht davon abhängen, dass der Nutzer vorher selbst kündigt. Bestellungen bleiben
+    anonymisiert erhalten, weil für Zahlungsbelege gesetzliche Aufbewahrungsfristen gelten."""
     user = _require_user(request)
     data = await request.json()
     pw = str(data.get("passwort") or "")
     if _hash_pw(pw, user["salt"]) != user["pw_hash"]:
         raise HTTPException(400, "Das Passwort stimmt nicht.")
-    if user.get("plan") == "pro" and user.get("stripe_sub"):
-        raise HTTPException(400, "Bitte zuerst das Abo über „Abo verwalten“ kündigen, dann das Konto löschen.")
+    if user.get("stripe_sub"):
+        try:
+            abo._stripe(f"subscriptions/{user['stripe_sub']}", {"cancel_at_period_end": True})
+        except Exception as e:
+            print("Abo-Kündigung bei Kontolöschung fehlgeschlagen:", e)
     con = get_db()
+    artworks = [r["id"] for r in con.execute("SELECT id FROM artworks WHERE user_id = ?", (user["id"],))]
+    con.execute("DELETE FROM artworks WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM binders WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM credit_buchungen WHERE user_id = ?", (user["id"],))
+    con.execute("UPDATE bestellungen SET user_id = 0 WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM users WHERE id = ?", (user["id"],))
     con.commit()
     con.close()
-    return {"ok": True}
+    for aid in artworks:
+        for datei in (CACHE / "artwork" / f"{aid}.png", CACHE / "artwork" / f"{aid}.vorschau.webp"):
+            try:
+                datei.unlink()
+            except FileNotFoundError:
+                pass
+    return {"ok": True, "artworks_geloescht": len(artworks)}
+
+
+@app.get("/api/auth/export")
+def konto_export(request: Request):
+    """Datenauskunft nach Art. 15/20 DSGVO: alles, was zu diesem Konto gespeichert ist,
+    als JSON-Datei zum Herunterladen."""
+    user = _require_user(request)
+    con = get_db()
+    def liste(sql, *args):
+        return [dict(r) for r in con.execute(sql, args)]
+    daten = {
+        "konto": {k: v for k, v in user.items() if k not in ("pw_hash", "salt", "reset_token")},
+        "binder": liste("SELECT * FROM binders WHERE user_id = ?", user["id"]),
+        "artworks": liste("SELECT id, binder_id, seite, layout, anker, stil, wunsch, pokemon,"
+                          " status, credits, created_at FROM artworks WHERE user_id = ?", user["id"]),
+        "credit_buchungen": liste("SELECT delta, grund, ref, saldo_danach, created_at"
+                                  " FROM credit_buchungen WHERE user_id = ?", user["id"]),
+        "bestellungen": liste("SELECT art, variante, betrag, waehrung, status, widerruf_text,"
+                              " zustimmung_am, created_at FROM bestellungen WHERE user_id = ?", user["id"]),
+        "hinweis": "Vollständige Auskunft nach Art. 15 DSGVO. Zahlungsdaten liegen bei Stripe;"
+                   " wir speichern davon nur Kunden- und Abo-Kennungen.",
+        "erstellt_am": datetime_str_vor(0),
+    }
+    con.close()
+    inhalt = json.dumps(daten, ensure_ascii=False, indent=2)
+    return Response(inhalt, media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="binderplan-daten.json"'})
 
 
 @app.post("/api/auth/profil")
@@ -1918,130 +2044,20 @@ async def auth_claim(request: Request):
     return {"uebernommen": cur.rowcount}
 
 
-# --- Stripe (Checkout, Portal, Webhook) -------------------------------------
+# --- Stripe, Tarife & Credits ------------------------------------------------
+#
+# Vollständig in abo.py: Tarifdefinition, Credit-Konto mit Buchungsjournal, Checkout
+# (Abos + Credit-Pakete), Kundenportal, Kündigung und der Stripe-Webhook mit
+# Idempotenz-Sperre. Ein Fehler dort darf den Dienst nicht blockieren.
 
-TARIFE = {"monat": "STRIPE_PRICE_MONAT", "jahr": "STRIPE_PRICE_JAHR", "lifetime": "STRIPE_PRICE_LIFETIME"}
-
-
-def _stripe():
-    env = _env()
-    key = env.get("STRIPE_SECRET_KEY")
-    if not key:
-        raise HTTPException(503, "Zahlungen sind noch nicht eingerichtet.")
-    import stripe as stripe_lib
-    stripe_lib.api_key = key
-    return stripe_lib, env
-
-
-@app.post("/api/stripe/checkout")
-async def stripe_checkout(request: Request):
-    user = _require_user(request)
-    data = await request.json()
-    tarif = data.get("tarif")
-    if tarif not in TARIFE:
-        raise HTTPException(400, "Unbekannter Tarif.")
-    stripe_lib, env = _stripe()
-    price = env.get(TARIFE[tarif])
-    if not price:
-        raise HTTPException(503, "Zahlungen sind noch nicht eingerichtet.")
-    app_url = env.get("APP_URL", "https://agi-empire.com/binderplan")
-    kunde = user.get("stripe_customer")
-    if not kunde:
-        kunde = stripe_lib.Customer.create(email=user["email"], metadata={"binderplan_user": user["id"]}).id
-        con = get_db()
-        con.execute("UPDATE users SET stripe_customer = ? WHERE id = ?", (kunde, user["id"]))
-        con.commit()
-        con.close()
-    extra = {}
-    if tarif == "lifetime":
-        # Einmalzahlung: Verwendungszweck auf dem Kontoauszug explizit setzen
-        extra["payment_intent_data"] = {"statement_descriptor": "BINDERPLAN"}
-    session = stripe_lib.checkout.Session.create(
-        customer=kunde,
-        mode="payment" if tarif == "lifetime" else "subscription",
-        line_items=[{"price": price, "quantity": 1}],
-        success_url=f"{app_url}/?zahlung=ok",
-        cancel_url=f"{app_url}/?zahlung=abbruch",
-        client_reference_id=str(user["id"]),
-        allow_promotion_codes=True,
-        **extra,
+try:
+    _abo_api = abo.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user,
+        env=_env, mail_senden=_mail_senden, mail_konfiguriert=_mail_konfiguriert, basis=BASE,
     )
-    return {"url": session.url}
-
-
-@app.post("/api/stripe/portal")
-def stripe_portal(request: Request):
-    user = _require_user(request)
-    if not user.get("stripe_customer"):
-        raise HTTPException(400, "Kein Zahlungskonto vorhanden.")
-    stripe_lib, env = _stripe()
-    session = stripe_lib.billing_portal.Session.create(
-        customer=user["stripe_customer"],
-        return_url=env.get("APP_URL", "https://agi-empire.com/binderplan") + "/",
-    )
-    return {"url": session.url}
-
-
-@app.post("/api/stripe/webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig = request.headers.get("stripe-signature", "")
-    env = _env()
-    secret = env.get("STRIPE_WEBHOOK_SECRET")
-    if not secret:
-        raise HTTPException(503, "Webhook nicht konfiguriert.")
-    import stripe as stripe_lib
-    try:
-        event = stripe_lib.Webhook.construct_event(payload, sig, secret)
-    except Exception:
-        raise HTTPException(400, "Ungültige Signatur.")
-    typ = event["type"]
-    obj = event["data"]["object"]
-    con = get_db()
-    if typ == "checkout.session.completed":
-        user_id = obj.get("client_reference_id")
-        if user_id:
-            if obj.get("mode") == "payment":
-                con.execute("UPDATE users SET plan = 'lifetime' WHERE id = ?", (user_id,))
-            else:
-                con.execute("UPDATE users SET plan = 'pro', stripe_sub = ? WHERE id = ?",
-                            (obj.get("subscription"), user_id))
-            # Kaufbestätigung (best effort — Zahlung ist unabhängig davon gültig)
-            try:
-                zeile = con.execute("SELECT email FROM users WHERE id = ?", (user_id,)).fetchone()
-                if zeile and _mail_konfiguriert():
-                    lifetime = obj.get("mode") == "payment"
-                    _mail_senden(
-                        zeile["email"], "Binderplan – Kaufbestätigung",
-                        "Hallo,\n\n"
-                        "danke für deinen Kauf! Dein Konto wurde soeben freigeschaltet:\n\n"
-                        + ("• Binderplan Lifetime — einmalig bezahlt, dauerhaft alle Pro-Funktionen\n"
-                           if lifetime else
-                           "• Binderplan Pro — dein Abo ist aktiv und jederzeit über \"Konto → Abo verwalten\" kündbar\n")
-                        + "\nAb sofort: unbegrenzte Binder & Exporte, tagesaktuelle Preise und die Kaufliste."
-                        "\nDie Rechnung bekommst du separat von unserem Zahlungsdienstleister Stripe."
-                        "\n\nViel Spaß beim Sammeln!\nBinderplan – https://binderplan.app"
-                        "\n\nImpressum & AGB: https://binderplan.app/recht",
-                    )
-            except Exception:
-                pass
-    elif typ == "customer.subscription.deleted":
-        con.execute(
-            "UPDATE users SET plan = 'free', stripe_sub = NULL WHERE stripe_sub = ? AND plan != 'lifetime'",
-            (obj.get("id"),),
-        )
-    elif typ == "customer.subscription.updated":
-        status = obj.get("status")
-        if status in ("canceled", "unpaid", "incomplete_expired"):
-            con.execute(
-                "UPDATE users SET plan = 'free' WHERE stripe_sub = ? AND plan != 'lifetime'",
-                (obj.get("id"),),
-            )
-        elif status == "active":
-            con.execute("UPDATE users SET plan = 'pro' WHERE stripe_sub = ?", (obj.get("id"),))
-    con.commit()
-    con.close()
-    return {"ok": True}
+except Exception as _e:  # pragma: no cover
+    print("Abo-Modul nicht geladen:", _e)
+    _abo_api = None
 
 
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
@@ -2075,7 +2091,7 @@ async def preise(request: Request):
     user = _current_user(request)
     data = await request.json()
     ids = list(dict.fromkeys(str(i) for i in (data.get("ids") or [])))[:1500]
-    frei_gedrosselt = bool(user) and not _ist_pro(user) and user.get("preise_tag") == _heute()
+    frei_gedrosselt = bool(user) and not abo.darf_preise_live(user) and user.get("preise_tag") == _heute()
     con = get_db()
     result, holo, fehlt = {}, {}, []
     for start in range(0, len(ids), 500):
@@ -2242,11 +2258,12 @@ async def binder_create(request: Request):
     data = await request.json()
     p = _binder_payload(data)
     user = _current_user(request)
-    if user and not _ist_pro(user):
+    grenze = _limit_binder(user) if user else None
+    if user and grenze is not None:
         con = get_db()
         anzahl = con.execute("SELECT COUNT(*) c FROM binders WHERE user_id = ?", (user["id"],)).fetchone()["c"]
         con.close()
-        if anzahl >= FREE_BINDER_LIMIT:
+        if anzahl >= grenze:
             raise HTTPException(402, detail={"code": "limit_binder"})
     binder_id = secrets.token_urlsafe(8)
     con = get_db()
@@ -2536,9 +2553,10 @@ def _pdf_wasserzeichen(c, x, y, lang):
 
 
 def _zaehle_export(user, binder_id):
-    """Free-Export abbuchen – aber nicht, wenn derselbe Binder in den letzten 30 Minuten
-    schon exportiert wurde (abgebrochener Download, zweiter Versuch, Drucker-Panne)."""
-    if _ist_pro(user):
+    """Export im Gratistarif abbuchen – aber nicht, wenn derselbe Binder in den letzten
+    30 Minuten schon exportiert wurde (abgebrochener Download, zweiter Versuch,
+    Drucker-Panne)."""
+    if _limit_exporte(user) is None:
         return
     letzter = (user.get("letzter_export") or "").split(":", 1)
     if len(letzter) == 2 and letzter[0] == binder_id and letzter[1] >= datetime_str_vor(0.5):
@@ -2562,8 +2580,11 @@ def _bilder_vorladen(card_ids, lang):
 
 @app.post("/api/binders/{binder_id}/pdf_vorbereiten")
 def binder_pdf_vorbereiten(binder_id: str, request: Request):
-    """Schritt 1 des Exports: Bilder laden (parallel), damit das PDF danach in Sekunden kommt."""
+    """Schritt 1 des Exports: Bilder laden (parallel), damit das PDF danach in Sekunden kommt.
+    Nur für eigene Binder – sonst könnte ein beliebiges Konto über fremde Binder-IDs
+    massenhaft Bild-Downloads auslösen."""
     _require_user(request)
+    _binder_schreibrecht(binder_id, request)
     binder = _load_binder(binder_id)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
@@ -2583,7 +2604,8 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei
     letzter = (user.get("letzter_export") or "").split(":", 1)
     kulanz = len(letzter) == 2 and letzter[0] == binder_id and letzter[1] >= datetime_str_vor(0.5)
-    if not _ist_pro(user) and not kulanz and _exporte_benutzt(user) >= FREE_EXPORT_LIMIT:
+    grenze = _limit_exporte(user)
+    if grenze is not None and not kulanz and _exporte_benutzt(user) >= grenze:
         raise HTTPException(402, detail={"code": "limit_export"})
 
     con = get_db()
@@ -2839,7 +2861,7 @@ def _checkliste_pdf(binder, lang, nur_fehlende):
 def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
     """Fehlende Karten samt Preisen als Einkaufsliste (Pro-Funktion)."""
     user = _require_user(request)
-    if not _ist_pro(user):
+    if not abo.darf_kaufliste(user):
         raise HTTPException(402, detail={"code": "limit_pro"})
     binder = _load_binder(binder_id)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
@@ -2879,7 +2901,7 @@ try:
         app, get_db=get_db, current_user=_current_user, require_user=_require_user, ist_pro=_ist_pro,
         load_binder=_load_binder, card_image_path=_card_image_path, dex_image_path=_dex_image_path,
         pdf_wasserzeichen=_pdf_wasserzeichen,
-        env=_env, CACHE=CACHE,
+        env=_env, CACHE=CACHE, abo=abo,
     )
 except Exception as _e:  # pragma: no cover
     print("Artwork-Modul nicht geladen:", _e)
@@ -2901,13 +2923,16 @@ def index():
 
 @app.get("/assets/{name}")
 def asset(name: str):
-    """Bilder der Startseite (assets/ im Repo)."""
-    if not re.fullmatch(r"[a-z0-9_-]+\.(png|webp|jpg|svg)", name):
+    """Statische Dateien der Startseite: Bilder, Schriftarten und deren CSS (assets/ im Repo).
+    Die Schriften liegen bewusst lokal — ohne Google-Fonts-CDN gibt es keine Datenübertragung
+    an Dritte und damit auch keinen Einwilligungsbedarf."""
+    if not re.fullmatch(r"[a-z0-9_-]+\.(png|webp|jpg|svg|woff2|css)", name):
         raise HTTPException(404)
     f = BASE / "assets" / name
     if not f.exists():
         raise HTTPException(404)
-    return FileResponse(f, headers=IMG_HEADERS)
+    typ = {"css": "text/css; charset=utf-8", "woff2": "font/woff2"}.get(name.rsplit(".", 1)[-1])
+    return FileResponse(f, media_type=typ, headers=IMG_HEADERS)
 
 
 @app.get("/recht")
