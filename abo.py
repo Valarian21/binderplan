@@ -36,7 +36,13 @@ ARTWORK_JE_KARTE = 2        # je weiterer Ankerkarte
 ARTWORK_MAX = 30            # Obergrenze je Seite
 ARTWORK_4K_FAKTOR = 1.6     # Druckauflösung kostet das Modell entsprechend mehr
 
+ARTWORK_FREMD = 6           # fremde, veröffentlichte Artwork-Seite drucken
+
 START_CREDITS = 20          # Willkommensguthaben je neuem Konto (= 2 Artwork-Seiten)
+
+# Eine fremde Seite zu drucken kostet uns nichts — sie ist schon erzeugt. Der Preis
+# liegt trotzdem nicht bei null: sonst lohnt es sich, eine Seite einmal erzeugen zu
+# lassen und sie über die Vitrine an alle zu verteilen. Sechs statt zehn Credits.
 
 
 def artwork_preis(anker_anzahl: int, groesse: str = "2K") -> int:

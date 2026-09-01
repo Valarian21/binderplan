@@ -183,6 +183,35 @@
   .fi-fort i { display: block; height: 100%; background: var(--akzent); transition: width .25s; }
   .fi-tip { font-size: 12.5px; color: var(--mut); line-height: 1.45; }
 
+
+  /* ---------- Vitrine ---------- */
+  /* Wie der Planer eine eigene Ebene ueber der Suche, sonst haengt sie darunter. */
+  #vitrine { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 40;
+             background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
+  .vt-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .vt-kopf h2 { margin: 0; font-size: 20px; }
+  .vt-tabs { display: flex; gap: 4px; }
+  .vt-tabs button { font-size: 13px; font-weight: 700; padding: 6px 13px; border-radius: 999px; color: var(--mut); }
+  .vt-tabs button.on { background: var(--kontur); color: #fff; }
+  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .vt-karte { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card);
+              display: flex; flex-direction: column; }
+  .vt-karte:hover { border-color: var(--kontur); }
+  .vt-bilder { display: flex; gap: 2px; padding: 8px 8px 0; background: #14161a; }
+  .vt-bilder img { width: 100%; aspect-ratio: 63/88; object-fit: cover; border-radius: 3px; display: block; min-width: 0; }
+  .vt-txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .vt-name { font-weight: 800; font-size: 15px; line-height: 1.2; }
+  .vt-meta { font-size: 11.5px; color: var(--mut); }
+  .vt-fuss { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;
+             padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
+  .vt-herz.an { border-color: var(--akzent); color: var(--akzent); }
+  .vt-herz:hover { border-color: var(--akzent); }
+  .vt-leer { grid-column: 1/-1; padding: 40px 0; text-align: center; color: var(--mut); font-size: 14px; }
+  .vt-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--line); }
+  .vt-band { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--line);
+             border-radius: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -706,6 +735,7 @@
     <div class="segment desktop-only" role="tablist">
       <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="m_suche">Suche</button>
       <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
+      <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
     </div>
     <div style="flex:1"></div>
     <div class="menuwrap desktop-only">
@@ -884,6 +914,7 @@
               <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
               <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
               <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+              <button onclick="veroeffentlichenUmschalten()" id="wb-vitrine-knopf" data-i18n="vt_zeigen">In der Vitrine zeigen …</button>
               <div class="trenn"></div>
               <button class="gefahr" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
             </div>
@@ -1115,6 +1146,11 @@
     <div class="feld-lbl" data-i18n="passwort">Passwort</div>
     <input class="feld" id="auth-pw" type="password" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')">
     <div id="auth-pw-hint" class="hidden" style="font-size:11.5px;color:var(--mut);margin-top:5px" data-i18n="pw_hint">Mindestens 8 Zeichen.</div>
+    <div id="auth-geb-box" class="hidden">
+      <div class="feld-lbl" style="margin-top:12px" data-i18n="geburtsdatum">Geburtsdatum</div>
+      <input class="feld" id="auth-geb" type="date" max="2026-12-31" min="1900-01-01">
+      <div style="font-size:11.5px;color:var(--mut);margin-top:5px" data-i18n="geb_hint">Brauchen wir nur, um zu wissen, ob du Binder öffentlich zeigen darfst — das ist ab 16 erlaubt. Es steht nirgends öffentlich.</div>
+    </div>
     <label class="schalter hidden" id="auth-agb" style="margin-top:12px;align-items:flex-start">
       <input type="checkbox" id="auth-agb-check" style="margin-top:2px">
       <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung.</span>
@@ -1273,7 +1309,7 @@
   <div class="seite-rumpf" style="max-width:640px">
     <div class="pf-block">
       <h3 data-i18n="pf_konto">Konto</h3>
-      <div class="pf-zeile"><span data-i18n="pf_name">Anzeigename</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
+      <div class="pf-zeile"><span data-i18n="vpf_name">Anzeigename</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
       <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
@@ -1421,6 +1457,66 @@
   </div>
 </div>
 
+<div id="vitrine" class="hidden">
+  <div class="vt-kopf">
+    <h2 data-i18n="vt_t">Vitrine</h2>
+    <div class="vt-tabs" id="vt-tabs"></div>
+    <div style="flex:1"></div>
+    <input class="feld" id="vt-suche" style="width:190px" placeholder="Binder suchen …" data-i18n-ph="vt_suche" oninput="vitrineSuchen()">
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
+  </div>
+  <div class="unter" data-i18n="vt_u">Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.</div>
+  <div class="vt-gitter" id="vt-gitter"></div>
+</div>
+
+<!-- Modal: Profil -->
+<div class="overlay hidden" id="modal-profil">
+  <div class="modal" style="width:min(520px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="vpf_t">Dein Profil</h2>
+    <div class="unter" data-i18n="vpf_u">Nur nötig, wenn du Binder öffentlich zeigen willst. Ohne veröffentlichten Binder sieht das niemand.</div>
+    <div class="f-lbl" data-i18n="vpf_name">Anzeigename</div>
+    <input class="feld" id="vpf-name" maxlength="24" placeholder="z. B. Karpador-Kai">
+    <div class="f-lbl" style="margin-top:10px" data-i18n="vpf_text">Ein Satz über dich (freiwillig)</div>
+    <input class="feld" id="vpf-text" maxlength="140" placeholder="Sammle seit 1999, Schwerpunkt alte Sets">
+    <div style="font-size:11.5px;color:var(--mut);margin-top:10px" data-i18n="vpf_hinweis">Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.</div>
+    <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="vpf-fehler"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="profilSpeichern()" data-i18n="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Geburtsdatum nachtragen -->
+<div class="overlay hidden" id="modal-geb">
+  <div class="modal" style="width:min(440px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="gb_t">Kurz noch dein Geburtsdatum</h2>
+    <div class="unter" data-i18n="gb_u">Binder öffentlich zu zeigen ist ab 16 erlaubt. Das Datum steht nirgends öffentlich und lässt sich später nicht ändern.</div>
+    <input class="feld" id="gb-datum" type="date" min="1900-01-01">
+    <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="gb-fehler"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="geburtsdatumSpeichern()" data-i18n="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Melden -->
+<div class="overlay hidden" id="modal-melden">
+  <div class="modal" style="width:min(460px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="md_t">Inhalt melden</h2>
+    <div class="unter" data-i18n="md_u">Was stimmt mit diesem Binder nicht? Wir sehen uns das an.</div>
+    <textarea class="feld" id="md-grund" rows="3" maxlength="300" placeholder="Kurz beschreiben"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="meldenSenden()" data-i18n="md_senden">Melden</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1514,6 +1610,25 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    vitrine: 'Vitrine', vt_t: 'Vitrine', vt_trend: 'Im Trend', vt_top: 'Bestenliste', vt_neu: 'Frisch',
+    vt_suche: 'Binder suchen …', vt_profil: 'Mein Profil',
+    vt_u: 'Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.',
+    vt_leer: 'Hier steht noch nichts. Sei der Erste und zeig deinen Binder.',
+    vt_login: 'Dafür brauchst du ein Konto.', vt_zeigen: 'In der Vitrine zeigen …',
+    vt_warnung: 'Damit wird dieser Binder öffentlich: Name, Karten und dein Anzeigename sind für alle sichtbar. Preise und dein Konto bleiben privat. Du kannst das jederzeit zurücknehmen.',
+    vt_steht_drin: 'Dein Binder steht jetzt in der Vitrine', vt_zurueckgezogen: 'Binder ist wieder privat',
+    karten_wort: 'Karten', seiten_wort: 'Seiten', laedt: 'lädt …', gespeichert: 'Gespeichert',
+    vpf_t: 'Dein Profil', vpf_u: 'Nur nötig, wenn du Binder öffentlich zeigen willst. Ohne veröffentlichten Binder sieht das niemand.',
+    vpf_name: 'Anzeigename', vpf_text: 'Ein Satz über dich (freiwillig)',
+    vpf_hinweis: 'Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.',
+    gb_t: 'Kurz noch dein Geburtsdatum', gb_u: 'Binder öffentlich zu zeigen ist ab 16 erlaubt. Das Datum steht nirgends öffentlich und lässt sich später nicht ändern.',
+    md_t: 'Inhalt melden', md_u: 'Was stimmt mit diesem Binder nicht? Wir sehen uns das an.',
+    md_senden: 'Melden', md_danke: 'Danke – wir sehen uns das an.',
+
+    geburtsdatum: 'Geburtsdatum',
+    geb_hint: 'Brauchen wir nur, um zu wissen, ob du Binder öffentlich zeigen darfst — das ist ab 16 erlaubt. Es steht nirgends öffentlich.',
+    geb_noetig: 'Bitte gib dein Geburtsdatum an.',
+
     tpl_foto: 'Aus Fotos', tpl_foto_u: 'Seiten abfotografieren, Karten werden erkannt',
     foto_menu: '📷 Seiten abfotografieren …', foto_t: 'Binder aus Fotos',
     foto_u: 'Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.',
@@ -1664,7 +1779,7 @@ const T = {
     zustand_ph: 'Condition (e.g. NM, PSA 10)', in_binder: 'Add to binder', im_binder: 'in binder', andere_drucke: 'Other prints of this Pokémon',
     preis_trend: 'Cardmarket trend', preis_holo: 'Holo trend', preis_laden: 'loading price …', verlauf: 'Price history', tage: 'days', verlauf_bald: 'Price history builds up daily from now on.',
     bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
-    pf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
+    vpf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
     kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price', pf_sprache_ui: 'Interface language',
@@ -1695,6 +1810,11 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    vitrine: 'Showcase', vt_t: 'Showcase', vt_trend: 'Trending', vt_top: 'Top rated', vt_neu: 'Fresh', vt_suche: 'Search binders …', vt_profil: 'My profile', vt_u: 'Public binders from other collectors. Like one? Give it a heart – or take a page into your own binder.', vt_leer: 'Nothing here yet. Be the first to show your binder.', vt_login: 'You need an account for that.', vt_zeigen: 'Show in the showcase …', vt_warnung: 'This makes the binder public: its name, its cards and your display name are visible to everyone. Prices and your account stay private. You can undo this at any time.', vt_steht_drin: 'Your binder is in the showcase now', vt_zurueckgezogen: 'Binder is private again', karten_wort: 'cards', seiten_wort: 'pages', laedt: 'loading …', gespeichert: 'Saved', vpf_t: 'Your profile', vpf_u: 'Only needed if you want to show binders publicly.', vpf_name: 'Display name', vpf_text: 'One line about you (optional)', vpf_hinweis: 'No real name, no contact details, no links – we check on save.', gb_t: 'One more thing: your date of birth', gb_u: 'Showing binders publicly is allowed from 16. It is never shown publicly and cannot be changed later.', md_t: 'Report content', md_u: 'What is wrong with this binder? We will look into it.', md_senden: 'Report', md_danke: 'Thank you – we will look into it.',
+
+    geburtsdatum: 'Date of birth', geb_hint: 'Only used to know whether you may show binders publicly — allowed from 16. It is never shown publicly.',
+    geb_noetig: 'Please enter your date of birth.',
+
     tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: '📷 Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
 
     neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
@@ -2057,6 +2177,7 @@ function authTab(modus) {
   $('auth-email').classList.toggle('hidden', reset);
   $('auth-email-lbl').classList.toggle('hidden', reset);
   $('auth-agb').classList.toggle('hidden', modus !== 'reg');
+  $('auth-geb-box').classList.toggle('hidden', modus !== 'reg');
   $('auth-pw-hint').classList.toggle('hidden', modus === 'login');
   $('auth-vergessen').classList.toggle('hidden', modus !== 'login');
   $('auth-titel').textContent = reset ? t('pw_neu_t') : t('anmelden_t');
@@ -2096,10 +2217,14 @@ async function authAbsenden() {
     $('auth-fehler').textContent = t('agb_noetig');
     return;
   }
+  if (authModus === 'reg' && !/^\d{4}-\d{2}-\d{2}$/.test($('auth-geb').value)) {
+    $('auth-fehler').textContent = t('geb_noetig');
+    return;
+  }
   try {
     const d = await api('api/auth/' + (authModus === 'reg' ? 'register' : 'login'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, passwort: pw }),
+      body: JSON.stringify({ email, passwort: pw, geburtsdatum: $('auth-geb').value }),
     });
     setToken(d.token);
     S.user = d.user;
@@ -3515,6 +3640,160 @@ async function fotoUebernehmen(modus) {
   toast(t('foto_fertig').replace('{n}', FI.seiten.reduce((s, k) => s + k.length, 0)));
 }
 
+// ---------- Vitrine ----------
+// Bewusst ohne Kommentare und ohne Nachrichten: es gibt nur Herzen. Damit gibt es
+// keine Gespräche zu moderieren, und die drei Textfelder (Anzeigename, Satz zur
+// Person, Bindername) werden serverseitig beim Speichern geprüft.
+const VT = { sortierung: 'trend', binder: [], laeuft: false, meldung: null };
+
+function ansichtVitrine() {
+  planerSchliessen();
+  $('vitrine').classList.remove('hidden');
+  $('seg-vitrine').classList.add('on');
+  $('seg-suche').classList.remove('on'); $('seg-planer').classList.remove('on');
+  zeichneVitrineTabs();
+  vitrineLaden();
+}
+function vitrineSchliessen() {
+  if ($('vitrine').classList.contains('hidden')) return;
+  $('vitrine').classList.add('hidden');
+  $('seg-vitrine').classList.remove('on');
+  $('seg-suche').classList.add('on');
+}
+
+function zeichneVitrineTabs() {
+  $('vt-tabs').innerHTML = [['trend', t('vt_trend')], ['top', t('vt_top')], ['neu', t('vt_neu')]]
+    .map(([w, l]) => `<button class="${VT.sortierung === w ? 'on' : ''}" onclick="vitrineSortierung('${w}')">${l}</button>`).join('');
+}
+function vitrineSortierung(w) { VT.sortierung = w; zeichneVitrineTabs(); vitrineLaden(); }
+let vtTimer = null;
+function vitrineSuchen() { clearTimeout(vtTimer); vtTimer = setTimeout(vitrineLaden, 350); }
+
+async function vitrineLaden() {
+  if (VT.laeuft) return;
+  VT.laeuft = true;
+  $('vt-gitter').innerHTML = `<div class="vt-leer">${t('laedt')}</div>`;
+  try {
+    const q = encodeURIComponent($('vt-suche').value.trim());
+    const d = await api(`api/vitrine?sortierung=${VT.sortierung}&limit=36&q=${q}`);
+    VT.binder = d.binder || [];
+    zeichneVitrine();
+  } catch (e) {
+    $('vt-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
+  } finally { VT.laeuft = false; }
+}
+
+function zeichneVitrine() {
+  if (!VT.binder.length) {
+    $('vt-gitter').innerHTML = `<div class="vt-leer">${t('vt_leer')}</div>`;
+    return;
+  }
+  $('vt-gitter').innerHTML = VT.binder.map((b) => `
+    <div class="vt-karte">
+      <div class="vt-bilder" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">
+        ${(b.vorschau || []).slice(0, 4).map((v) => v.art === 'artwork'
+          ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(v.id)}/bild?v=vorschau" alt="">`
+          : `<img loading="lazy" src="${imgUrl(v.id)}" alt="">`).join('')}
+      </div>
+      <div class="vt-txt">
+        <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
+        <div class="vt-meta">${esc(b.besitzer)} · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
+        <div class="vt-fuss">
+          <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
+            ${b.gestimmt ? '♥' : '♡'} <span>${b.stimmen}</span></button>
+          <div style="flex:1"></div>
+          <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(b.id)}')" title="${t('md_t')}">⚑</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function vitrineOeffnen(id) { location.hash = 'ansicht/' + id; location.reload(); }
+
+async function vitrineStimme(id) {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  try {
+    const d = await api('api/vitrine/stimme', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ binder_id: id }),
+    });
+    const b = VT.binder.find((x) => x.id === id);
+    if (b) { b.gestimmt = d.gestimmt; b.stimmen = d.stimmen; }
+    zeichneVitrine();
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+
+// ---------- Profil ----------
+async function profilOeffnen() {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  $('vpf-fehler').textContent = '';
+  try {
+    const d = await api('api/profil');
+    $('vpf-name').value = (d.profil && d.profil.name) || '';
+    $('vpf-text').value = (d.profil && d.profil.kurztext) || '';
+  } catch (e) {}
+  modalOeffnen('modal-profil');
+}
+async function profilSpeichern() {
+  $('vpf-fehler').textContent = '';
+  try {
+    await api('api/profil', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('vpf-name').value, kurztext: $('vpf-text').value }),
+    });
+    modalSchliessen(); toast(t('gespeichert'));
+  } catch (e) { $('vpf-fehler').textContent = e.message; }
+}
+
+// ---------- Geburtsdatum nachtragen ----------
+function geburtsdatumOeffnen() { $('gb-fehler').textContent = ''; modalOeffnen('modal-geb'); }
+async function geburtsdatumSpeichern() {
+  $('gb-fehler').textContent = '';
+  try {
+    await api('api/profil/geburtsdatum', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ geburtsdatum: $('gb-datum').value }),
+    });
+    modalSchliessen();
+    veroeffentlichenUmschalten();
+  } catch (e) { $('gb-fehler').textContent = e.message; }
+}
+
+// ---------- Veröffentlichen ----------
+async function veroeffentlichenUmschalten() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.binder) return;
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  const jetzt = !!S.binder.sichtbar;
+  if (!jetzt && !confirm(t('vt_warnung'))) return;
+  try {
+    await api('api/vitrine/veroeffentlichen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ binder_id: S.binder.id, oeffentlich: !jetzt }),
+    });
+    S.binder.sichtbar = jetzt ? 0 : 1;
+    toast(jetzt ? t('vt_zurueckgezogen') : t('vt_steht_drin'));
+  } catch (e) {
+    const code = e.detail && e.detail.code;
+    if (code === 'geburtsdatum') return geburtsdatumOeffnen();
+    if (code === 'kein_profil') return profilOeffnen();
+    if (!gate(e)) toast((e.detail && e.detail.text) || e.message);
+  }
+}
+
+// ---------- Melden ----------
+function meldenOeffnen(typ, id) { VT.meldung = { typ, id }; $('md-grund').value = ''; modalOeffnen('modal-melden'); }
+async function meldenSenden() {
+  if (!VT.meldung) return;
+  try {
+    await api('api/vitrine/meldung', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ziel_typ: VT.meldung.typ, ziel_id: VT.meldung.id, grund: $('md-grund').value }),
+    });
+    modalSchliessen(); toast(t('md_danke'));
+  } catch (e) { toast(e.message); }
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -3639,6 +3918,8 @@ function zeichnePreisSumme() {
 
 // ---------- Planer ----------
 function ansicht(w) {
+  if (w !== 'vitrine') vitrineSchliessen();
+  if (w === 'vitrine') { ansichtVitrine(); return; }
   if (w === 'planer') planerOeffnen(); else planerSchliessen();
 }
 function planerOeffnen() {

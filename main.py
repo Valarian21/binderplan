@@ -1955,12 +1955,20 @@ async def auth_register(request: Request):
         raise HTTPException(400, "Bitte eine gültige E-Mail-Adresse angeben.")
     if len(pw) < 8:
         raise HTTPException(400, "Das Passwort braucht mindestens 8 Zeichen.")
+    # Geburtsdatum: gebraucht wird es erst beim Veröffentlichen in der Vitrine (ab 16,
+    # Art. 8 DSGVO). Es hier zu fragen ist ehrlicher, als es später nachzufordern.
+    geb = str(data.get("geburtsdatum") or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", geb):
+        raise HTTPException(400, "Bitte gib dein Geburtsdatum an.")
+    jahr = int(geb[:4])
+    if jahr < 1900 or jahr > int(time.strftime("%Y")):
+        raise HTTPException(400, "Dieses Geburtsdatum stimmt nicht.")
     salt = secrets.token_hex(16)
     con = get_db()
     try:
         cur = con.execute(
-            "INSERT INTO users (email, pw_hash, salt) VALUES (?,?,?)",
-            (email, _hash_pw(pw, salt), salt),
+            "INSERT INTO users (email, pw_hash, salt, geburtsdatum) VALUES (?,?,?,?)",
+            (email, _hash_pw(pw, salt), salt, geb),
         )
     except sqlite3.IntegrityError:
         con.close()
@@ -2404,6 +2412,8 @@ def _load_binder(binder_id):
         "id": row["id"], "name": row["name"], "mode": row["mode"],
         "layout": row["layout"], "options": json.loads(row["options"] or "{}"),
         "items": json.loads(row["items"] or "[]"), "updated_at": row["updated_at"],
+        # Steht der Binder in der Vitrine? (Spalte kommt aus vitrine.py, kann fehlen)
+        "sichtbar": (row["sichtbar"] if "sichtbar" in row.keys() else 0) or 0,
     }
 
 
@@ -2686,6 +2696,9 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     if variante == "checkliste":
         return _checkliste_pdf(binder, lang, bool(nur_fehlende))
+    # Fremde, veröffentlichte Artwork-Seiten kosten einmalig Credits (siehe vitrine.py)
+    if globals().get("_vitrine"):
+        _vitrine.druckrecht_sichern(user, binder["items"])
     # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten – ein zweiter Abruf desselben Binders
     # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei
     letzter = (user.get("letzter_export") or "").split(":", 1)
@@ -3022,6 +3035,19 @@ try:
 except Exception as _e:  # pragma: no cover
     print("Fotoimport-Modul nicht geladen:", _e)
     _foto_kennzahlen = None
+
+
+# --- Vitrine: Binder öffentlich zeigen (Modul vitrine.py) -------------------
+
+try:
+    import vitrine as _vitrine  # noqa: E402
+    _vitrine_kennzahlen = _vitrine.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user,
+        env=_env, admin_key=_admin_key, load_binder=_load_binder, abo=abo,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Vitrine-Modul nicht geladen:", _e)
+    _vitrine_kennzahlen = None
 
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
