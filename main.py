@@ -2563,6 +2563,15 @@ def binder_list(request: Request, ids: str = ""):
             " AND id IN (%s)" % ",".join("?" * len(wanted)),
             wanted,
         ).fetchall()
+    # Besitz kommt seit der Sammlung aus `sammlung`, nicht mehr aus dem Häkchen im Fach.
+    # Ohne Konto zählt weiterhin das Häkchen — dort gibt es keine Sammlung.
+    besitz = set()
+    if user:
+        try:
+            besitz = {x["card_id"] for x in con.execute(
+                "SELECT card_id FROM sammlung WHERE user_id = ? AND anzahl > 0", (user["id"],))}
+        except Exception:
+            besitz = set()
     con.close()
     gesehen = set()
     result = []
@@ -2577,7 +2586,8 @@ def binder_list(request: Request, ids: str = ""):
         result.append({
             "id": r["id"], "name": r["name"], "mode": r["mode"], "layout": r["layout"],
             "anzahl": len(items),
-            "gesammelt": sum(1 for i in items if i.get("have")),
+            "gesammelt": (sum(1 for i in items if i.get("id") in besitz) if user
+                          else sum(1 for i in items if i.get("have"))),
             "updated_at": r["updated_at"],
             "vorschau": [i.get("id") for i in items if i.get("type") == "card" and i.get("id")][:3],
             "dex_vorschau": [i.get("dex") for i in items if i.get("type") == "dex"][:3],
@@ -2852,7 +2862,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         if item.get("type") != "empty" and not (nur_fehlende and item.get("have"))
     ]
 
-    gesammelt = sum(1 for i in binder["items"] if i.get("have"))
+    gesammelt = sum(1 for i in binder["items"] if i.get("have"))   # Druck: Stand im Binder
     gesamt = sum(1 for i in binder["items"] if i.get("type") not in ("empty", "art"))
     if lang == "de":
         stats = [

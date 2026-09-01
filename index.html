@@ -147,9 +147,7 @@
   .th-karte:hover .th-weg { opacity: 1; }
   .th-karte.raus { opacity: .3; }
   .th-lauf { display: flex; align-items: center; gap: 10px; color: var(--mut); font-size: 13px; margin-top: 14px; }
-  .th-lauf i { width: 15px; height: 15px; border: 2px solid var(--line); border-top-color: var(--akzent); border-radius: 50%;
-               display: inline-block; animation: thdreh .8s linear infinite; }
-  @keyframes thdreh { to { transform: rotate(360deg); } }
+
   .th-anker { display: flex; gap: 10px; align-items: center; background: var(--panel2); border: 1px solid var(--line);
               border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
   .th-anker img { width: 42px; border-radius: 4px; }
@@ -302,7 +300,119 @@
   /* Drei Beispiele fürs Bildmotiv — die Funktion war hinter dem Klappknopf unsichtbar */
   .f-motiv-schnell { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 2px; }
   .f-motiv-schnell .chip { font-size: 11.5px; }
-  .f-motiv-schnell .chip::before { content: '◐'; margin-right: 5px; color: var(--blau); }
+  
+
+
+  /* ---------- Eigene Icons ----------
+     Eine Formensprache für alles: 20er-Raster, 1.8 Strich, runde Enden, currentColor.
+     Dieselbe Bauart wie das Logo — geometrisch, kantig, ohne Verlauf. Emoji sehen auf
+     jedem Gerät anders aus und gehören keiner Marke; diese hier gehören uns. */
+  .ic { display: inline-block; vertical-align: -0.16em; flex: none; }
+  .ic path, .ic circle, .ic rect, .ic line, .ic polyline { vector-effect: non-scaling-stroke; }
+  button .ic + span, .ic + span { margin-left: 6px; }
+
+  /* ---------- Ladeanzeige: eine Binderseite, die sich füllt ----------
+     Neun Fächer, in die nacheinander Karten rutschen — das Bild des Produkts als
+     Bewegung. Läuft als reines CSS, ohne Bibliothek, und hält bei
+     `prefers-reduced-motion` einfach an. */
+  .lader { display: inline-grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+           width: 42px; aspect-ratio: 63/88; padding: 3px; border-radius: 5px;
+           background: var(--kontur); }
+  .lader i { display: block; border-radius: 1.5px; background: rgba(255,255,255,.14);
+             animation: lader-fach 1.5s ease-in-out infinite; }
+  .lader i:nth-child(1) { animation-delay: 0s }      .lader i:nth-child(2) { animation-delay: .09s }
+  .lader i:nth-child(3) { animation-delay: .18s }    .lader i:nth-child(4) { animation-delay: .27s }
+  .lader i:nth-child(5) { animation-delay: .36s }    .lader i:nth-child(6) { animation-delay: .45s }
+  .lader i:nth-child(7) { animation-delay: .54s }    .lader i:nth-child(8) { animation-delay: .63s }
+  .lader i:nth-child(9) { animation-delay: .72s }
+  .lader i:nth-child(3n+1) { --lf: var(--gelb) }
+  .lader i:nth-child(3n+2) { --lf: var(--blau) }
+  .lader i:nth-child(3n)   { --lf: var(--akzent) }
+  @keyframes lader-fach {
+    0%, 70%, 100% { background: rgba(255,255,255,.14); transform: none; }
+    18%, 48% { background: var(--lf); transform: translateY(-1px); }
+  }
+  .lader.gross { width: 76px; padding: 5px; gap: 3px; }
+  .lader.klein { width: 26px; padding: 2px; gap: 1.5px; }
+  .ladezeile { display: flex; align-items: center; gap: 14px; color: var(--mut); font-size: 13.5px; }
+  @media (prefers-reduced-motion: reduce) { .lader i { animation: none; background: var(--lf); opacity: .55; } }
+
+
+  /* ---------- Startseite ----------
+     Viel Inhalt, aber ruhig: eine Spalte, klare Bänder, überall dieselben Abstände.
+     Jede Zahl ist ein Weg irgendwohin — Kacheln, die nur informieren, sind verschenkt. */
+  .st-rumpf { max-width: 1080px; margin: 0 auto; padding: 26px 20px 60px; }
+  .st-gruss { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .st-gruss h1 { margin: 0; font-size: clamp(24px, 3.2vw, 32px); }
+  .st-gruss .plan { font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+                    padding: 3px 10px; border-radius: 999px; background: var(--panel2); color: var(--mut); }
+  .st-gruss .plan.bezahlt { background: var(--gelb); color: var(--kontur); }
+  .st-unter { color: var(--mut); font-size: 13.5px; margin-bottom: 22px; }
+
+  .st-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 26px; }
+  .st-zahl { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 13px 16px;
+             background: var(--card); }
+  .st-zahl:hover { border-color: var(--kontur); }
+  .st-zahl .z { font-size: 25px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .st-zahl .l { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 2px; }
+  .st-zahl.gruen .z { color: var(--gruen); }
+
+  .st-abschnitt { margin-bottom: 30px; }
+  .st-titel { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .st-titel h2 { margin: 0; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+  .st-titel .mehr { font-size: 12.5px; color: var(--blau); cursor: pointer; margin-left: auto; }
+
+  .st-weiter { display: flex; align-items: center; gap: 18px; border: 2px solid var(--kontur); border-radius: 16px;
+               padding: 14px 18px; background: var(--card); box-shadow: 4px 4px 0 var(--gelb); flex-wrap: wrap; }
+  .st-weiter .vor { display: flex; gap: 3px; }
+  .st-weiter .vor img { width: 46px; aspect-ratio: 63/88; object-fit: cover; border-radius: 4px; background: var(--panel2); }
+  .st-weiter .txt { min-width: 160px; flex: 1; }
+  .st-weiter .txt strong { font-size: 17px; }
+  .st-weiter .txt div { font-size: 12.5px; color: var(--mut); }
+
+  .st-tun { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 10px; }
+  .st-tun button { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px; border-radius: 14px;
+                   border: 2px solid var(--line); background: var(--card); text-align: left; min-height: 62px; }
+  .st-tun button:hover { border-color: var(--kontur); }
+  .st-tun .st-ic { color: var(--blau); margin-top: 1px; }
+  .st-tun strong { display: block; font-size: 13.5px; font-weight: 700; }
+  .st-tun small { display: block; font-weight: 500; font-size: 11.5px; color: var(--mut); margin-top: 2px; line-height: 1.35; }
+
+  .st-vitrine { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .st-vk { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); cursor: pointer; }
+  .st-vk:hover { border-color: var(--kontur); }
+  .st-vk .bilder { display: flex; gap: 2px; padding: 6px 6px 0; background: #14161a; }
+  .st-vk .bilder img { width: 100%; aspect-ratio: 63/88; object-fit: cover; border-radius: 3px; min-width: 0; }
+  .st-vk .t { padding: 8px 10px 10px; }
+  .st-vk .t strong { font-size: 13px; display: block; }
+  .st-vk .t span { font-size: 11px; color: var(--mut); }
+
+
+  /* ---------- Profil & Konto ----------
+     Vorher ein langer Stapel gleich aussehender Kästen. Jetzt: das Wichtige (Tarif und
+     Guthaben) als Kopfband, darunter zwei Spalten — links, was dich betrifft, rechts,
+     was du einstellst. Gefährliches steht ganz unten und sieht auch so aus. */
+  .pf-rumpf { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
+  .pf-kopfband { display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+                 border: 2px solid var(--kontur); border-radius: 16px; padding: 18px 22px;
+                 background: var(--card); box-shadow: 4px 4px 0 var(--gelb); margin-bottom: 22px; }
+  .pf-kopfband .pf-tarif { font-size: 22px; font-weight: 800; line-height: 1.1; }
+  .pf-kopfband .pf-tarif small { display: block; font-size: 11.5px; font-weight: 600; color: var(--mut);
+                              letter-spacing: .05em; text-transform: uppercase; }
+  .pf-kopfband .guthaben { display: flex; align-items: baseline; gap: 7px; font-size: 22px; font-weight: 800;
+                           color: var(--blau); }
+  .pf-kopfband .guthaben small { font-size: 11.5px; font-weight: 600; color: var(--mut);
+                                 letter-spacing: .05em; text-transform: uppercase; }
+  .pf-spalten { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .pf-block { border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px; background: var(--card); margin: 0; }
+  .pf-block h3 { margin: 0 0 12px; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--mut); }
+  .pf-block.gefahr { border-color: color-mix(in srgb, var(--akzent) 45%, var(--line)); }
+  .pf-zeile { display: flex; align-items: center; gap: 12px; justify-content: space-between;
+              padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .pf-zeile:last-child { border-bottom: none; }
+  .pf-zeile .wert { font-weight: 700; text-align: right; }
+  .pf-voll { grid-column: 1 / -1; }
+  .pf-hinweis { font-size: 12px; color: var(--mut); line-height: 1.45; margin: -4px 0 12px; }
 
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
@@ -814,7 +924,7 @@
     <div class="menuwrap bw">
       <button class="btn sekundaer bw-btn" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen"><span class="bw-name" id="bw-name">Mein Binder</span><span class="bw-caret">▾</span></button>
       <div class="menu links hidden" id="menu-bw">
-        <div class="bw-edit"><span class="stift" aria-hidden="true">✎</span><input class="bindername" id="wb-name" placeholder="Name des Binders" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
+        <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
         <div class="trenn"></div>
         <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
         <div class="bw-liste" id="bw-liste"></div>
@@ -829,6 +939,7 @@
       </div>
     </div>
     <div class="segment desktop-only" role="tablist">
+      <button id="seg-start" onclick="ansicht('start')" data-i18n="start_nav">Start</button>
       <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="m_suche">Suche</button>
       <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
       <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
@@ -844,14 +955,14 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
+        <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <div class="trenn"></div>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
       </div>
     </div>
     <div class="menuwrap desktop-only">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen">⚙</button>
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/></svg></button>
       <div class="menu hidden" id="menu-einst" style="min-width:200px">
         <div class="menu-lbl" data-i18n="pf_sprache_ui">Sprache der Oberfläche</div>
         <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
@@ -1009,8 +1120,8 @@
               <div class="trenn"></div>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
-              <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
-              <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
+              <button onclick="fotoOeffnen()" data-i18n="foto_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
+              <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
               <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
               <button onclick="veroeffentlichenUmschalten()" id="wb-vitrine-knopf" data-i18n="vt_zeigen">In der Vitrine zeigen …</button>
               <div class="trenn"></div>
@@ -1052,7 +1163,7 @@
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/></svg>
         </button>
-        <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite">🎨</button>
+        <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg></button>
         <button onclick="themaOeffnen()" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <circle cx="9" cy="9" r="5.4"/><path d="M13.2 13.2 17 17"/><path d="M6.6 10.4c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/></svg>
@@ -1101,13 +1212,13 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
+        <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
         <div class="trenn"></div>
         <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
-        <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
+        <button onclick="fotoOeffnen()" data-i18n="foto_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
         <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
         <div class="trenn"></div>
         <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
@@ -1313,7 +1424,7 @@
 <div class="overlay hidden" id="modal-artwork">
   <div class="modal" style="width:min(980px,96vw)">
     <button class="modal-x" onclick="artworkSchliessen()" title="Schließen">✕</button>
-    <h2>🎨 <span data-i18n="aw_t">Artwork-Seite gestalten</span> · <span data-i18n="seite">Seite</span> <span id="aw-seite-nr">1</span></h2>
+    <h2><svg class="ic" width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg> <span data-i18n="aw_t">Artwork-Seite gestalten</span> · <span data-i18n="seite">Seite</span> <span id="aw-seite-nr">1</span></h2>
     <div class="unter" data-i18n="aw_u">Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.</div>
     <div class="aw-wrap" id="aw-editor">
       <div class="aw-links">
@@ -1329,7 +1440,7 @@
         <div class="aw-poke-chips" id="aw-poke-chips"></div>
         <input class="feld" id="aw-poke" list="dex-namen" autocomplete="off" data-i18n-ph="aw_pokemon_ph" placeholder="Name eingeben, Enter fügt hinzu (max. 3)" onkeydown="artworkPokeTaste(event)" onchange="artworkPokeAdd()">
         <div class="aw-kont" id="aw-kont"></div>
-        <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()" data-i18n="aw_start">✦ Seite füllen</button>
+        <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()" data-i18n="aw_start"><svg class="ic" width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> Seite füllen</button>
         <div id="aw-fehler" class="aw-fehler"></div>
         <div class="aw-privat" data-i18n="aw_privat">KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.</div>
       </div>
@@ -1337,7 +1448,7 @@
     <div class="aw-lauf hidden" id="aw-lauf">
       <div class="aw-mini-vorschau" id="aw-lauf-grid"></div>
       <div class="aw-spin"></div>
-      <span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 30–60 Sekunden.</span>
+      <span class="lader" style="margin-right:12px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 30–60 Sekunden.</span>
     </div>
     <div class="aw-ergebnis hidden" id="aw-ergebnis">
       <div class="aw-vorschau">
@@ -1393,12 +1504,33 @@
     <button class="btn sekundaer" style="font-size:13px" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button>
     <button class="btn" style="font-size:13px" onclick="startSchliessen()" data-i18n="zur_werkbank">Zur Werkbank ›</button>
   </div>
-  <div class="seite-rumpf">
-    <h1 id="st-gruss"></h1>
-    <div style="font-size:13px;color:var(--mut)" data-i18n="st_unter">Deine Binder auf einen Blick — klick einen an, um weiterzuplanen.</div>
-    <div class="statzeile" id="st-stats"></div>
-    <div class="st-tun" id="st-tun"></div>
-    <div class="binder-grid" id="st-grid"></div>
+  <div class="st-rumpf">
+    <div class="st-gruss"><h1 id="st-gruss"></h1><span class="plan" id="st-plan"></span></div>
+    <div class="st-unter" id="st-unter"></div>
+
+    <div class="st-band" id="st-band"></div>
+
+    <div class="st-abschnitt" id="st-weiter-block" hidden>
+      <div class="st-titel"><h2 data-i18n="st_weiter">Weiter, wo du warst</h2></div>
+      <div class="st-weiter" id="st-weiter"></div>
+    </div>
+
+    <div class="st-abschnitt">
+      <div class="st-titel"><h2 data-i18n="st_tun">Was möchtest du tun</h2></div>
+      <div class="st-tun" id="st-tun"></div>
+    </div>
+
+    <div class="st-abschnitt">
+      <div class="st-titel"><h2 data-i18n="st_deine">Deine Binder</h2>
+        <span class="mehr" onclick="menuToggle('menu-st-neu')" data-i18n="st_neu">Neuer Binder</span></div>
+      <div class="binder-grid" id="st-grid"></div>
+    </div>
+
+    <div class="st-abschnitt" id="st-vitrine-block" hidden>
+      <div class="st-titel"><h2 data-i18n="st_aus_vitrine">Aus der Vitrine</h2>
+        <span class="mehr" onclick="startSchliessen();ansicht('vitrine')" data-i18n="st_alle_zeigen">Alle ansehen</span></div>
+      <div class="st-vitrine" id="st-vitrine"></div>
+    </div>
   </div>
 </div>
 
@@ -1410,73 +1542,97 @@
     <div style="flex:1"></div>
     <button class="btn sekundaer" style="font-size:13px" onclick="profilAbmelden()" data-i18n="abmelden">Abmelden</button>
   </div>
-  <div class="seite-rumpf" style="max-width:640px">
-    <div class="pf-block">
-      <h3 data-i18n="pf_konto">Konto</h3>
-      <div class="pf-zeile"><span data-i18n="pf_rufname">Dein Name (nur für die Begrüßung)</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
-      <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_exporte">PDF-Exporte diesen Monat übrig</span><span class="wert" id="pf-exporte"></span></div>
-      <div class="pf-zeile"><span data-i18n="guthaben">Guthaben</span><span class="wert" id="pf-credits"></span></div>
-      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Tarif &amp; Credits</span> ★</button>
-        <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Rechnungen &amp; Zahlungsmittel</button>
-        <button class="btn sekundaer hidden" id="pf-kuend" onclick="aboKuendigen()" style="font-size:13px"></button>
-        <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
+  <div class="pf-rumpf">
+
+    <div class="pf-kopfband">
+      <div class="pf-tarif"><small data-i18n="pf_tarif">Tarif</small><span id="pf-plan"></span></div>
+      <div class="guthaben"><small data-i18n="guthaben">Guthaben</small><span id="pf-credits"></span></div>
+      <div style="flex:1"></div>
+      <button class="btn" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Tarif &amp; Credits</span></button>
+      <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Rechnungen &amp; Zahlungsmittel</button>
+      <button class="btn sekundaer hidden" id="pf-kuend" onclick="aboKuendigen()" style="font-size:13px"></button>
+      <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
+    </div>
+
+    <div class="pf-spalten">
+      <div style="display:grid;gap:16px">
+        <div class="pf-block">
+          <h3 data-i18n="pf_konto">Konto</h3>
+          <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_rufname">Dein Name (nur für die Begrüßung)</span>
+            <span class="wert" style="display:flex;gap:6px;align-items:center">
+              <input class="feld" id="pf-name" style="width:150px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel">
+              <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_exporte">PDF-Exporte diesen Monat übrig</span><span class="wert" id="pf-exporte"></span></div>
+        </div>
+
+        <div class="pf-block" id="pf-vitrine-block">
+          <h3 data-i18n="pf_vitrine">Vitrine</h3>
+          <div class="pf-hinweis" data-i18n="pf_vitrine_u">Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.</div>
+          <div class="pf-zeile"><span data-i18n="pf_oeff_name">Öffentlicher Name</span>
+            <span class="wert" style="display:flex;gap:6px;align-items:center">
+              <input class="feld" id="pf-vname" style="width:150px;padding:5px 9px;font-size:13px" maxlength="24" placeholder="z. B. Karpador-Kai">
+              <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_oeff_text">Ein Satz über dich</span>
+            <span class="wert"><input class="feld" id="pf-vtext" style="width:210px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999"></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
+          <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
+          <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn sekundaer" style="font-size:13px" onclick="profilSchliessen();ansicht('vitrine')" data-i18n="vt_t">Vitrine</button>
+            <button class="btn sekundaer hidden" style="font-size:13px" id="pf-meinprofil" data-i18n="pf_mein_profil">Mein öffentliches Profil ansehen</button>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="pf-block" id="pf-vitrine-block">
-      <h3 data-i18n="pf_vitrine">Vitrine</h3>
-      <div style="font-size:12.5px;color:var(--mut);margin:-4px 0 12px" data-i18n="pf_vitrine_u">Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.</div>
-      <div class="pf-zeile"><span data-i18n="pf_oeff_name">Öffentlicher Name</span>
-        <span class="wert" style="display:flex;gap:6px;align-items:center">
-          <input class="feld" id="pf-vname" style="width:180px;padding:5px 9px;font-size:13px" maxlength="24" placeholder="z. B. Karpador-Kai">
-          <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_oeff_text">Ein Satz über dich</span>
-        <span class="wert"><input class="feld" id="pf-vtext" style="width:250px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999"></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
-      <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
-      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-        <button class="btn sekundaer" style="font-size:13px" onclick="ansicht('vitrine');profilSchliessen()" data-i18n="vt_t">Vitrine</button>
-        <button class="btn sekundaer hidden" style="font-size:13px" id="pf-meinprofil" data-i18n="pf_mein_profil">Mein öffentliches Profil ansehen</button>
+
+      <div style="display:grid;gap:16px">
+        <div class="pf-block">
+          <h3 data-i18n="journal">Letzte Buchungen</h3>
+          <div class="buchungen" id="pf-journal"></div>
+        </div>
+
+        <div class="pf-block">
+          <h3 data-i18n="pf_einstellungen">Einstellungen</h3>
+          <div class="pf-zeile"><span data-i18n="pf_sprache">Sprache</span>
+            <span class="lang-toggle"><button id="pf-lang-de" onclick="setLang('de');profilFuellen()">DE</button><button id="pf-lang-en" onclick="setLang('en');profilFuellen()">EN</button></span></div>
+          <div class="pf-zeile"><span data-i18n="pf_design">Design</span>
+            <button class="btn sekundaer" id="pf-theme-btn" onclick="themeWechsel()" style="font-size:12px;padding:5px 12px"></button></div>
+        </div>
+
+        <div class="pf-block">
+          <h3 data-i18n="pf_pw">Passwort ändern</h3>
+          <div class="feld-lbl" data-i18n="pf_pw_alt">Aktuelles Passwort</div>
+          <input class="feld" id="pf-pw-alt" type="password" autocomplete="new-password">
+          <div class="feld-lbl" data-i18n="pf_pw_neu">Neues Passwort (mindestens 8 Zeichen)</div>
+          <input class="feld" id="pf-pw-neu" type="password" autocomplete="new-password">
+          <button class="btn sekundaer" style="font-size:13px;margin-top:12px" onclick="pwAendern()" data-i18n="pf_pw_btn">Passwort speichern</button>
+        </div>
       </div>
-    </div>
-    <div class="pf-block">
-      <h3 data-i18n="journal">Letzte Buchungen</h3>
-      <div class="buchungen" id="pf-journal"></div>
-    </div>
-    <div class="pf-block">
-      <h3 data-i18n="pf_einstellungen">Einstellungen</h3>
-      <div class="pf-zeile"><span data-i18n="pf_sprache">Sprache</span>
-        <span class="lang-toggle"><button id="pf-lang-de" onclick="setLang('de');profilFuellen()">DE</button><button id="pf-lang-en" onclick="setLang('en');profilFuellen()">EN</button></span></div>
-      <div class="pf-zeile"><span data-i18n="pf_design">Design</span>
-        <button class="btn sekundaer" id="pf-theme-btn" onclick="themeWechsel()" style="font-size:12px;padding:5px 12px"></button></div>
-    </div>
-    <div class="pf-block">
-      <h3 data-i18n="pf_pw">Passwort ändern</h3>
-      <div class="feld-lbl" data-i18n="pf_pw_alt">Aktuelles Passwort</div>
-      <input class="feld" id="pf-pw-alt" type="password" autocomplete="new-password">
-      <div class="feld-lbl" data-i18n="pf_pw_neu">Neues Passwort (mindestens 8 Zeichen)</div>
-      <input class="feld" id="pf-pw-neu" type="password" autocomplete="new-password">
-      <button class="btn sekundaer" style="font-size:13px;margin-top:12px" onclick="pwAendern()" data-i18n="pf_pw_btn">Passwort speichern</button>
-    </div>
-    <div class="pf-block">
-      <h3 data-i18n="pf_recht">Rechtliches</h3>
-      <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)">Impressum</a> ·
-        <a href="recht#agb" target="_blank" style="color:var(--mut)">AGB</a> ·
-        <a href="recht#widerruf" target="_blank" style="color:var(--mut)">Widerruf</a> ·
-        <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a> ·
-        <a href="/kuendigen" target="_blank" style="color:var(--mut)">Verträge kündigen</a></div>
-    </div>
-    <div class="pf-block gefahr">
-      <h3 data-i18n="pf_gefahr">Konto löschen</h3>
-      <button class="btn sekundaer" style="font-size:13px;margin-bottom:14px" onclick="datenExport()" data-i18n="pf_export">Meine Daten herunterladen</button>
-      <div style="font-size:12.5px;color:var(--mut);margin-bottom:10px" data-i18n="pf_loeschen_hint">Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.</div>
-      <div class="feld-lbl" data-i18n="pf_loeschen_pw">Zum Bestätigen Passwort eingeben</div>
-      <input class="feld" id="pf-del-pw" type="password" autocomplete="new-password">
-      <button class="btn sekundaer" style="font-size:13px;margin-top:12px;color:var(--akzent)" onclick="kontoLoeschen()" data-i18n="pf_loeschen_btn">Konto endgültig löschen</button>
+
+      <div class="pf-block pf-voll">
+        <h3 data-i18n="pf_recht">Rechtliches</h3>
+        <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)">Impressum</a> ·
+          <a href="recht#agb" target="_blank" style="color:var(--mut)">AGB</a> ·
+          <a href="recht#widerruf" target="_blank" style="color:var(--mut)">Widerruf</a> ·
+          <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a> ·
+          <a href="/kuendigen" target="_blank" style="color:var(--mut)">Verträge kündigen</a></div>
+      </div>
+
+      <div class="pf-block gefahr pf-voll">
+        <h3 data-i18n="pf_gefahr">Konto löschen</h3>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:240px">
+            <div class="pf-hinweis" data-i18n="pf_loeschen_hint">Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.</div>
+            <div class="feld-lbl" data-i18n="pf_loeschen_pw">Zum Bestätigen Passwort eingeben</div>
+            <input class="feld" id="pf-del-pw" type="password" autocomplete="new-password">
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn sekundaer" style="font-size:13px" onclick="datenExport()" data-i18n="pf_export">Meine Daten herunterladen</button>
+            <button class="btn sekundaer" style="font-size:13px;color:var(--akzent)" onclick="kontoLoeschen()" data-i18n="pf_loeschen_btn">Konto endgültig löschen</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1522,7 +1678,7 @@
         <input class="feld" type="number" id="th-anzahl" min="1" max="16" value="9"></div>
     </div>
     <div class="unter" id="th-abdeckung" style="margin-top:10px"></div>
-    <div class="th-lauf hidden" id="th-lauf"><i></i><span data-i18n="th_sucht">Die Bilder werden durchsucht …</span></div>
+    <div class="th-lauf hidden" id="th-lauf"><span class="lader klein"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span data-i18n="th_sucht">Die Bilder werden durchsucht …</span></div>
     <div style="color:var(--warn,#c0392b);font-size:13px;margin-top:8px" id="th-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
@@ -1651,7 +1807,7 @@
       <div class="unter" id="po-text" style="margin:2px 0 0"></div>
     </div>
     <div style="flex:1"></div>
-    <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('profil', POF.name)" title="Melden">⚑</button>
+    <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('profil', POF.name)" title="Melden"><svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17V3.6M5 4.2h8.6l-1.6 3 1.6 3H5"/></svg></button>
   </div>
   <div class="unter" id="po-seit"></div>
   <div class="vt-gitter" id="po-gitter" style="margin-top:14px"></div>
@@ -1685,13 +1841,13 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
-    aw_t: 'Artwork-Seite gestalten', aw_menu: '🎨 Artwork-Seite gestalten …',
+    aw_t: 'Artwork-Seite gestalten', aw_menu: 'Artwork-Seite gestalten …',
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
     aw_kosten_hin: 'für diese Seite · du hast {s}', aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
     aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
-    s_artwork: '🎨 Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
+    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
     pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
     pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
     preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise 1× am Tag aktualisieren',
@@ -1713,7 +1869,7 @@ const T = {
     gekuendigt: 'Gekündigt zum', reaktivieren: 'Kündigung zurücknehmen', reaktiviert: 'Dein Abo läuft weiter.',
     abo_bis: 'Verlängert sich am', tarif_wechseln: 'Tarif wechseln', zahlung_offen: 'Zahlung offen – bitte Zahlungsmittel prüfen.',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
-    aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: '✦ Seite füllen',
+    aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: 'Seite füllen',
     aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
     aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
     aw_kont_monat: 'Noch {n} von {m} Artwork-Seiten in diesem Monat.', aw_kont_frei: 'Deine Probeseite ist kostenlos – Pro-Konten erzeugen 20 Seiten im Monat.',
@@ -1770,6 +1926,12 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    start_nav: 'Start', st_weiter: 'Weiter, wo du warst', st_weiterplanen: 'Weiterplanen',
+    st_tun: 'Was möchtest du tun', st_deine: 'Deine Binder', st_aus_vitrine: 'Aus der Vitrine',
+    st_alle_zeigen: 'Alle ansehen', st_neu_u: 'Master Set, Pokédex, ein Pokémon oder leer',
+    st_unter_voll: 'Alles auf einen Blick — Zahlen anklicken führt dich hin.',
+    st_unter_leer: 'Noch kein Binder. Fang mit einer Vorlage an oder fotografiere deinen Binder ab.',
+
     th_unterwasser: 'Unter Wasser', th_nachts: 'Bei Nacht', th_mehrere: 'Mehrere Pokémon',
     bv_bild: 'Doppelseite als Bild sichern', bv_bild_fertig: 'Bild gesichert',
     bv_bild_fehler: 'Das Bild ließ sich nicht erzeugen',
@@ -1825,7 +1987,7 @@ const T = {
     geb_noetig: 'Bitte gib dein Geburtsdatum an.',
 
     tpl_foto: 'Aus Fotos', tpl_foto_u: 'Seiten abfotografieren, Karten werden erkannt',
-    foto_menu: '📷 Seiten abfotografieren …', foto_t: 'Binder aus Fotos',
+    foto_menu: 'Seiten abfotografieren …', foto_t: 'Binder aus Fotos',
     foto_u: 'Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.',
     foto_tipp: 'Am besten gerade von oben, die ganze Seite im Bild, gleichmäßiges Licht ohne starke Spiegelung. Karten dürfen in Hüllen stecken.',
     foto_waehlen: 'Fotos auswählen', foto_los: 'Karten erkennen', foto_vor: 'Nach vorne', foto_zurueck: 'Nach hinten',
@@ -1891,7 +2053,7 @@ const T = {
     gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
     gate_preise: 'Für Preise brauchst du ein kostenloses Konto.',
     preise_morgen: 'Free-Konto: Preise wurden heute schon aktualisiert — morgen wieder (oder mit Pro sofort).',
-    zahlung_ok: 'Zahlung erfolgreich — vielen Dank! 🎉', zahlung_abbruch: 'Zahlung abgebrochen.',
+    zahlung_ok: 'Zahlung erfolgreich — vielen Dank!', zahlung_abbruch: 'Zahlung abgebrochen.',
     willkommen: 'Willkommen!', uebernommen: 'Binder wurden deinem Konto zugeordnet.',
     up_t: 'Mehr aus deinem Binder holen', up_u: 'Unbegrenzt planen und drucken – und Credits für KI-Artwork-Seiten.',
     up_monat: 'Monat', up_monat_k: 'monatlich kündbar', up_jahr: 'Jahr', up_jahr_k: '= 2,08 € im Monat',
@@ -1921,13 +2083,13 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
-    aw_t: 'Design an artwork page', aw_menu: '🎨 Design an artwork page …',
+    aw_t: 'Design an artwork page', aw_menu: 'Design an artwork page …',
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
     aw_kosten_hin: 'for this page · you have {s}', aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
     aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
-    s_artwork: '🎨 Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
+    s_artwork: 'Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
     pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
     pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
     preise_live: 'Refresh prices any time', preise_tag: 'Refresh prices once a day',
@@ -1949,7 +2111,7 @@ const T = {
     gekuendigt: 'Cancelled as of', reaktivieren: 'Undo cancellation', reaktiviert: 'Your subscription continues.',
     abo_bis: 'Renews on', tarif_wechseln: 'Change plan', zahlung_offen: 'Payment pending – please check your payment method.',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
-    aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: '✦ Fill the page',
+    aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: 'Fill the page',
     aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
     aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
     aw_kont_monat: '{n} of {m} artwork pages left this month.', aw_kont_frei: 'Your trial page is free – Pro accounts create 20 pages per month.',
@@ -2005,6 +2167,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    start_nav: 'Home', st_weiter: 'Pick up where you left off', st_weiterplanen: 'Continue', st_tun: 'What would you like to do', st_deine: 'Your binders', st_aus_vitrine: 'From the showcase', st_alle_zeigen: 'See all', st_neu_u: 'Master set, Pokédex, one Pokémon or empty', st_unter_voll: 'Everything at a glance — tap a number to go there.', st_unter_leer: 'No binder yet. Start from a template or photograph your binder.',
+
     th_unterwasser: 'Underwater', th_nachts: 'At night', th_mehrere: 'Several Pokémon', bv_bild: 'Save spread as image', bv_bild_fertig: 'Image saved', bv_bild_fehler: 'Could not create the image',
 
     sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
@@ -2020,7 +2184,7 @@ const T = {
     geburtsdatum: 'Date of birth', geb_hint: 'Only used to know whether you may show binders publicly — allowed from 16. It is never shown publicly.',
     geb_noetig: 'Please enter your date of birth.',
 
-    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: '📷 Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
+    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: 'Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
 
     neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
 
@@ -2060,7 +2224,7 @@ const T = {
     gate_pro: 'This feature is part of Binderplan Pro.',
     gate_preise: 'Prices need a free account.',
     preise_morgen: 'Free account: prices were already refreshed today — again tomorrow (or instantly with Pro).',
-    zahlung_ok: 'Payment successful — thank you! 🎉', zahlung_abbruch: 'Payment cancelled.',
+    zahlung_ok: 'Payment successful — thank you!', zahlung_abbruch: 'Payment cancelled.',
     willkommen: 'Welcome!', uebernommen: 'Your binders were linked to your account.',
     up_t: 'Get more out of your binder', up_u: 'Plan and print without limits – plus credits for AI artwork pages.',
     up_monat: 'Month', up_monat_k: 'cancel monthly', up_jahr: 'Year', up_jahr_k: '= €2.08 per month',
@@ -2111,6 +2275,67 @@ const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: 
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- Icons ----------
+// Ein Satz eigener Zeichen statt Emoji: 20er-Raster, 1.8 Strich, runde Enden,
+// alles in currentColor. Emoji sehen auf jedem Gerät anders aus, lassen sich nicht
+// einfärben und gehören keiner Marke — diese hier gehören uns.
+const ICONS = {
+  x:        '<path d="M5.5 5.5 14.5 14.5M14.5 5.5 5.5 14.5"/>',
+  haken:    '<path d="M4.5 10.5 8.2 14.2 15.5 6.4"/>',
+  plus:     '<path d="M10 4.6v10.8M4.6 10h10.8"/>',
+  minus:    '<path d="M4.6 10h10.8"/>',
+  links:    '<path d="M12.4 4.8 7.2 10l5.2 5.2"/>',
+  rechts:   '<path d="M7.6 4.8 12.8 10l-5.2 5.2"/>',
+  hoch:     '<path d="M4.8 12.4 10 7.2l5.2 5.2"/>',
+  runter:   '<path d="M4.8 7.6 10 12.8l5.2-5.2"/>',
+  zurueck:  '<path d="M8.6 5.4 4 10l4.6 4.6M4.4 10H16"/>',
+  lupe:     '<circle cx="9" cy="9" r="4.9"/><path d="M12.6 12.6 16.4 16.4"/>',
+  motiv:    '<circle cx="9" cy="9" r="4.9"/><path d="M12.6 12.6 16.4 16.4"/><path d="M6.5 10.2c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/>',
+  palette:  '<path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/>',
+  kamera:   '<path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/>',
+  vitrine:  '<rect x="3.2" y="4" width="13.6" height="12" rx="1.8"/><path d="M3.2 8h13.6M8 8v8M12 8v8"/>',
+  sammlung: '<rect x="2.8" y="5.2" width="9" height="11.4" rx="1.4"/><path d="M6.6 3.6h8.2a1.4 1.4 0 0 1 1.4 1.4v9.6"/>',
+  buch:     '<path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/><path d="M10 4.5v12"/>',
+  seiteNeu: '<rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/>',
+  seiteVor: '<rect x="3" y="4" width="9" height="12" rx="1.6"/><path d="M16 12.5V7.5M13.6 9.9 16 7.4l2.4 2.5"/>',
+  seiteZur: '<rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5v5M1.6 10.1 4 12.6l2.4-2.5"/>',
+  muell:    '<path d="M4.4 5.8h11.2M8.2 5.8V4.2h3.6v1.6M5.8 5.8l.7 9.4a1.4 1.4 0 0 0 1.4 1.3h4.2a1.4 1.4 0 0 0 1.4-1.3l.7-9.4"/>',
+  zahnrad:  '<circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/>',
+  fahne:    '<path d="M5 17V3.6M5 4.2h8.6l-1.6 3 1.6 3H5"/>',
+  herz:     '<path d="M10 16.2S3.4 12.3 3.4 7.9A3.5 3.5 0 0 1 10 6.2a3.5 3.5 0 0 1 6.6 1.7c0 4.4-6.6 8.3-6.6 8.3z"/>',
+  stern:    '<path d="m10 3.2 2.1 4.4 4.8.6-3.5 3.4.9 4.8L10 14.1l-4.3 2.3.9-4.8L3.1 8.2l4.8-.6z"/>',
+  funke:    '<path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/>',
+  hakenKasten: '<rect x="3.4" y="3.4" width="13.2" height="13.2" rx="2"/><path d="M6.6 10.2 8.9 12.5 13.6 7.6"/>',
+  kontrast: '<circle cx="10" cy="10" r="6.6"/><path d="M10 3.4a6.6 6.6 0 0 0 0 13.2z" fill="currentColor" stroke="none"/>',
+  konto:    '<circle cx="10" cy="7.2" r="3.1"/><path d="M4 16.6c.6-3 3-4.6 6-4.6s5.4 1.6 6 4.6"/>',
+  haus:     '<path d="M3.4 9.2 10 3.6l6.6 5.6"/><path d="M5.2 8.6v7.8h9.6V8.6"/><path d="M8.4 16.4v-4.2h3.2v4.2"/>',
+  drucker:  '<path d="M6 7.4V3.6h8v3.8"/><rect x="3.2" y="7.4" width="13.6" height="5.8" rx="1.4"/><path d="M6 11.4h8v5H6z"/>',
+  liste:    '<path d="M7 5.6h9M7 10h9M7 14.4h9M4 5.6h.01M4 10h.01M4 14.4h.01"/>',
+  raster:   '<rect x="3.4" y="3.4" width="13.2" height="13.2" rx="1.6"/><path d="M8 3.4v13.2M12 3.4v13.2M3.4 8h13.2M3.4 12h13.2"/>',
+  wechsel:  '<path d="M4.4 7.6h9.2l-2.4-2.4M15.6 12.4H6.4l2.4 2.4"/>',
+  stift:    '<path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/>',
+  teilen:   '<path d="M10 2.8v9M6.9 5.7 10 2.6l3.1 3.1"/><path d="M4.2 12v3.6A1.6 1.6 0 0 0 5.8 17h8.4a1.6 1.6 0 0 0 1.6-1.6V12"/>',
+  info:     '<circle cx="10" cy="10" r="6.8"/><path d="M10 9.2v4.2M10 6.6h.01"/>',
+  schloss:  '<rect x="4.4" y="8.6" width="11.2" height="7.8" rx="1.6"/><path d="M7 8.6V6.8a3 3 0 0 1 6 0v1.8"/>',
+};
+
+/** Icon als HTML. `ic('kamera')` oder `ic('herz', 22, 'voll')` (voll = gefüllt). */
+function ic(name, groesse, art) {
+  const d = ICONS[name] || ICONS.info;
+  const g = groesse || 18;
+  const fuellung = art === 'voll' ? 'currentColor' : 'none';
+  return `<svg class="ic" width="${g}" height="${g}" viewBox="0 0 20 20" fill="${fuellung}" stroke="currentColor" `
+    + `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+
+/** Ladeanzeige: eine Binderseite, in die nacheinander Karten rutschen. */
+function lader(groesse, text) {
+  const k = groesse === 'gross' ? ' gross' : groesse === 'klein' ? ' klein' : '';
+  const seite = `<span class="lader${k}" role="status" aria-live="polite" aria-label="${t('laedt')}">`
+    + '<i></i>'.repeat(9) + '</span>';
+  return text ? `<div class="ladezeile">${seite}<span>${esc(text)}</span></div>` : seite;
+}
 
 // Browser-Autofill strikt unterbinden — für alle Browser und Passwort-Manager.
 // autocomplete="off" reicht Chrome & Co. nicht; dazu kommen die Ignorier-Attribute
@@ -2193,10 +2418,10 @@ function themeAnwenden() {
   else delete root.dataset.theme;
   const lbl = { auto: 'Auto', hell: LANG === 'en' ? 'Light' : 'Hell', dunkel: LANG === 'en' ? 'Dark' : 'Dunkel' };
   const btn = $('theme-btn');
-  if (btn) btn.textContent = '◐ ' + lbl[THEME];
+  if (btn) btn.innerHTML = ic('kontrast', 15) + '<span>' + lbl[THEME] + '</span>';
   document.querySelectorAll('.theme-stand').forEach((el) => { el.textContent = lbl[THEME]; });
   const btn2 = $('pf-theme-btn');
-  if (btn2) btn2.textContent = '◐ ' + lbl[THEME];
+  if (btn2) btn2.innerHTML = ic('kontrast', 15) + '<span>' + lbl[THEME] + '</span>';
 }
 function themeWechsel() {
   THEME = THEMES[(THEMES.indexOf(THEME) + 1) % THEMES.length];
@@ -2347,7 +2572,7 @@ function kontoAnzeigen() {
   if (typeof besitzLaden === 'function') besitzLaden().then(() => { if (S.binder) zeichneBinder(); });
   const btn = $('btn-konto');
   if (S.user) {
-    btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? ' ★' : '');
+    btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? '' : '');
   } else {
     btn.textContent = t('anmelden');
   }
@@ -2361,13 +2586,13 @@ function kontoMenue() {
   const exporte = u.exporte_limit == null ? '∞' : `${Math.max(0, u.exporte_limit - u.exporte_benutzt)}/${u.exporte_limit}`;
   $('menu-konto').innerHTML = `
     <div class="konto-mail"><strong style="color:var(--ink)">${esc(anzeigeName())}</strong><br>${esc(u.email)}<br>
-      ${planLbl}${u.plan !== 'free' ? ' ★' : ''} · ${exporte} ${t('exporte_uebrig')}<br>
-      <span class="credit-chip" style="margin-top:5px">✦ ${u.credits || 0} ${t('credits')}</span></div>
+      ${planLbl}${u.plan !== 'free' ? ' ' : ''} · ${exporte} ${t('exporte_uebrig')}<br>
+      <span class="credit-chip" style="margin-top:5px"><svg class="ic" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> ${u.credits || 0} ${t('credits')}</span></div>
     <div class="trenn"></div>
     <button onclick="startOeffnen()">${t('start')}</button>
     <button onclick="profilOeffnen()">${t('profil')}</button>
     <div class="trenn"></div>
-    <button onclick="upgradeOeffnen('')">${u.plan === 'free' ? t('upgrade') + ' ★' : t('credits_kaufen')}</button>
+    <button onclick="upgradeOeffnen('')">${u.plan === 'free' ? t('upgrade') : t('credits_kaufen')}</button>
     ${u.plan !== 'free' && u.plan !== 'lifetime' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
     <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
         <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
@@ -2515,7 +2740,7 @@ function zeichneTarife() {
       <div class="tk-name">${esc(tf.name)}</div>
       <div class="tk-preis">${preis ? preis.toFixed(2).replace('.', ',') + ' €' : '0 €'}
         <small>${preis ? (jahr ? t('pro_jahr') : t('pro_monat')) : ''}</small></div>
-      <div class="tk-credits">✦ ${cr}</div>
+      <div class="tk-credits"><svg class="ic" width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> ${cr}</div>
       <ul>${zeilen.join('')}</ul>
       ${ist ? `<button class="btn sekundaer" disabled>${t('aktuell')}</button>`
         : (preis ? `<button class="btn" onclick="bestellungOeffnen('${tf.id}','${jahr ? 'jahr' : 'monat'}')">${t('waehlen')}</button>` : '')}
@@ -2546,7 +2771,7 @@ function bestellungOeffnen(art, variante) {
   $('bestell-box').innerHTML = `
     <div class="bestell-zeile"><span>${t('best_leistung')}</span><strong>${esc(name)}</strong></div>
     <div class="bestell-zeile"><span>${t('best_laufzeit')}</span><span style="text-align:right;max-width:60%">${laufzeit}</span></div>
-    ${art !== 'paket' ? `<div class="bestell-zeile"><span>✦ ${t('credits')}</span><strong>${d.tarife.find((x) => x.id === art).credits} ${t('pro_monat')}</strong></div>` : ''}
+    ${art !== 'paket' ? `<div class="bestell-zeile"><span><svg class="ic" width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> ${t('credits')}</span><strong>${d.tarife.find((x) => x.id === art).credits} ${t('pro_monat')}</strong></div>` : ''}
     <div class="bestell-zeile gesamt"><span>${t('best_gesamt')}</span><span>${betrag.toFixed(2).replace('.', ',')} €</span></div>
     <div style="font-size:11px;color:var(--mut);margin-top:6px">${t('up_recht_kurz')}</div>`;
   $('best-agb-text').innerHTML = t('best_agb_html');
@@ -2592,12 +2817,16 @@ async function startOeffnen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
+  $('seg-start').classList.add('on');
+  ['seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine'].forEach((i) => $(i) && $(i).classList.remove('on'));
   location.hash = 'start';
   $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
   await startLaden();
 }
 function startSchliessen() {
   $('startseite').classList.add('hidden');
+  $('seg-start').classList.remove('on');
+  $('seg-suche').classList.add('on');
   if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
   else neuLeer(true);
 }
@@ -2605,17 +2834,65 @@ async function startLaden() {
   let liste = [];
   try { liste = (await api('api/binders?ids=' + binderIds().join(','))).binder; } catch (e) {}
   const faecher = liste.reduce((a, b) => a + b.anzahl, 0);
-  const gesammelt = liste.reduce((a, b) => a + (b.gesammelt || 0), 0);
-  $('st-stats').innerHTML = `
-    <div class="statkachel"><div class="zahl">${liste.length}</div><div class="lbl">${t('st_binder')}</div></div>
-    <div class="statkachel"><div class="zahl">${faecher}</div><div class="lbl">${t('st_faecher')}</div></div>
-    <div class="statkachel"><div class="zahl">${gesammelt}</div><div class="lbl">${t('st_gesammelt')}</div></div>`;
+
+  // Kopf
+  $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
+  const bezahlt = S.user && S.user.plan && S.user.plan !== 'free';
+  $('st-plan').textContent = (S.user && S.user.plan_name) || t('tarif_frei');
+  $('st-plan').classList.toggle('bezahlt', !!bezahlt);
+  $('st-unter').textContent = liste.length ? t('st_unter_voll') : t('st_unter_leer');
+
+  // Zahlenband — jede Kachel führt irgendwohin
+  let sm = null;
+  if (S.user) { try { sm = await api('api/sammlung/uebersicht'); } catch (e) {} }
+  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+    { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  $('st-band').innerHTML = [
+    [liste.length, t('st_binder'), '', 'startSchliessen()'],
+    [faecher, t('st_faecher'), '', 'startSchliessen()'],
+    [sm ? sm.karten : '–', t('sm_t'), '', "startSchliessen();ansicht('sammlung')"],
+    [sm ? eur(sm.wert) : '–', t('sm_wert'), 'gruen', "startSchliessen();ansicht('sammlung')"],
+  ].map(([z, l, k, fn]) => `<button class="st-zahl ${k}" onclick="${fn}"><div class="z">${z}</div><div class="l">${esc(l)}</div></button>`).join('');
+
+  // Weiter, wo du warst
+  const zuletzt = liste.slice().sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+  $('st-weiter-block').hidden = !zuletzt;
+  if (zuletzt) {
+    const bilder = (zuletzt.vorschau || []).slice(0, 5).map((id) => `<img loading="lazy" src="${imgUrl(id)}" alt="">`).join('');
+    $('st-weiter').innerHTML = `
+      <div class="vor">${bilder || ''}</div>
+      <div class="txt"><strong>${esc(zuletzt.name)}</strong>
+        <div>${zuletzt.anzahl} ${t('faecher')} · ${t('st_zuletzt')} ${(zuletzt.updated_at || '').slice(0, 10)}</div></div>
+      <button class="btn" style="font-size:13px" onclick="startBinderOeffnen('${zuletzt.id}')">${t('st_weiterplanen')}</button>`;
+  }
+
+  // Was möchtest du tun
   $('st-tun').innerHTML = [
-    ['📷', t('tpl_foto'), t('tpl_foto_u'), 'startSchliessen();fotoOeffnen()'],
-    ['🔎', t('th_titel'), t('st_thema_u'), 'startSchliessen();themaOeffnen()'],
-    ['🗄️', t('vt_t'), t('st_vitrine_u'), "startSchliessen();ansicht('vitrine')"],
-  ].map(([ic, titel, unter, fn]) => `<button onclick="${fn}"><span class="st-ic">${ic}</span>
-      <span>${esc(titel)}<small>${esc(unter)}</small></span></button>`).join('');
+    ['kamera', t('tpl_foto'), t('tpl_foto_u'), 'startSchliessen();fotoOeffnen()'],
+    ['motiv', t('th_titel'), t('st_thema_u'), 'startSchliessen();themaOeffnen()'],
+    ['raster', t('st_neu'), t('st_neu_u'), "menuToggle('menu-st-neu')"],
+    ['vitrine', t('vt_t'), t('st_vitrine_u'), "startSchliessen();ansicht('vitrine')"],
+  ].map(([icn, titel, unter, fn]) => `<button onclick="${fn}"><span class="st-ic">${ic(icn, 20)}</span>
+      <span><strong>${esc(titel)}</strong><small>${esc(unter)}</small></span></button>`).join('');
+
+  zeichneStartBinder(liste);
+
+  // Aus der Vitrine
+  try {
+    const v = await api('api/vitrine?sortierung=trend&limit=4');
+    const fremd = (v.binder || []).filter((b) => !liste.some((e) => e.id === b.id)).slice(0, 4);
+    $('st-vitrine-block').hidden = !fremd.length;
+    $('st-vitrine').innerHTML = fremd.map((b) => `
+      <div class="st-vk" onclick="vitrineOeffnen('${esc(b.id)}')">
+        <div class="bilder">${(b.vorschau || []).slice(0, 3).map((x) => x.art === 'artwork'
+          ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(x.id)}/bild?v=vorschau" alt="">`
+          : `<img loading="lazy" src="${imgUrl(x.id)}" alt="">`).join('')}</div>
+        <div class="t"><strong>${esc(b.name)}</strong><span>${esc(b.besitzer)} · ${b.stimmen} ♥</span></div>
+      </div>`).join('');
+  } catch (e) { $('st-vitrine-block').hidden = true; }
+}
+
+function zeichneStartBinder(liste) {
   const modeLbl = { master: t('mode_master'), dex: t('mode_dex'), custom: t('mode_custom') };
   $('st-grid').innerHTML = liste.map((b) => {
     const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
@@ -2625,31 +2902,26 @@ async function startLaden() {
       <div class="bthumbs">${thumbs || '<span></span><span></span><span></span>'}</div>
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
-        <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">🗑</span></div>
+        <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
       <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
       ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
       <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
-  }).join('') + (liste.length ? '' : `
-    <div class="onb st-leer" style="grid-column:1/-1">
-      <div class="onb-titel">${t('onb_t')}</div>
-      <div class="onb-tpl">
-        <button onclick="startNeu('master')"><strong>${t('tpl_master')}</strong><span>${t('tpl_master_u')}</span></button>
-        <button onclick="startNeu('dex')"><strong>${t('tpl_dex')}</strong><span>${t('tpl_dex_u')}</span></button>
-        <button onclick="startNeu('poke')"><strong>${t('tpl_poke')}</strong><span>${t('tpl_poke_u')}</span></button>
-        <button onclick="startNeu('import')"><strong>${t('tpl_import')}</strong><span>${t('tpl_import_u')}</span></button>
-        <button onclick="startNeu('leer')"><strong>${t('m_leer')}</strong><span>${t('onb_1')}</span></button>
-      </div>
-    </div>`) + `
+  }).join('') + `
     <div class="bcard neu menuwrap" onclick="menuToggle('menu-st-neu')">
       <div style="font-size:26px">+</div><div style="font-weight:700">${t('st_neu')}</div>
       <div class="menu hidden" id="menu-st-neu" style="top:auto;bottom:12px;left:12px;right:12px">
-        <button onclick="event.stopPropagation();startNeu('leer')">${t('m_leer')}</button>
-        <button onclick="event.stopPropagation();startNeu('master')">${t('m_master')}</button>
-        <button onclick="event.stopPropagation();startNeu('dex')">${t('m_dex')}</button>
+        <button onclick="startNeu('master')">${t('tpl_master')}</button>
+        <button onclick="startNeu('dex')">${t('tpl_dex')}</button>
+        <button onclick="startNeu('poke')">${t('tpl_poke')}</button>
+        <button onclick="startNeu('illu')">${t('tpl_illu')}</button>
+        <button onclick="startNeu('import')">${t('tpl_import')}</button>
+        <button onclick="startNeu('leer')">${t('m_leer')}</button>
       </div>
     </div>`;
 }
+
+
 async function startBinderOeffnen(id) {
   await binderOeffnen(id);
   $('startseite').classList.add('hidden');
@@ -2686,10 +2958,11 @@ function profilFuellen() {
   if (!u) return;
   $('pf-email').textContent = u.email;
   $('pf-name').value = u.name || '';
-  $('pf-plan').textContent = (u.plan_name || t('tarif_frei')) + (u.plan !== 'free' ? ' ★' : '')
-    + (u.abo_kuendigt && u.abo_bis ? ` · ${t('gekuendigt')} ${u.abo_bis}` : (u.abo_bis ? ` · ${t('abo_bis')} ${u.abo_bis}` : ''));
+  $('pf-plan').textContent = u.plan_name || t('tarif_frei');
+  const bis = u.abo_kuendigt && u.abo_bis ? `${t('gekuendigt')} ${u.abo_bis}` : (u.abo_bis ? `${t('abo_bis')} ${u.abo_bis}` : '');
+  $('pf-plan').title = bis;
   if ($('pf-credits')) {
-    $('pf-credits').innerHTML = `<span class="credit-chip">✦ ${u.credits || 0} ${t('credits')}</span>`
+    $('pf-credits').innerHTML = `<span class="credit-chip">${ic('funke', 13)} ${u.credits || 0} ${t('credits')}</span>`
       + (u.credits_monat ? ` <span style="font-size:11.5px;color:var(--mut)">(${u.credits_abo || 0} ${t('guthaben_abo')}, ${u.credits_gekauft || 0} ${t('guthaben_gekauft')})</span>` : '');
   }
   if ($('pf-kuend')) {
@@ -3258,7 +3531,7 @@ function slotExtras(item, idx) {
   if (item && item.type !== 'empty' && item.type !== 'art') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
-  if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">🎨</span>`;
+  if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">${ic('palette', 11)}</span>`;
   if (item && VMARK[item.variant]) html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
   if (item && item.sprache && item.sprache !== 'de') html += `<span class="vmark spmark" title="${t('kartensprache')}">${item.sprache.toUpperCase()}</span>`;
   if (S.preiseAn && item && item.type === 'card') {
@@ -3796,7 +4069,7 @@ async function fotoErkennen() {
   const layout = (S.binder && S.binder.layout) || '3x3';
   try {
     for (let i = 0; i < FI.fotos.length; i++) {
-      $('fi-fortschritt').textContent = t('foto_lauf').replace('{i}', i + 1).replace('{n}', FI.fotos.length);
+      $('fi-fortschritt').innerHTML = lader('', t('foto_lauf').replace('{i}', i + 1).replace('{n}', FI.fotos.length));
       $('fi-balken').style.width = Math.round(i / FI.fotos.length * 100) + '%';
       const fd = new FormData();
       fd.append('datei', FI.fotos[i].datei);
@@ -3919,7 +4192,7 @@ function vitrineSuchen() { clearTimeout(vtTimer); vtTimer = setTimeout(vitrineLa
 async function vitrineLaden() {
   if (VT.laeuft) return;
   VT.laeuft = true;
-  $('vt-gitter').innerHTML = `<div class="vt-leer">${t('laedt')}</div>`;
+  $('vt-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     const q = encodeURIComponent($('vt-suche').value.trim());
     const d = await api(`api/vitrine?sortierung=${VT.sortierung}&limit=36&q=${q}`);
@@ -3947,9 +4220,9 @@ function zeichneVitrine() {
         <div class="vt-meta"><a onclick="profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
         <div class="vt-fuss">
           <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
-            ${b.gestimmt ? '♥' : '♡'} <span>${b.stimmen}</span></button>
+            ${ic('herz', 15, b.gestimmt ? 'voll' : '')}<span>${b.stimmen}</span></button>
           <div style="flex:1"></div>
-          <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(b.id)}')" title="${t('md_t')}">⚑</button>
+          <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(b.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>
         </div>
       </div>
     </div>`).join('');
@@ -4059,11 +4332,11 @@ async function ansichtBegleitung() {
       ? t('vt_von').replace('{n}', `<a onclick="profilseiteOeffnen('${esc(d.besitzer)}')">${esc(d.besitzer)}</a>`)
       : t('vt_geteilt')}</span>
     ${d.oeffentlich ? `<button class="vt-herz ${d.gestimmt ? 'an' : ''}" id="vt-herz-einzel" onclick="ansichtStimme()">
-        ${d.gestimmt ? '♥' : '♡'} <span>${d.stimmen}</span></button>` : ''}
+        ${ic('herz', 15, d.gestimmt ? 'voll' : '')}<span>${d.stimmen}</span></button>` : ''}
     <div style="flex:1"></div>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="seiteUebernehmen()" data-i18n="vt_seite_uebernehmen">Diese Seite übernehmen</button>
     <button class="btn" style="font-size:12.5px" onclick="binderKopieren()" data-i18n="vt_binder_kopieren">Ganzen Binder kopieren</button>
-    ${d.oeffentlich ? `<button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(S.binder.id)}')" title="${t('md_t')}">⚑</button>` : ''}`;
+    ${d.oeffentlich ? `<button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(S.binder.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>` : ''}`;
   const banner = document.querySelector('.ansicht-banner');
   (banner || document.querySelector('.kopf')).after(leiste);
 }
@@ -4077,7 +4350,7 @@ async function ansichtStimme() {
     });
     const k = $('vt-herz-einzel');
     k.classList.toggle('an', d.gestimmt);
-    k.innerHTML = `${d.gestimmt ? '♥' : '♡'} <span>${d.stimmen}</span>`;
+    k.innerHTML = `${ic('herz', 15, d.gestimmt ? 'voll' : '')}<span>${d.stimmen}</span>`;
   } catch (e) { if (!gate(e)) toast(e.message); }
 }
 
@@ -4135,7 +4408,7 @@ async function profilseiteOeffnen(name) {
   vitrineSchliessen(); planerSchliessen();
   $('profil-oeffentlich').classList.remove('hidden');
   ebeneOeffnen(profilseiteSchliessen);
-  $('po-gitter').innerHTML = `<div class="vt-leer">${t('laedt')}</div>`;
+  $('po-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     const d = await api('api/vitrine/profil/' + encodeURIComponent(name));
     $('po-name').textContent = d.profil.name;
@@ -4154,7 +4427,7 @@ async function profilseiteOeffnen(name) {
         <div class="vt-txt">
           <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
           <div class="vt-meta">${b.karten} ${t('karten_wort')}</div>
-          <div class="vt-fuss"><span class="vt-herz">♥ <span>${b.stimmen}</span></span></div>
+          <div class="vt-fuss"><span class="vt-herz">${ic('herz', 15, 'voll')}<span>${b.stimmen}</span></span></div>
         </div>
       </div>`).join('') || `<div class="vt-leer">${t('po_leer')}</div>`;
   } catch (e) {
@@ -4317,7 +4590,7 @@ function sammlungSuchen() { clearTimeout(smTimer); smTimer = setTimeout(sammlung
 async function sammlungLaden() {
   if (SM.laeuft) return;
   SM.laeuft = true;
-  $('sm-gitter').innerHTML = `<div class="sm-leer">${t('laedt')}</div>`;
+  $('sm-gitter').innerHTML = `<div class="sm-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     SM.zahlen = await api('api/sammlung/uebersicht');
     zeichneSammlungZahlen();
@@ -4491,6 +4764,7 @@ async function blaetternBild() {
   }, 'image/png');
 }
 
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -4616,6 +4890,8 @@ function zeichnePreisSumme() {
 // ---------- Planer ----------
 function ansicht(w) {
   profilseiteSchliessen();
+  if (w === 'start') { startOeffnen(); return; }
+  if (typeof startSchliessen === 'function' && !$('startseite').classList.contains('hidden')) startSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
   if (w !== 'sammlung') sammlungSchliessen();
   if (w === 'sammlung') { ansichtSammlung(); return; }
@@ -4657,8 +4933,8 @@ function zeichnePlaner() {
     }
     html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
       <span class="ps-akt">
-        <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">🎨</button>
-        <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">☑</button>
+        <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">${ic('palette', 16)}</button>
+        <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
         <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
         <button onclick="seiteVerschieben(${seite},1)" title="${t('s_seite_runter')}" ${seite === seiten - 1 ? 'disabled' : ''}>↓</button>
         <button onclick="seiteLeeresFach(${seite})" title="${t('s_seite_fach')}">＋</button>
@@ -4953,7 +5229,7 @@ function slotMenue(ev, idx) {
     ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${Math.floor(idx / proSeite())})">${t('s_artwork')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
-    ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ↻</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ${ic('wechsel', 15)}</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
     ${item.type !== 'empty' ? `<button onclick="slotMenueZu();fachFreimachen(${idx})">${t('s_zu_leer')}</button>` : ''}
     <div class="trenn"></div>
     <button class="gefahr" onclick="slotMenueZu();slotEntfernen(${idx})">${t('s_entfernen')}</button>`;
@@ -5174,7 +5450,7 @@ async function detailOeffnen(idOrIdx) {
         ${k.img && k.img_lang && k.img_lang !== 'de' && KLANG === 'de' && k.region !== 'jp' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
       <div>
         <h2>${esc(nm(k))}</h2>
-        <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · 🇯🇵' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
+        <div class="d-meta">${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · JP' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
         ${k.illustrator ? `<div class="d-meta" style="margin-top:-8px">${t('d_illu')}: <span class="d-illu" onclick="modalSchliessen();illuSetzen('${esc(k.illustrator).replace(/'/g, "\\'")}');mobilAnsicht('suche')" title="${t('d_illu_btn')}">${esc(k.illustrator)}</span></div>` : ''}
         ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent);color:var(--akzent)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
         <div class="d-preise">
@@ -5364,7 +5640,7 @@ function zeichneArtworkGrid(ziel, interaktiv) {
       html += `<div class="aw-fach karte ${bleibt ? '' : 'uebermalt'}" ${interaktiv ? `onclick="artworkAnkerToggle(${s})"` : ''} title="${t(bleibt ? 'aw_karte_bleibt' : 'aw_ki_fuellt')}">
         <img src="${imgUrl(it.id)}" alt="">${interaktiv ? `<span class="aw-badge">${t(bleibt ? 'aw_karte_bleibt' : 'aw_ki_fuellt')}</span>` : ''}</div>`;
     } else {
-      html += `<div class="aw-fach ki">✦</div>`;
+      html += `<div class="aw-fach ki"></div>`;
     }
   }
   const box = $(ziel);
@@ -5391,7 +5667,7 @@ function artworkKontingentText() {
   const kosten = artworkPreis();
   if (!k) { el.textContent = ''; return; }
   const reicht = k.credits >= kosten;
-  el.innerHTML = `<span class="credit-chip">✦ ${kosten} ${t('credits')}</span> `
+  el.innerHTML = `<span class="credit-chip">${ic('funke', 13)} ${kosten} ${t('credits')}</span> `
     + `<span style="color:${reicht ? 'var(--mut)' : 'var(--akzent)'}">${t('aw_kosten_hin')
         .replace('{s}', k.credits)}</span>`
     + (reicht ? '' : ` · <a href="#" onclick="event.preventDefault();upgradeOeffnen('')" style="color:var(--akzent);font-weight:700">${t('credits_kaufen')}</a>`);
