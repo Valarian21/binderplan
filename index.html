@@ -7,7 +7,8 @@
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/assets/schrift.css">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
 <style>
   :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518; }
@@ -17,7 +18,7 @@
   }
   :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Quicksand', 'Trebuchet MS', sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Archivo', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
   input, select { font-family: inherit; font-size: 13.5px; color: var(--ink); }
   .hidden { display: none !important; }
@@ -300,7 +301,7 @@
      schwarz, weil die Karten davor stehen. `body.dunkle-seiten` schaltet Werkbank,
      Planer und Durchblättern gemeinsam um — der Druck bleibt davon unberührt. */
   :root { --bseite: var(--panel2); --bfach: var(--card); --bkante: var(--slotrand);
-          --bleer: rgba(255,255,255,.5); --btext: #c2b49c; --bnamen: var(--ink); }
+          --bleer: rgba(255,255,255,.5); --btext: #9aa1ad; --bnamen: var(--ink); }
   body.dunkle-seiten { --bseite: #14161a; --bfach: #1c1f25; --bkante: rgba(255,255,255,.16);
                        --bleer: rgba(255,255,255,.05); --btext: #6f7683; --bnamen: #e6e8ec; }
   .slots { background: var(--bseite); border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
@@ -1326,7 +1327,7 @@
 <div id="startseite" class="seite-voll hidden">
   <div class="planer-kopf">
     <div class="logo" style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700">
-      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
+      <svg width="20" height="20" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>
       Binderplan
     </div>
     <div style="flex:1"></div>

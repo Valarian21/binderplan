@@ -3082,6 +3082,13 @@ def recht():
     return FileResponse(BASE / "recht.html", media_type="text/html")
 
 
+@app.get("/favicon.ico")
+def favicon():
+    """Browser fragen /favicon.ico von sich aus an. Ohne Antwort zeigen manche
+    weiter ein altes Symbol aus ihrem Zwischenspeicher."""
+    return FileResponse(_app_icon(192), media_type="image/png", headers=IMG_HEADERS)
+
+
 @app.get("/manifest.webmanifest")
 def manifest():
     return Response(json.dumps({
