@@ -269,6 +269,35 @@
                  padding: 9px 16px; border-bottom: 2px solid var(--kontur); }
   .best-banner.hidden { display: none !important; }
 
+
+  /* ---------- Sammlung ---------- */
+  #sammlung { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 40;
+              background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
+  .sm-kopf { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .sm-kopf h2 { margin: 0; font-size: 20px; }
+  .sm-zahlen { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 16px; }
+  .sm-kachel { border: 2px solid var(--line); border-radius: 12px; padding: 10px 16px; min-width: 116px; }
+  .sm-kachel .zahl { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .sm-kachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; }
+  .sm-kachel.wert { border-color: var(--gruen); }
+  .sm-kachel.wert .zahl { color: var(--gruen); }
+  .sm-leiste { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .sm-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .sm-karte { position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+              background: var(--panel2); }
+  .sm-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .sm-karte .sm-txt { padding: 6px 7px 7px; }
+  .sm-karte .sm-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
+  .sm-karte .sm-meta { font-size: 10px; color: var(--mut); margin-top: 1px; }
+  .sm-karte .sm-wert { font-size: 11px; font-weight: 800; color: var(--gruen); margin-top: 3px; }
+  .sm-karte .sm-anz { position: absolute; top: 4px; left: 4px; background: var(--kontur); color: #fff;
+                      font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+  .sm-karte .sm-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+                      background: rgba(0,0,0,.55); color: #fff; font-size: 12px; opacity: 0; transition: opacity .15s; }
+  .sm-karte:hover .sm-weg { opacity: 1; }
+  .sm-leer { grid-column: 1/-1; padding: 34px 0; text-align: center; color: var(--mut); font-size: 14px; line-height: 1.6; }
+  @media (pointer: coarse) { .sm-karte .sm-weg { opacity: .85; } }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -796,6 +825,7 @@
     <div class="segment desktop-only" role="tablist">
       <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="m_suche">Suche</button>
       <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
+      <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
       <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
     </div>
     <div style="flex:1"></div>
@@ -1068,6 +1098,7 @@
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
         <div class="trenn"></div>
+        <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
         <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
         <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
@@ -1615,6 +1646,26 @@
   <div class="vt-gitter" id="po-gitter" style="margin-top:14px"></div>
 </div>
 
+<div id="sammlung" class="hidden">
+  <div class="sm-kopf">
+    <h2 data-i18n="sm_t">Meine Sammlung</h2>
+    <span class="unter" style="margin:0" data-i18n="sm_u">Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.</span>
+  </div>
+  <div class="sm-zahlen" id="sm-zahlen"></div>
+  <div class="sm-leiste">
+    <div class="f-chips" id="sm-filter"></div>
+    <div style="flex:1"></div>
+    <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" oninput="sammlungSuchen()">
+    <select class="feld" id="sm-sort" style="width:auto" onchange="sammlungLaden()">
+      <option value="neu">Zuletzt hinzugefügt</option>
+      <option value="wert">Wert</option>
+      <option value="anzahl">Anzahl</option>
+      <option value="name">Name</option>
+    </select>
+  </div>
+  <div class="sm-gitter" id="sm-gitter"></div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1708,6 +1759,17 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    sammlung: 'Sammlung', sm_t: 'Meine Sammlung',
+    sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
+    sm_login: 'Für die Sammlung brauchst du ein Konto.',
+    sm_karten: 'Karten', sm_verschieden: 'verschiedene', sm_wert: 'Wert nach Cardmarket', sm_gezahlt: 'dafür gezahlt',
+    sm_alle: 'Alle', sm_doppelt: 'Doppelte', sm_ohne_binder: 'In keinem Binder', sm_fehlt: 'Fehlt mir noch',
+    sm_entfernen: 'Aus der Sammlung nehmen',
+    sm_leer: 'Noch nichts drin. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab.',
+    sm_leer_doppelt: 'Keine Doppelten. Sobald du eine Karte zweimal erfasst, taucht sie hier als Tauschmaterial auf.',
+    sm_leer_ohne: 'Alles, was du besitzt, ist auch in einem Binder geplant.',
+    sm_leer_fehlt: 'Du besitzt jede Karte, die du geplant hast. Respekt.',
+
     best_offen: 'Bitte bestätige deine E-Mail ({m}) – dein Startguthaben wartet.',
     best_nochmal: 'Nochmal senden', best_gesendet: 'Mail ist unterwegs',
     best_schon: 'Deine E-Mail ist schon bestätigt', best_danke: 'Danke – E-Mail bestätigt!',
@@ -1928,6 +1990,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
+
     best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
 
     pf_rufname: 'Your name (only for the greeting)', pf_vitrine: 'Showcase', pf_vitrine_u: 'Everything here becomes visible as soon as you show a binder. Without a public binder nobody sees it.', pf_oeff_name: 'Public name', pf_oeff_text: 'One line about you', pf_alter: 'Publishing', pf_alter_ok: 'unlocked', pf_alter_offen: 'date of birth missing', pf_alter_zu_jung: 'from age {a}', pf_oeff_binder: 'Public binders', pf_mein_profil: 'View my public profile', st_thema_u: 'Fill a page by artwork motif', st_vitrine_u: 'Browse other collectors',
@@ -2263,6 +2327,7 @@ function setToken(token) {
 
 function kontoAnzeigen() {
   if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
+  if (typeof besitzLaden === 'function') besitzLaden().then(() => { if (S.binder) zeichneBinder(); });
   const btn = $('btn-konto');
   if (S.user) {
     btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? ' ★' : '');
@@ -3185,13 +3250,31 @@ function slotExtras(item, idx) {
   return html;
 }
 
-function hatToggle(idx) {
+async function hatToggle(idx) {
   const item = S.binder.items[idx];
   if (!item || item.type === 'art') return;
-  item.have = !item.have;
-  speichern();
+  if (!S.user) {                      // ohne Konto bleibt das Häkchen im Binder
+    item.have = !item.have;
+    speichern();
+    zeichneBinder();
+    if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+    return;
+  }
+  const vorher = !!S.besitz[item.id];
+  if (vorher) delete S.besitz[item.id]; else S.besitz[item.id] = 1;   // sofort sichtbar
   zeichneBinder();
   if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  try {
+    const d = await api('api/sammlung/toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card_id: item.id, variante: item.variant || 'normal' }),
+    });
+    if (d.besitze) S.besitz[item.id] = S.besitz[item.id] || 1; else delete S.besitz[item.id];
+  } catch (e) {
+    if (vorher) S.besitz[item.id] = 1; else delete S.besitz[item.id];
+    zeichneBinder();
+    if (!gate(e)) toast(e.message);
+  }
 }
 
 function zeichneBinder() {
@@ -3214,7 +3297,7 @@ function zeichneBinder() {
     const item = S.binder.items[idx];
     if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
-    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${item.have ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
+    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
       ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
@@ -3225,7 +3308,7 @@ function zeichneBinder() {
   $('wb-nav').classList.toggle('hidden', leer);
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
-  const gesammelt = S.binder.items.filter((i) => i.have).length;
+  const gesammelt = S.binder.items.filter((i) => besitzt(i)).length;
   $('wb-sammel').classList.toggle('hidden', sammelbar === 0 || !document.body.classList.contains('sammeln'));
   if (sammelbar) {
     $('wb-sammel-zahl').textContent = `${gesammelt} / ${sammelbar}`;
@@ -4165,6 +4248,124 @@ async function bestaetigungEinloesen(token) {
   }
 }
 
+// ---------- Sammlung ----------
+// Eine Wahrheit, zwei Blicke: der Binder ist der Plan, die Sammlung der Bestand.
+// Deshalb schreibt der Haken im Fach in die Sammlung und liest von dort — es gibt
+// kein zweites Häkchen, das auseinanderlaufen könnte.
+const SM = { filter: '', karten: [], zahlen: null, laeuft: false };
+S.besitz = {};          // card_id → Anzahl, für die Fachanzeige im Binder
+
+async function besitzLaden() {
+  if (!S.user) { S.besitz = {}; return; }
+  try { S.besitz = (await api('api/sammlung/besitz')).besitz || {}; } catch (e) { S.besitz = {}; }
+}
+
+/** Gehört mir diese Karte? Ohne Konto zählt weiterhin das Häkchen im Binder. */
+function besitzt(item) {
+  if (!item || item.type !== 'card') return false;
+  return S.user ? !!S.besitz[item.id] : !!item.have;
+}
+
+function ansichtSammlung() {
+  if (!S.user) return loginOeffnen(t('sm_login'));
+  planerSchliessen(); vitrineSchliessen(); profilseiteSchliessen();
+  $('sammlung').classList.remove('hidden');
+  ebeneOeffnen(sammlungSchliessen);
+  $('seg-sammlung').classList.add('on');
+  $('seg-suche').classList.remove('on'); $('seg-planer').classList.remove('on'); $('seg-vitrine').classList.remove('on');
+  zeichneSammlungFilter();
+  sammlungLaden();
+}
+function sammlungSchliessen() {
+  if ($('sammlung').classList.contains('hidden')) return;
+  $('sammlung').classList.add('hidden');
+  $('seg-sammlung').classList.remove('on');
+  $('seg-suche').classList.add('on');
+}
+
+function zeichneSammlungFilter() {
+  const z = SM.zahlen || {};
+  $('sm-filter').innerHTML = [
+    ['', t('sm_alle'), z.verschiedene],
+    ['doppelt', t('sm_doppelt'), z.doppelte],
+    ['ohne_binder', t('sm_ohne_binder'), z.ohne_binder],
+    ['fehlt', t('sm_fehlt'), z.fehlt],
+  ].map(([w, l, n]) => `<button class="chip ${SM.filter === w ? 'on' : ''}" onclick="sammlungFilter('${w}')">${l}${n != null ? ` <strong>${n}</strong>` : ''}</button>`).join('');
+}
+function sammlungFilter(w) { SM.filter = w; zeichneSammlungFilter(); sammlungLaden(); }
+let smTimer = null;
+function sammlungSuchen() { clearTimeout(smTimer); smTimer = setTimeout(sammlungLaden, 350); }
+
+async function sammlungLaden() {
+  if (SM.laeuft) return;
+  SM.laeuft = true;
+  $('sm-gitter').innerHTML = `<div class="sm-leer">${t('laedt')}</div>`;
+  try {
+    SM.zahlen = await api('api/sammlung/uebersicht');
+    zeichneSammlungZahlen();
+    zeichneSammlungFilter();
+    const q = encodeURIComponent($('sm-suche').value.trim());
+    const sort = $('sm-sort').value;
+    if (SM.filter === 'fehlt') {
+      const d = await api('api/sammlung/fehlt');
+      SM.karten = (d.karten || []).map((k) => ({ ...k, anzahl: 0, fehlt: true }));
+    } else {
+      const d = await api(`api/sammlung?nur=${SM.filter}&q=${q}&sortierung=${sort}&limit=120`);
+      SM.karten = d.karten || [];
+    }
+    zeichneSammlung();
+  } catch (e) {
+    $('sm-gitter').innerHTML = `<div class="sm-leer">${esc(e.message || '')}</div>`;
+  } finally { SM.laeuft = false; }
+}
+
+function zeichneSammlungZahlen() {
+  const z = SM.zahlen || {};
+  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  $('sm-zahlen').innerHTML = `
+    <div class="sm-kachel"><div class="zahl">${z.karten || 0}</div><div class="lbl">${t('sm_karten')}</div></div>
+    <div class="sm-kachel"><div class="zahl">${z.verschiedene || 0}</div><div class="lbl">${t('sm_verschieden')}</div></div>
+    <div class="sm-kachel wert"><div class="zahl">${eur(z.wert)}</div><div class="lbl">${t('sm_wert')}</div></div>
+    ${z.gezahlt ? `<div class="sm-kachel"><div class="zahl">${eur(z.gezahlt)}</div><div class="lbl">${t('sm_gezahlt')}</div></div>` : ''}`;
+}
+
+function zeichneSammlung() {
+  if (!SM.karten.length) {
+    const hinweise = { '': t('sm_leer'), doppelt: t('sm_leer_doppelt'),
+                       ohne_binder: t('sm_leer_ohne'), fehlt: t('sm_leer_fehlt') };
+    $('sm-gitter').innerHTML = `<div class="sm-leer">${hinweise[SM.filter] || t('sm_leer')}</div>`;
+    return;
+  }
+  $('sm-gitter').innerHTML = SM.karten.map((k) => `
+    <div class="sm-karte" onclick="detailOeffnenId('${esc(k.id)}')">
+      ${k.anzahl > 1 ? `<span class="sm-anz">${k.anzahl}×</span>` : ''}
+      ${k.fehlt ? '' : `<button class="sm-weg" onclick="event.stopPropagation();sammlungWeg('${esc(k.id)}')" title="${t('sm_entfernen')}">✕</button>`}
+      <img loading="lazy" src="${imgUrl(k.id)}" alt="">
+      <div class="sm-txt">
+        <div class="sm-name">${esc(k.name || k.id)}</div>
+        <div class="sm-meta">${esc(k.set_name || '')} · ${esc(k.local_id || '')}</div>
+        ${k.eur != null ? `<div class="sm-wert">${(k.wert != null ? k.wert : k.eur).toFixed(2).replace('.', ',')} €</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function sammlungWeg(id) {
+  try {
+    await api('api/sammlung/eintrag', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card_id: id, anzahl: 0 }),
+    });
+    delete S.besitz[id];
+    sammlungLaden(); zeichneBinder();
+  } catch (e) { toast(e.message); }
+}
+
+function detailOeffnenId(id) {
+  const i = (S.ergebnisse || []).findIndex((k) => k.id === id);
+  if (i >= 0) return detailOeffnen(i);
+  detailOeffnen(id);
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -4291,6 +4492,8 @@ function zeichnePreisSumme() {
 function ansicht(w) {
   profilseiteSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
+  if (w !== 'sammlung') sammlungSchliessen();
+  if (w === 'sammlung') { ansichtSammlung(); return; }
   if (w === 'vitrine') { ansichtVitrine(); return; }
   if (w === 'planer') planerOeffnen(); else planerSchliessen();
 }
@@ -4322,7 +4525,7 @@ function zeichnePlaner() {
       const idx = seite * pp + s;
       const item = S.binder.items[idx];
       if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
-      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${item.have ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
+      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
         draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
         ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
         ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;

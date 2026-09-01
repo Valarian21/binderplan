@@ -3164,6 +3164,19 @@ except Exception as _e:  # pragma: no cover
     _vitrine_kennzahlen = None
 
 
+# --- Sammlung: was wirklich besessen wird (Modul sammlung.py) ---------------
+
+try:
+    import sammlung as _sammlung  # noqa: E402
+    _sammlung_kennzahlen = _sammlung.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user, env=_env,
+        card_query=_card_query, card_select=_CARD_SELECT, card_brief=_card_brief,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Sammlung-Modul nicht geladen:", _e)
+    _sammlung_kennzahlen = None
+
+
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
 
 @app.get("/")
