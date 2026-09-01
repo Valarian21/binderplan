@@ -298,6 +298,12 @@
   .sm-leer { grid-column: 1/-1; padding: 34px 0; text-align: center; color: var(--mut); font-size: 14px; line-height: 1.6; }
   @media (pointer: coarse) { .sm-karte .sm-weg { opacity: .85; } }
 
+
+  /* Drei Beispiele fürs Bildmotiv — die Funktion war hinter dem Klappknopf unsichtbar */
+  .f-motiv-schnell { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 2px; }
+  .f-motiv-schnell .chip { font-size: 11.5px; }
+  .f-motiv-schnell .chip::before { content: '◐'; margin-right: 5px; color: var(--blau); }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -906,6 +912,7 @@
         <label class="schalter" style="white-space:nowrap"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label></div>
       </div>
       <div id="f-jp-hinweis" class="hidden" style="font-size:11.5px;color:var(--mut);line-height:1.45" data-i18n="jp_hinweis">Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.</div>
+      <div class="f-motiv-schnell" id="f-motiv-schnell"></div>
       <button class="btn sekundaer f-mehr" id="f-art-btn" onclick="artFilterToggle()"><span data-i18n="f_art_motiv">Bildmotiv</span> <span id="f-art-zahl"></span> <span id="f-art-caret">▾</span></button>
       <div id="f-art-box" class="hidden f-mehr-box">
         <div class="f-art-hinweis" id="f-art-hinweis"></div>
@@ -1485,6 +1492,10 @@
     <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern">‹</button>
     <span class="bv-zaehler" id="bv-zaehler"></span>
     <button id="bv-vor" onclick="blaetternWechsel(1)" aria-label="Weiterblättern">›</button>
+    <button id="bv-teilen" onclick="blaetternBild()" title="Doppelseite als Bild sichern" data-i18n-title="bv_bild" style="margin-left:10px">
+      <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M10 2.6v9M6.8 6.2 10 2.8l3.2 3.4"/><path d="M3.6 12.4v3.2a1.6 1.6 0 0 0 1.6 1.6h9.6a1.6 1.6 0 0 0 1.6-1.6v-3.2"/></svg>
+    </button>
   </div>
 </div>
 
@@ -1759,6 +1770,10 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    th_unterwasser: 'Unter Wasser', th_nachts: 'Bei Nacht', th_mehrere: 'Mehrere Pokémon',
+    bv_bild: 'Doppelseite als Bild sichern', bv_bild_fertig: 'Bild gesichert',
+    bv_bild_fehler: 'Das Bild ließ sich nicht erzeugen',
+
     sammlung: 'Sammlung', sm_t: 'Meine Sammlung',
     sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
     sm_login: 'Für die Sammlung brauchst du ein Konto.',
@@ -1990,6 +2005,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    th_unterwasser: 'Underwater', th_nachts: 'At night', th_mehrere: 'Several Pokémon', bv_bild: 'Save spread as image', bv_bild_fertig: 'Image saved', bv_bild_fehler: 'Could not create the image',
+
     sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
 
     best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
@@ -2954,6 +2971,7 @@ function baueFilterLeiste() {
   $('illu-namen').innerHTML = illus.map((i) => `<option value="${esc(i.name)}">${i.anzahl} ${t('illu_karten')}</option>`).join('');
   if ($('illu-top')) $('illu-top').innerHTML = tops.slice(0, 12).map((i) => `<button class="chip klein" onclick="$('illu-name').value='${esc(i.name).replace(/'/g, "\\'")}';illuInfo()">${esc(i.name)}</button>`).join('');
   // Sonderdrucke
+  zeichneMotivSchnell();
   $('f-sonder').innerHTML = `<button class="chip ${filter.first ? 'on' : ''}" onclick="filter.first=!filter.first;baueFilterLeiste();mehrFilterZahl();sucheNeu()">${t('first_ed')}</button>`;
   // Trainer-Typ, Regulation Mark
   $('f-trainer').innerHTML = `<option value="">${t('alle_trainer')}</option>` + (S.meta.trainer_types || []).map((x) => `<option value="${esc(x)}" ${filter.trainer === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
@@ -3074,7 +3092,7 @@ function filterReset() {
   filter.artOrte.clear(); filter.artMerkmale.clear();
   Object.assign(filter, { artZeit: '', artWasser: 0, artText: '' });
   if ($('f-art-text')) $('f-art-text').value = '';
-  zeichneArtChips(); artFilterZahl();
+  zeichneArtChips(); artFilterZahl(); zeichneMotivSchnell();
   $('f-suche').value = ''; $('f-dex').value = ''; $('f-illu').value = ''; $('f-illu-suche').value = ''; $('f-jahr-von').value = ''; $('f-jahr-bis').value = ''; $('f-absteigend').checked = false;
   baueFilterLeiste(); mehrFilterZahl();
   sucheNeu();
@@ -4366,6 +4384,113 @@ function detailOeffnenId(id) {
   detailOeffnen(id);
 }
 
+// Drei Beispiele direkt sichtbar: die Bildmotiv-Suche war hinter einem zugeklappten
+// Knopf zwischen den Standardfiltern versteckt — und niemand sucht dort etwas, das
+// er nicht erwartet.
+const MOTIV_SCHNELL = [
+  { art: 'wasser', wert: 3, lbl: 'th_unterwasser' },
+  { art: 'zeit', wert: 'nacht', lbl: 'th_nachts' },
+  { art: 'merkmal', wert: 'mehrere_pokemon', lbl: 'th_mehrere' },
+];
+
+function zeichneMotivSchnell() {
+  const an = (m) => m.art === 'wasser' ? filter.artWasser === m.wert
+    : m.art === 'zeit' ? filter.artZeit === m.wert : filter.artMerkmale.has(m.wert);
+  $('f-motiv-schnell').innerHTML = MOTIV_SCHNELL.map((m, i) =>
+    `<button class="chip ${an(m) ? 'on' : ''}" onclick="motivSchnell(${i})">${t(m.lbl)}</button>`).join('');
+}
+
+function motivSchnell(i) {
+  const m = MOTIV_SCHNELL[i];
+  if (m.art === 'wasser') filter.artWasser = filter.artWasser === m.wert ? 0 : m.wert;
+  else if (m.art === 'zeit') filter.artZeit = filter.artZeit === m.wert ? '' : m.wert;
+  else filter.artMerkmale.has(m.wert) ? filter.artMerkmale.delete(m.wert) : filter.artMerkmale.add(m.wert);
+  zeichneMotivSchnell();
+  if (artIndex) zeichneArtChips();
+  artFilterZahl();
+  sucheNeu();
+}
+
+/**
+ * Die aufgeschlagene Doppelseite als PNG sichern — der natürliche Weg, wie ein
+ * Binder herumgezeigt wird. Alles läuft im Browser: die Kartenbilder kommen vom
+ * eigenen Server, also darf die Zeichenfläche exportiert werden.
+ */
+async function blaetternBild() {
+  if (!S.binder) return;
+  const [cols, rows] = LAYOUTS[S.binder.layout] || [3, 3];
+  const KB = 300, KH = 419, LU = 14, RAND = 26, BUND = 34;
+  const seitenB = RAND * 2 + cols * KB + (cols - 1) * LU;
+  const seitenH = RAND * 2 + rows * KH + (rows - 1) * LU;
+  const c = document.createElement('canvas');
+  c.width = seitenB * 2 + BUND;
+  c.height = seitenH + 74;
+  const g = c.getContext('2d');
+  g.fillStyle = '#14161a'; g.fillRect(0, 0, c.width, c.height);
+
+  const laden = (url) => new Promise((fertig) => {
+    const im = new Image();
+    im.onload = () => fertig(im);
+    im.onerror = () => fertig(null);
+    im.src = url;
+  });
+
+  const malen = async (seite, x0) => {
+    if (seite < 0 || seite >= bvSeitenZahl()) return;
+    g.fillStyle = '#0e1013';
+    g.fillRect(x0, 0, seitenB, seitenH);
+    const pp = proSeite();
+    const teil = S.binder.items.slice(seite * pp, seite * pp + pp);
+    const arts = teil.filter((i) => i && i.type === 'art');
+    const ganz = arts.length >= 2 && arts.every((i) => i.artwork === arts[0].artwork);
+    if (ganz) {
+      const im = await laden(`api/artwork/${encodeURIComponent(arts[0].artwork)}/bild?v=vorschau`);
+      if (im) g.drawImage(im, x0 + RAND, RAND, seitenB - RAND * 2, seitenH - RAND * 2);
+    }
+    for (let i = 0; i < pp; i++) {
+      const it = teil[i];
+      const x = x0 + RAND + (i % cols) * (KB + LU);
+      const y = RAND + Math.floor(i / cols) * (KH + LU);
+      if (!ganz) { g.fillStyle = '#1c1f25'; g.fillRect(x, y, KB, KH); }
+      if (it && it.type === 'card') {
+        const im = await laden(imgUrl(it.id));
+        if (im) g.drawImage(im, x, y, KB, KH);
+      }
+      g.strokeStyle = 'rgba(255,255,255,.15)'; g.lineWidth = 1.5;
+      g.strokeRect(x + .75, y + .75, KB - 1.5, KH - 1.5);
+    }
+  };
+
+  await malen(bvLinks(BV.spread), 0);
+  await malen(bvRechts(BV.spread), seitenB + BUND);
+  // Ringe im Bund
+  g.fillStyle = '#c8ccd4';
+  for (let i = 0; i < 3; i++) {
+    g.beginPath();
+    g.arc(seitenB + BUND / 2, seitenH * (i + 1) / 4, 9, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Fußzeile
+  g.fillStyle = '#ffffff';
+  g.font = '700 26px Archivo, sans-serif';
+  g.fillText(S.binder.name || 'Binderplan', 26, seitenH + 46);
+  g.fillStyle = '#F5C518';
+  g.font = '700 22px Archivo, sans-serif';
+  const marke = 'binderplan.app';
+  g.fillText(marke, c.width - g.measureText(marke).width - 26, seitenH + 46);
+
+  c.toBlob((blob) => {
+    if (!blob) return toast(t('bv_bild_fehler'));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(S.binder.name || 'binder').replace(/[^\wäöüß -]/gi, '')}-seite-${BV.spread * 2 + 1}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast(t('bv_bild_fertig'));
+  }, 'image/png');
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -4996,6 +5121,7 @@ function artTextGetippt() {
 }
 
 function artFilterZahl() {
+  if (typeof zeichneMotivSchnell === 'function' && $('f-motiv-schnell')) zeichneMotivSchnell();
   const n = filter.artOrte.size + filter.artMerkmale.size + (filter.artZeit ? 1 : 0)
     + (filter.artWasser ? 1 : 0) + (filter.artText.trim() ? 1 : 0);
   const el = $('f-art-zahl'); if (el) el.textContent = n ? `(${n})` : '';
