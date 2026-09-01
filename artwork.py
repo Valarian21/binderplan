@@ -377,7 +377,8 @@ def _analyse_text(a):
     for k in ("subject", "scene", "edges", "horizon", "perspective", "light", "palette", "technique", "mood"):
         v = a.get(k)
         if v:
-            lbl = "subject (already fully inside the illustration – never repeat it)" if k == "subject" else k
+            lbl = ("subject (this creature stays INSIDE the illustration; outside it does not exist – "
+                   "paint only the scene it stands in)") if k == "subject" else k
             teile.append(f"{lbl}: {json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v}")
     return "\n".join(teile)
 
@@ -506,11 +507,23 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         teile.append({"type": "image_url", "image_url": {"url": _data_url(p["_bild"], 'JPEG')}})
         n += 1
     erlaubt = ", ".join(p["name_en"] for p in pokemon) if pokemon else "none"
+    wer = " and ".join(kreaturen) if kreaturen else "The creature of the source illustration"
     regeln = (
         "\nRules:\n"
-        f"- {' and '.join(kreaturen) if kreaturen else 'The creature of the source illustration'} appear"
+        # Der haeufigste Fehler bei Ganzbildkarten: die Kreatur fuellt fast die ganze Vorlage,
+        # das Modell liest ihre Silhouette als Landschaft und setzt sie nach aussen fort. Ergebnis
+        # ist ein riesiges zweites Exemplar rund um die Karte. Deshalb steht diese Regel zuerst
+        # und sagt ausdruecklich, was an einer angeschnittenen Kreatur zu tun ist.
+        f"- MOST IMPORTANT: {wer} exist"
+        f"{'s' if len(kreaturen) <= 1 else ''} ONLY inside the finished part"
+        + ("s" if mehrere else "") + " and ends at the edge of it. The creature is often cut off there – "
+        "do NOT continue its body, head, ears, horns, wings, tail, limbs, fur, spikes, energy aura or glow "
+        "outside. Do not repeat it at any size, not partially, not as shadow, reflection, silhouette, "
+        "outline or abstract shape in its colours. Where the creature meets the edge, hide the cut behind "
+        "scenery – mist, smoke, foliage, rock, water, light – so that outside there is only the world.\n"
+        f"- {wer} appear"
         f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
-        + ("s" if mehrere else "") + " – not again, not partially, not as shadow, reflection or silhouette. "
+        + ("s" if mehrere else "") + ". "
         f"Creatures allowed in the new areas: {erlaubt}. Everything else outside is only the world the scene lives in.\n"
         "- Continue the surroundings: what is cut off at the edges of the finished part continues exactly there, at the "
         "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
@@ -580,7 +593,10 @@ PRUEF_PROMPT = (
     "1. At every edge of the embedded source, do the background elements continue consistently – same lines, angles "
     "and heights (e.g. a pool edge, horizon, wall, railing, shoreline, beam of light continuing exactly where it "
     "leaves the source)? Name every element that breaks, bends, jumps or ends abruptly.\n"
-    "2. Is the source's creature painted again anywhere outside the source (any size, part, shadow, reflection)?\n"
+    "2. Is the source's creature painted again or CONTINUED outside the source? Look especially for its body "
+    "carrying on past the card edge (ears, horns, wings, tail, limbs, fur, spikes, aura) as if the creature were "
+    "bigger than the card – that is the worst failure and always means ok=false. Also check for a second copy at "
+    "any size, as shadow, reflection, silhouette or abstract shape in its colours.\n"
     "3. Are there frames, borders, straight seams, tiles, panels, text, or gray areas?\n"
     "4. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
     'Answer with JSON only: {"ok": true|false, "probleme": ["concrete problem with location", ...]}. '

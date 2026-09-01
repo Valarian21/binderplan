@@ -157,6 +157,32 @@
   .f-art-hinweis { font-size: 11px; color: var(--mut); line-height: 1.35; }
   .f-art-hinweis.warn { color: var(--akzent); }
 
+
+  /* ---------- Binder aus Fotos ---------- */
+  .fi-liste { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+  .fi-foto { position: relative; width: 96px; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); }
+  .fi-foto img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+  .fi-foto .fi-nr { position: absolute; top: 3px; left: 3px; background: var(--kontur); color: #fff;
+                    font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 999px; }
+  .fi-foto .fi-akt { display: flex; justify-content: center; gap: 1px; padding: 3px 0; }
+  .fi-foto .fi-akt button { font-size: 12px; padding: 1px 6px; border-radius: 5px; color: var(--mut); }
+  .fi-foto .fi-akt button:hover:not(:disabled) { background: var(--panel2); color: var(--ink); }
+  .fi-foto .fi-akt button:disabled { opacity: .3; }
+  .fi-seite { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .fi-seite h4 { margin: 0 0 8px; font-size: 13px; }
+  .fi-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .fi-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); cursor: pointer; }
+  .fi-karte.unsicher { border-color: var(--gelb); border-width: 2px; }
+  .fi-karte .fi-paar { display: flex; gap: 2px; }
+  .fi-karte .fi-paar img { width: 50%; aspect-ratio: 63/88; object-fit: contain; background: var(--panel); display: block; }
+  .fi-karte .fi-txt { padding: 5px 6px 6px; }
+  .fi-karte .fi-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
+  .fi-karte .fi-set { font-size: 10px; color: var(--mut); }
+  .fi-karte .fi-warn { font-size: 10px; color: var(--akzent); font-weight: 700; margin-top: 2px; }
+  .fi-fort { height: 6px; border-radius: 999px; background: var(--panel2); overflow: hidden; margin: 12px 0; }
+  .fi-fort i { display: block; height: 100%; background: var(--akzent); transition: width .25s; }
+  .fi-tip { font-size: 12.5px; color: var(--mut); line-height: 1.45; }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -855,6 +881,7 @@
               <div class="trenn"></div>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
+              <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
               <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
               <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
               <div class="trenn"></div>
@@ -875,6 +902,7 @@
           <button onclick="modalOeffnen('modal-dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
           <button onclick="modalOeffnen('modal-poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
           <button onclick="modalOeffnen('modal-kuenstler')"><strong data-i18n="tpl_illu">Künstler</strong><span data-i18n="tpl_illu_u">alle Karten eines Illustrators</span></button>
+          <button onclick="fotoOeffnen()"><strong data-i18n="tpl_foto">Aus Fotos</strong><span data-i18n="tpl_foto_u">Seiten abfotografieren, Karten werden erkannt</span></button>
           <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
         </div>
       </div>
@@ -1355,6 +1383,44 @@
   </div>
 </div>
 
+<!-- Modal: Binder aus Fotos -->
+<div class="overlay hidden" id="modal-foto">
+  <div class="modal" style="width:min(860px,96vw);max-height:92vh;overflow:auto">
+    <button class="modal-x" onclick="fotoSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="foto_t">Binder aus Fotos</h2>
+    <div class="unter" data-i18n="foto_u">Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.</div>
+
+    <div id="fi-schritt1">
+      <div class="fi-tip" data-i18n="foto_tipp">Am besten gerade von oben, die ganze Seite im Bild, gleichmäßiges Licht ohne starke Spiegelung. Karten dürfen in Hüllen stecken.</div>
+      <input type="file" id="fi-datei" accept="image/*" multiple style="display:none" onchange="fotoDateien(this.files)">
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn" onclick="$('fi-datei').click()" data-i18n="foto_waehlen">Fotos auswählen</button>
+        <span class="fi-tip" id="fi-abdeckung" style="align-self:center"></span>
+      </div>
+      <div class="fi-liste" id="fi-liste"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn sekundaer" onclick="fotoSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+        <button class="btn" id="fi-los" onclick="fotoErkennen()" disabled data-i18n="foto_los">Karten erkennen</button>
+      </div>
+    </div>
+
+    <div id="fi-schritt2" class="hidden">
+      <div class="fi-fort"><i id="fi-balken" style="width:0%"></i></div>
+      <div class="fi-tip" id="fi-fortschritt"></div>
+    </div>
+
+    <div id="fi-schritt3" class="hidden">
+      <div class="fi-tip" id="fi-bilanz" style="margin-bottom:12px"></div>
+      <div id="fi-ergebnis"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn sekundaer" onclick="fotoZurueck()" data-i18n="foto_nochmal">Andere Fotos</button>
+        <button class="btn sekundaer" onclick="fotoUebernehmen('anhaengen')" data-i18n="foto_anhaengen">An diesen Binder anhängen</button>
+        <button class="btn" onclick="fotoUebernehmen('neu')" data-i18n="foto_neu">Neuen Binder anlegen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1448,6 +1514,19 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    tpl_foto: 'Aus Fotos', tpl_foto_u: 'Seiten abfotografieren, Karten werden erkannt',
+    foto_menu: '📷 Seiten abfotografieren …', foto_t: 'Binder aus Fotos',
+    foto_u: 'Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.',
+    foto_tipp: 'Am besten gerade von oben, die ganze Seite im Bild, gleichmäßiges Licht ohne starke Spiegelung. Karten dürfen in Hüllen stecken.',
+    foto_waehlen: 'Fotos auswählen', foto_los: 'Karten erkennen', foto_vor: 'Nach vorne', foto_zurueck: 'Nach hinten',
+    foto_lauf: 'Foto {i} von {n} wird ausgewertet …', foto_bilanz: '{n} Karten auf {s} Seiten erkannt.',
+    foto_unsicher: '{u} davon solltest du prüfen (gelb umrandet).', foto_pruefen: 'bitte prüfen',
+    foto_tauschen: 'Antippen für andere Treffer', foto_alternativen: 'Stattdessen diese Karte',
+    foto_keine_alt: 'Keine weiteren Treffer', foto_nochmal: 'Andere Fotos',
+    foto_anhaengen: 'An diesen Binder anhängen', foto_neu: 'Neuen Binder anlegen',
+    foto_bindername: 'Fotoimport', foto_fertig: '{n} Karten übernommen', foto_leer: 'Keine Karten erkannt',
+    foto_index: 'Kartenbilder sind erst zu {p} % eingelesen ({n}) – die Erkennung wird noch besser.',
+
     neue_seite: 'Neue Seite angehängt', seitenfarbe: 'Seitenfarbe',
     sf_dunkel: 'Schwarz', sf_hell: 'Weiß',
 
@@ -1616,6 +1695,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: '📷 Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
+
     neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
 
     f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
@@ -3283,6 +3364,155 @@ function seiteZiehen(d) {
   S.seite = ziel;                       // mit der Seite mitwandern
   zeichneBinder();
   toastUndo(d < 0 ? t('s_seite_hoch') : t('s_seite_runter'));
+}
+
+// ---------- Binder aus Fotos ----------
+// Die Karten werden nicht gelesen, sondern über ihren Bildfingerabdruck erkannt
+// (Modul fotoimport.py). Das Modell sagt nur, wo auf dem Foto Karten liegen.
+const FI = { fotos: [], seiten: [], laeuft: false };
+
+function fotoOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  FI.fotos = []; FI.seiten = [];
+  fotoSchritt(1);
+  zeichneFotoListe();
+  modalOeffnen('modal-foto');
+  api('api/import/status').then((d) => {
+    const anteil = d.gesamt ? Math.round(d.fingerabdruecke / d.gesamt * 100) : 0;
+    $('fi-abdeckung').textContent = anteil >= 98 ? '' :
+      t('foto_index').replace('{p}', anteil).replace('{n}', (d.fingerabdruecke || 0).toLocaleString(LANG === 'en' ? 'en' : 'de'));
+  }).catch(() => {});
+}
+function fotoSchliessen() { if (!FI.laeuft) modalSchliessen(); }
+function fotoSchritt(n) {
+  for (const i of [1, 2, 3]) $('fi-schritt' + i).classList.toggle('hidden', i !== n);
+}
+function fotoZurueck() { FI.seiten = []; fotoSchritt(1); }
+
+function fotoDateien(dateien) {
+  for (const f of dateien) {
+    if (!f.type.startsWith('image/')) continue;
+    FI.fotos.push({ datei: f, url: URL.createObjectURL(f) });
+  }
+  $('fi-datei').value = '';
+  zeichneFotoListe();
+}
+function fotoWeg(i) { URL.revokeObjectURL(FI.fotos[i].url); FI.fotos.splice(i, 1); zeichneFotoListe(); }
+function fotoSchieben(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= FI.fotos.length) return;
+  [FI.fotos[i], FI.fotos[j]] = [FI.fotos[j], FI.fotos[i]];
+  zeichneFotoListe();
+}
+function zeichneFotoListe() {
+  $('fi-liste').innerHTML = FI.fotos.map((f, i) => `
+    <div class="fi-foto">
+      <span class="fi-nr">${i + 1}</span>
+      <img src="${f.url}" alt="">
+      <div class="fi-akt">
+        <button onclick="fotoSchieben(${i},-1)" ${i === 0 ? 'disabled' : ''} title="${t('foto_vor')}">←</button>
+        <button onclick="fotoSchieben(${i},1)" ${i === FI.fotos.length - 1 ? 'disabled' : ''} title="${t('foto_zurueck')}">→</button>
+        <button onclick="fotoWeg(${i})" title="${t('entfernen')}">✕</button>
+      </div>
+    </div>`).join('');
+  $('fi-los').disabled = !FI.fotos.length;
+}
+
+async function fotoErkennen() {
+  if (!FI.fotos.length || FI.laeuft) return;
+  FI.laeuft = true; FI.seiten = [];
+  fotoSchritt(2);
+  const layout = (S.binder && S.binder.layout) || '3x3';
+  try {
+    for (let i = 0; i < FI.fotos.length; i++) {
+      $('fi-fortschritt').textContent = t('foto_lauf').replace('{i}', i + 1).replace('{n}', FI.fotos.length);
+      $('fi-balken').style.width = Math.round(i / FI.fotos.length * 100) + '%';
+      const fd = new FormData();
+      fd.append('datei', FI.fotos[i].datei);
+      const d = await api('api/import/foto?layout=' + encodeURIComponent(layout), { method: 'POST', body: fd });
+      FI.seiten.push(d.karten || []);
+    }
+    $('fi-balken').style.width = '100%';
+    zeichneFotoErgebnis();
+    fotoSchritt(3);
+  } catch (e) {
+    fotoSchritt(1);
+    if (!gate(e)) toast(e.message || String(e));
+  } finally {
+    FI.laeuft = false;
+  }
+}
+
+function zeichneFotoErgebnis() {
+  const gesamt = FI.seiten.reduce((s, k) => s + k.length, 0);
+  const unsicher = FI.seiten.reduce((s, k) => s + k.filter((x) => !x.sicher).length, 0);
+  $('fi-bilanz').textContent = t('foto_bilanz').replace('{n}', gesamt).replace('{s}', FI.seiten.length)
+    + (unsicher ? ' ' + t('foto_unsicher').replace('{u}', unsicher) : '');
+  $('fi-ergebnis').innerHTML = FI.seiten.map((karten, si) => `
+    <div class="fi-seite">
+      <h4>${t('seite')} ${si + 1} · ${karten.length} ${t('faecher')}</h4>
+      <div class="fi-karten">
+        ${karten.map((k, ki) => `
+          <div class="fi-karte ${k.sicher ? '' : 'unsicher'}" onclick="fotoKarteWaehlen(${si},${ki})" title="${t('foto_tauschen')}">
+            <div class="fi-paar"><img src="${k.ausschnitt}" alt=""><img src="${imgUrl(k.id)}" alt=""></div>
+            <div class="fi-txt">
+              <div class="fi-name">${esc(k.name || k.id)}</div>
+              <div class="fi-set">${esc(k.set || '')} ${k.nr ? '· ' + esc(k.nr) : ''}</div>
+              ${k.sicher ? '' : `<div class="fi-warn">${t('foto_pruefen')}</div>`}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+/** Antippen einer erkannten Karte: die naechstbesten Treffer anbieten. */
+function fotoKarteWaehlen(si, ki) {
+  const k = FI.seiten[si][ki];
+  const alt = k.alternativen || [];
+  const zeilen = alt.map((a, i) => `<button onclick="fotoTauschen(${si},${ki},${i})" style="display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:6px">
+      <img src="${imgUrl(a.id)}" style="width:34px;border-radius:3px" alt="">
+      <span><strong style="font-size:12.5px">${esc(a.name)}</strong><br><span style="font-size:11px;color:var(--mut)">${esc(a.set)} · ${esc(a.nr || '')}</span></span>
+    </button>`).join('');
+  const m = $('menu-slot');
+  m.innerHTML = `<div class="menu-lbl">${t('foto_alternativen')}</div>${zeilen || `<div style="padding:8px;font-size:12px;color:var(--mut)">${t('foto_keine_alt')}</div>`}
+    <div class="trenn"></div><button class="gefahr" onclick="fotoKarteWeg(${si},${ki})">${t('entfernen')}</button>`;
+  m.classList.remove('hidden');
+  const r = event.currentTarget.getBoundingClientRect();
+  m.style.minWidth = '250px';
+  m.style.left = Math.max(8, Math.min(window.innerWidth - 258, r.left)) + 'px';
+  m.style.top = Math.min(window.innerHeight - 260, r.bottom + 6) + 'px';
+  event.stopPropagation();
+}
+function fotoTauschen(si, ki, ai) {
+  const k = FI.seiten[si][ki];
+  const a = k.alternativen[ai];
+  k.alternativen = [{ id: k.id, name: k.name, set: k.set, nr: k.nr }, ...k.alternativen.filter((_, i) => i !== ai)];
+  Object.assign(k, { id: a.id, name: a.name, set: a.set, nr: a.nr, sicher: true });
+  slotMenueZu(); zeichneFotoErgebnis();
+}
+function fotoKarteWeg(si, ki) { FI.seiten[si].splice(ki, 1); slotMenueZu(); zeichneFotoErgebnis(); }
+
+async function fotoUebernehmen(modus) {
+  const pp = proSeite();
+  const items = [];
+  for (const karten of FI.seiten) {
+    for (let i = 0; i < pp; i++) items.push(karten[i] ? { type: 'card', id: karten[i].id } : { type: 'empty' });
+  }
+  if (!items.length) return toast(t('foto_leer'));
+  if (modus === 'neu') {
+    const name = t('foto_bindername') + ' ' + new Date().toLocaleDateString(LANG === 'en' ? 'en-GB' : 'de-DE');
+    if (!await binderSpeichernNeu(name, 'custom', items, {})) return;
+  } else {
+    if (!S.binder) return;
+    merken('foto');
+    while (S.binder.items.length % pp) S.binder.items.push({ type: 'empty' });
+    S.binder.items.push(...items);
+    speichern(); zeichneBinder();
+  }
+  S.seite = Math.max(0, Math.ceil(S.binder.items.length / pp) - FI.seiten.length);
+  zeichneBinder(); zeichneErgebnisse();
+  modalSchliessen();
+  toast(t('foto_fertig').replace('{n}', FI.seiten.reduce((s, k) => s + k.length, 0)));
 }
 
 function seiteWechsel(d) {

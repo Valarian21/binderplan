@@ -3009,6 +3009,21 @@ except Exception as _e:  # pragma: no cover
     _themen_kennzahlen = None
 
 
+# --- Binder aus Fotos (Modul fotoimport.py) ---------------------------------
+#
+# Bindet `card_hashes` und die Endpunkte /api/import/* ein.
+
+try:
+    import fotoimport as _fotoimport  # noqa: E402
+    _foto_kennzahlen = _fotoimport.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user,
+        env=_env, CACHE=CACHE, admin_key=_admin_key,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Fotoimport-Modul nicht geladen:", _e)
+    _foto_kennzahlen = None
+
+
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
 
 @app.get("/")

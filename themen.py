@@ -150,6 +150,15 @@ def _json_antwort(body, timeout=180, versuche=2):
     raise RuntimeError(f"Antwort des Modells war unlesbar: {letzter}")
 
 
+def _zahl(wert, klein, gross):
+    """Zahlenfelder robust lesen — das Modell schiebt die Felder gelegentlich
+    durcheinander und liefert dann einen Farbwert, wo eine Zahl stehen sollte."""
+    try:
+        return max(klein, min(gross, int(float(str(wert).strip()))))
+    except Exception:
+        return klein
+
+
 def _liste(wert):
     """Listenfelder robust lesen — dieselbe Frage liefert mal `["wald","schnee"]`,
     mal `"wald, schnee"`. Ohne diese Umschaltung fiel die Volltextsuche still aus."""
@@ -247,17 +256,14 @@ def sichten(card_ids):
             continue
         orte = [o for o in _liste(e.get("orte")) if o in ORTE]
         merkmale = [m for m in _liste(e.get("merkmale")) if m in MERKMALE]
-        try:
-            figuren = max(0, min(99, int(e.get("figuren") or 0)))
-        except Exception:
-            figuren = 0
+        figuren = _zahl(e.get("figuren"), 0, 99)
         if figuren > 1 and "mehrere_pokemon" not in merkmale:
             merkmale.append("mehrere_pokemon")
         con.execute(
             "INSERT OR REPLACE INTO card_art_tags (card_id, szene, orte, zeit, wasser, stimmung, farben,"
             " merkmale, figuren, modell, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (card_id, str(e.get("szene") or "")[:400], " ".join(orte), str(e.get("zeit") or "unklar")[:12],
-             max(0, min(3, int(e.get("wasser") or 0))), str(e.get("stimmung") or "")[:80],
+             _zahl(e.get("wasser"), 0, 3), str(e.get("stimmung") or "")[:80],
              json.dumps(_liste(e.get("farben"))), " ".join(merkmale), figuren,
              d.get("model") or SICHT_MODELL, _now()))
         con.execute("DELETE FROM card_art_fts WHERE card_id = ?", (card_id,))
@@ -376,7 +382,7 @@ def _profil(thema):
         "worte": [w for w in _liste(p.get("worte")) if re.fullmatch(r"[A-Za-z][A-Za-z'-]{1,20}", w)][:16],
         "orte": [o for o in _liste(p.get("orte")) if o in ORTE][:4],
         "merkmale": [m for m in _liste(p.get("merkmale")) if m in MERKMALE][:4],
-        "wasser_min": max(0, min(3, int(p.get("wasser_min") or 0))),
+        "wasser_min": _zahl(p.get("wasser_min"), 0, 3),
         "zeit": p.get("zeit") if p.get("zeit") in ("tag", "nacht", "daemmerung") else "",
         "titel": str(p.get("titel") or thema)[:60],
     }, kosten
