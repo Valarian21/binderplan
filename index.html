@@ -227,6 +227,30 @@
   .po-kopf h2 { margin: 0; font-size: 24px; }
   .po-bild { width: 54px; height: 74px; border-radius: 6px; object-fit: cover; border: 2px solid var(--line); }
 
+
+  /* ---------- Finger statt Mauszeiger ----------
+     Auf Touchgeräten sind Ziele unter etwa 44px kaum sicher zu treffen. Betroffen
+     waren vor allem die Seiten-Navigation im Binder (18–29px) und die kleinen
+     Umschalter über der Suche. */
+  @media (pointer: coarse) {
+    .seiten-nav { gap: 4px; flex-wrap: wrap; }
+    .seiten-nav button { min-width: 44px; min-height: 44px; display: inline-flex;
+                         align-items: center; justify-content: center; }
+    .chip { min-height: 36px; padding-top: 7px; padding-bottom: 7px; }
+    .schalter input { width: 22px; height: 22px; }
+    .schalter { min-height: 40px; }
+    .tk .plus { min-height: 40px; }
+    .slot .mehr, .slot .raus, .slot .hat-btn { width: 26px; height: 26px; opacity: .85; }
+    .ps-titel .ps-akt button { min-width: 36px; min-height: 36px; }
+    .bv-fuss button { width: 54px; height: 54px; }
+    .fi-foto .fi-akt button { min-width: 34px; min-height: 34px; }
+    /* Umschalter über der Suche: Region, Kartensprache, Sortierrichtung */
+    #reg-intl, #reg-jp, .lang-toggle button, #btn-alle { min-height: 38px; }
+    .lang-toggle button { min-width: 44px; }
+    #f-absteigend { width: 22px; height: 22px; }
+    .spalte-filter a[href^="recht"] { display: inline-block; padding: 8px 4px; }
+  }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -1021,6 +1045,10 @@
         <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+        <div class="trenn"></div>
+        <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
+        <button onclick="fotoOeffnen()" data-i18n="foto_menu">📷 Seiten abfotografieren …</button>
+        <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
         <div class="trenn"></div>
         <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
         <button onclick="themeWechsel()"><span data-i18n="pf_design">Design</span>: <span class="theme-stand"></span></button>
@@ -2631,8 +2659,11 @@ function modalOeffnen(id) {
   $(id).classList.remove('hidden');
   if (id === 'modal-master') zeichneSetliste();
   if (id === 'modal-dex') zeichneGens();
+  ebeneOeffnen(modalZu);
 }
-function modalSchliessen() { document.querySelectorAll('.overlay').forEach((o) => o.classList.add('hidden')); }
+/** Nur das DOM schließen – ohne den Verlauf anzufassen. */
+function modalZu() { document.querySelectorAll('.overlay').forEach((o) => o.classList.add('hidden')); }
+function modalSchliessen() { ebeneZu(modalZu); }
 
 // ---------- Binder anlegen ----------
 async function binderSpeichernNeu(name, mode, items, options) {
@@ -3333,12 +3364,15 @@ function blaetternOeffnen() {
   $('bv-titel').textContent = t('bv_titel');
   $('bv-untertitel').textContent = S.binder.name || '';
   $('blaettern').classList.remove('hidden');
+  ebeneOeffnen(blaetternZu);
   document.body.style.overflow = 'hidden';
   bvZeichne();
   bvVorladen(BV.spread + 1);
 }
 
-function blaetternSchliessen() {
+function blaetternSchliessen() { ebeneZu(blaetternZu); }
+function blaetternZu() {
+  if ($('blaettern').classList.contains('hidden')) return;
   $('blaettern').classList.add('hidden');
   document.body.style.overflow = '';
   // Dort weiterarbeiten, wo man aufgehört hat zu blättern
@@ -3689,6 +3723,7 @@ const VT = { sortierung: 'trend', binder: [], laeuft: false, meldung: null };
 function ansichtVitrine() {
   planerSchliessen();
   $('vitrine').classList.remove('hidden');
+  ebeneOeffnen(vitrineSchliessen);
   $('seg-vitrine').classList.add('on');
   $('seg-suche').classList.remove('on'); $('seg-planer').classList.remove('on');
   zeichneVitrineTabs();
@@ -3927,6 +3962,7 @@ async function profilseiteOeffnen(name) {
   POF.name = name;
   vitrineSchliessen(); planerSchliessen();
   $('profil-oeffentlich').classList.remove('hidden');
+  ebeneOeffnen(profilseiteSchliessen);
   $('po-gitter').innerHTML = `<div class="vt-leer">${t('laedt')}</div>`;
   try {
     const d = await api('api/vitrine/profil/' + encodeURIComponent(name));
@@ -3954,6 +3990,34 @@ async function profilseiteOeffnen(name) {
   }
 }
 function profilseiteSchliessen() { $('profil-oeffentlich').classList.add('hidden'); }
+
+// ---------- Zurück-Taste ----------
+// Auf dem Handy ist die Wischgeste nach rechts der meistbenutzte Knopf überhaupt.
+// Ohne eigenen Verlaufseintrag verlässt sie beim ersten offenen Dialog die ganze
+// App — man verliert die Ansicht und landet auf der vorherigen Seite. Jede Ebene
+// (Dialog, Planer, Vitrine, Durchblättern) legt deshalb einen Eintrag an; Zurück
+// schließt die oberste Ebene, statt zu navigieren.
+const EBENEN = [];
+
+function ebeneOeffnen(schliesser) {
+  EBENEN.push(schliesser);
+  try { history.pushState({ bpEbene: EBENEN.length }, ''); } catch (e) { /* alte Browser */ }
+}
+
+/** Ebene programmatisch schließen (Klick auf ✕). Nimmt den Verlaufseintrag mit. */
+function ebeneZu(schliesser) {
+  const i = EBENEN.lastIndexOf(schliesser);
+  if (i === -1) { schliesser(); return; }
+  EBENEN.splice(i, 1);
+  schliesser();
+  try { history.back(); } catch (e) {}
+}
+
+window.addEventListener('popstate', () => {
+  if (!EBENEN.length) return;          // nichts offen → ganz normal navigieren
+  const schliessen = EBENEN.pop();
+  try { schliessen(); } catch (e) {}
+});
 
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
@@ -4088,6 +4152,7 @@ function planerOeffnen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
+  ebeneOeffnen(planerSchliessen);
   $('seg-planer').classList.add('on'); $('seg-suche').classList.remove('on');
   $('mnav-planer').classList.add('on'); $('mnav-suche').classList.remove('on'); $('mnav-binder').classList.remove('on');
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
