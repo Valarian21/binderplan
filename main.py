@@ -2955,18 +2955,26 @@ def manifest():
 
 
 def _app_icon(groesse: int) -> Path:
-    """Einfaches App-Icon (Binder-Glyphe) einmalig mit Pillow erzeugen."""
+    """Das App-Icon liegt als Datei im Repo (icon-192.png, icon-512.png).
+
+    Frueher wurde es hier zur Laufzeit gezeichnet und im Cache abgelegt — mit der
+    Folge, dass ein neues Icon im Repo wirkungslos blieb. Gezeichnet wird nur
+    noch, wenn die Datei fehlt."""
+    datei = BASE / f"icon-{groesse}.png"
+    if datei.exists():
+        return datei
     ziel = CACHE / f"icon-{groesse}.png"
     if ziel.exists():
         return ziel
     from PIL import ImageDraw
-    img = Image.new("RGB", (groesse, groesse), "#e85d43")
+    img = Image.new("RGB", (groesse, groesse), "#f5c518")
     d = ImageDraw.Draw(img)
     g = groesse
-    d.rounded_rectangle([g * 0.2, g * 0.16, g * 0.8, g * 0.84], radius=g * 0.06,
-                        outline="white", width=max(3, g // 28))
-    d.line([g * 0.34, g * 0.16, g * 0.34, g * 0.84], fill="white", width=max(3, g // 28))
-    d.ellipse([g * 0.47, g * 0.32, g * 0.67, g * 0.52], outline="white", width=max(3, g // 32))
+    d.rounded_rectangle([g * 0.16, g * 0.16, g * 0.84, g * 0.84], radius=g * 0.05,
+                        outline="#14161c", width=max(3, g // 22))
+    for i in (1, 2):
+        d.line([g * (0.16 + i * 0.227), g * 0.16, g * (0.16 + i * 0.227), g * 0.84], fill="#14161c", width=max(3, g // 26))
+        d.line([g * 0.16, g * (0.16 + i * 0.227), g * 0.84, g * (0.16 + i * 0.227)], fill="#14161c", width=max(3, g // 26))
     img.save(ziel)
     return ziel
 

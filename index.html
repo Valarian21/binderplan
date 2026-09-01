@@ -32,6 +32,63 @@
   .btn:disabled { opacity: 0.45; cursor: default; }
   .feld { width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--eingabe); outline: none; }
 
+
+  /* ---------- Durchblättern: der Binder, wie er auf dem Tisch liegt ----------
+     Zwei aufgeschlagene Seiten, dazwischen die Ringe. Beim Umblättern dreht
+     sich ein Blatt um den Rücken — Vorderseite ist die alte rechte Seite,
+     Rückseite die neue linke. Die Fächer zeichnet dieselbe Funktion wie in der
+     Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen. */
+  #blaettern { position: fixed; inset: 0; z-index: 95; background: rgba(8,9,12,.985);
+               display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
+  #blaettern.hidden { display: none !important; }
+  .bv-kopf { display: flex; align-items: center; gap: 14px; color: #fff; font-size: 14px; font-weight: 700; }
+  .bv-kopf .bv-name { opacity: .75; font-weight: 500; }
+  .bv-buch { perspective: 2600px; display: flex; align-items: stretch; justify-content: center;
+             gap: 0; max-width: min(1240px, 96vw); width: 100%; }
+  .bv-seite { background: var(--card); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
+              display: grid; gap: clamp(4px, .7vw, 9px); flex: 1 1 0; min-width: 0;
+              align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+  .bv-seite.links { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+  .bv-seite.rechts { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+  .bv-seite.leer { background: transparent; box-shadow: none; }
+  /* Der Rücken: schmaler Streifen mit drei Ringen */
+  .bv-ruecken { width: 26px; flex: 0 0 26px; background: linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.12) 40%, rgba(0,0,0,.35));
+                display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 12% 0; }
+  .bv-ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #b9bec7;
+             background: linear-gradient(180deg, #f2f4f7, #99a0ab); }
+  .bv-slot { position: relative; aspect-ratio: 63/88; border-radius: 5px; overflow: hidden;
+             background: var(--panel2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .bv-slot.frei { background: transparent; border-style: dashed; }
+  .bv-slot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .bv-slot .artfach { position: absolute; inset: 0; overflow: hidden; }
+  .bv-slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .bv-slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 4px; }
+  .bv-slot .dexzelle img { width: 52%; height: auto; }
+  .bv-slot .dexzelle span { font-size: 9px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
+  .bv-slot .bv-preis { position: absolute; bottom: 3px; right: 3px; background: var(--kontur, #14161c); color: #fff;
+                       font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+  /* Das umblätternde Blatt liegt über der rechten (bzw. linken) Seite */
+  .bv-blatt { position: absolute; top: 0; bottom: 0; transform-style: preserve-3d; z-index: 3;
+              transition: transform .62s cubic-bezier(.4,.05,.25,1); }
+  .bv-blatt .bv-seite { position: absolute; inset: 0; backface-visibility: hidden; }
+  .bv-blatt .rueck { transform: rotateY(180deg); }
+  .bv-buch-wrap { position: relative; display: flex; width: 100%; justify-content: center; }
+  .bv-fuss { display: flex; align-items: center; gap: 18px; color: #fff; }
+  .bv-fuss button { color: #fff; font-size: 26px; width: 46px; height: 46px; border-radius: 50%;
+                    background: rgba(255,255,255,.12); line-height: 1; }
+  .bv-fuss button:hover:not(:disabled) { background: rgba(255,255,255,.24); }
+  .bv-fuss button:disabled { opacity: .3; cursor: default; }
+  .bv-zaehler { font-size: 14px; font-variant-numeric: tabular-nums; min-width: 168px; text-align: center; }
+  .bv-x { position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+          background: rgba(255,255,255,.12); color: #fff; font-size: 20px; }
+  .bv-x:hover { background: rgba(255,255,255,.24); }
+  @media (max-width: 720px) {
+    .bv-ruecken { width: 14px; flex-basis: 14px; }
+    .bv-ring { width: 9px; height: 9px; border-width: 2px; }
+    .bv-buch { max-width: 100vw; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bv-blatt { transition: none; } }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -716,6 +773,11 @@
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
         <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite">🎨</button>
+        <button onclick="blaetternOeffnen()" style="margin-left:2px" title="Durchblättern" aria-label="Durchblättern" data-i18n-title="bv_titel">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/>
+            <path d="M10 4.5v12"/></svg>
+        </button>
       </div>
       <div id="wb-sammel" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
@@ -1107,6 +1169,19 @@
   </div>
 </div>
 
+<div id="blaettern" class="hidden" role="dialog" aria-modal="true" aria-label="Binder durchblättern">
+  <button class="bv-x" onclick="blaetternSchliessen()" aria-label="Schließen">✕</button>
+  <div class="bv-kopf"><span id="bv-titel"></span><span class="bv-name" id="bv-untertitel"></span></div>
+  <div class="bv-buch-wrap">
+    <div class="bv-buch" id="bv-buch"></div>
+  </div>
+  <div class="bv-fuss">
+    <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern">‹</button>
+    <span class="bv-zaehler" id="bv-zaehler"></span>
+    <button id="bv-vor" onclick="blaetternWechsel(1)" aria-label="Weiterblättern">›</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1199,6 +1274,7 @@ const T = {
     sortieren: 'Auswahl sortieren', nach_vorn: 'Nach vorn', ans_ende: 'Ans Ende', entfernen: 'Entfernen',
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
+    bv_titel: 'Durchblättern',
     alle_sets: 'Alle Sets', alle_aeren: 'Alle Ären', alle_rar: 'Alle Seltenheiten', alle_gen: 'Alle', gen: 'Gen',
     leer_slot: 'leer', gesamt: 'Gesamtwert', preise_offen: 'Preise werden geladen … erneut aktivieren für den Rest.',
     s_datum: 'Erscheinungsdatum', s_dex: 'Pokédex-Nummer', s_name: 'Alphabetisch', s_nummer: 'Set & Setnummer',
@@ -1344,7 +1420,7 @@ const T = {
     abbrechen: 'Cancel', anlegen: 'Create binder', zurueck: 'Back', auswahl: 'Selection',
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
-    treffer: 'cards found', faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
+    treffer: 'cards found', bv_titel: 'Flip through', faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
     alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
     leer_slot: 'empty', gesamt: 'Total value', preise_offen: 'Prices loading … toggle again for the rest.',
     s_datum: 'Release date', s_dex: 'Pokédex number', s_name: 'Alphabetical', s_nummer: 'Set & number',
@@ -2599,6 +2675,129 @@ function zeichneBinder() {
   zeichnePreisSumme();
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
+
+// ---------- Durchblättern ----------
+// Zeigt den Binder aufgeschlagen: zwei Seiten nebeneinander, dazwischen die
+// Ringe. Die Fächer zeichnet `slotInhalt()` — dieselbe Funktion wie in der
+// Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen.
+const BV = { spread: 0, dreht: false };
+
+function bvSeitenZahl() { return Math.max(1, Math.ceil((S.binder?.items.length || 0) / proSeite())); }
+function bvSpreads() { return Math.ceil(bvSeitenZahl() / 2); }
+
+/** Eine Binderseite als HTML. `seite` ist zwölfnullbasiert; außerhalb = leeres Blatt. */
+function bvSeiteHtml(seite, klasse) {
+  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  const pp = proSeite();
+  if (seite < 0 || seite >= bvSeitenZahl()) return `<div class="bv-seite leer ${klasse}"></div>`;
+  let html = '';
+  for (let i = 0; i < pp; i++) {
+    const item = S.binder.items[seite * pp + i];
+    if (!item) { html += '<div class="bv-slot frei"></div>'; continue; }
+    let preis = '';
+    if (S.preiseAn && item.type === 'card') {
+      const p = preisFuer(item);
+      if (p != null) preis = `<span class="bv-preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
+    }
+    html += `<div class="bv-slot">${slotInhalt(item)}${preis}</div>`;
+  }
+  return `<div class="bv-seite ${klasse}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${html}</div>`;
+}
+
+function bvZeichne() {
+  const links = BV.spread * 2, rechts = links + 1;
+  $('bv-buch').innerHTML = bvSeiteHtml(links, 'links')
+    + '<div class="bv-ruecken"><i class="bv-ring"></i><i class="bv-ring"></i><i class="bv-ring"></i></div>'
+    + bvSeiteHtml(rechts, 'rechts');
+  const gesamt = bvSeitenZahl();
+  const bis = Math.min(rechts + 1, gesamt);
+  $('bv-zaehler').textContent = links + 1 === bis
+    ? `${t('seite')} ${bis} / ${gesamt}`
+    : `${t('seite')} ${links + 1}–${bis} / ${gesamt}`;
+  $('bv-zurueck').disabled = BV.spread <= 0;
+  $('bv-vor').disabled = BV.spread >= bvSpreads() - 1;
+}
+
+/**
+ * Umblättern mit echtem Blattwechsel: ein Blatt legt sich über die
+ * aufgeschlagene Seite und dreht sich um den Rücken. Vorne die Seite, die man
+ * verlässt, hinten die, auf der man landet.
+ */
+function blaetternWechsel(d) {
+  if (BV.dreht) return;
+  const ziel = BV.spread + d;
+  if (ziel < 0 || ziel >= bvSpreads()) return;
+  const wenigerBewegung = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (wenigerBewegung) { BV.spread = ziel; bvZeichne(); return; }
+
+  const buch = $('bv-buch');
+  const seiten = buch.querySelectorAll('.bv-seite');
+  const quelle = d > 0 ? seiten[2] : seiten[0];
+  if (!quelle) { BV.spread = ziel; bvZeichne(); return; }
+  const b = quelle.getBoundingClientRect();
+  const wrapB = buch.parentElement.getBoundingClientRect();
+
+  const blatt = document.createElement('div');
+  blatt.className = 'bv-blatt';
+  blatt.style.left = (b.left - wrapB.left) + 'px';
+  blatt.style.width = b.width + 'px';
+  blatt.style.transformOrigin = d > 0 ? 'left center' : 'right center';
+  // vorne die Seite, die weggeht — hinten die, die dahinter zum Vorschein kommt
+  const vorne = d > 0 ? BV.spread * 2 + 1 : BV.spread * 2;
+  const hinten = d > 0 ? ziel * 2 : ziel * 2 + 1;
+  blatt.innerHTML = bvSeiteHtml(vorne, d > 0 ? 'rechts' : 'links')
+    + bvSeiteHtml(hinten, 'rueck ' + (d > 0 ? 'links' : 'rechts'));
+  buch.parentElement.append(blatt);
+
+  BV.dreht = true;
+  requestAnimationFrame(() => { blatt.style.transform = `rotateY(${d > 0 ? -180 : 180}deg)`; });
+  const fertig = () => {
+    blatt.remove();
+    BV.spread = ziel;
+    BV.dreht = false;
+    bvZeichne();
+  };
+  blatt.addEventListener('transitionend', fertig, { once: true });
+  setTimeout(() => { if (BV.dreht) fertig(); }, 900);   // Notausgang, falls kein transitionend kommt
+}
+
+function blaetternOeffnen() {
+  if (!S.binder || !S.binder.items.length) return toast(t('binder_leer'));
+  BV.spread = Math.floor(S.seite / 2);
+  $('bv-titel').textContent = t('bv_titel');
+  $('bv-untertitel').textContent = S.binder.name || '';
+  $('blaettern').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  bvZeichne();
+}
+
+function blaetternSchliessen() {
+  $('blaettern').classList.add('hidden');
+  document.body.style.overflow = '';
+  // Dort weiterarbeiten, wo man aufgehört hat zu blättern
+  S.seite = Math.min(BV.spread * 2, bvSeitenZahl() - 1);
+  zeichneBinder();
+}
+
+document.addEventListener('keydown', (e) => {
+  if ($('blaettern').classList.contains('hidden')) return;
+  if (e.key === 'Escape') { e.preventDefault(); blaetternSchliessen(); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); blaetternWechsel(1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); blaetternWechsel(-1); }
+});
+
+// Wischen auf dem Handy
+(function () {
+  let x0 = null;
+  const el = () => $('blaettern');
+  document.addEventListener('touchstart', (e) => { if (!el().classList.contains('hidden')) x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (x0 === null || el().classList.contains('hidden')) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    x0 = null;
+    if (Math.abs(dx) > 55) blaetternWechsel(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
 
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
