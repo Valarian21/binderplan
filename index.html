@@ -880,9 +880,17 @@
       </div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="seiten-nav" id="wb-nav">
+        <button onclick="seiteZiehen(-1)" title="Diese Seite nach vorne schieben" aria-label="Seite nach vorne" data-i18n-title="s_seite_hoch" id="wb-seite-vor">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="4" width="9" height="12" rx="1.6"/><path d="M16 12.5 16 7.5M13.6 9.9 16 7.4l2.4 2.5"/></svg>
+        </button>
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
+        <button onclick="seiteZiehen(1)" title="Diese Seite nach hinten schieben" aria-label="Seite nach hinten" data-i18n-title="s_seite_runter" id="wb-seite-zurueck">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5 4 12.5M1.6 10.1 4 12.6l2.4-2.5"/></svg>
+        </button>
         <button onclick="seiteAnhaengen()" style="margin-left:6px" title="Neue leere Seite anhängen" aria-label="Neue Seite" data-i18n-title="neue_seite">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/></svg>
@@ -2876,6 +2884,9 @@ function zeichneBinder() {
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
   }
   seitenfarbeAnwenden();
+  const seitenZahl = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  if ($('wb-seite-vor')) $('wb-seite-vor').disabled = S.nurAnsicht || S.seite <= 0;
+  if ($('wb-seite-zurueck')) $('wb-seite-zurueck').disabled = S.nurAnsicht || S.seite >= seitenZahl - 1;
   zeichnePreisSumme();
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
@@ -3258,6 +3269,20 @@ function seitenfarbeSetzen(wert) {
   S.binder.options.seitenfarbe = wert;
   seitenfarbeAnwenden();
   speichern();
+}
+
+/** Die gerade offene Seite als Ganzes nach vorne (-1) oder hinten (+1) schieben.
+ *  Im Planer geht das schon über die Pfeile je Seite — beim Fotoimport landet man
+ *  aber in der Werkbank und will die Reihenfolge dort geradeziehen. */
+function seiteZiehen(d) {
+  if (!S.binder || S.nurAnsicht) return;
+  const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  const ziel = S.seite + d;
+  if (ziel < 0 || ziel >= seiten) return;
+  seiteVerschieben(S.seite, d);
+  S.seite = ziel;                       // mit der Seite mitwandern
+  zeichneBinder();
+  toastUndo(d < 0 ? t('s_seite_hoch') : t('s_seite_runter'));
 }
 
 function seiteWechsel(d) {

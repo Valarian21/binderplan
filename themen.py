@@ -273,7 +273,11 @@ def sichten(card_ids):
 
 # --- Hintergrund-Sichtung ----------------------------------------------------
 
-_lauf = {"aktiv": False, "gesichtet": 0, "kosten": 0.0, "fehler": "", "start": "", "stop": False, "ziel": 0}
+# `marke` kennzeichnet den gerade gültigen Lauf. Ohne sie schrieben die Spuren
+# eines eben gestoppten Laufs weiter in denselben Zustand und legten den frisch
+# gestarteten still — der stand dann nach einer Runde ohne Fehlermeldung.
+_lauf = {"aktiv": False, "gesichtet": 0, "kosten": 0.0, "fehler": "", "start": "", "stop": False,
+         "ziel": 0, "marke": 0}
 
 
 def _offene_karten(limit, scope_ids=None):
@@ -298,19 +302,19 @@ SPUREN = 4          # gleichzeitige Stapel
 BILD_THREADS = 3    # Bilddownloads je Stapel — Spuren × Threads begrenzt den Speicher
 
 
-def _index_schleife(budget_usd, scope_ids):
+def _index_schleife(budget_usd, scope_ids, marke):
     """Sichtet, bis nichts mehr offen ist, das Budget aufgebraucht oder gestoppt wurde.
 
     Sechs Stapel laufen parallel; jeder Stapel holt seine 24 Karten selbst aus der
     Warteschlange, damit kein Arbeiter auf einen langsamen Nachbarn wartet."""
-    _lauf.update(aktiv=True, gesichtet=0, kosten=0.0, fehler="", start=_now(), stop=False)
+    _lauf.update(aktiv=True, gesichtet=0, kosten=0.0, fehler="", start=_now(), stop=False, marke=marke)
     entnahme = threading.Lock()
     gezogen = set()      # gerade in Arbeit oder in diesem Lauf gescheitert
     patzer = {}          # card_id → Fehlversuche
     reihe = [0]          # Fehlschläge am Stück, über alle Spuren
 
     def spur():
-        while not _lauf["stop"] and _lauf["kosten"] < budget_usd:
+        while not _lauf["stop"] and _lauf["marke"] == marke and _lauf["kosten"] < budget_usd:
             with entnahme:
                 # In der DB steht erst nach der Sichtung etwas — bis dahin merkt
                 # `gezogen`, welche Karten schon bei einer anderen Spur liegen.
@@ -358,7 +362,8 @@ def _index_schleife(budget_usd, scope_ids):
     except Exception as e:
         _lauf["fehler"] = str(e)[:300]
     finally:
-        _lauf["aktiv"] = False
+        if _lauf["marke"] == marke:      # ein neuerer Lauf darf nicht abgeräumt werden
+            _lauf["aktiv"] = False
 
 
 # --- Suche -------------------------------------------------------------------
@@ -644,7 +649,8 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         if _lauf["aktiv"]:
             raise HTTPException(409, "Läuft bereits")
         ids = _scope_ids(scope)
-        threading.Thread(target=_index_schleife, args=(max(0.05, min(60.0, budget)), ids), daemon=True).start()
+        marke = _lauf["marke"] + 1
+        threading.Thread(target=_index_schleife, args=(max(0.05, min(60.0, budget)), ids, marke), daemon=True).start()
         time.sleep(0.3)
         return {"ok": True, "lauf": {k: v for k, v in _lauf.items() if k != "stop"}}
 
