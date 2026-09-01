@@ -320,6 +320,29 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             b.pop("_punkte", None)
         return {"binder": aus[offset:offset + limit], "gesamt": gesamt, "sortierung": sortierung}
 
+    @app.get("/api/vitrine/binder/{binder_id}")
+    def vitrine_binder(binder_id: str, request: Request):
+        """Begleitdaten zu einem öffentlichen Binder — Besitzer, Herzen, ob man selbst
+        schon abgestimmt hat. Der Binder selbst kommt wie bisher über /api/binders."""
+        user = current_user(request)
+        con = get_db()
+        r = con.execute(
+            "SELECT b.id, b.name, b.sichtbar, COALESCE(b.gesperrt,0) AS gesperrt, b.veroeffentlicht_at,"
+            " p.name AS besitzer, p.kurztext,"
+            " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id) AS stimmen"
+            " FROM binders b LEFT JOIN profile p ON p.user_id = b.user_id WHERE b.id = ?",
+            (binder_id,)).fetchone()
+        if not r:
+            con.close(); raise HTTPException(404, "Binder nicht gefunden")
+        gestimmt = False
+        if user:
+            gestimmt = bool(con.execute("SELECT 1 FROM stimmen WHERE binder_id=? AND user_id=?",
+                                        (binder_id, user["id"])).fetchone())
+        con.close()
+        return {"id": r["id"], "name": r["name"], "oeffentlich": bool(r["sichtbar"]) and not r["gesperrt"],
+                "besitzer": r["besitzer"], "kurztext": r["kurztext"], "stimmen": r["stimmen"],
+                "gestimmt": gestimmt, "veroeffentlicht_at": r["veroeffentlicht_at"]}
+
     @app.get("/api/vitrine/profil/{name}")
     def vitrine_profil(name: str, request: Request):
         con = get_db()

@@ -212,6 +212,21 @@
   .vt-band { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--line);
              border-radius: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 
+
+  /* Leiste über einem fremden, öffentlichen Binder */
+  .vt-ansichtleiste { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                      padding: 10px 14px; margin: 0 auto 12px; max-width: min(700px, 100%);
+                      border: 2px solid var(--line); border-radius: 12px; background: var(--card); }
+  .vt-ansichtleiste .vt-wer { font-size: 13px; }
+  .vt-ansichtleiste .vt-wer strong { font-weight: 800; }
+  .vt-ansichtleiste .vt-wer a { color: var(--blau); cursor: pointer; text-decoration: underline; }
+  /* Profilseite */
+  #profil-oeffentlich { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 41;
+                        background: var(--bg); overflow-y: auto; padding: 20px 18px 40px; }
+  .po-kopf { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .po-kopf h2 { margin: 0; font-size: 24px; }
+  .po-bild { width: 54px; height: 74px; border-radius: 6px; object-fit: cover; border: 2px solid var(--line); }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -1517,6 +1532,21 @@
   </div>
 </div>
 
+<div id="profil-oeffentlich" class="hidden">
+  <button class="btn sekundaer" style="font-size:12.5px;margin-bottom:14px" onclick="ansicht('vitrine')">‹ <span data-i18n="vitrine">Vitrine</span></button>
+  <div class="po-kopf">
+    <img class="po-bild hidden" id="po-bild" alt="">
+    <div>
+      <h2 id="po-name"></h2>
+      <div class="unter" id="po-text" style="margin:2px 0 0"></div>
+    </div>
+    <div style="flex:1"></div>
+    <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('profil', POF.name)" title="Melden">⚑</button>
+  </div>
+  <div class="unter" id="po-seit"></div>
+  <div class="vt-gitter" id="po-gitter" style="margin-top:14px"></div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1610,6 +1640,13 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    vt_von: 'Binder von {n}', vt_geteilt: 'Geteilter Binder',
+    vt_seite_uebernehmen: 'Diese Seite übernehmen', vt_binder_kopieren: 'Ganzen Binder kopieren',
+    vt_seite_frage: '{n} Karten dieser Seite in „{b}" übernehmen?',
+    vt_uebernommen: '{n} Karten in „{b}" übernommen', vt_seite_leer: 'Diese Seite ist leer',
+    vt_kopie_name: 'Kopie von {n}', vt_kopiert: 'Kopie angelegt – du wirst hingebracht',
+    po_seit: 'Dabei seit {d}', po_leer: 'Noch keine öffentlichen Binder.',
+
     vitrine: 'Vitrine', vt_t: 'Vitrine', vt_trend: 'Im Trend', vt_top: 'Bestenliste', vt_neu: 'Frisch',
     vt_suche: 'Binder suchen …', vt_profil: 'Mein Profil',
     vt_u: 'Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.',
@@ -1810,6 +1847,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    vt_von: 'Binder by {n}', vt_geteilt: 'Shared binder', vt_seite_uebernehmen: 'Take this page', vt_binder_kopieren: 'Copy whole binder', vt_seite_frage: 'Take {n} cards of this page into “{b}”?', vt_uebernommen: '{n} cards added to “{b}”', vt_seite_leer: 'This page is empty', vt_kopie_name: 'Copy of {n}', vt_kopiert: 'Copy created – taking you there', po_seit: 'Member since {d}', po_leer: 'No public binders yet.',
+
     vitrine: 'Showcase', vt_t: 'Showcase', vt_trend: 'Trending', vt_top: 'Top rated', vt_neu: 'Fresh', vt_suche: 'Search binders …', vt_profil: 'My profile', vt_u: 'Public binders from other collectors. Like one? Give it a heart – or take a page into your own binder.', vt_leer: 'Nothing here yet. Be the first to show your binder.', vt_login: 'You need an account for that.', vt_zeigen: 'Show in the showcase …', vt_warnung: 'This makes the binder public: its name, its cards and your display name are visible to everyone. Prices and your account stay private. You can undo this at any time.', vt_steht_drin: 'Your binder is in the showcase now', vt_zurueckgezogen: 'Binder is private again', karten_wort: 'cards', seiten_wort: 'pages', laedt: 'loading …', gespeichert: 'Saved', vpf_t: 'Your profile', vpf_u: 'Only needed if you want to show binders publicly.', vpf_name: 'Display name', vpf_text: 'One line about you (optional)', vpf_hinweis: 'No real name, no contact details, no links – we check on save.', gb_t: 'One more thing: your date of birth', gb_u: 'Showing binders publicly is allowed from 16. It is never shown publicly and cannot be changed later.', md_t: 'Report content', md_u: 'What is wrong with this binder? We will look into it.', md_senden: 'Report', md_danke: 'Thank you – we will look into it.',
 
     geburtsdatum: 'Date of birth', geb_hint: 'Only used to know whether you may show binders publicly — allowed from 16. It is never shown publicly.',
@@ -2115,6 +2154,7 @@ function ansichtAktivieren() {
   S.seite = 0;
   zeichneLayouts();
   zeichneBinder();
+  ansichtBegleitung();
 }
 
 // ---------- Konto ----------
@@ -3697,7 +3737,7 @@ function zeichneVitrine() {
       </div>
       <div class="vt-txt">
         <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
-        <div class="vt-meta">${esc(b.besitzer)} · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
+        <div class="vt-meta"><a onclick="profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
         <div class="vt-fuss">
           <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
             ${b.gestimmt ? '♥' : '♡'} <span>${b.stimmen}</span></button>
@@ -3793,6 +3833,127 @@ async function meldenSenden() {
     modalSchliessen(); toast(t('md_danke'));
   } catch (e) { toast(e.message); }
 }
+
+// ---------- Fremden Binder ansehen und übernehmen ----------
+// Das Übernehmen ist der eigentliche Grund, warum jemand fremde Binder anschaut —
+// und es kostet nichts: übernommen wird die Liste der Karten, nicht die Karten.
+const POF = { name: '', binder: null };
+
+async function ansichtBegleitung() {
+  if (!S.binder || !S.nurAnsicht || $('vt-ansichtleiste')) return;
+  let d = null;
+  try { d = await api('api/vitrine/binder/' + encodeURIComponent(S.binder.id)); } catch (e) { return; }
+  POF.binder = d;
+  const leiste = document.createElement('div');
+  leiste.className = 'vt-ansichtleiste';
+  leiste.id = 'vt-ansichtleiste';
+  leiste.innerHTML = `
+    <span class="vt-wer">${d.besitzer
+      ? t('vt_von').replace('{n}', `<a onclick="profilseiteOeffnen('${esc(d.besitzer)}')">${esc(d.besitzer)}</a>`)
+      : t('vt_geteilt')}</span>
+    ${d.oeffentlich ? `<button class="vt-herz ${d.gestimmt ? 'an' : ''}" id="vt-herz-einzel" onclick="ansichtStimme()">
+        ${d.gestimmt ? '♥' : '♡'} <span>${d.stimmen}</span></button>` : ''}
+    <div style="flex:1"></div>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="seiteUebernehmen()" data-i18n="vt_seite_uebernehmen">Diese Seite übernehmen</button>
+    <button class="btn" style="font-size:12.5px" onclick="binderKopieren()" data-i18n="vt_binder_kopieren">Ganzen Binder kopieren</button>
+    ${d.oeffentlich ? `<button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(S.binder.id)}')" title="${t('md_t')}">⚑</button>` : ''}`;
+  const banner = document.querySelector('.ansicht-banner');
+  (banner || document.querySelector('.kopf')).after(leiste);
+}
+
+async function ansichtStimme() {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  try {
+    const d = await api('api/vitrine/stimme', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ binder_id: S.binder.id }),
+    });
+    const k = $('vt-herz-einzel');
+    k.classList.toggle('an', d.gestimmt);
+    k.innerHTML = `${d.gestimmt ? '♥' : '♡'} <span>${d.stimmen}</span>`;
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+
+/** Wohin übernehmen? In den zuletzt benutzten eigenen Binder, sonst in einen neuen. */
+async function zielBinder() {
+  for (const id of binderIds()) {
+    if (id === S.binder.id) continue;
+    try {
+      const b = await api('api/binders/' + id);
+      return b;
+    } catch (e) { /* gelöscht */ }
+  }
+  return null;
+}
+
+async function seiteUebernehmen() {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  const pp = proSeite();
+  const teil = S.binder.items.slice(S.seite * pp, S.seite * pp + pp).filter(Boolean);
+  if (!teil.length) return toast(t('vt_seite_leer'));
+  const ziel = await zielBinder();
+  if (!ziel) return uebernehmenAlsNeu(teil, t('vt_kopie_name').replace('{n}', S.binder.name));
+  if (!confirm(t('vt_seite_frage').replace('{n}', teil.length).replace('{b}', ziel.name))) return;
+  while (ziel.items.length % pp) ziel.items.push({ type: 'empty' });
+  ziel.items.push(...teil.map((i) => ({ ...i })));
+  try {
+    await api('api/binders/' + ziel.id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ziel),
+    });
+    toast(t('vt_uebernommen').replace('{n}', teil.length).replace('{b}', ziel.name));
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+
+async function binderKopieren() {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  await uebernehmenAlsNeu(S.binder.items.map((i) => ({ ...i })), t('vt_kopie_name').replace('{n}', S.binder.name));
+}
+
+async function uebernehmenAlsNeu(items, name) {
+  try {
+    const res = await api('api/binders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.slice(0, 60), mode: 'custom', layout: S.binder.layout,
+                             options: S.binder.options || {}, items }),
+    });
+    merkeBinderId(res.id);
+    toast(t('vt_kopiert'));
+    setTimeout(() => { location.hash = 'binder/' + res.id; location.reload(); }, 700);
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+
+// ---------- Öffentliche Profilseite ----------
+async function profilseiteOeffnen(name) {
+  POF.name = name;
+  vitrineSchliessen(); planerSchliessen();
+  $('profil-oeffentlich').classList.remove('hidden');
+  $('po-gitter').innerHTML = `<div class="vt-leer">${t('laedt')}</div>`;
+  try {
+    const d = await api('api/vitrine/profil/' + encodeURIComponent(name));
+    $('po-name').textContent = d.profil.name;
+    $('po-text').textContent = d.profil.kurztext || '';
+    $('po-seit').textContent = d.profil.seit ? t('po_seit').replace('{d}', d.profil.seit) : '';
+    const bild = $('po-bild');
+    bild.classList.toggle('hidden', !d.profil.avatar_card);
+    if (d.profil.avatar_card) bild.src = imgUrl(d.profil.avatar_card);
+    $('po-gitter').innerHTML = (d.binder || []).map((b) => `
+      <div class="vt-karte">
+        <div class="vt-bilder" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">
+          ${(b.vorschau || []).slice(0, 4).map((v) => v.art === 'artwork'
+            ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(v.id)}/bild?v=vorschau" alt="">`
+            : `<img loading="lazy" src="${imgUrl(v.id)}" alt="">`).join('')}
+        </div>
+        <div class="vt-txt">
+          <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
+          <div class="vt-meta">${b.karten} ${t('karten_wort')}</div>
+          <div class="vt-fuss"><span class="vt-herz">♥ <span>${b.stimmen}</span></span></div>
+        </div>
+      </div>`).join('') || `<div class="vt-leer">${t('po_leer')}</div>`;
+  } catch (e) {
+    $('po-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
+  }
+}
+function profilseiteSchliessen() { $('profil-oeffentlich').classList.add('hidden'); }
 
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
@@ -3918,6 +4079,7 @@ function zeichnePreisSumme() {
 
 // ---------- Planer ----------
 function ansicht(w) {
+  profilseiteSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
   if (w === 'vitrine') { ansichtVitrine(); return; }
   if (w === 'planer') planerOeffnen(); else planerSchliessen();
