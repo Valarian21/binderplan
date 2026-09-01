@@ -5,29 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Binderplan – Werkbank</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/assets/quicksand.css">
+<link rel="stylesheet" href="/assets/schrift.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
-<meta name="theme-color" content="#e85d43">
+<meta name="theme-color" content="#2A4B9B">
 <style>
-  :root {
-    --bg: #fdf8f1; --ink: #3a3227; --mut: #8c7f6c; --line: #eadfd0;
-    --card: #ffffff; --akzent: #e85d43; --akzent-dunkel: #c74630; --gruen: #4f9d69;
-    --panel2: #f6efe4; --hover: #fdf1e9; --eingabe: #fdfaf5; --slotrand: #d8cbb6;
-  }
+  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518; }
   /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #1c1815; --ink: #ece5da; --mut: #a3947f; --line: #3a322a;
-      --card: #262019; --akzent: #e85d43; --akzent-dunkel: #f07b64; --gruen: #6fbf88;
-      --panel2: #2e2720; --hover: #33291f; --eingabe: #201b16; --slotrand: #4a3f33;
-    }
+    :root:not([data-theme="light"]) { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; }
   }
-  :root[data-theme="dark"] {
-    --bg: #1c1815; --ink: #ece5da; --mut: #a3947f; --line: #3a322a;
-    --card: #262019; --akzent: #e85d43; --akzent-dunkel: #f07b64; --gruen: #6fbf88;
-    --panel2: #2e2720; --hover: #33291f; --eingabe: #201b16; --slotrand: #4a3f33;
-  }
+  :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Quicksand', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
@@ -487,6 +475,39 @@
     #modal-artwork h2 { font-size: 16px; }
     .aw-ergebnis img { max-height: 50vh; }
   }
+
+  /* ================= Neunundneunzig, ruhige Fassung =================
+     In der Werkbank stehen die Karten im Vordergrund. Der Grund bleibt weiß,
+     Struktur kommt aus dünnen Linien, und von den drei Marken-Farben trägt nur
+     Blau die Bedienung. Gelb markiert Besitz, Rot bleibt der einen Aktion
+     vorbehalten, die Geld oder Papier kostet. */
+  body { font-family:'Archivo','Trebuchet MS',sans-serif; }
+  .kopf .logo { font-family:'Bungee','Archivo',sans-serif; font-weight:400; font-size:15px; gap:9px; }
+
+  .btn { border-radius:10px; border:2px solid var(--kontur); box-shadow:2px 2px 0 var(--kontur);
+         font-weight:800; padding:8px 15px; transition:transform .08s, box-shadow .08s; }
+  .btn:hover { transform:translate(1px,1px); box-shadow:1px 1px 0 var(--kontur); }
+  .btn.sekundaer { background:var(--card); }
+  .btn.sekundaer:hover { background:var(--panel2); }
+  .btn:disabled { box-shadow:none; transform:none; }
+
+  .chip { border-radius:8px; border-width:2px; font-weight:700; }
+  .chip.on { background:var(--blau); border-color:var(--blau); color:#fff; }
+  .feld { border-radius:8px; border-width:2px; }
+  .feld:focus { border-color:var(--blau); }
+
+  /* Die Binderseite: heller Rahmen, klare Fächer, sonst nichts. */
+  .slots { background:var(--panel2); border-radius:12px; border:2px solid var(--line); padding:11px; }
+  .slot { border-radius:5px; }
+  .slot.voll { border:1.5px solid var(--line); background:var(--card); }
+  .slot.gewaehlt { outline:3px solid var(--blau); }
+  .slot.dragover { border-color:var(--blau); }
+  /* Besitz ist der einzige gelbe Zustand — er soll auf einen Blick zählbar sein. */
+  .slot .hat-btn.an, .slot .hat-btn[data-an="1"] { background:var(--gelb); color:var(--kontur); }
+  .slot .preis { background:var(--kontur); color:#fff; font-weight:700; border-radius:3px; }
+  .slot .rmark { background:var(--blau); border-radius:3px; }
+  .seiten-nav strong { font-weight:800; }
+  .preisbox { border-radius:10px; }
 </style>
 </head>
 <body>
@@ -494,7 +515,7 @@
   <div id="sync-banner" class="sync-banner hidden"></div>
   <div class="kopf">
     <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Binderplan">
-      <svg width="20" height="20" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
+      <svg width="20" height="20" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>
       <span class="logo-text">Binderplan</span>
     </div>
     <!-- Binder-Wechsler: aktueller Binder, Name ändern, meine Binder, neu anlegen -->

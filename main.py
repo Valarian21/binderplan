@@ -2946,7 +2946,7 @@ def manifest():
         "name": "Binderplan", "short_name": "Binderplan",
         "description": "Pokémon-Binder planen und als Schwarz-Weiß-Checkliste drucken",
         "start_url": ".", "scope": ".", "display": "standalone",
-        "background_color": "#fdf8f1", "theme_color": "#e85d43",
+        "background_color": "#ffffff", "theme_color": "#2a4b9b",
         "icons": [
             {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},

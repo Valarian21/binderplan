@@ -10,10 +10,10 @@
 <meta property="og:description" content="Master Set, Pokédex oder Lieblings-Pokémon: Binder planen, Cardmarket-Preise in Euro sehen, Platzhalter drucken, Karten abhaken.">
 <meta property="og:url" content="https://binderplan.app/">
 <meta property="og:type" content="website">
-<link rel="stylesheet" href="/assets/quicksand.css">
+<link rel="stylesheet" href="/assets/schrift.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
-<meta name="theme-color" content="#e85d43">
+<meta name="theme-color" content="#2A4B9B">
 <meta property="og:image" content="https://binderplan.app/assets/hero.png">
 <meta property="og:site_name" content="Binderplan">
 <meta property="og:locale" content="de_DE">
@@ -23,8 +23,8 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/","inLanguage":"de","description":"Pokémon-Sammelbinder planen: Master Set, Pokédex, Cardmarket-Preise in Euro, Kaufliste und druckbare Platzhalter.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Gratis"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Plus monatlich"},{"@type":"Offer","price":"7.99","priceCurrency":"EUR","name":"Pro monatlich"}]}
 </script>
 <style>
-  :root { --bg:#fdf8f1; --ink:#3a3227; --mut:#8c7f6c; --line:#eadfd0; --card:#fff; --akzent:#e85d43; --akzent-dunkel:#c74630; --gruen:#4f9d69; --panel2:#f6efe4; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#1c1815; --ink:#ece5da; --mut:#a3947f; --line:#3a322a; --card:#262019; --panel2:#2e2720; } }
+  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:'Quicksand','Trebuchet MS',sans-serif; line-height:1.5; }
   a { color:var(--akzent); }
@@ -67,6 +67,40 @@
   footer { padding:26px 0 40px; color:var(--mut); font-size:12.5px; border-top:1.5px solid var(--line); margin-top:20px; }
   footer a { color:var(--mut); }
   @media (max-width:800px) { .hero { grid-template-columns:1fr; padding-top:16px; } .steps { grid-template-columns:1fr; } header nav .sek { display:none; } }
+
+  /* ================= Neunundneunzig =================
+     Laut nach außen, ruhig da, wo gearbeitet wird. Der Aufmacher ist ein
+     Aufkleber: Kartenrücken-Blau, harte Kontur, versetzter Schatten. Alles
+     Weitere bleibt weiß, damit die Karten die einzigen bunten Flächen sind. */
+  body { font-family:'Archivo','Trebuchet MS',sans-serif; }
+  h1, h2, .tarif .p, header .logo { font-family:'Bungee','Archivo',sans-serif; font-weight:400; }
+  .wrap { max-width:1080px; }
+  header .logo { font-size:17px; letter-spacing:.005em; gap:10px; }
+  h2 { font-size:23px; letter-spacing:.005em; }
+  a { color:var(--blau); }
+
+  .btn { border-radius:11px; border:2.5px solid var(--kontur); box-shadow:3px 3px 0 var(--kontur);
+         font-weight:800; font-size:14.5px; letter-spacing:.005em; padding:10px 18px; transition:transform .08s, box-shadow .08s; }
+  .btn:hover { background:var(--akzent-dunkel); transform:translate(1.5px,1.5px); box-shadow:1.5px 1.5px 0 var(--kontur); }
+  .btn.sek { background:var(--card); color:var(--ink); }
+  .btn.sek:hover { background:var(--gelb); }
+
+  .hero { background:var(--blau); color:#fff; border:3px solid var(--kontur); border-radius:20px;
+          box-shadow:9px 9px 0 var(--kontur); padding:32px; margin:10px 0 30px; gap:32px; }
+  .hero h1 { font-size:clamp(25px,3.4vw,37px); line-height:1.16; margin-bottom:16px; }
+  .hero h1 em { color:var(--gelb); }
+  .hero p.lead { color:#CBD6F2; }
+  .hero .klein { color:#A9B8E0; }
+  .hero .shot { box-shadow:6px 6px 0 var(--kontur); border-color:var(--kontur); }
+
+  .step, .feat div, .tarif, .faq details, .shot {
+    border:2.5px solid var(--kontur); border-radius:14px; box-shadow:4px 4px 0 var(--kontur); background:var(--card); }
+  .step .n { border-radius:8px; border:2.5px solid var(--kontur); background:var(--gelb); color:var(--kontur); font-family:'Archivo',sans-serif; font-weight:800; }
+  .step h3, .feat h3, .faq summary { font-weight:800; }
+  .tarif.top { box-shadow:6px 6px 0 var(--akzent); }
+  .tarif .p { font-size:25px; }
+  footer { border-top:2.5px solid var(--kontur); }
+  @media (max-width:800px) { .hero { padding:22px; box-shadow:6px 6px 0 var(--kontur); } }
 </style>
 <script>
   // Rückkehrer (Binder oder Konto im Browser) landen direkt in der App; ?landing=1 zeigt diese Seite trotzdem.
@@ -81,7 +115,7 @@
 <body>
 <div class="wrap">
   <header>
-    <a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#e85d43" stroke-width="1.8"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg> Binderplan</a>
+    <a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg> Binderplan</a>
     <nav>
       <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel-Binder</a>
       <a class="btn" href="/app">Binder planen – kostenlos</a>
