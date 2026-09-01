@@ -1001,8 +1001,8 @@ def _payload(row):
 
 
 def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, card_image_path,
-             dex_image_path, pdf_wasserzeichen, env, CACHE, abo):
-    _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
+             dex_image_path, pdf_wasserzeichen, env, CACHE, abo, bestaetigt=None):
+    _dep.update(bestaetigt=bestaetigt, get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
                 load_binder=load_binder, card_image_path=card_image_path, dex_image_path=dex_image_path,
                 pdf_wasserzeichen=pdf_wasserzeichen, env=env, CACHE=CACHE, abo=abo)
 
@@ -1047,6 +1047,12 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     @app.post("/api/artwork")
     async def artwork_start(request: Request):
         user = require_user(request)
+        # Ohne bestätigte E-Mail keine KI-Seite: das Startguthaben wäre sonst eine
+        # kostenlose Seite je erfundener Adresse.
+        pruef = _dep.get("bestaetigt")
+        if pruef and not pruef(user):
+            raise HTTPException(403, detail={"code": "email_offen",
+                                             "text": "Bitte bestätige zuerst deine E-Mail-Adresse."})
         data = await request.json()
         binder = load_binder(str(data.get("binder_id") or ""))
         if binder.get("id") is None:

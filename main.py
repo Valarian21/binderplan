@@ -1768,6 +1768,53 @@ def _env():
     return out
 
 
+def _spalten_nachruesten():
+    """E-Mail-Bestätigung: Zeitpunkt, Einmal-Token und dessen Ablauf. Additiv, damit
+    bestehende Konten unberührt bleiben."""
+    con = get_db()
+    for befehl in ("ALTER TABLE users ADD COLUMN email_bestaetigt TEXT",
+                   "ALTER TABLE users ADD COLUMN bestaetigung_token TEXT",
+                   "ALTER TABLE users ADD COLUMN bestaetigung_bis TEXT",
+                   "ALTER TABLE users ADD COLUMN start_credits_am TEXT"):
+        try:
+            con.execute(befehl)
+        except Exception:
+            pass
+    con.commit()
+    con.close()
+
+
+_spalten_nachruesten()
+
+
+def _bestaetigt(user) -> bool:
+    """Ohne eingerichteten Mailversand kann niemand bestätigen — dann gilt jedes Konto
+    als bestätigt. Sobald SMTP in der .env steht, greift die Pflicht von selbst."""
+    if not _mail_konfiguriert():
+        return True
+    return bool((user or {}).get("email_bestaetigt"))
+
+
+def _bestaetigungsmail(con, user_id, email) -> bool:
+    token = secrets.token_urlsafe(24)
+    con.execute("UPDATE users SET bestaetigung_token = ?, bestaetigung_bis = datetime('now', '+7 days')"
+                " WHERE id = ?", (token, user_id))
+    con.commit()
+    app_url = _env().get("APP_URL", "https://binderplan.app")
+    # Nebenläufig: ein langsamer oder toter Mailserver darf die Registrierung nicht
+    # um sein 20-Sekunden-Zeitlimit verzögern.
+    return _mail_nebenbei(
+        email, "Binderplan – bitte bestätige deine E-Mail",
+        "Hallo,\n\n"
+        "willkommen bei Binderplan! Bitte bestätige einmal kurz deine E-Mail-Adresse — "
+        "danach schreiben wir dir dein Startguthaben gut:\n\n"
+        f"{app_url}/app?bestaetigen={token}\n\n"
+        "Der Link ist sieben Tage gültig. Wenn du dich nicht angemeldet hast, "
+        "kannst du diese E-Mail einfach ignorieren.\n\n"
+        "Viele Grüße\nBinderplan",
+    )
+
+
 def _hash_pw(pw: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), 120_000).hex()
 
@@ -1839,6 +1886,8 @@ def _user_info(user):
         "exporte_limit": _limit_exporte(user),
         "kaufliste": abo.darf_kaufliste(user),
         "stripe": bool(_env().get("STRIPE_SECRET_KEY")),
+        "email_bestaetigt": _bestaetigt(user),
+        "mail_moeglich": _mail_konfiguriert(),
         **abo.konto_info(user),
     }
 
@@ -1879,6 +1928,14 @@ def _mail_senden(an: str, betreff: str, text: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def _mail_nebenbei(an, betreff, text) -> bool:
+    """Mail im Hintergrund verschicken. Gibt zurück, ob es überhaupt versucht wird."""
+    if not _mail_konfiguriert():
+        return False
+    threading.Thread(target=_mail_senden, args=(an, betreff, text), daemon=True).start()
+    return True
 
 
 def _mail_konfiguriert() -> bool:
@@ -1974,15 +2031,72 @@ async def auth_register(request: Request):
         con.close()
         raise HTTPException(400, "Für diese E-Mail gibt es schon ein Konto — bitte anmelden.")
     token = _neue_session(con, cur.lastrowid)
-    # Willkommensguthaben, damit die KI-Artwork-Funktion ohne Kauf ausprobierbar ist
-    con.execute("UPDATE users SET credits = ? WHERE id = ?", (abo.START_CREDITS, cur.lastrowid))
-    con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
-                " VALUES (?,?,?,?,?,datetime('now'))",
-                (cur.lastrowid, abo.START_CREDITS, "start", "", abo.START_CREDITS))
+    # Das Willkommensguthaben gibt es erst nach bestätigter E-Mail. Ohne diesen Schritt
+    # ist jede erfundene Adresse eine kostenlose Artwork-Seite.
+    if _mail_konfiguriert():
+        _bestaetigungsmail(con, cur.lastrowid, email)
+    else:
+        _start_credits_geben(con, cur.lastrowid)
     con.commit()
     user = dict(con.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone())
     con.close()
     return {"token": token, "user": _user_info(user)}
+
+
+def _start_credits_geben(con, user_id):
+    """Einmalig, egal wie oft der Bestätigungslink angeklickt wird."""
+    row = con.execute("SELECT start_credits_am FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row and row["start_credits_am"]:
+        return False
+    con.execute("UPDATE users SET credits = COALESCE(credits,0) + ?, start_credits_am = datetime('now')"
+                " WHERE id = ?", (abo.START_CREDITS, user_id))
+    saldo = con.execute("SELECT COALESCE(credits,0) + COALESCE(credits_abo,0) s FROM users WHERE id = ?",
+                        (user_id,)).fetchone()["s"]
+    con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
+                " VALUES (?,?,?,?,?,datetime('now'))",
+                (user_id, abo.START_CREDITS, "start", "", saldo))
+    return True
+
+
+@app.post("/api/auth/bestaetigen")
+async def auth_bestaetigen(request: Request):
+    """Bestätigungslink einlösen: E-Mail als geprüft markieren und Startguthaben gutschreiben."""
+    data = await request.json()
+    token = str(data.get("token") or "").strip()
+    if not token:
+        raise HTTPException(400, "Kein Bestätigungscode.")
+    con = get_db()
+    row = con.execute("SELECT id, email, email_bestaetigt FROM users"
+                      " WHERE bestaetigung_token = ? AND bestaetigung_bis > datetime('now')",
+                      (token,)).fetchone()
+    if not row:
+        con.close()
+        raise HTTPException(400, detail={"code": "token", "text": "Dieser Bestätigungslink ist abgelaufen "
+                                                                  "oder wurde schon benutzt."})
+    con.execute("UPDATE users SET email_bestaetigt = COALESCE(email_bestaetigt, datetime('now')),"
+                " bestaetigung_token = NULL WHERE id = ?", (row["id"],))
+    neu = _start_credits_geben(con, row["id"])
+    con.commit()
+    user = dict(con.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone())
+    sitzung = _neue_session(con, row["id"])
+    con.commit()
+    con.close()
+    return {"ok": True, "credits_neu": neu, "token": sitzung, "user": _user_info(user)}
+
+
+@app.post("/api/auth/bestaetigung_neu")
+def auth_bestaetigung_neu(request: Request):
+    """Bestätigungsmail noch einmal schicken."""
+    user = _require_user(request)
+    if _bestaetigt(user):
+        return {"ok": True, "schon": True}
+    _drossel(request, "reset")
+    con = get_db()
+    ok = _bestaetigungsmail(con, user["id"], user["email"])
+    con.close()
+    if not ok:
+        raise HTTPException(503, detail={"code": "mail", "text": "Der Mailversand ist nicht eingerichtet."})
+    return {"ok": True}
 
 
 @app.post("/api/auth/login")
@@ -3000,7 +3114,7 @@ try:
         app, get_db=get_db, current_user=_current_user, require_user=_require_user, ist_pro=_ist_pro,
         load_binder=_load_binder, card_image_path=_card_image_path, dex_image_path=_dex_image_path,
         pdf_wasserzeichen=_pdf_wasserzeichen,
-        env=_env, CACHE=CACHE, abo=abo,
+        env=_env, CACHE=CACHE, abo=abo, bestaetigt=_bestaetigt,
     )
 except Exception as _e:  # pragma: no cover
     print("Artwork-Modul nicht geladen:", _e)

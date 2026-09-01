@@ -262,6 +262,13 @@
   .st-tun button .st-ic { font-size: 17px; line-height: 1; }
   .st-tun button small { display: block; font-weight: 500; font-size: 11.5px; color: var(--mut); }
 
+
+  /* Hinweis auf die noch offene E-Mail-Bestätigung */
+  .best-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+                 background: var(--gelb); color: #14161C; font-size: 13px; font-weight: 700;
+                 padding: 9px 16px; border-bottom: 2px solid var(--kontur); }
+  .best-banner.hidden { display: none !important; }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -759,6 +766,10 @@
 <body>
 <div id="app">
   <div id="sync-banner" class="sync-banner hidden"></div>
+  <div id="bestaetigen-banner" class="best-banner hidden">
+    <span id="best-text"></span>
+    <button class="btn sekundaer" style="font-size:12px;padding:5px 12px" onclick="bestaetigungNeu()" data-i18n="best_nochmal">Nochmal senden</button>
+  </div>
   <div class="kopf">
     <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Binderplan">
       <svg width="20" height="20" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>
@@ -1697,6 +1708,11 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    best_offen: 'Bitte bestätige deine E-Mail ({m}) – dein Startguthaben wartet.',
+    best_nochmal: 'Nochmal senden', best_gesendet: 'Mail ist unterwegs',
+    best_schon: 'Deine E-Mail ist schon bestätigt', best_danke: 'Danke – E-Mail bestätigt!',
+    best_danke_credits: 'E-Mail bestätigt – {n} Credits sind da!',
+
     pf_rufname: 'Dein Name (nur für die Begrüßung)', pf_vitrine: 'Vitrine',
     pf_vitrine_u: 'Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.',
     pf_oeff_name: 'Öffentlicher Name', pf_oeff_text: 'Ein Satz über dich', pf_alter: 'Veröffentlichen',
@@ -1912,6 +1928,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
+
     pf_rufname: 'Your name (only for the greeting)', pf_vitrine: 'Showcase', pf_vitrine_u: 'Everything here becomes visible as soon as you show a binder. Without a public binder nobody sees it.', pf_oeff_name: 'Public name', pf_oeff_text: 'One line about you', pf_alter: 'Publishing', pf_alter_ok: 'unlocked', pf_alter_offen: 'date of birth missing', pf_alter_zu_jung: 'from age {a}', pf_oeff_binder: 'Public binders', pf_mein_profil: 'View my public profile', st_thema_u: 'Fill a page by artwork motif', st_vitrine_u: 'Browse other collectors',
 
     vt_von: 'Binder by {n}', vt_geteilt: 'Shared binder', vt_seite_uebernehmen: 'Take this page', vt_binder_kopieren: 'Copy whole binder', vt_seite_frage: 'Take {n} cards of this page into “{b}”?', vt_uebernommen: '{n} cards added to “{b}”', vt_seite_leer: 'This page is empty', vt_kopie_name: 'Copy of {n}', vt_kopiert: 'Copy created – taking you there', po_seit: 'Member since {d}', po_leer: 'No public binders yet.',
@@ -2199,6 +2217,12 @@ async function boot() {
   sucheNeu();
   if (zeigeStart) startOeffnen();
   if (new URLSearchParams(location.search).get('upgrade')) { history.replaceState(null, '', location.pathname + location.hash); upgradeOeffnen(''); }
+  const bestToken = new URLSearchParams(location.search).get('bestaetigen');
+  if (bestToken) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    await bestaetigungEinloesen(bestToken);
+  }
+  bestaetigungAnzeigen();
 }
 
 function ansichtAktivieren() {
@@ -2238,6 +2262,7 @@ function setToken(token) {
 }
 
 function kontoAnzeigen() {
+  if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
   const btn = $('btn-konto');
   if (S.user) {
     btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? ' ★' : '');
@@ -4103,6 +4128,41 @@ async function vitrineProfilSpeichern() {
     toast(t('gespeichert'));
     vitrineProfilLaden();
   } catch (e) { $('pf-vfehler').textContent = e.message; }
+}
+
+// ---------- E-Mail-Bestätigung ----------
+// Das Startguthaben gibt es erst nach dem Klick im Postfach. Ohne eingerichteten
+// Mailversand gilt jedes Konto als bestätigt — sonst käme niemand mehr an Credits.
+function bestaetigungAnzeigen() {
+  const b = $('bestaetigen-banner');
+  const offen = S.user && S.user.mail_moeglich && !S.user.email_bestaetigt;
+  b.classList.toggle('hidden', !offen);
+  if (offen) $('best-text').textContent = t('best_offen').replace('{m}', S.user.email);
+}
+
+async function bestaetigungNeu() {
+  try {
+    const d = await api('api/auth/bestaetigung_neu', { method: 'POST' });
+    toast(d.schon ? t('best_schon') : t('best_gesendet'));
+    if (d.schon) { S.user.email_bestaetigt = true; bestaetigungAnzeigen(); }
+  } catch (e) { toast((e.detail && e.detail.text) || e.message); }
+}
+
+/** Link aus der Mail: ?bestaetigen=… */
+async function bestaetigungEinloesen(token) {
+  try {
+    const d = await api('api/auth/bestaetigen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    setToken(d.token);
+    S.user = d.user;
+    kontoAnzeigen();
+    bestaetigungAnzeigen();
+    toast(d.credits_neu ? t('best_danke_credits').replace('{n}', S.user.credits || 0) : t('best_danke'));
+  } catch (e) {
+    toast((e.detail && e.detail.text) || e.message);
+  }
 }
 
 function seiteWechsel(d) {

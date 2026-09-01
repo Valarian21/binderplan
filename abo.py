@@ -6,9 +6,10 @@
 # ein, damit main.py nicht weiter wächst.
 #
 # Modell (seit 2026-08-29):
-#   Gratis  – 3 Binder, 2 Platzhalter-PDFs/Monat, Preise 1×/Tag, 20 Start-Credits
+#   Gratis  – 3 Binder, 2 Platzhalter-PDFs/Monat, Preise 1×/Tag, 12 Start-Credits nach
+#             bestätigter E-Mail (= eine Artwork-Seite zum Ausprobieren)
 #   Plus    – 3,99 €/Monat · 39,99 €/Jahr: alles unbegrenzt + 80 Credits/Monat
-#   Pro     – 8,99 €/Monat · 89,99 €/Jahr: alles unbegrenzt + 250 Credits/Monat
+#   Pro     – 7,99 €/Monat · 79,99 €/Jahr: alles unbegrenzt + 200 Credits/Monat
 #   Pakete  – 100 / 250 / 600 Credits einmalig, ohne Verfall
 #
 # Credits bilden ausschließlich die echten KI-Kosten ab. Alles, was nur Rechenzeit kostet
@@ -31,14 +32,20 @@ STRIPE_API = "https://api.stripe.com/v1"
 # --- Creditpreise ---------------------------------------------------------------
 # 1 Credit ≈ 4–5 ct Verkaufswert. Eine Artwork-Seite kostet den Betrieb 0,11 € (eine Karte)
 # bis 0,28 € (24 Karten auf 5×5). Der Deckel hält große Raster für Sammler bezahlbar.
-ARTWORK_BASIS = 10          # bis zwei Ankerkarten
+# Gemessen an 31 erzeugten Seiten: 13,5 ct Modellkosten im Schnitt (Median 11,9 ct),
+# nur eine davon musste wiederholt werden. Die Qualitätsprüfung ist also billig, das
+# Bildmodell ist der ganze Preis. Deshalb wird die Marge über den Creditpreis gesteuert
+# und nicht über weniger Prüfung.
+ARTWORK_BASIS = 12          # bis zwei Ankerkarten
 ARTWORK_JE_KARTE = 2        # je weiterer Ankerkarte
-ARTWORK_MAX = 30            # Obergrenze je Seite
-ARTWORK_4K_FAKTOR = 1.6     # Druckauflösung kostet das Modell entsprechend mehr
+ARTWORK_MAX = 32            # Obergrenze je Seite
+ARTWORK_4K_FAKTOR = 1.8     # Druckauflösung kostet das Modell entsprechend mehr
 
-ARTWORK_FREMD = 6           # fremde, veröffentlichte Artwork-Seite drucken
+ARTWORK_FREMD = 5           # fremde, veröffentlichte Artwork-Seite drucken
 
-START_CREDITS = 20          # Willkommensguthaben je neuem Konto (= 2 Artwork-Seiten)
+# Genau eine Artwork-Seite zum Ausprobieren. Vorher waren es zwei — bei einer Registrierung
+# ohne E-Mail-Nachweis war das ein offener Hahn von 27 ct je erfundener Adresse.
+START_CREDITS = 12
 
 # Eine fremde Seite zu drucken kostet uns nichts — sie ist schon erzeugt. Der Preis
 # liegt trotzdem nicht bei null: sonst lohnt es sich, eine Seite einmal erzeugen zu
@@ -78,7 +85,9 @@ TARIFE = {
         "preise_live": True, "kaufliste": True, "versteckt": True,
     },
 }
-STAPEL_FAKTOR = 2           # ungenutzte Abo-Credits sammeln sich bis max. 2 Monatsmengen
+# Ansparen bis anderthalb Monatsmengen. Bei zwei konnte ein Pro-Konto 400 Credits in einem
+# Monat verfeuern — rechnerisch der einzige Fall, in dem die Marge unter die Hälfte fiel.
+STAPEL_FAKTOR = 1.5
 
 PAKETE = {
     "p100": {"credits": 100, "preis": 4.99, "name": "100 Credits"},
@@ -203,7 +212,7 @@ def auffrischen(user, con=None):
     frisch = _user_frisch(con, user["id"])
     if frisch and (frisch.get("credits_periode") or "") != _monat():
         # Reste bleiben stehen, aber gedeckelt – sonst sammeln Karteileichen unbegrenzt an
-        rest = min(int(frisch.get("credits_abo") or 0), menge * (STAPEL_FAKTOR - 1))
+        rest = min(int(frisch.get("credits_abo") or 0), int(menge * (STAPEL_FAKTOR - 1)))
         con.execute("UPDATE users SET credits_abo = ?, credits_periode = ? WHERE id = ?",
                     (rest + menge, _monat(), user["id"]))
         con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
