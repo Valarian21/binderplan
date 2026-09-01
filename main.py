@@ -2908,6 +2908,21 @@ except Exception as _e:  # pragma: no cover
     _artwork_kennzahlen = None
 
 
+# --- KI-Themenseiten (Modul themen.py) --------------------------------------
+#
+# Bindet `card_art_tags` samt Volltextindex und die Endpunkte /api/themen/* ein.
+
+try:
+    import themen as _themen  # noqa: E402
+    _themen_kennzahlen = _themen.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user, ist_pro=_ist_pro,
+        card_image_path=_card_image_path, env=_env, CACHE=CACHE, abo=abo, admin_key=_admin_key,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Themen-Modul nicht geladen:", _e)
+    _themen_kennzahlen = None
+
+
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
 
 @app.get("/")

@@ -89,6 +89,27 @@
   }
   @media (prefers-reduced-motion: reduce) { .bv-blatt { transition: none; } }
 
+
+  /* ---------- Themenseiten: Vorschlag der Bildsuche ---------- */
+  .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; margin-top: 12px; }
+  .th-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); position: relative; }
+  .th-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .th-karte .th-text { padding: 6px 7px 8px; }
+  .th-karte .th-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
+  .th-karte .th-set { font-size: 10px; color: var(--mut); margin-top: 1px; }
+  .th-karte .th-grund { font-size: 10.5px; color: var(--mut); margin-top: 4px; line-height: 1.25; }
+  .th-karte .th-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+                      background: rgba(0,0,0,.55); color: #fff; font-size: 13px; line-height: 1; opacity: 0; transition: opacity .15s; }
+  .th-karte:hover .th-weg { opacity: 1; }
+  .th-karte.raus { opacity: .3; }
+  .th-lauf { display: flex; align-items: center; gap: 10px; color: var(--mut); font-size: 13px; margin-top: 14px; }
+  .th-lauf i { width: 15px; height: 15px; border: 2px solid var(--line); border-top-color: var(--akzent); border-radius: 50%;
+               display: inline-block; animation: thdreh .8s linear infinite; }
+  @keyframes thdreh { to { transform: rotate(360deg); } }
+  .th-anker { display: flex; gap: 10px; align-items: center; background: var(--panel2); border: 1px solid var(--line);
+              border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
+  .th-anker img { width: 42px; border-radius: 4px; }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -773,6 +794,10 @@
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
         <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite">🎨</button>
+        <button onclick="themaOeffnen()" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="9" cy="9" r="5.4"/><path d="M13.2 13.2 17 17"/><path d="M6.6 10.4c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/></svg>
+        </button>
         <button onclick="blaetternOeffnen()" style="margin-left:2px" title="Durchblättern" aria-label="Durchblättern" data-i18n-title="bv_titel">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/>
@@ -1182,6 +1207,51 @@
   </div>
 </div>
 
+<!-- Modal: Seite nach Thema -->
+<div class="overlay hidden" id="modal-thema">
+  <div class="modal" style="width:min(880px,96vw);max-height:92vh;overflow:auto">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <h2 data-i18n="th_titel">Seite nach Thema</h2>
+    <div class="unter" data-i18n="th_unter">Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.</div>
+    <div class="th-anker hidden" id="th-anker">
+      <img id="th-anker-bild" alt="">
+      <div><div style="font-size:12px;color:var(--mut)" data-i18n="th_ausgehend">Passend zu dieser Karte</div>
+        <div style="font-weight:700" id="th-anker-name"></div>
+        <div style="font-size:11px;color:var(--mut)" id="th-anker-set"></div></div>
+      <button class="btn sekundaer" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="themaAnkerWeg()" data-i18n="th_anker_weg">Ohne Karte</button>
+    </div>
+    <div class="f-lbl" data-i18n="th_thema">Thema</div>
+    <input class="feld" id="th-thema" placeholder="z. B. Pokémon unter Wasser" onkeydown="if(event.key==='Enter')themaSuchen()">
+    <div class="f-chips" id="th-chips" style="margin-top:8px"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:190px"><div class="f-lbl" data-i18n="th_woraus">Woraus wählen</div>
+        <select class="feld" id="th-scope"></select></div>
+      <div style="width:130px"><div class="f-lbl" data-i18n="th_anzahl">Karten</div>
+        <input class="feld" type="number" id="th-anzahl" min="1" max="16" value="9"></div>
+    </div>
+    <div class="unter" id="th-abdeckung" style="margin-top:10px"></div>
+    <div class="th-lauf hidden" id="th-lauf"><i></i><span data-i18n="th_sucht">Die Bilder werden durchsucht …</span></div>
+    <div style="color:var(--warn,#c0392b);font-size:13px;margin-top:8px" id="th-fehler"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" id="th-los" onclick="themaSuchen()" data-i18n="th_los">Vorschlag erstellen</button>
+    </div>
+    <div class="hidden" id="th-ergebnis">
+      <div class="trenn" style="margin:18px 0 0"></div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:14px">
+        <h3 style="margin:0;font-size:16px" id="th-erg-titel"></h3>
+        <span class="unter" style="margin:0" id="th-erg-zahl"></span>
+      </div>
+      <div class="th-grid" id="th-grid"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn sekundaer" onclick="themaSuchen(true)" data-i18n="th_andere">Andere Vorschläge</button>
+        <button class="btn sekundaer" onclick="themaUebernehmen('anhaengen')" data-i18n="th_anhaengen">Als neue Seite anhängen</button>
+        <button class="btn" onclick="themaUebernehmen('seite')" data-i18n="th_seite">Auf diese Seite übernehmen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 
 <script>
@@ -1275,6 +1345,19 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    th_titel: 'Seite nach Thema',
+    th_unter: 'Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.',
+    th_thema: 'Thema', th_woraus: 'Woraus wählen', th_anzahl: 'Karten', th_los: 'Vorschlag erstellen',
+    th_scope_alle: 'Alle Karten', th_scope_set: 'Nur dieses Set', th_scope_binder: 'Nur Karten aus diesem Binder',
+    th_sucht: 'Die Bilder werden durchsucht …', th_andere: 'Andere Vorschläge',
+    th_anhaengen: 'Als neue Seite anhängen', th_seite: 'Auf diese Seite übernehmen',
+    th_gefunden: '{n} Karten', th_raus: 'Nicht übernehmen', th_kein_thema: 'Bitte ein Thema eingeben',
+    th_nichts: 'Dazu wurde nichts gefunden. Anderes Thema versuchen – oder der Bildindex deckt diesen Bereich noch nicht ab.',
+    th_nichts_gewaehlt: 'Keine Karte ausgewählt', th_uebernommen: 'Seite übernommen',
+    th_abdeckung: '{n} von {g} Kartenbildern sind erfasst ({p} %).',
+    th_ausgehend: 'Passend zu dieser Karte', th_anker_weg: 'Ohne Karte',
+    s_passend: 'Passende Seite dazu …',
+
     alle_sets: 'Alle Sets', alle_aeren: 'Alle Ären', alle_rar: 'Alle Seltenheiten', alle_gen: 'Alle', gen: 'Gen',
     leer_slot: 'leer', gesamt: 'Gesamtwert', preise_offen: 'Preise werden geladen … erneut aktivieren für den Rest.',
     s_datum: 'Erscheinungsdatum', s_dex: 'Pokédex-Nummer', s_name: 'Alphabetisch', s_nummer: 'Set & Setnummer',
@@ -1420,7 +1503,9 @@ const T = {
     abbrechen: 'Cancel', anlegen: 'Create binder', zurueck: 'Back', auswahl: 'Selection',
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
-    treffer: 'cards found', bv_titel: 'Flip through', faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
+    treffer: 'cards found', bv_titel: 'Flip through',
+    th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
+ faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
     alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
     leer_slot: 'empty', gesamt: 'Total value', preise_offen: 'Prices loading … toggle again for the rest.',
     s_datum: 'Release date', s_dex: 'Pokédex number', s_name: 'Alphabetical', s_nummer: 'Set & number',
@@ -2803,6 +2888,136 @@ document.addEventListener('keydown', (e) => {
   }, { passive: true });
 })();
 
+// ---------- Seite nach Thema ----------
+// Sucht Karten nach dem, was ihr Artwork zeigt. Die Beschreibungen dazu liegen
+// serverseitig (Modul themen.py); hier wird nur gefragt und eingesetzt.
+const TH = { anker: null, vorschlag: [], raus: new Set(), titel: '' };
+
+const TH_CHIPS = ['Pokémon unter Wasser', 'Stadt bei Nacht', 'Verschneiter Wald', 'Sonnenuntergang',
+                  'Weltraum & Sterne', 'Vulkan und Lava', 'Herbstlaub', 'Am Strand', 'Regen',
+                  'Kirschblüten', 'Alte Ruinen', 'Gemütlich zu Hause'];
+
+function themaOeffnen(ankerId) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.binder || S.nurAnsicht) return;
+  TH.anker = ankerId || null;
+  TH.vorschlag = []; TH.raus.clear();
+  $('th-ergebnis').classList.add('hidden');
+  $('th-fehler').textContent = '';
+  $('th-anzahl').value = Math.max(1, proSeite());
+  $('th-chips').innerHTML = TH_CHIPS.map((c) => `<button class="chip" onclick="$('th-thema').value=${JSON.stringify(c)};themaSuchen()">${esc(c)}</button>`).join('');
+  themaScopeFuellen();
+  themaAnkerZeichnen();
+  modalOeffnen('modal-thema');
+  themaAbdeckung();
+  if (!ankerId) setTimeout(() => $('th-thema').focus(), 60);
+}
+
+function themaAnkerZeichnen() {
+  const an = $('th-anker');
+  an.classList.toggle('hidden', !TH.anker);
+  if (!TH.anker) return;
+  $('th-anker-bild').src = imgUrl(TH.anker);
+  $('th-anker-name').textContent = TH.anker;
+  api('api/cards/' + encodeURIComponent(TH.anker) + '/detail').then((d) => {
+    $('th-anker-name').textContent = (LANG === 'en' ? d.name_en : d.name) || TH.anker;
+    $('th-anker-set').textContent = (LANG === 'en' ? d.set_name_en : d.set_name) || '';
+  }).catch(() => {});
+}
+function themaAnkerWeg() { TH.anker = null; themaAnkerZeichnen(); }
+
+function themaScopeFuellen() {
+  const opts = [`<option value="alle">${t('th_scope_alle')}</option>`];
+  const set = S.binder.options && S.binder.options.set;
+  if (set) opts.push(`<option value="set:${esc(set)}">${t('th_scope_set')}</option>`);
+  if (S.binder.id) opts.push(`<option value="binder:${esc(S.binder.id)}">${t('th_scope_binder')}</option>`);
+  $('th-scope').innerHTML = opts.join('');
+}
+
+async function themaAbdeckung() {
+  try {
+    const d = await api('api/themen/status?scope=' + encodeURIComponent($('th-scope').value || 'alle'));
+    const anteil = d.gesamt ? Math.round(d.gesichtet / d.gesamt * 100) : 0;
+    $('th-abdeckung').textContent = t('th_abdeckung')
+      .replace('{n}', d.gesichtet.toLocaleString(LANG === 'en' ? 'en' : 'de'))
+      .replace('{g}', d.gesamt.toLocaleString(LANG === 'en' ? 'en' : 'de'))
+      .replace('{p}', anteil);
+  } catch (e) { $('th-abdeckung').textContent = ''; }
+}
+
+async function themaSuchen(nochmal) {
+  const thema = $('th-thema').value.trim();
+  if (!thema && !TH.anker) { $('th-thema').focus(); return toast(t('th_kein_thema')); }
+  const laeuft = $('th-lauf');
+  laeuft.classList.remove('hidden');
+  $('th-los').disabled = true;
+  $('th-fehler').textContent = '';
+  try {
+    // „Andere Vorschläge“ heißt: dieselbe Suche, aber ohne die schon gezeigten Karten
+    const ohne = nochmal ? TH.vorschlag.map((k) => k.id) : [];
+    const d = await api('api/themen/plan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ thema, anker: TH.anker || '', anzahl: Math.max(1, Math.min(16, +$('th-anzahl').value || 9)),
+                             scope: $('th-scope').value || 'alle', ohne }),
+    });
+    TH.vorschlag = d.karten || [];
+    TH.raus.clear();
+    TH.titel = d.titel || thema;
+    themaErgebnisZeichnen(d);
+  } catch (e) {
+    if (!gate(e)) $('th-fehler').textContent = e.message || String(e);
+  } finally {
+    laeuft.classList.add('hidden');
+    $('th-los').disabled = false;
+  }
+}
+
+function themaErgebnisZeichnen(d) {
+  $('th-ergebnis').classList.remove('hidden');
+  $('th-erg-titel').textContent = TH.titel;
+  $('th-erg-zahl').textContent = t('th_gefunden').replace('{n}', TH.vorschlag.length);
+  if (!TH.vorschlag.length) {
+    $('th-grid').innerHTML = `<div class="unter" style="grid-column:1/-1">${t('th_nichts')}</div>`;
+    return;
+  }
+  $('th-grid').innerHTML = TH.vorschlag.map((k, i) => `
+    <div class="th-karte" id="th-k${i}" title="${esc(k.szene || '')}">
+      <button class="th-weg" onclick="themaRaus(${i})" title="${t('th_raus')}">✕</button>
+      <img loading="lazy" src="${imgUrl(k.id)}" alt="">
+      <div class="th-text">
+        <div class="th-name">${esc(k.name || k.id)}</div>
+        <div class="th-set">${esc(k.set || '')}</div>
+        ${k.grund ? `<div class="th-grund">${esc(k.grund)}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function themaRaus(i) {
+  if (TH.raus.has(i)) TH.raus.delete(i); else TH.raus.add(i);
+  $('th-k' + i).classList.toggle('raus', TH.raus.has(i));
+  $('th-erg-zahl').textContent = t('th_gefunden').replace('{n}', TH.vorschlag.length - TH.raus.size);
+}
+
+function themaUebernehmen(modus) {
+  const karten = TH.vorschlag.filter((_, i) => !TH.raus.has(i)).map((k) => ({ type: 'card', id: k.id }));
+  if (!karten.length) return toast(t('th_nichts_gewaehlt'));
+  merken('thema');
+  const pp = proSeite();
+  if (modus === 'anhaengen') {
+    while (S.binder.items.length % pp !== 0) S.binder.items.push({ type: 'empty' });
+    S.binder.items.push(...karten);
+    S.seite = Math.floor((S.binder.items.length - 1) / pp);
+  } else {
+    const start = S.seite * pp;
+    while (S.binder.items.length < start + pp) S.binder.items.push({ type: 'empty' });
+    S.binder.items.splice(start, pp, ...karten.slice(0, pp),
+      ...Array.from({ length: Math.max(0, pp - karten.length) }, () => ({ type: 'empty' })));
+  }
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  modalSchliessen();
+  toastUndo(t('th_uebernommen'));
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -3200,7 +3415,7 @@ function slotMenue(ev, idx) {
   const m = $('menu-slot');
   const r = ev.currentTarget.getBoundingClientRect();
   m.innerHTML = `
-    ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
     ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${Math.floor(idx / proSeite())})">${t('s_artwork')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
