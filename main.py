@@ -1294,10 +1294,92 @@ SORTS = {
 }
 
 
+_ART_TABELLE = None
+
+
+def _art_tabelle_da():
+    """Gibt es den Artwork-Index? (themen.py legt ihn an — ohne Modul keine Bildfilter.)"""
+    global _ART_TABELLE
+    if _ART_TABELLE is None:
+        con = get_db()
+        _ART_TABELLE = bool(con.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'card_art_tags'").fetchone())
+        con.close()
+    return _ART_TABELLE
+
+
+# Die Szenenbeschreibungen im Bildindex sind englisch (das Modell benennt Motive dort
+# treffsicherer). Damit „Mond" trotzdem Treffer liefert, übersetzt diese Liste die
+# gängigen Motivwörter; alles Unbekannte geht unverändert in die Suche.
+_ART_WORT = {
+    "mond": "moon", "sterne": "star", "stern": "star", "sonne": "sun", "sonnenuntergang": "sunset",
+    "sonnenaufgang": "sunrise", "regenbogen": "rainbow", "wolke": "cloud", "wolken": "cloud",
+    "regen": "rain", "schnee": "snow", "gewitter": "storm", "sturm": "storm", "blitz": "lightning",
+    "nebel": "mist", "wind": "wind", "feuer": "fire", "flamme": "flame", "flammen": "flame",
+    "eis": "ice", "rauch": "smoke", "blume": "flower", "blumen": "flower", "baum": "tree",
+    "bäume": "tree", "baeume": "tree", "gras": "grass", "fels": "rock", "felsen": "rock",
+    "wasserfall": "waterfall", "see": "lake", "meer": "ocean", "ozean": "ocean", "fluss": "river",
+    "bach": "stream", "teich": "pond", "strand": "beach", "welle": "wave", "wellen": "wave",
+    "koralle": "coral", "korallen": "coral", "blase": "bubble", "blasen": "bubble", "insel": "island",
+    "berg": "mountain", "berge": "mountain", "vulkan": "volcano", "lava": "lava", "höhle": "cave",
+    "hoehle": "cave", "wald": "forest", "dschungel": "jungle", "wüste": "desert", "wueste": "desert",
+    "stadt": "city", "gebäude": "building", "gebaeude": "building", "haus": "house", "turm": "tower",
+    "brücke": "bridge", "bruecke": "bridge", "straße": "street", "strasse": "street",
+    "fenster": "window", "tür": "door", "zug": "train", "boot": "boat", "schiff": "ship",
+    "auto": "car", "mensch": "person", "menschen": "person", "trainer": "trainer", "kind": "child",
+    "nacht": "night", "tag": "day", "dämmerung": "dusk", "abend": "evening", "morgen": "morning",
+    "himmel": "sky", "weltraum": "space", "planet": "planet", "galaxie": "galaxy", "ruine": "ruins",
+    "ruinen": "ruins", "tempel": "temple", "schloss": "castle", "burg": "castle", "garten": "garden",
+    "park": "park", "bahnhof": "station", "markt": "market", "laterne": "lantern", "licht": "light",
+    "schatten": "shadow", "spiegelung": "reflection", "silhouette": "silhouette",
+    "schlafen": "sleeping", "schläft": "sleeping", "fliegen": "flying", "fliegt": "flying",
+    "springen": "jumping", "springt": "jumping", "rennen": "running", "rennt": "running",
+    "schwimmen": "swimming", "schwimmt": "swimming", "tauchen": "diving", "taucht": "diving",
+    "kampf": "battle", "kämpft": "fighting", "essen": "food", "musik": "music", "buch": "book",
+    "bücher": "book", "kirschblüten": "cherry blossom", "kirschblüte": "cherry blossom",
+    "herbst": "autumn", "winter": "winter", "frühling": "spring", "sommer": "summer",
+    "laub": "leaves", "blätter": "leaves", "pilz": "mushroom", "pilze": "mushroom",
+    "kristall": "crystal", "kristalle": "crystal", "regenschirm": "umbrella", "schnee​flocke": "snowflake",
+}
+
+
+def _art_frag(art_ort, art_zeit, art_wasser, art_merkmal, art_text):
+    """Bedingungen für die Bildsuche: Ort, Tageszeit, Wasseranteil, Merkmale, Freitext.
+
+    Mehrere Orte oder Merkmale werden UND-verknüpft — „Wald" und „Mond" heißt: beides
+    im selben Bild. Der Freitext geht gegen die englische Szenenbeschreibung."""
+    if not _art_tabelle_da():
+        return [], []
+    bed, bp = [], []
+    for o in [x for x in (art_ort or "").split(",") if x.strip()]:
+        bed.append("orte LIKE ?"); bp.append(f"%{o.strip()}%")
+    for m in [x for x in (art_merkmal or "").split(",") if x.strip()]:
+        bed.append("merkmale LIKE ?"); bp.append(f"%{m.strip()}%")
+    if art_zeit in ("tag", "nacht", "daemmerung"):
+        bed.append("zeit = ?"); bp.append(art_zeit)
+    if art_wasser:
+        bed.append("wasser >= ?"); bp.append(max(1, min(3, int(art_wasser))))
+    where, params = [], []
+    if bed:
+        where.append("cards.id IN (SELECT card_id FROM card_art_tags WHERE %s)" % " AND ".join(bed))
+        params += bp
+    text = re.sub(r'[^\w äöüßÄÖÜ-]', " ", art_text or "").strip()
+    if text:
+        woerter = []
+        for w in text.split()[:8]:
+            woerter += _ART_WORT.get(w.lower(), w).split()
+        if woerter:
+            where.append("cards.id IN (SELECT card_id FROM card_art_fts WHERE card_art_fts MATCH ?)")
+            params.append(" AND ".join(f'"{w}"' for w in woerter[:12]))
+    return where, params
+
+
 def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, region="intl",
                 illustrator="", rgroup="", trainer_type="", regmark="", first=0, jahr_von=0, jahr_bis=0,
-                preset="", familie=0):
+                preset="", familie=0, art_ort="", art_zeit="", art_wasser=0, art_merkmal="", art_text=""):
     where, params = [], []
+    aw, ap = _art_frag(art_ort, art_zeit, art_wasser, art_merkmal, art_text)
+    where += aw; params += ap
     if illustrator:
         where.append("illustrator = ?"); params.append(illustrator)
     if rgroup:
@@ -1421,10 +1503,12 @@ def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
           sort: str = "datum", richtung: str = "asc",
           limit: int = 60, offset: int = 0, region: str = "intl",
           illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
-          jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0):
+          jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0,
+          art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = ""):
     limit = max(1, min(limit, 300))
     sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
-                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis, preset, familie)
+                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis,
+                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text)
     con = get_db()
     total = con.execute(f"SELECT COUNT(*) c FROM cards{sql_where}", params).fetchone()["c"]
     rows = con.execute(
@@ -1441,10 +1525,12 @@ def card_ids(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
              sort: str = "datum", richtung: str = "asc",
              limit: int = 1000, region: str = "intl",
              illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
-             jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0):
+             jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0,
+             art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = ""):
     limit = max(1, min(limit, 2000))
     sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
-                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis, preset, familie)
+                                           illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis,
+                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text)
     con = get_db()
     rows = con.execute(
         f"SELECT id FROM cards{sql_where} ORDER BY {order} LIMIT ?",

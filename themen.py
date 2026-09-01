@@ -43,6 +43,15 @@ ORTE = ["unterwasser", "gewaesser", "strand", "fluss", "wald", "dschungel", "wie
         "hoehle", "vulkan", "wueste", "schnee", "stadt", "gebaeude", "innenraum", "ruinen",
         "himmel", "weltraum", "dunkelheit", "unterirdisch", "technik", "abstrakt", "portraet", "kampf"]
 
+# Merkmale sind die zweite Achse neben dem Ort: was ist im Bild zu sehen oder was
+# tut das Pokémon. Beides zusammen ergibt die Filter der Suche — „Wald" + „Mond"
+# + „mehrere_pokemon" ist eine Abfrage, die kein Feld der Kartendatenbank hergibt.
+MERKMALE = ["mond", "sterne", "sonne", "sonnenuntergang", "regenbogen", "wolken", "regen", "schnee",
+            "gewitter", "nebel", "feuer", "blitz", "eis", "rauch", "blumen", "baeume", "gras",
+            "felsen", "wasserfall", "gebaeude", "bruecke", "fahrzeug", "technik", "mensch",
+            "mehrere_pokemon", "gegenstand", "essen", "musik", "fliegt", "springt", "rennt",
+            "schlaeft", "kampf", "nahaufnahme", "silhouette", "spiegelung", "leuchtet"]
+
 SICHT_PROMPT = (
     "You will see illustrations from Pokémon trading cards, numbered in order. For EACH image judge ONLY what the "
     "artwork depicts (ignore frame, text, HP). Return a JSON object {\"karten\":[{...}]} with one entry per image, in order:\n"
@@ -52,7 +61,13 @@ SICHT_PROMPT = (
     ' "zeit": "tag"|"nacht"|"daemmerung"|"unklar",\n'
     ' "wasser": 0-3 how strongly water is present (0 none, 1 background, 2 the creature touches it, 3 fully submerged),\n'
     ' "stimmung": two English adjectives,\n'
+    ' "figuren": how many creatures are visible in total (1, 2, 3 ...),\n'
+    ' "merkmale": every value from this list that is clearly visible or happening (0-8 values, be strict — '
+    "only what you actually see): " + ", ".join(MERKMALE) + ",\n"
     ' "farben": 3 dominant colors as hex}\n'
+    "Note on merkmale: \"mehrere_pokemon\" only if a second creature is really in the picture (also in the "
+    "background), \"mensch\" only for a human figure, \"fliegt\" only if the creature is airborne, "
+    "\"nahaufnahme\" if the creature fills almost the whole frame.\n"
     "JSON only, no prose."
 )
 
@@ -64,6 +79,7 @@ PROFIL_PROMPT = (
     "(Substantive und Verben, keine Pokémon-Namen, keine Mehrwortphrasen),\n"
     ' "orte": passende Werte aus dieser Liste (0-4): ' + ", ".join(ORTE) + ",\n"
     ' "wasser_min": 0-3 — wie stark Wasser zu sehen sein muss (0 wenn Wasser keine Rolle spielt),\n'
+    ' "merkmale": passende Werte aus dieser Liste (0-4, nur was das Thema wirklich verlangt): ' + ", ".join(MERKMALE) + ",\n"
     ' "zeit": "tag"|"nacht"|"daemmerung"|"",\n'
     ' "titel": kurzer deutscher Titel für die Binderseite (max 4 Wörter)}\n'
     "JSON, sonst nichts."
@@ -174,8 +190,9 @@ def _ohne_bild(card_ids):
     with _schreiben:
         con = _dep["get_db"]()
         con.executemany(
-            "INSERT OR REPLACE INTO card_art_tags (card_id, szene, orte, zeit, wasser, stimmung, farben, modell, created_at)"
-            " VALUES (?,'','','unklar',0,'','[]','ohne-bild',?)", [(c, _now()) for c in card_ids])
+            "INSERT OR REPLACE INTO card_art_tags (card_id, szene, orte, zeit, wasser, stimmung, farben,"
+            " merkmale, figuren, modell, created_at)"
+            " VALUES (?,'','','unklar',0,'','[]','',0,'ohne-bild',?)", [(c, _now()) for c in card_ids])
         con.commit()
         con.close()
 
@@ -213,15 +230,24 @@ def sichten(card_ids):
         except Exception:
             continue
         orte = [o for o in _liste(e.get("orte")) if o in ORTE]
+        merkmale = [m for m in _liste(e.get("merkmale")) if m in MERKMALE]
+        try:
+            figuren = max(0, min(99, int(e.get("figuren") or 0)))
+        except Exception:
+            figuren = 0
+        if figuren > 1 and "mehrere_pokemon" not in merkmale:
+            merkmale.append("mehrere_pokemon")
         con.execute(
-            "INSERT OR REPLACE INTO card_art_tags (card_id, szene, orte, zeit, wasser, stimmung, farben, modell, created_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO card_art_tags (card_id, szene, orte, zeit, wasser, stimmung, farben,"
+            " merkmale, figuren, modell, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (card_id, str(e.get("szene") or "")[:400], " ".join(orte), str(e.get("zeit") or "unklar")[:12],
              max(0, min(3, int(e.get("wasser") or 0))), str(e.get("stimmung") or "")[:80],
-             json.dumps(_liste(e.get("farben"))), d.get("model") or SICHT_MODELL, _now()))
+             json.dumps(_liste(e.get("farben"))), " ".join(merkmale), figuren,
+             d.get("model") or SICHT_MODELL, _now()))
         con.execute("DELETE FROM card_art_fts WHERE card_id = ?", (card_id,))
-        con.execute("INSERT INTO card_art_fts (card_id, szene, orte, stimmung) VALUES (?,?,?,?)",
-                    (card_id, str(e.get("szene") or ""), " ".join(orte), str(e.get("stimmung") or "")))
+        con.execute("INSERT INTO card_art_fts (card_id, szene, orte, stimmung, merkmale) VALUES (?,?,?,?,?)",
+                    (card_id, str(e.get("szene") or ""), " ".join(orte), str(e.get("stimmung") or ""),
+                     " ".join(merkmale)))
         n += 1
     con.commit()
     con.close()
@@ -302,6 +328,7 @@ def _profil(thema):
     return {
         "worte": [w for w in _liste(p.get("worte")) if re.fullmatch(r"[A-Za-z][A-Za-z'-]{1,20}", w)][:16],
         "orte": [o for o in _liste(p.get("orte")) if o in ORTE][:4],
+        "merkmale": [m for m in _liste(p.get("merkmale")) if m in MERKMALE][:4],
         "wasser_min": max(0, min(3, int(p.get("wasser_min") or 0))),
         "zeit": p.get("zeit") if p.get("zeit") in ("tag", "nacht", "daemmerung") else "",
         "titel": str(p.get("titel") or thema)[:60],
@@ -322,11 +349,13 @@ def _profil_aus_karte(card_id):
         con.close()
     if not row:
         raise HTTPException(400, "Diese Karte lässt sich nicht ansehen")
-    thema = f"Karten, deren Artwork zu diesem Bild passt: {row['szene']} (Orte: {row['orte']}, {row['zeit']})"
+    thema = (f"Karten, deren Artwork zu diesem Bild passt: {row['szene']} "
+             f"(Orte: {row['orte']}, Merkmale: {row['merkmale'] or '—'}, {row['zeit']})")
     profil, kosten = _profil(thema)
     # Die Orte der Ankerkarte wiegen schwerer als das, was das Modell dazu erfindet
     profil["orte"] = list(dict.fromkeys((row["orte"] or "").split() + profil["orte"]))[:4]
     profil["wasser_min"] = max(profil["wasser_min"], (row["wasser"] or 0) - 1)
+    profil["merkmale"] = [m for m in profil["merkmale"] if m in (row["merkmale"] or "").split()][:3]
     profil["titel"] = f"Passend zu {row['name_de']}"
     return profil, kosten
 
@@ -348,10 +377,11 @@ def _kandidaten(profil, scope_ids=None, ohne=(), limit=40):
                 treffer[r["card_id"]] = -float(r["rang"])
         except Exception:
             treffer = {}
-    if profil["orte"]:
-        marken = " OR ".join("orte LIKE ?" for _ in profil["orte"])
-        for r in con.execute(f"SELECT card_id FROM card_art_tags WHERE {marken} LIMIT 4000",
-                             tuple(f"%{o}%" for o in profil["orte"])):
+    grob = [*(("orte", o) for o in profil["orte"]), *(("merkmale", m) for m in profil.get("merkmale") or [])]
+    if grob:
+        marken = " OR ".join(f"{spalte} LIKE ?" for spalte, _ in grob)
+        for r in con.execute(f"SELECT card_id FROM card_art_tags WHERE {marken} LIMIT 6000",
+                             tuple(f"%{wert}%" for _, wert in grob)):
             treffer.setdefault(r["card_id"], 0.0)
     if not treffer:
         con.close()
@@ -365,7 +395,7 @@ def _kandidaten(profil, scope_ids=None, ohne=(), limit=40):
     for teil in [ids[i:i + 900] for i in range(0, len(ids), 900)]:
         marken = ",".join("?" * len(teil))
         reihen += con.execute(
-            f"SELECT t.card_id, t.szene, t.orte, t.zeit, t.wasser, t.stimmung, t.farben,"
+            f"SELECT t.card_id, t.szene, t.orte, t.zeit, t.wasser, t.stimmung, t.farben, t.merkmale,"
             f" c.name_de, c.set_id, c.rarity, c.illustrator, s.name AS set_name"
             f" FROM card_art_tags t JOIN cards c ON c.id = t.card_id LEFT JOIN sets s ON s.id = c.set_id"
             f" WHERE t.card_id IN ({marken})", teil).fetchall()
@@ -377,6 +407,7 @@ def _kandidaten(profil, scope_ids=None, ohne=(), limit=40):
         szene = (r["szene"] or "").lower()
         punkte = treffer.get(r["card_id"], 0.0)
         punkte += 3.0 * len(orte & set(profil["orte"]))
+        punkte += 2.5 * len(set((r["merkmale"] or "").split()) & set(profil.get("merkmale") or []))
         punkte += sum(0.8 for w in profil["worte"] if w.lower() in szene)
         if profil["wasser_min"]:
             if (r["wasser"] or 0) < profil["wasser_min"]:
@@ -429,6 +460,11 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
                 card_image_path=card_image_path, env=env, CACHE=CACHE, abo=abo, admin_key=admin_key)
 
     con = get_db()
+    # Der Volltextindex hat seit der Merkmals-Erweiterung eine Spalte mehr; FTS5-Tabellen
+    # lassen sich nicht nachrüsten, also wird er einmalig neu aufgebaut.
+    alt_fts = con.execute("SELECT sql FROM sqlite_master WHERE name = 'card_art_fts'").fetchone()
+    if alt_fts and "merkmale" not in (alt_fts["sql"] or ""):
+        con.executescript("DROP TABLE card_art_fts;")
     con.executescript(
         """
         CREATE TABLE IF NOT EXISTS card_art_tags (
@@ -437,10 +473,19 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         );
         CREATE INDEX IF NOT EXISTS idx_art_tags_wasser ON card_art_tags(wasser);
         CREATE VIRTUAL TABLE IF NOT EXISTS card_art_fts USING fts5(
-            card_id UNINDEXED, szene, orte, stimmung, tokenize='unicode61'
+            card_id UNINDEXED, szene, orte, stimmung, merkmale, tokenize='unicode61'
         );
         """
     )
+    for alter in ("ALTER TABLE card_art_tags ADD COLUMN merkmale TEXT",
+                  "ALTER TABLE card_art_tags ADD COLUMN figuren INTEGER DEFAULT 0"):
+        try:
+            con.execute(alter)
+        except Exception:
+            pass
+    # Sichtungen aus der Zeit vor den Merkmalen noch einmal machen — sie sind sonst
+    # in jedem Merkmalsfilter unsichtbar. Betrifft nur die ersten Probeläufe.
+    con.execute("DELETE FROM card_art_tags WHERE merkmale IS NULL AND modell <> 'ohne-bild'")
     con.commit()
     con.close()
 
@@ -503,7 +548,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         ab = _abdeckung(_scope_ids(scope))
         return {"aktiv": bool(env().get("OPENROUTER_KEY")), **ab,
                 "lauf": {k: v for k, v in _lauf.items() if k != "stop"},
-                "orte": ORTE}
+                "orte": ORTE, "merkmale": MERKMALE}
 
     @app.post("/api/themen/plan")
     async def themen_plan(request: Request):
@@ -542,6 +587,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
             "kosten_usd": round(kosten, 5),
             "karten": [{"id": k2["card_id"], "name": k2["name_de"], "set": k2.get("set_name") or k2["set_id"],
                         "szene": k2["szene"], "grund": k2.get("grund") or "", "orte": (k2["orte"] or "").split(),
+                        "merkmale": (k2.get("merkmale") or "").split(),
                         "illustrator": k2.get("illustrator") or ""} for k2 in gewaehlt],
         }
 

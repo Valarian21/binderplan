@@ -110,6 +110,10 @@
               border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
   .th-anker img { width: 42px; border-radius: 4px; }
 
+
+  .f-art-hinweis { font-size: 11px; color: var(--mut); line-height: 1.35; }
+  .f-art-hinweis.warn { color: var(--akzent); }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -696,6 +700,30 @@
         <label class="schalter" style="white-space:nowrap"><input type="checkbox" id="f-absteigend"><span data-i18n="absteigend">absteigend</span></label></div>
       </div>
       <div id="f-jp-hinweis" class="hidden" style="font-size:11.5px;color:var(--mut);line-height:1.45" data-i18n="jp_hinweis">Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.</div>
+      <button class="btn sekundaer f-mehr" id="f-art-btn" onclick="artFilterToggle()"><span data-i18n="f_art_motiv">Bildmotiv</span> <span id="f-art-zahl"></span> <span id="f-art-caret">▾</span></button>
+      <div id="f-art-box" class="hidden f-mehr-box">
+        <div class="f-art-hinweis" id="f-art-hinweis"></div>
+        <div>
+          <div class="f-lbl" data-i18n="f_art_text">Im Bild zu sehen</div>
+          <input class="feld" id="f-art-text" placeholder="z. B. Mond, Wasserfall, Laterne" oninput="artTextGetippt()">
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_art_ort">Wo spielt es</div>
+          <div class="f-chips" id="f-art-orte"></div>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_art_wasser">Wasser</div>
+          <div class="f-chips" id="f-art-wasser"></div>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_art_zeit">Tageszeit</div>
+          <div class="f-chips" id="f-art-zeit"></div>
+        </div>
+        <div>
+          <div class="f-lbl" data-i18n="f_art_merkmal">Was zu sehen ist</div>
+          <div class="f-chips" id="f-art-merkmale"></div>
+        </div>
+      </div>
       <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Erweiterte Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
       <div id="f-mehr" class="hidden f-mehr-box">
         <div>
@@ -1345,6 +1373,12 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    f_art_motiv: 'Bildmotiv', f_art_text: 'Im Bild zu sehen', f_art_ort: 'Wo spielt es',
+    f_art_wasser: 'Wasser', f_art_zeit: 'Tageszeit', f_art_merkmal: 'Was zu sehen ist',
+    f_art_tag: 'Tag', f_art_daemmerung: 'Dämmerung', f_art_nacht: 'Nacht',
+    f_art_w1: 'Wasser im Bild', f_art_w2: 'Berührt Wasser', f_art_w3: 'Unter Wasser',
+    f_art_stand: '{n} Illustrationen ausgewertet ({p} % aller Karten). Was noch fehlt, taucht hier nicht auf.',
+
     th_titel: 'Seite nach Thema',
     th_unter: 'Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.',
     th_thema: 'Thema', th_woraus: 'Woraus wählen', th_anzahl: 'Karten', th_los: 'Vorschlag erstellen',
@@ -1504,6 +1538,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
+
     th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
  faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
     alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
@@ -1584,7 +1620,8 @@ const S = {
 const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
 const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc',
-  illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '', region: 'intl' };
+  illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '', region: 'intl',
+  artOrte: new Set(), artMerkmale: new Set(), artZeit: '', artWasser: 0, artText: '' };
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2541,6 +2578,10 @@ function typToggle(ty) {
 function filterReset() {
   Object.assign(filter, { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, sort: 'datum', richtung: 'asc', illustrator: '', trainer: '', first: false, jahrVon: 0, jahrBis: 0, preset: '' });   // Region bleibt
   filter.kinds.clear(); filter.rgroup.clear(); filter.regmark.clear();
+  filter.artOrte.clear(); filter.artMerkmale.clear();
+  Object.assign(filter, { artZeit: '', artWasser: 0, artText: '' });
+  if ($('f-art-text')) $('f-art-text').value = '';
+  zeichneArtChips(); artFilterZahl();
   $('f-suche').value = ''; $('f-dex').value = ''; $('f-illu').value = ''; $('f-illu-suche').value = ''; $('f-jahr-von').value = ''; $('f-jahr-bis').value = ''; $('f-absteigend').checked = false;
   baueFilterLeiste(); mehrFilterZahl();
   sucheNeu();
@@ -2563,6 +2604,11 @@ function filterParams() {
   if (filter.jahrVon) p.set('jahr_von', String(filter.jahrVon));
   if (filter.jahrBis) p.set('jahr_bis', String(filter.jahrBis));
   if (filter.preset) p.set('preset', filter.preset);
+  if (filter.artOrte.size) p.set('art_ort', [...filter.artOrte].join(','));
+  if (filter.artMerkmale.size) p.set('art_merkmal', [...filter.artMerkmale].join(','));
+  if (filter.artZeit) p.set('art_zeit', filter.artZeit);
+  if (filter.artWasser) p.set('art_wasser', String(filter.artWasser));
+  if (filter.artText.trim()) p.set('art_text', filter.artText.trim());
   p.set('region', filter.region);
   p.set('sort', filter.sort); p.set('richtung', filter.richtung);
   return p;
@@ -3498,6 +3544,101 @@ function slotKlick(idx) {
 
 // ---------- Filter: „Mehr Filter“ ----------
 let mehrFilterOffen = false;
+// ---------- Bildmotiv-Filter ----------
+// Sucht nach dem Inhalt der Illustration statt nach Kartendaten. Die Grundlage
+// liefert der Bildindex aus themen.py; die Beschriftungen stehen hier, weil der
+// Server die Schlüssel neutral hält (orte/merkmale) und die App sie übersetzt.
+const ART_ORT_TEXT = {
+  unterwasser: ['Unter Wasser', 'Underwater'], gewaesser: ['Am Wasser', 'By the water'], strand: ['Strand', 'Beach'],
+  fluss: ['Fluss', 'River'], wald: ['Wald', 'Forest'], dschungel: ['Dschungel', 'Jungle'], wiese: ['Wiese', 'Meadow'],
+  berge: ['Berge', 'Mountains'], hoehle: ['Höhle', 'Cave'], vulkan: ['Vulkan', 'Volcano'], wueste: ['Wüste', 'Desert'],
+  schnee: ['Schnee', 'Snow'], stadt: ['Stadt', 'City'], gebaeude: ['Gebäude', 'Building'], innenraum: ['Innenraum', 'Indoors'],
+  ruinen: ['Ruinen', 'Ruins'], himmel: ['Himmel', 'Sky'], weltraum: ['Weltraum', 'Space'], dunkelheit: ['Dunkelheit', 'Darkness'],
+  unterirdisch: ['Unterirdisch', 'Underground'], technik: ['Technik', 'Technology'], abstrakt: ['Abstrakt', 'Abstract'],
+  portraet: ['Porträt', 'Portrait'], kampf: ['Kampf', 'Battle'],
+};
+const ART_MERKMAL_TEXT = {
+  mond: ['Mond', 'Moon'], sterne: ['Sterne', 'Stars'], sonne: ['Sonne', 'Sun'], sonnenuntergang: ['Sonnenuntergang', 'Sunset'],
+  regenbogen: ['Regenbogen', 'Rainbow'], wolken: ['Wolken', 'Clouds'], regen: ['Regen', 'Rain'], schnee: ['Schneefall', 'Snowfall'],
+  gewitter: ['Gewitter', 'Thunderstorm'], nebel: ['Nebel', 'Fog'], feuer: ['Feuer', 'Fire'], blitz: ['Blitz', 'Lightning'],
+  eis: ['Eis', 'Ice'], rauch: ['Rauch', 'Smoke'], blumen: ['Blumen', 'Flowers'], baeume: ['Bäume', 'Trees'], gras: ['Gras', 'Grass'],
+  felsen: ['Felsen', 'Rocks'], wasserfall: ['Wasserfall', 'Waterfall'], gebaeude: ['Häuser', 'Houses'], bruecke: ['Brücke', 'Bridge'],
+  fahrzeug: ['Fahrzeug', 'Vehicle'], technik: ['Maschinen', 'Machines'], mensch: ['Mensch', 'Human'],
+  mehrere_pokemon: ['Mehrere Pokémon', 'Several Pokémon'], gegenstand: ['Gegenstand', 'Object'], essen: ['Essen', 'Food'],
+  musik: ['Musik', 'Music'], fliegt: ['Fliegt', 'Flying'], springt: ['Springt', 'Jumping'], rennt: ['Rennt', 'Running'],
+  schlaeft: ['Schläft', 'Sleeping'], kampf: ['Kampfszene', 'Battle scene'], nahaufnahme: ['Nahaufnahme', 'Close-up'],
+  silhouette: ['Silhouette', 'Silhouette'], spiegelung: ['Spiegelung', 'Reflection'], leuchtet: ['Leuchtet', 'Glowing'],
+};
+// Ort und Merkmal überschneiden sich an vier Stellen — die Ortsspalte gewinnt,
+// damit in der Leiste nicht zweimal „Wald“ oder „Kampf“ steht.
+const ART_MERKMAL_AUS = ['schnee', 'gebaeude', 'technik', 'kampf'];
+let artFilterOffen = false, artIndex = null, artTippUhr = null;
+
+const artText = (tab, k) => (tab[k] || [k, k])[LANG === 'en' ? 1 : 0];
+
+function artFilterToggle(an) {
+  artFilterOffen = an !== undefined ? an : !artFilterOffen;
+  $('f-art-box').classList.toggle('hidden', !artFilterOffen);
+  $('f-art-caret').textContent = artFilterOffen ? '▴' : '▾';
+  if (artFilterOffen && !artIndex) artIndexLaden();
+}
+
+async function artIndexLaden() {
+  try {
+    artIndex = await api('api/themen/status');
+  } catch (e) { artIndex = { gesichtet: 0, gesamt: 0, orte: [], merkmale: [] }; }
+  zeichneArtChips();
+  artHinweis();
+}
+
+function artHinweis() {
+  if (!artIndex) return;
+  const el = $('f-art-hinweis');
+  const anteil = artIndex.gesamt ? Math.round(artIndex.gesichtet / artIndex.gesamt * 100) : 0;
+  el.textContent = t('f_art_stand').replace('{p}', anteil)
+    .replace('{n}', (artIndex.gesichtet || 0).toLocaleString(LANG === 'en' ? 'en' : 'de'));
+  el.classList.toggle('warn', anteil < 90);
+}
+
+function zeichneArtChips() {
+  if (!artIndex) return;
+  const chip = (an, klick, label) => `<button class="chip ${an ? 'on' : ''}" onclick="${klick}">${esc(label)}</button>`;
+  $('f-art-orte').innerHTML = (artIndex.orte || []).map((o) =>
+    chip(filter.artOrte.has(o), `artOrtToggle('${o}')`, artText(ART_ORT_TEXT, o))).join('');
+  $('f-art-merkmale').innerHTML = (artIndex.merkmale || []).filter((m) => !ART_MERKMAL_AUS.includes(m)).map((m) =>
+    chip(filter.artMerkmale.has(m), `artMerkmalToggle('${m}')`, artText(ART_MERKMAL_TEXT, m))).join('');
+  $('f-art-zeit').innerHTML = [['tag', t('f_art_tag')], ['daemmerung', t('f_art_daemmerung')], ['nacht', t('f_art_nacht')]]
+    .map(([w, l]) => chip(filter.artZeit === w, `artZeitToggle('${w}')`, l)).join('');
+  $('f-art-wasser').innerHTML = [[1, t('f_art_w1')], [2, t('f_art_w2')], [3, t('f_art_w3')]]
+    .map(([w, l]) => chip(filter.artWasser === w, `artWasserToggle(${w})`, l)).join('');
+}
+
+function artOrtToggle(o) {
+  filter.artOrte.has(o) ? filter.artOrte.delete(o) : filter.artOrte.add(o);
+  zeichneArtChips(); artFilterZahl(); sucheNeu();
+}
+function artMerkmalToggle(m) {
+  filter.artMerkmale.has(m) ? filter.artMerkmale.delete(m) : filter.artMerkmale.add(m);
+  zeichneArtChips(); artFilterZahl(); sucheNeu();
+}
+function artZeitToggle(z) { filter.artZeit = filter.artZeit === z ? '' : z; zeichneArtChips(); artFilterZahl(); sucheNeu(); }
+function artWasserToggle(w) { filter.artWasser = filter.artWasser === w ? 0 : w; zeichneArtChips(); artFilterZahl(); sucheNeu(); }
+
+function artTextGetippt() {
+  clearTimeout(artTippUhr);
+  artTippUhr = setTimeout(() => {
+    filter.artText = $('f-art-text').value;
+    artFilterZahl(); sucheNeu();
+  }, 400);
+}
+
+function artFilterZahl() {
+  const n = filter.artOrte.size + filter.artMerkmale.size + (filter.artZeit ? 1 : 0)
+    + (filter.artWasser ? 1 : 0) + (filter.artText.trim() ? 1 : 0);
+  const el = $('f-art-zahl'); if (el) el.textContent = n ? `(${n})` : '';
+  const btn = $('f-art-btn'); if (btn) btn.style.borderColor = n ? 'var(--akzent)' : '';
+}
+
 function mehrFilterToggle(an) {
   mehrFilterOffen = an !== undefined ? an : !mehrFilterOffen;
   $('f-mehr').classList.toggle('hidden', !mehrFilterOffen);
