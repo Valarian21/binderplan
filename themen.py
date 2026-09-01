@@ -178,6 +178,17 @@ def _data_url(img):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def _mini_url(card_id):
+    """Kartenbild → kleine Data-URL, und das große Bild sofort wieder freigeben."""
+    img = _miniatur(card_id)
+    if not img:
+        return None
+    try:
+        return _data_url(img)
+    finally:
+        img.close()
+
+
 # --- Sichtung ----------------------------------------------------------------
 
 _schreiben = threading.Lock()
@@ -203,18 +214,23 @@ def sichten(card_ids):
     Die Bilder werden nebenläufig geholt — der Download von TCGdex dauert länger
     als der Modellaufruf selbst und war anfangs die Bremse des ganzen Laufs."""
     ids = card_ids[:STAPEL]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        bilder = list(pool.map(_miniatur, ids))
-    _ohne_bild([c for c, b in zip(ids, bilder) if b is None])
+    # Wichtig: die Miniatur wird sofort im Arbeiter zur Data-URL, damit das
+    # vollaufgelöste Kartenbild nicht bis zum Ende des Stapels im Speicher steht.
+    # Mit zehn Spuren zu acht Threads lief der Dienst sonst ins 768-MB-Limit
+    # seiner systemd-Unit und wurde vom OOM-Killer beendet.
+    with ThreadPoolExecutor(max_workers=BILD_THREADS) as pool:
+        urls = list(pool.map(_mini_url, ids))
+    _ohne_bild([c for c, u in zip(ids, urls) if u is None])
 
     teile = [{"type": "text", "text": SICHT_PROMPT}]
     dabei = []
-    for card_id, img in zip(ids, bilder):
-        if not img:
+    for card_id, url in zip(ids, urls):
+        if not url:
             continue
         dabei.append(card_id)
         teile.append({"type": "text", "text": f"Bild {len(dabei)}:"})
-        teile.append({"type": "image_url", "image_url": {"url": _data_url(img)}})
+        teile.append({"type": "image_url", "image_url": {"url": url}})
+    del urls
     if not dabei:
         return 0, 0.0
 
@@ -278,7 +294,8 @@ def _offene_karten(limit, scope_ids=None):
     return [r["id"] for r in rows]
 
 
-SPUREN = 10         # gleichzeitige Stapel
+SPUREN = 4          # gleichzeitige Stapel
+BILD_THREADS = 3    # Bilddownloads je Stapel — Spuren × Threads begrenzt den Speicher
 
 
 def _index_schleife(budget_usd, scope_ids):
@@ -288,8 +305,9 @@ def _index_schleife(budget_usd, scope_ids):
     Warteschlange, damit kein Arbeiter auf einen langsamen Nachbarn wartet."""
     _lauf.update(aktiv=True, gesichtet=0, kosten=0.0, fehler="", start=_now(), stop=False)
     entnahme = threading.Lock()
-    gezogen = set()      # gerade in Arbeit oder eben gescheitert
+    gezogen = set()      # gerade in Arbeit oder in diesem Lauf gescheitert
     patzer = {}          # card_id → Fehlversuche
+    reihe = [0]          # Fehlschläge am Stück, über alle Spuren
 
     def spur():
         while not _lauf["stop"] and _lauf["kosten"] < budget_usd:
@@ -309,20 +327,25 @@ def _index_schleife(budget_usd, scope_ids):
             except Exception as e:
                 _lauf["fehler"] = str(e)[:300]
                 with entnahme:
-                    # Zweimal daneben heißt: an dieser Karte liegt es. Vormerken,
-                    # damit die Warteschlange weiterläuft.
-                    hin = []
+                    # Ein Fehlschlag wird NICHT in der Datenbank vermerkt — sonst
+                    # macht eine vorübergehende Störung (Tageslimit des Schlüssels,
+                    # Netz) die Karte dauerhaft unsichtbar. Nach zwei Versuchen
+                    # bleibt sie nur für diesen Lauf liegen und ist beim nächsten
+                    # wieder dabei.
                     for c in offen:
                         patzer[c] = patzer.get(c, 0) + 1
-                        if patzer[c] >= 2:
-                            hin.append(c)
-                    gezogen.difference_update(c for c in offen if c not in hin)
-                if hin:
-                    _ohne_bild(hin)
+                    gezogen.difference_update(c for c in offen if patzer[c] < 2)
+                    reihe[0] += 1
+                # Reißt jeder Stapel, liegt es nicht an den Karten: Lauf beenden,
+                # statt sich durch den ganzen Bestand zu arbeiten.
+                if reihe[0] >= 4:
+                    _lauf["stop"] = True
+                    return
                 time.sleep(2)
                 continue
             _lauf["gesichtet"] += n
             _lauf["kosten"] += k
+            reihe[0] = 0
             with entnahme:
                 # Erledigtes fällt aus `gezogen` — es ist jetzt in der DB und
                 # taucht in `_offene_karten` ohnehin nicht mehr auf.
