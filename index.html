@@ -45,7 +45,7 @@
   .bv-kopf .bv-name { opacity: .75; font-weight: 500; }
   .bv-buch { perspective: 2600px; display: flex; align-items: stretch; justify-content: center;
              gap: 0; max-width: min(1240px, 96vw); width: 100%; }
-  .bv-seite { background: var(--card); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
+  .bv-seite { background: var(--bseite); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
               display: grid; gap: clamp(4px, .7vw, 9px); flex: 1 1 0; min-width: 0;
               align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
   .bv-seite.links { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
@@ -57,14 +57,14 @@
   .bv-ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #b9bec7;
              background: linear-gradient(180deg, #f2f4f7, #99a0ab); }
   .bv-slot { position: relative; aspect-ratio: 63/88; border-radius: 5px; overflow: hidden;
-             background: var(--panel2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+             background: var(--bfach); border: 1px solid var(--bkante); display: flex; align-items: center; justify-content: center; }
   .bv-slot.frei { background: transparent; border-style: dashed; }
   .bv-slot img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .bv-slot .artfach { position: absolute; inset: 0; overflow: hidden; }
   .bv-slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
   .bv-slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 4px; }
   .bv-slot .dexzelle img { width: 52%; height: auto; }
-  .bv-slot .dexzelle span { font-size: 9px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
+  .bv-slot .dexzelle span { font-size: 9px; font-weight: 700; color: var(--bnamen); text-align: center; line-height: 1.15; }
   .bv-slot .bv-preis { position: absolute; bottom: 3px; right: 3px; background: var(--kontur, #14161c); color: #fff;
                        font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
   /* Das umblätternde Blatt liegt über der rechten (bzw. linken) Seite */
@@ -87,6 +87,9 @@
     .bv-ring { width: 9px; height: 9px; border-width: 2px; }
     .bv-buch { max-width: 100vw; }
   }
+  body.dunkle-seiten #blaettern { background: rgba(26,28,33,.985); }
+  body.dunkle-seiten .bv-seite:not(.leer) { box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.09); }
+  body.dunkle-seiten .bv-ruecken { background: linear-gradient(90deg, rgba(0,0,0,.6), rgba(0,0,0,.25) 40%, rgba(0,0,0,.6)); }
   @media (prefers-reduced-motion: reduce) { .bv-blatt { transition: none; } }
 
 
@@ -159,18 +162,25 @@
                    padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
   .binder-groesse { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--mut); }
   .binder-groesse input[type=range] { flex: 1; accent-color: var(--gruen); cursor: pointer; }
-  .slots { background: var(--panel2); border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
-  .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed var(--slotrand); background: transparent;
-          display: flex; align-items: center; justify-content: center; color: #c2b49c; font-size: 15px; overflow: hidden; padding: 0; }
-  .slot.voll { border: 1.5px solid var(--slotrand); background: var(--card); cursor: grab; }
-  .slot.leer-item { border-style: dotted; background: rgba(255,255,255,.5); cursor: grab; color: var(--mut); font-size: 10px; }
+  /* Binderseiten haben eine eigene kleine Palette: echte Sammelalben sind fast immer
+     schwarz, weil die Karten davor stehen. `body.dunkle-seiten` schaltet Werkbank,
+     Planer und Durchblättern gemeinsam um — der Druck bleibt davon unberührt. */
+  :root { --bseite: var(--panel2); --bfach: var(--card); --bkante: var(--slotrand);
+          --bleer: rgba(255,255,255,.5); --btext: #c2b49c; --bnamen: var(--ink); }
+  body.dunkle-seiten { --bseite: #14161a; --bfach: #1c1f25; --bkante: rgba(255,255,255,.16);
+                       --bleer: rgba(255,255,255,.05); --btext: #6f7683; --bnamen: #e6e8ec; }
+  .slots { background: var(--bseite); border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
+  .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed var(--bkante); background: transparent;
+          display: flex; align-items: center; justify-content: center; color: var(--btext); font-size: 15px; overflow: hidden; padding: 0; }
+  .slot.voll { border: 1.5px solid var(--bkante); background: var(--bfach); cursor: grab; }
+  .slot.leer-item { border-style: dotted; background: var(--bleer); cursor: grab; color: var(--btext); font-size: 10px; }
   .slot img { width: 100%; height: 100%; object-fit: contain; }
   .slot .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
   .slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
   .slot.art { border-style: solid; border-color: #9b6fd6; }
   .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
   .slot .dexzelle img { width: 52%; height: auto; }
-  .slot .dexzelle span { font-size: 8px; font-weight: 700; color: var(--ink); text-align: center; line-height: 1.15; }
+  .slot .dexzelle span { font-size: 8px; font-weight: 700; color: var(--bnamen); text-align: center; line-height: 1.15; }
   .slot .raus { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
                 color: #fff; font-size: 10px; line-height: 17px; text-align: center; opacity: 0; z-index: 3; }
   .slot:hover .raus { opacity: 1; }
@@ -179,6 +189,10 @@
   .slot .preis { position: absolute; bottom: 2px; right: 2px; background: rgba(58,50,39,.82); color: #fff; font-size: 8px;
                  font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
   .slot.dragover { border-color: var(--akzent); border-style: solid; }
+  .slots.dragover { outline: 2px dashed var(--akzent); outline-offset: -3px; }
+  .tk { cursor: grab; }
+  body.zieht-karte .slot { border-color: var(--akzent); }
+  body.zieht-karte .slot.frei { background: color-mix(in srgb, var(--akzent) 12%, transparent); }
   .slot.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -2px; }
   .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12.5px; color: var(--mut); }
   .seiten-nav strong { color: var(--ink); }
@@ -210,6 +224,8 @@
                  border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
   .planer-rumpf { flex: 1; overflow: auto; padding: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-content: start; }
   .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; width: 300px; }
+  body.dunkle-seiten .planer-seite { background: #101216; border-color: rgba(255,255,255,.1); }
+  body.dunkle-seiten .planer-seite .ps-titel { color: #8a919d; }
   .planer-seite .ps-titel { font-size: 12px; font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
   .planer-seite .slots { padding: 8px; }
   .slot .hat-btn { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
@@ -578,10 +594,13 @@
   .feld { border-radius:8px; border-width:2px; }
   .feld:focus { border-color:var(--blau); }
 
-  /* Die Binderseite: heller Rahmen, klare Fächer, sonst nichts. */
-  .slots { background:var(--panel2); border-radius:12px; border:2px solid var(--line); padding:11px; }
+  /* Die Binderseite: ruhiger Rahmen, klare Fächer, sonst nichts. Farbe kommt aus
+     den Binder-Variablen, damit Schwarz und Weiß denselben Aufbau haben. */
+  .slots { background:var(--bseite); border-radius:12px; border:2px solid var(--line); padding:11px; }
   .slot { border-radius:5px; }
-  .slot.voll { border:1.5px solid var(--line); background:var(--card); }
+  .slot.voll { border:1.5px solid var(--bkante); background:var(--bfach); }
+  body.dunkle-seiten .slots { border-color:rgba(255,255,255,.13); }
+  body.dunkle-seiten .slot.frei { border-color:rgba(255,255,255,.18); }
   .slot.gewaehlt { outline:3px solid var(--blau); }
   .slot.dragover { border-color:var(--blau); }
   /* Besitz ist der einzige gelbe Zustand — er soll auf einen Blick zählbar sein. */
@@ -791,6 +810,9 @@
               <div class="menu-lbl desktop-only" data-i18n="ansicht">Größe der Ansicht</div>
               <div class="binder-groesse desktop-only" style="margin:2px 12px 8px"><span>–</span><input type="range" id="wb-groesse" min="324" max="680" step="20" oninput="binderBreite(this.value)"><span>+</span></div>
               <div class="trenn"></div>
+              <div class="menu-lbl" data-i18n="seitenfarbe">Seitenfarbe</div>
+              <div class="f-chips" id="wb-seitenfarbe" style="margin:2px 12px 8px"></div>
+              <div class="trenn"></div>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
               <button onclick="artworkOeffnen()" data-i18n="aw_menu">🎨 Artwork-Seite gestalten …</button>
@@ -816,11 +838,15 @@
           <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
         </div>
       </div>
-      <div class="slots" id="wb-slots"></div>
+      <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="seiten-nav" id="wb-nav">
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
+        <button onclick="seiteAnhaengen()" style="margin-left:6px" title="Neue leere Seite anhängen" aria-label="Neue Seite" data-i18n-title="neue_seite">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/></svg>
+        </button>
         <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite">🎨</button>
         <button onclick="themaOeffnen()" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
@@ -837,7 +863,7 @@
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
       <div id="wb-preise" class="hidden preisbox"></div>
-      <div class="bp-hilfe" data-i18n="hilfe2">Ziehen sortiert um, ⋯ am Fach für freie Plätze, ✕ entfernt.</div>
+      <div class="bp-hilfe" data-i18n="hilfe2">Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.</div>
     </div>
   </div>
 
@@ -1350,7 +1376,7 @@ const T = {
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
     illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
     first_ed: '1st Edition', alle_trainer: 'Alle', pdf_erzeugt: 'PDF wird erzeugt …', pdf_oeffnen: 'PDF öffnen', pdf_geladen: 'PDF heruntergeladen –',
-    neu_lbl: 'Neu anlegen', raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Ziehen sortiert um, ⋯ am Fach für freie Plätze, ✕ entfernt.',
+    neu_lbl: 'Neu anlegen', raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.',
     mehr_nav: 'Mehr', gewaehlt: 'gewählt', zu_leer: 'Fächer freimachen', eigener_binder: 'Eigenen Binder planen',
     name_t: 'Wie sollen wir dich nennen?', name_u: 'Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.', spaeter: 'Später',
     pw_hint: 'Mindestens 8 Zeichen.', up_r1: 'Gespeicherte Binder', up_r2: 'Platzhalter-PDF', up_r2f: '1 / Monat', up_r3: 'Checkliste & Preise ansehen', up_r4: 'Preise sofort aktualisieren', up_r4f: '1× täglich', up_r5: 'Kaufliste als CSV',
@@ -1373,6 +1399,9 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    neue_seite: 'Neue Seite angehängt', seitenfarbe: 'Seitenfarbe',
+    sf_dunkel: 'Schwarz', sf_hell: 'Weiß',
+
     f_art_motiv: 'Bildmotiv', f_art_text: 'Im Bild zu sehen', f_art_ort: 'Wo spielt es',
     f_art_wasser: 'Wasser', f_art_zeit: 'Tageszeit', f_art_merkmal: 'Was zu sehen ist',
     f_art_tag: 'Tag', f_art_daemmerung: 'Dämmerung', f_art_nacht: 'Nacht',
@@ -1538,6 +1567,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
+
     f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
 
     th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
@@ -2650,7 +2681,7 @@ function zeichneErgebnisse() {
     const n = anzahlImBinder(k.id);
     const enb = KLANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
     const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
-    return `<div class="tk" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
+    return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
       <button class="plus" onclick="event.stopPropagation();kartAdd(${i})">＋ ${t('in_binder')}</button>${enb}${jpb}
       ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Reverse Holo">R+</span>` : ''}
@@ -2803,6 +2834,7 @@ function zeichneBinder() {
     $('wb-sammel-zahl').textContent = `${gesammelt} / ${sammelbar}`;
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
   }
+  seitenfarbeAnwenden();
   zeichnePreisSumme();
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
@@ -3064,6 +3096,27 @@ function themaUebernehmen(modus) {
   toastUndo(t('th_uebernommen'));
 }
 
+// ---------- Seitenfarbe ----------
+// Sammelalben sind fast immer schwarz — deshalb ist Dunkel die Voreinstellung.
+// Die Wahl hängt am Binder (options.seitenfarbe) und betrifft nur die Ansicht,
+// nicht den Druck.
+function seitenfarbeAktiv() {
+  return ((S.binder && S.binder.options && S.binder.options.seitenfarbe) || 'dunkel') === 'dunkel';
+}
+function seitenfarbeAnwenden() {
+  document.body.classList.toggle('dunkle-seiten', !!S.binder && seitenfarbeAktiv());
+  const box = $('wb-seitenfarbe');
+  if (box) box.innerHTML = [['dunkel', t('sf_dunkel')], ['hell', t('sf_hell')]]
+    .map(([w, l]) => `<button class="chip ${seitenfarbeAktiv() === (w === 'dunkel') ? 'on' : ''}" onclick="seitenfarbeSetzen('${w}')">${l}</button>`).join('');
+}
+function seitenfarbeSetzen(wert) {
+  if (!S.binder) return;
+  S.binder.options = S.binder.options || {};
+  S.binder.options.seitenfarbe = wert;
+  seitenfarbeAnwenden();
+  speichern();
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -3078,12 +3131,58 @@ function binderLeeren() {
 }
 
 let dragIdx = null;
-function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); ev.dataTransfer.effectAllowed = 'move'; }
+let dragNeu = null;      // Karte aus der Trefferliste (statt Umsortieren im Binder)
+
+function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); dragNeu = null; ev.dataTransfer.effectAllowed = 'move'; }
 function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
 function dragLeave(ev) { ev.currentTarget.classList.remove('dragover'); }
+
+/** Ziehen aus der Trefferliste: die Karte gibt es im Binder noch nicht, sie wird eingesetzt. */
+function ergDragStart(ev, i) {
+  const k = S.ergebnisse[i];
+  if (!k || !S.binder || S.nurAnsicht) return;
+  dragNeu = k.id; dragIdx = null;
+  ev.dataTransfer.effectAllowed = 'copy';
+  try { ev.dataTransfer.setData('text/plain', k.id); } catch (e) { /* ältere Browser */ }
+  document.body.classList.add('zieht-karte');
+}
+function ergDragEnde() { dragNeu = null; document.body.classList.remove('zieht-karte'); }
+
+/** Karte aus der Trefferliste in ein bestimmtes Fach setzen. */
+function neueKarteAblegen(ziel) {
+  const id = dragNeu; dragNeu = null;
+  document.body.classList.remove('zieht-karte');
+  if (!id || !S.binder || S.nurAnsicht) return;
+  merken('drag');
+  const item = { type: 'card', id };
+  const zielItem = Number.isNaN(ziel) ? null : S.binder.items[ziel];
+  if (Number.isNaN(ziel) || ziel == null) {
+    S.binder.items.push(item);                       // auf die Fläche gezogen = ans Ende
+  } else if (!zielItem || zielItem.type === 'empty') {
+    while (S.binder.items.length <= ziel) S.binder.items.push({ type: 'empty' });
+    S.binder.items[ziel] = item;                     // freies Fach: dort einsetzen
+  } else {
+    S.binder.items.splice(ziel, 0, item);            // belegtes Fach: davor einschieben
+  }
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('in_binder'));
+}
+
+/** Ablegen auf der Seitenfläche neben den Fächern — hängt hinten an. */
+function flaecheDrop(ev) {
+  if (!dragNeu) return;
+  ev.preventDefault();
+  $('wb-slots').classList.remove('dragover');
+  neueKarteAblegen(NaN);
+}
+function flaecheOver(ev) { if (dragNeu) { ev.preventDefault(); $('wb-slots').classList.add('dragover'); } }
+function flaecheLeave() { $('wb-slots').classList.remove('dragover'); }
+
 function dragDrop(ev) {
   ev.preventDefault(); ev.currentTarget.classList.remove('dragover');
   const ziel = Number(ev.currentTarget.dataset.idx);
+  if (dragNeu) return neueKarteAblegen(ziel);
   if (dragIdx === null || ziel === dragIdx || Number.isNaN(ziel)) return;
   merken('drag');
   const zielItem = S.binder.items[ziel];
@@ -3231,6 +3330,15 @@ function auswahlEntfernen() {
   speichern(); zeichnePlaner(); zeichneErgebnisse();
   toastUndo(n + ' ' + t('entfernen'));
 }
+/** Neue leere Seite anhängen und gleich dorthin springen. */
+function seiteAnhaengen() {
+  if (!S.binder || S.nurAnsicht) return;
+  leereSeite();
+  S.seite = Math.max(0, Math.ceil(S.binder.items.length / proSeite()) - 1);
+  zeichneBinder();
+  toastUndo(t('neue_seite'));
+}
+
 function leereSeite() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   const pp = proSeite();
