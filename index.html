@@ -56,6 +56,19 @@
                 display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 12% 0; }
   .bv-ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #b9bec7;
              background: linear-gradient(180deg, #f2f4f7, #99a0ab); }
+  /* Eine Artwork-Seite ist EIN Bild, das über alle Fächer läuft. In der Werkbank
+     wird es je Fach ausgeschnitten (dort zählt das einzelne Fach), hier liegt es
+     am Stück darunter — das ist näher am echten Album und spart neun Rasterungen
+     pro Seite, die das Umblättern spürbar verzögert haben. */
+  /* Das Gitter bleibt im Fluss und gibt der Seite ihre Höhe; das Bild liegt
+     absolut dahinter und deckt genau die Fläche der Fächer ab. */
+  .bv-seite.ganzseite { position: relative; display: block; }
+  .bv-seite.ganzseite > img { position: absolute; left: clamp(8px, 1.2vw, 16px); top: clamp(8px, 1.2vw, 16px);
+                              width: calc(100% - 2 * clamp(8px, 1.2vw, 16px)); height: calc(100% - 2 * clamp(8px, 1.2vw, 16px));
+                              object-fit: fill; border-radius: 3px; z-index: 0; }
+  .bv-seite.ganzseite .bv-gitter { position: relative; z-index: 1; display: grid; gap: clamp(4px, .7vw, 9px); }
+  .bv-seite.ganzseite .bv-gitter > i { aspect-ratio: 63/88; border: 1px solid rgba(255,255,255,.15);
+                                       border-radius: 5px; box-shadow: inset 0 0 14px rgba(0,0,0,.3); }
   .bv-slot { position: relative; aspect-ratio: 63/88; border-radius: 5px; overflow: hidden;
              background: var(--bfach); border: 1px solid var(--bkante); display: flex; align-items: center; justify-content: center; }
   .bv-slot.frei { background: transparent; border-style: dashed; }
@@ -68,11 +81,38 @@
   .bv-slot .bv-preis { position: absolute; bottom: 3px; right: 3px; background: var(--kontur, #14161c); color: #fff;
                        font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
   /* Das umblätternde Blatt liegt über der rechten (bzw. linken) Seite */
+  /* Das umblätternde Blatt. Die Dauer steht als Variable, weil die Schattenlagen
+     mit derselben Zeit laufen müssen wie die Drehung. */
+  .bv-buch-wrap { --bv-dauer: .66s; }
   .bv-blatt { position: absolute; top: 0; bottom: 0; transform-style: preserve-3d; z-index: 3;
-              transition: transform .62s cubic-bezier(.4,.05,.25,1); }
+              transition: transform var(--bv-dauer) cubic-bezier(.36,.02,.2,1); }
   .bv-blatt .bv-seite { position: absolute; inset: 0; backface-visibility: hidden; }
   .bv-blatt .rueck { transform: rotateY(180deg); }
+  /* Licht: die abgewandte Seite läuft ins Dunkle, die ankommende ins Helle —
+     zum Bund hin am stärksten, so fällt das Licht auch bei einem echten Album. */
+  .bv-schatten { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 4; opacity: 0; }
+  .bv-blatt.vor .vorn .bv-schatten { background: linear-gradient(90deg, rgba(0,0,0,.62), rgba(0,0,0,.06) 62%, transparent); }
+  .bv-blatt.vor .rueck .bv-schatten { background: linear-gradient(90deg, rgba(0,0,0,.06), rgba(0,0,0,.62) 92%); }
+  .bv-blatt.zurueck .vorn .bv-schatten { background: linear-gradient(270deg, rgba(0,0,0,.62), rgba(0,0,0,.06) 62%, transparent); }
+  .bv-blatt.zurueck .rueck .bv-schatten { background: linear-gradient(270deg, rgba(0,0,0,.06), rgba(0,0,0,.62) 92%); }
+  .bv-blatt.laeuft .vorn .bv-schatten { animation: bv-dunkler var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  .bv-blatt.laeuft .rueck .bv-schatten { animation: bv-heller var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  @keyframes bv-dunkler { from { opacity: 0; } 55% { opacity: .85; } to { opacity: 1; } }
+  @keyframes bv-heller { from { opacity: 1; } 55% { opacity: .8; } to { opacity: 0; } }
+  /* Der Schatten, den das Blatt über die frisch aufgedeckte Seite zieht */
+  .bv-wisch { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 4; }
+  .bv-seite.rechts .bv-wisch { background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.12) 55%, transparent); }
+  .bv-seite.links .bv-wisch { background: linear-gradient(270deg, rgba(0,0,0,.5), rgba(0,0,0,.12) 55%, transparent); }
+  .bv-wisch.laeuft { animation: bv-wisch-weg var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  @keyframes bv-wisch-weg { from { opacity: 1; } 60% { opacity: .45; } to { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .bv-schatten, .bv-wisch { display: none; } }
   .bv-buch-wrap { position: relative; display: flex; width: 100%; justify-content: center; }
+  /* Vorbereitete Seiten liegen hier, bis sie gebraucht werden. Sichtbar sind sie
+     nicht, aber der Browser legt sie an und rastert die Bilder — genau darum geht
+     es: beim Umblättern soll nichts mehr zu rechnen sein. */
+  .bv-lager { position: absolute; inset: 0; display: flex; gap: 0; visibility: hidden;
+              pointer-events: none; z-index: -1; }
+  .bv-lager .bv-seite { flex: 1 1 0; min-width: 0; }
   .bv-fuss { display: flex; align-items: center; gap: 18px; color: #fff; }
   .bv-fuss button { color: #fff; font-size: 26px; width: 46px; height: 46px; border-radius: 50%;
                     background: rgba(255,255,255,.12); line-height: 1; }
@@ -1253,6 +1293,7 @@
   <div class="bv-kopf"><span id="bv-titel"></span><span class="bv-name" id="bv-untertitel"></span></div>
   <div class="bv-buch-wrap">
     <div class="bv-buch" id="bv-buch"></div>
+    <div class="bv-lager" id="bv-lager" aria-hidden="true"></div>
   </div>
   <div class="bv-fuss">
     <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern">‹</button>
@@ -2843,7 +2884,7 @@ function zeichneBinder() {
 // Zeigt den Binder aufgeschlagen: zwei Seiten nebeneinander, dazwischen die
 // Ringe. Die Fächer zeichnet `slotInhalt()` — dieselbe Funktion wie in der
 // Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen.
-const BV = { spread: 0, dreht: false };
+const BV = { spread: 0, dreht: false, wartet: 0 };
 
 function bvSeitenZahl() { return Math.max(1, Math.ceil((S.binder?.items.length || 0) / proSeite())); }
 // Wie im echten Album: Seite 1 liegt allein rechts, danach folgen Doppelseiten
@@ -2857,25 +2898,90 @@ function bvSeiteHtml(seite, klasse) {
   const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
   const pp = proSeite();
   if (seite < 0 || seite >= bvSeitenZahl()) return `<div class="bv-seite leer ${klasse}"></div>`;
-  let html = '';
-  for (let i = 0; i < pp; i++) {
-    const item = S.binder.items[seite * pp + i];
-    if (!item) { html += '<div class="bv-slot frei"></div>'; continue; }
+  const raster = `grid-template-columns:repeat(${cols},minmax(0,1fr))`;
+  const faecher = S.binder.items.slice(seite * pp, seite * pp + pp);
+
+  const fach = (item) => {
+    if (!item) return '<div class="bv-slot frei"></div>';
     let preis = '';
     if (S.preiseAn && item.type === 'card') {
       const p = preisFuer(item);
       if (p != null) preis = `<span class="bv-preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
     }
-    html += `<div class="bv-slot">${slotInhalt(item)}${preis}</div>`;
+    return `<div class="bv-slot">${slotInhalt(item)}${preis}</div>`;
+  };
+
+  // Eine KI-Seite ist EIN Bild, das über alle Fächer läuft. In der Werkbank wird
+  // es je Fach ausgeschnitten — hier liegt es am Stück darunter, und darüber nur
+  // die Fächer, in denen wirklich eine Karte steckt. Das ist näher am echten
+  // Album und spart acht Vergrößerungen desselben Bildes, die das Umblättern
+  // spürbar verzögert haben.
+  const arts = faecher.filter((it) => it && it.type === 'art');
+  const durchgehend = arts.length >= 2
+    && arts.every((it) => it.artwork === arts[0].artwork)
+    && faecher.every((it, i) => !it || it.type !== 'art' || it.slot === i);
+  if (durchgehend) {
+    const zellen = faecher.map((it, i) => (it && it.type === 'art' ? '<i></i>' : fach(it))).join('')
+      + '<i></i>'.repeat(Math.max(0, pp - faecher.length));
+    return `<div class="bv-seite ganzseite ${klasse}" style="${raster}">
+      <img loading="eager" decoding="async" src="api/artwork/${encodeURIComponent(arts[0].artwork)}/bild?v=vorschau" alt="">
+      <div class="bv-gitter" style="${raster}">${zellen}</div></div>`;
   }
-  return `<div class="bv-seite ${klasse}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${html}</div>`;
+
+  let html = '';
+  for (let i = 0; i < pp; i++) html += fach(S.binder.items[seite * pp + i]);
+  return `<div class="bv-seite ${klasse}" style="${raster}">${html}</div>`;
+}
+
+/** Die Seiten eines Nachbar-Spreads schon fertig bauen und ins unsichtbare Lager
+ *  hängen. Beim Umblättern ist dann nichts mehr zu rechnen. */
+function bvVorladen(spread) {
+  if (!S.binder || spread < 0 || spread >= bvSpreads()) return;
+  const lager = $('bv-lager');
+  if (!lager) return;
+  for (const seite of [bvLinks(spread), bvRechts(spread)]) {
+    if (seite < 0 || seite >= bvSeitenZahl()) continue;
+    const el = bvSeiteEl(seite, seite === bvLinks(spread) ? 'links' : 'rechts');
+    if (!el.isConnected) lager.append(el);      // im Buch liegende Seiten nicht wegziehen
+  }
+}
+
+// Jede Seite wird genau einmal gebaut und danach nur noch verschoben. Das ist der
+// Unterschied zwischen einem Blatt, das sofort umschlägt, und einem, das erst eine
+// Drittelsekunde steht: neu erzeugte <img> müssen dekodiert und gerastert werden.
+const bvSeiten = new Map();
+
+function bvSeiteEl(seite, klasse) {
+  const schluessel = (seite < 0 || seite >= bvSeitenZahl()) ? 'leer:' + klasse : seite;
+  let el = bvSeiten.get(schluessel);
+  if (!el) {
+    const huelle = document.createElement('div');
+    huelle.innerHTML = bvSeiteHtml(seite, '');
+    el = huelle.firstElementChild;
+    el.insertAdjacentHTML('beforeend', '<i class="bv-schatten"></i>');
+    bvSeiten.set(schluessel, el);
+  }
+  // Die Seite behält, was sie ist (Karten- oder Artwork-Seite), und bekommt neu
+  // gesagt, wo sie gerade liegt — links, rechts oder als Rückseite des Blattes.
+  const bleibt = ['bv-seite', el.classList.contains('ganzseite') && 'ganzseite'].filter(Boolean);
+  el.className = [...bleibt, klasse, typeof schluessel === 'string' ? 'leer' : ''].join(' ').trim();
+  return el;
+}
+
+function bvRueckenEl() {
+  let el = bvSeiten.get('ruecken');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'bv-ruecken';
+    el.innerHTML = '<i class="bv-ring"></i><i class="bv-ring"></i><i class="bv-ring"></i>';
+    bvSeiten.set('ruecken', el);
+  }
+  return el;
 }
 
 function bvZeichne() {
   const links = bvLinks(BV.spread), rechts = bvRechts(BV.spread);
-  $('bv-buch').innerHTML = bvSeiteHtml(links, 'links')
-    + '<div class="bv-ruecken"><i class="bv-ring"></i><i class="bv-ring"></i><i class="bv-ring"></i></div>'
-    + bvSeiteHtml(rechts, 'rechts');
+  $('bv-buch').replaceChildren(bvSeiteEl(links, 'links'), bvRueckenEl(), bvSeiteEl(rechts, 'rechts'));
   const gesamt = bvSeitenZahl();
   const sichtbar = [links, rechts].filter((n) => n >= 0 && n < gesamt).map((n) => n + 1);
   $('bv-zaehler').textContent = sichtbar.length === 2
@@ -2883,6 +2989,8 @@ function bvZeichne() {
     : `${t('seite')} ${sichtbar[0] || 1} / ${gesamt}`;
   $('bv-zurueck').disabled = BV.spread <= 0;
   $('bv-vor').disabled = BV.spread >= bvSpreads() - 1;
+  const nachbarn = () => { bvVorladen(BV.spread + 1); bvVorladen(BV.spread - 1); };
+  window.requestIdleCallback ? requestIdleCallback(nachbarn, { timeout: 900 }) : setTimeout(nachbarn, 120);
 }
 
 /**
@@ -2891,51 +2999,86 @@ function bvZeichne() {
  * verlässt, hinten die, auf der man landet.
  */
 function blaetternWechsel(d) {
-  if (BV.dreht) return;
+  // Wer schnell blättert, klickt in die laufende Drehung hinein. Statt den Klick
+  // zu verschlucken, wird er gemerkt und direkt danach ausgeführt.
+  if (BV.dreht) { BV.wartet = d; return; }
   const ziel = BV.spread + d;
   if (ziel < 0 || ziel >= bvSpreads()) return;
   const wenigerBewegung = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (wenigerBewegung) { BV.spread = ziel; bvZeichne(); return; }
 
   const buch = $('bv-buch');
-  const seiten = buch.querySelectorAll('.bv-seite');
-  const quelle = d > 0 ? seiten[1] : seiten[0];   // [0] = linke Seite, [1] = rechte
-  if (!quelle) { BV.spread = ziel; bvZeichne(); return; }
-  const b = quelle.getBoundingClientRect();
+  // Vorne die Seite, die weggeht — hinten die, auf der man landet, darunter die,
+  // die dabei zum Vorschein kommt. Alle drei liegen fertig im Speicher.
+  const vorneEl = bvSeiteEl(d > 0 ? bvRechts(BV.spread) : bvLinks(BV.spread), (d > 0 ? 'rechts' : 'links') + ' vorn');
+  const b = vorneEl.getBoundingClientRect();
   const wrapB = buch.parentElement.getBoundingClientRect();
+  if (!b.width) { BV.spread = ziel; bvZeichne(); return; }
+
+  const hintenEl = bvSeiteEl(d > 0 ? bvLinks(ziel) : bvRechts(ziel), 'rueck ' + (d > 0 ? 'links' : 'rechts'));
+  const untenEl = bvSeiteEl(d > 0 ? bvRechts(ziel) : bvLinks(ziel), d > 0 ? 'rechts' : 'links');
+  const bleibtEl = bvSeiteEl(d > 0 ? bvLinks(BV.spread) : bvRechts(BV.spread), d > 0 ? 'links' : 'rechts');
 
   const blatt = document.createElement('div');
-  blatt.className = 'bv-blatt';
+  blatt.className = 'bv-blatt ' + (d > 0 ? 'vor' : 'zurueck');
   blatt.style.left = (b.left - wrapB.left) + 'px';
   blatt.style.width = b.width + 'px';
   blatt.style.transformOrigin = d > 0 ? 'left center' : 'right center';
-  // vorne die Seite, die weggeht — hinten die, die dahinter zum Vorschein kommt
-  const vorne = d > 0 ? bvRechts(BV.spread) : bvLinks(BV.spread);
-  const hinten = d > 0 ? bvLinks(ziel) : bvRechts(ziel);
-  blatt.innerHTML = bvSeiteHtml(vorne, d > 0 ? 'rechts' : 'links')
-    + bvSeiteHtml(hinten, 'rueck ' + (d > 0 ? 'links' : 'rechts'));
-  buch.parentElement.append(blatt);
 
+  // Reihenfolge ist hier alles: Erst das Blatt in Bewegung setzen, dann das Buch
+  // darunter umbauen. Eine reine transform-Animation läuft im Compositor und
+  // stört sich nicht daran, dass der Hauptthread danach Seiten rastert — umgekehrt
+  // stand das Blatt eine Drittelsekunde still, bevor es losging.
+  blatt.append(vorneEl);
+  buch.parentElement.append(blatt);
+  blatt.getBoundingClientRect();          // Ausgangswert festschreiben
   BV.dreht = true;
-  requestAnimationFrame(() => { blatt.style.transform = `rotateY(${d > 0 ? -180 : 180}deg)`; });
+  blatt.classList.add('laeuft');
+  blatt.style.transform = `rotateY(${d > 0 ? -180 : 180}deg)`;
+
+  // Alles Weitere im nächsten Bild: die Rückseite wird erst ab 90° sichtbar, und
+  // die aufgedeckte Seite verdeckt das Blatt zu Beginn ohnehin.
+  const wisch = document.createElement('i');
+  wisch.className = 'bv-wisch';
+  // Bewusst ein kleiner Abstand statt des nächsten Bildes: der Umbau kostet Rechenzeit,
+  // und wenn er im selben Bild wie der Start liegt, verzögert er genau den ersten
+  // Moment der Drehung. Bis 90° (rund ein Drittel der Zeit) sieht man davon nichts.
+  setTimeout(() => {
+    blatt.append(hintenEl);
+    buch.replaceChildren(...(d > 0 ? [bleibtEl, bvRueckenEl(), untenEl] : [untenEl, bvRueckenEl(), bleibtEl]));
+    untenEl.append(wisch);
+    wisch.classList.add('laeuft');
+  }, 80);
+  // Die Abschlussmarke gehört zu DIESER Drehung, nicht zum Gesamtzustand: sonst
+  // räumt der Notausgang der ersten Drehung in die zweite hinein, wenn schnell
+  // hintereinander geblättert wird.
+  let erledigt = false;
   const fertig = () => {
+    if (erledigt) return;
+    erledigt = true;
+    clearTimeout(notausgang);
+    wisch.remove();
     blatt.remove();
     BV.spread = ziel;
     BV.dreht = false;
     bvZeichne();
+    if (BV.wartet) { const w = BV.wartet; BV.wartet = 0; blaetternWechsel(w); }
   };
   blatt.addEventListener('transitionend', fertig, { once: true });
-  setTimeout(() => { if (BV.dreht) fertig(); }, 900);   // Notausgang, falls kein transitionend kommt
+  const notausgang = setTimeout(fertig, 1200);   // falls kein transitionend kommt
 }
 
 function blaetternOeffnen() {
   if (!S.binder || !S.binder.items.length) return toast(t('binder_leer'));
+  bvSeiten.clear();
+  BV.dreht = false; BV.wartet = 0;
   BV.spread = S.seite <= 0 ? 0 : Math.floor((S.seite + 1) / 2);
   $('bv-titel').textContent = t('bv_titel');
   $('bv-untertitel').textContent = S.binder.name || '';
   $('blaettern').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   bvZeichne();
+  bvVorladen(BV.spread + 1);
 }
 
 function blaetternSchliessen() {
