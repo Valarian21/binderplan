@@ -252,6 +252,16 @@
     .spalte-filter a[href^="recht"] { display: inline-block; padding: 8px 4px; }
   }
 
+
+  /* Einstiege auf der App-Startseite */
+  .st-tun { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 18px; }
+  .st-tun button { display: flex; align-items: center; gap: 9px; padding: 11px 15px; border-radius: 12px;
+                   border: 2px solid var(--line); background: var(--card); font-weight: 700; font-size: 13.5px;
+                   min-height: 46px; }
+  .st-tun button:hover { border-color: var(--kontur); }
+  .st-tun button .st-ic { font-size: 17px; line-height: 1; }
+  .st-tun button small { display: block; font-weight: 500; font-size: 11.5px; color: var(--mut); }
+
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
@@ -1338,6 +1348,7 @@
     <h1 id="st-gruss"></h1>
     <div style="font-size:13px;color:var(--mut)" data-i18n="st_unter">Deine Binder auf einen Blick — klick einen an, um weiterzuplanen.</div>
     <div class="statzeile" id="st-stats"></div>
+    <div class="st-tun" id="st-tun"></div>
     <div class="binder-grid" id="st-grid"></div>
   </div>
 </div>
@@ -1353,7 +1364,7 @@
   <div class="seite-rumpf" style="max-width:640px">
     <div class="pf-block">
       <h3 data-i18n="pf_konto">Konto</h3>
-      <div class="pf-zeile"><span data-i18n="vpf_name">Anzeigename</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_rufname">Dein Name (nur für die Begrüßung)</span><span class="wert" style="display:flex;gap:6px;align-items:center"><input class="feld" id="pf-name" style="width:180px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel"><button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
       <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_tarif">Tarif</span><span class="wert" id="pf-plan"></span></div>
       <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
@@ -1364,6 +1375,23 @@
         <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Rechnungen &amp; Zahlungsmittel</button>
         <button class="btn sekundaer hidden" id="pf-kuend" onclick="aboKuendigen()" style="font-size:13px"></button>
         <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
+      </div>
+    </div>
+    <div class="pf-block" id="pf-vitrine-block">
+      <h3 data-i18n="pf_vitrine">Vitrine</h3>
+      <div style="font-size:12.5px;color:var(--mut);margin:-4px 0 12px" data-i18n="pf_vitrine_u">Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.</div>
+      <div class="pf-zeile"><span data-i18n="pf_oeff_name">Öffentlicher Name</span>
+        <span class="wert" style="display:flex;gap:6px;align-items:center">
+          <input class="feld" id="pf-vname" style="width:180px;padding:5px 9px;font-size:13px" maxlength="24" placeholder="z. B. Karpador-Kai">
+          <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_oeff_text">Ein Satz über dich</span>
+        <span class="wert"><input class="feld" id="pf-vtext" style="width:250px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999"></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
+      <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
+      <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn sekundaer" style="font-size:13px" onclick="ansicht('vitrine');profilSchliessen()" data-i18n="vt_t">Vitrine</button>
+        <button class="btn sekundaer hidden" style="font-size:13px" id="pf-meinprofil" data-i18n="pf_mein_profil">Mein öffentliches Profil ansehen</button>
       </div>
     </div>
     <div class="pf-block">
@@ -1669,6 +1697,14 @@ const T = {
     leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
     treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
     bv_titel: 'Durchblättern',
+    pf_rufname: 'Dein Name (nur für die Begrüßung)', pf_vitrine: 'Vitrine',
+    pf_vitrine_u: 'Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.',
+    pf_oeff_name: 'Öffentlicher Name', pf_oeff_text: 'Ein Satz über dich', pf_alter: 'Veröffentlichen',
+    pf_alter_ok: 'freigeschaltet', pf_alter_offen: 'Geburtsdatum fehlt noch',
+    pf_alter_zu_jung: 'erst ab {a} Jahren', pf_oeff_binder: 'Öffentliche Binder',
+    pf_mein_profil: 'Mein öffentliches Profil ansehen',
+    st_thema_u: 'Seite nach Bildmotiv füllen lassen', st_vitrine_u: 'Binder anderer Sammler ansehen',
+
     vt_von: 'Binder von {n}', vt_geteilt: 'Geteilter Binder',
     vt_seite_uebernehmen: 'Diese Seite übernehmen', vt_binder_kopieren: 'Ganzen Binder kopieren',
     vt_seite_frage: '{n} Karten dieser Seite in „{b}" übernehmen?',
@@ -1876,6 +1912,8 @@ const T = {
     sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
     leere_seite: '+ Empty page', aufheben: 'Clear selection',
     treffer: 'cards found', bv_titel: 'Flip through',
+    pf_rufname: 'Your name (only for the greeting)', pf_vitrine: 'Showcase', pf_vitrine_u: 'Everything here becomes visible as soon as you show a binder. Without a public binder nobody sees it.', pf_oeff_name: 'Public name', pf_oeff_text: 'One line about you', pf_alter: 'Publishing', pf_alter_ok: 'unlocked', pf_alter_offen: 'date of birth missing', pf_alter_zu_jung: 'from age {a}', pf_oeff_binder: 'Public binders', pf_mein_profil: 'View my public profile', st_thema_u: 'Fill a page by artwork motif', st_vitrine_u: 'Browse other collectors',
+
     vt_von: 'Binder by {n}', vt_geteilt: 'Shared binder', vt_seite_uebernehmen: 'Take this page', vt_binder_kopieren: 'Copy whole binder', vt_seite_frage: 'Take {n} cards of this page into “{b}”?', vt_uebernommen: '{n} cards added to “{b}”', vt_seite_leer: 'This page is empty', vt_kopie_name: 'Copy of {n}', vt_kopiert: 'Copy created – taking you there', po_seit: 'Member since {d}', po_leer: 'No public binders yet.',
 
     vitrine: 'Showcase', vt_t: 'Showcase', vt_trend: 'Trending', vt_top: 'Top rated', vt_neu: 'Fresh', vt_suche: 'Search binders …', vt_profil: 'My profile', vt_u: 'Public binders from other collectors. Like one? Give it a heart – or take a page into your own binder.', vt_leer: 'Nothing here yet. Be the first to show your binder.', vt_login: 'You need an account for that.', vt_zeigen: 'Show in the showcase …', vt_warnung: 'This makes the binder public: its name, its cards and your display name are visible to everyone. Prices and your account stay private. You can undo this at any time.', vt_steht_drin: 'Your binder is in the showcase now', vt_zurueckgezogen: 'Binder is private again', karten_wort: 'cards', seiten_wort: 'pages', laedt: 'loading …', gespeichert: 'Saved', vpf_t: 'Your profile', vpf_u: 'Only needed if you want to show binders publicly.', vpf_name: 'Display name', vpf_text: 'One line about you (optional)', vpf_hinweis: 'No real name, no contact details, no links – we check on save.', gb_t: 'One more thing: your date of birth', gb_u: 'Showing binders publicly is allowed from 16. It is never shown publicly and cannot be changed later.', md_t: 'Report content', md_u: 'What is wrong with this binder? We will look into it.', md_senden: 'Report', md_danke: 'Thank you – we will look into it.',
@@ -2465,6 +2503,12 @@ async function startLaden() {
     <div class="statkachel"><div class="zahl">${liste.length}</div><div class="lbl">${t('st_binder')}</div></div>
     <div class="statkachel"><div class="zahl">${faecher}</div><div class="lbl">${t('st_faecher')}</div></div>
     <div class="statkachel"><div class="zahl">${gesammelt}</div><div class="lbl">${t('st_gesammelt')}</div></div>`;
+  $('st-tun').innerHTML = [
+    ['📷', t('tpl_foto'), t('tpl_foto_u'), 'startSchliessen();fotoOeffnen()'],
+    ['🔎', t('th_titel'), t('st_thema_u'), 'startSchliessen();themaOeffnen()'],
+    ['🗄️', t('vt_t'), t('st_vitrine_u'), "startSchliessen();ansicht('vitrine')"],
+  ].map(([ic, titel, unter, fn]) => `<button onclick="${fn}"><span class="st-ic">${ic}</span>
+      <span>${esc(titel)}<small>${esc(unter)}</small></span></button>`).join('');
   const modeLbl = { master: t('mode_master'), dex: t('mode_dex'), custom: t('mode_custom') };
   $('st-grid').innerHTML = liste.map((b) => {
     const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
@@ -2546,6 +2590,7 @@ function profilFuellen() {
     $('pf-kuend').textContent = u.abo_kuendigt ? t('reaktivieren') : t('kuendigen');
   }
   journalLaden();
+  vitrineProfilLaden();
   $('pf-binder').textContent = u.binder_anzahl + ' / ' + (u.binder_limit == null ? '∞' : u.binder_limit);
   $('pf-exporte').textContent = u.exporte_limit == null ? '∞' : Math.max(0, u.exporte_limit - u.exporte_benutzt) + ' / ' + u.exporte_limit;
   $('pf-upgrade').classList.toggle('hidden', false);
@@ -3800,7 +3845,7 @@ async function vitrineStimme(id) {
 }
 
 // ---------- Profil ----------
-async function profilOeffnen() {
+async function vitrineProfilDialog() {
   if (!S.user) return loginOeffnen(t('vt_login'));
   $('vpf-fehler').textContent = '';
   try {
@@ -3852,7 +3897,7 @@ async function veroeffentlichenUmschalten() {
   } catch (e) {
     const code = e.detail && e.detail.code;
     if (code === 'geburtsdatum') return geburtsdatumOeffnen();
-    if (code === 'kein_profil') return profilOeffnen();
+    if (code === 'kein_profil') return vitrineProfilDialog();
     if (!gate(e)) toast((e.detail && e.detail.text) || e.message);
   }
 }
@@ -4019,6 +4064,46 @@ window.addEventListener('popstate', () => {
   const schliessen = EBENEN.pop();
   try { schliessen(); } catch (e) {}
 });
+
+// ---------- Vitrine-Teil des Profils ----------
+// Bewusst getrennt vom Rufnamen: der eine steht in der Begrüßung, der andere
+// unter jedem veröffentlichten Binder. Beide „Anzeigename“ zu nennen war der
+// sicherste Weg, versehentlich den Klarnamen öffentlich zu machen.
+async function vitrineProfilLaden() {
+  if (!S.user) return;
+  $('pf-vfehler').textContent = '';
+  let d = null;
+  try { d = await api('api/profil'); } catch (e) { return; }
+  const name = (d.profil && d.profil.name) || '';
+  $('pf-vname').value = name;
+  $('pf-vtext').value = (d.profil && d.profil.kurztext) || '';
+  const jahre = d.alter;
+  $('pf-alter').innerHTML = jahre == null
+    ? `<span style="color:var(--mut)">${t('pf_alter_offen')}</span>`
+    : (jahre >= d.mindestalter
+        ? `<span style="color:var(--gruen);font-weight:700">${t('pf_alter_ok')}</span>`
+        : `<span style="color:var(--akzent);font-weight:700">${t('pf_alter_zu_jung').replace('{a}', d.mindestalter)}</span>`);
+  const knopf = $('pf-meinprofil');
+  knopf.classList.toggle('hidden', !name);
+  if (name) knopf.onclick = () => { profilSchliessen(); profilseiteOeffnen(name); };
+  try {
+    const v = await api('api/vitrine?limit=48');
+    const meine = (v.binder || []).filter((b) => b.besitzer === name).length;
+    $('pf-oeffzahl').textContent = name ? String(meine) : '–';
+  } catch (e) { $('pf-oeffzahl').textContent = '–'; }
+}
+
+async function vitrineProfilSpeichern() {
+  $('pf-vfehler').textContent = '';
+  try {
+    await api('api/profil', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('pf-vname').value, kurztext: $('pf-vtext').value }),
+    });
+    toast(t('gespeichert'));
+    vitrineProfilLaden();
+  } catch (e) { $('pf-vfehler').textContent = e.message; }
+}
 
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
