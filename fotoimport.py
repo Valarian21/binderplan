@@ -103,6 +103,13 @@ def _bild_holen(url):
 
 def _hash_schleife(marke, grenze=None):
     _hashlauf.update(aktiv=True, fertig=0, fehler="", start=_now(), stop=False, marke=marke)
+    # Karten werden vor der Arbeit mit leerem Hash vorgemerkt, damit zwei Spuren nicht
+    # dieselben ziehen. Ein Neustart mitten im Lauf laesst solche Zeilen zurueck — sie
+    # gelten sonst als erledigt und blieben fuer immer leer.
+    con = _dep["get_db"]()
+    con.execute("DELETE FROM card_hashes WHERE hash = ''")
+    con.commit()
+    con.close()
     from concurrent.futures import ThreadPoolExecutor
     entnahme = threading.Lock()
     schreiben = threading.Lock()
