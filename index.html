@@ -2683,7 +2683,11 @@ function zeichneBinder() {
 const BV = { spread: 0, dreht: false };
 
 function bvSeitenZahl() { return Math.max(1, Math.ceil((S.binder?.items.length || 0) / proSeite())); }
-function bvSpreads() { return Math.ceil(bvSeitenZahl() / 2); }
+// Wie im echten Album: Seite 1 liegt allein rechts, danach folgen Doppelseiten
+// (2|3, 4|5 …). Geht die Seitenzahl gerade auf, steht die letzte Seite allein links.
+function bvSpreads() { return 1 + Math.ceil(Math.max(0, bvSeitenZahl() - 1) / 2); }
+function bvLinks(s) { return s === 0 ? -1 : s * 2 - 1; }
+function bvRechts(s) { return s === 0 ? 0 : s * 2; }
 
 /** Eine Binderseite als HTML. `seite` ist zwölfnullbasiert; außerhalb = leeres Blatt. */
 function bvSeiteHtml(seite, klasse) {
@@ -2705,15 +2709,15 @@ function bvSeiteHtml(seite, klasse) {
 }
 
 function bvZeichne() {
-  const links = BV.spread * 2, rechts = links + 1;
+  const links = bvLinks(BV.spread), rechts = bvRechts(BV.spread);
   $('bv-buch').innerHTML = bvSeiteHtml(links, 'links')
     + '<div class="bv-ruecken"><i class="bv-ring"></i><i class="bv-ring"></i><i class="bv-ring"></i></div>'
     + bvSeiteHtml(rechts, 'rechts');
   const gesamt = bvSeitenZahl();
-  const bis = Math.min(rechts + 1, gesamt);
-  $('bv-zaehler').textContent = links + 1 === bis
-    ? `${t('seite')} ${bis} / ${gesamt}`
-    : `${t('seite')} ${links + 1}–${bis} / ${gesamt}`;
+  const sichtbar = [links, rechts].filter((n) => n >= 0 && n < gesamt).map((n) => n + 1);
+  $('bv-zaehler').textContent = sichtbar.length === 2
+    ? `${t('seite')} ${sichtbar[0]}–${sichtbar[1]} / ${gesamt}`
+    : `${t('seite')} ${sichtbar[0] || 1} / ${gesamt}`;
   $('bv-zurueck').disabled = BV.spread <= 0;
   $('bv-vor').disabled = BV.spread >= bvSpreads() - 1;
 }
@@ -2732,7 +2736,7 @@ function blaetternWechsel(d) {
 
   const buch = $('bv-buch');
   const seiten = buch.querySelectorAll('.bv-seite');
-  const quelle = d > 0 ? seiten[2] : seiten[0];
+  const quelle = d > 0 ? seiten[1] : seiten[0];   // [0] = linke Seite, [1] = rechte
   if (!quelle) { BV.spread = ziel; bvZeichne(); return; }
   const b = quelle.getBoundingClientRect();
   const wrapB = buch.parentElement.getBoundingClientRect();
@@ -2743,8 +2747,8 @@ function blaetternWechsel(d) {
   blatt.style.width = b.width + 'px';
   blatt.style.transformOrigin = d > 0 ? 'left center' : 'right center';
   // vorne die Seite, die weggeht — hinten die, die dahinter zum Vorschein kommt
-  const vorne = d > 0 ? BV.spread * 2 + 1 : BV.spread * 2;
-  const hinten = d > 0 ? ziel * 2 : ziel * 2 + 1;
+  const vorne = d > 0 ? bvRechts(BV.spread) : bvLinks(BV.spread);
+  const hinten = d > 0 ? bvLinks(ziel) : bvRechts(ziel);
   blatt.innerHTML = bvSeiteHtml(vorne, d > 0 ? 'rechts' : 'links')
     + bvSeiteHtml(hinten, 'rueck ' + (d > 0 ? 'links' : 'rechts'));
   buch.parentElement.append(blatt);
@@ -2763,7 +2767,7 @@ function blaetternWechsel(d) {
 
 function blaetternOeffnen() {
   if (!S.binder || !S.binder.items.length) return toast(t('binder_leer'));
-  BV.spread = Math.floor(S.seite / 2);
+  BV.spread = S.seite <= 0 ? 0 : Math.floor((S.seite + 1) / 2);
   $('bv-titel').textContent = t('bv_titel');
   $('bv-untertitel').textContent = S.binder.name || '';
   $('blaettern').classList.remove('hidden');
@@ -2775,7 +2779,7 @@ function blaetternSchliessen() {
   $('blaettern').classList.add('hidden');
   document.body.style.overflow = '';
   // Dort weiterarbeiten, wo man aufgehört hat zu blättern
-  S.seite = Math.min(BV.spread * 2, bvSeitenZahl() - 1);
+  S.seite = Math.min(Math.max(0, bvLinks(BV.spread) < 0 ? 0 : bvLinks(BV.spread)), bvSeitenZahl() - 1);
   zeichneBinder();
 }
 
