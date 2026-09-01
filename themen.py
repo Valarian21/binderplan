@@ -288,14 +288,18 @@ def _index_schleife(budget_usd, scope_ids):
     Warteschlange, damit kein Arbeiter auf einen langsamen Nachbarn wartet."""
     _lauf.update(aktiv=True, gesichtet=0, kosten=0.0, fehler="", start=_now(), stop=False)
     entnahme = threading.Lock()
-    gezogen = set()
+    gezogen = set()      # gerade in Arbeit oder eben gescheitert
+    patzer = {}          # card_id → Fehlversuche
 
     def spur():
         while not _lauf["stop"] and _lauf["kosten"] < budget_usd:
             with entnahme:
                 # In der DB steht erst nach der Sichtung etwas — bis dahin merkt
                 # `gezogen`, welche Karten schon bei einer anderen Spur liegen.
-                vorrat = [c for c in _offene_karten(STAPEL * (SPUREN + 2), scope_ids) if c not in gezogen]
+                # Das Fenster wächst um die hängengebliebenen mit: sonst besteht
+                # es irgendwann nur noch aus ihnen und der ganze Lauf steht still.
+                vorrat = [c for c in _offene_karten(STAPEL * (SPUREN + 2) + len(gezogen), scope_ids)
+                          if c not in gezogen]
                 offen = vorrat[:STAPEL]
                 if not offen:
                     return
@@ -304,10 +308,25 @@ def _index_schleife(budget_usd, scope_ids):
                 n, k = sichten(offen)
             except Exception as e:
                 _lauf["fehler"] = str(e)[:300]
-                time.sleep(3)
+                with entnahme:
+                    # Zweimal daneben heißt: an dieser Karte liegt es. Vormerken,
+                    # damit die Warteschlange weiterläuft.
+                    hin = []
+                    for c in offen:
+                        patzer[c] = patzer.get(c, 0) + 1
+                        if patzer[c] >= 2:
+                            hin.append(c)
+                    gezogen.difference_update(c for c in offen if c not in hin)
+                if hin:
+                    _ohne_bild(hin)
+                time.sleep(2)
                 continue
             _lauf["gesichtet"] += n
             _lauf["kosten"] += k
+            with entnahme:
+                # Erledigtes fällt aus `gezogen` — es ist jetzt in der DB und
+                # taucht in `_offene_karten` ohnehin nicht mehr auf.
+                gezogen.difference_update(offen)
 
     try:
         with ThreadPoolExecutor(max_workers=SPUREN) as pool:
