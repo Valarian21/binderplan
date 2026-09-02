@@ -11,12 +11,15 @@
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
 <style>
-  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518; }
+  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518;
+          --d1:#E4322B; --d2:#2A4B9B; --d3:#2F8F5B; --d-gitter:rgba(20,22,28,.09); }
   /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; }
+    :root:not([data-theme="light"]) { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
+                                          --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11); }
   }
-  :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; }
+  :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
+                              --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11); }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Archivo', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
@@ -234,20 +237,20 @@
   .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
               border-radius: 10px; }
   .vt-blatt.dop { grid-template-columns: 1fr 1fr; gap: 9px; padding: 9px; background: none; }
-  /* Gefächerter Stapel: zweite und dritte Seite schauen oben rechts hervor, wie ein Binder,
-     in dem schon geblättert wurde. Der Platz dafür kommt aus dem Innenabstand — sonst
-     schneidet die Kachel die hinteren Seiten ab. */
-  .vt-blatt.stapel { position: relative; background: none; padding: 14px 14px 0 0; }
-  .vt-blatt.stapel .vt-seite { background: #14161a; border-radius: 8px; padding: 6px;
-                               box-shadow: 0 3px 14px rgba(0,0,0,.45); }
-  .vt-blatt.stapel .hinten2, .vt-blatt.stapel .hinten3 {
-                               position: absolute; left: 0; right: 14px; top: 14px; bottom: 0;
-                               transform-origin: bottom left; }
-  .vt-blatt.stapel .hinten3 { transform: translate(14px, -14px) rotate(2.2deg);
-                              filter: brightness(.62); }
-  .vt-blatt.stapel .hinten2 { transform: translate(7px, -7px) rotate(1.1deg);
-                              filter: brightness(.8); }
-  .vt-blatt.stapel .vorn { position: relative; }
+  /* Drei Seiten nebeneinander, leicht überlappend — wie aufgefächerte Blätter in einem Album.
+     Vorne links die erste Seite, dahinter die zweite und dritte, jede noch weit genug sichtbar,
+     dass man ihre Karten erkennt. Die vordere überdeckt die nächste nur am Rand. */
+  /* Drei Seiten, je 36 % breit, um 4 % überlappend: 3 × 36 − 2 × 4 = 100 %. Damit passt der
+     Fächer genau in die Kachel, und von jeder Seite bleiben rund 89 % sichtbar. Der helle
+     Rand und der Schatten nach links trennen die Blätter voneinander. */
+  .vt-blatt.stapel { position: relative; background: none; padding: 0 0 9%; display: flex;
+                     align-items: flex-start; }
+  .vt-blatt.stapel .vt-seite { background: #14161a; border-radius: 7px; padding: 4px;
+                               flex: 0 0 36%; box-shadow: -5px 2px 12px rgba(0,0,0,.55);
+                               outline: 1px solid rgba(255,255,255,.13); outline-offset: -1px; }
+  .vt-blatt.stapel .vorn { z-index: 3; }
+  .vt-blatt.stapel .hinten2 { z-index: 2; margin-left: -4%; margin-top: 4%; filter: brightness(.88); }
+  .vt-blatt.stapel .hinten3 { z-index: 1; margin-left: -4%; margin-top: 8%; filter: brightness(.76); }
   .vt-blatt .vt-seite { display: grid; background: #14161a; border-radius: 8px; padding: 6px; }
   .vt-fach img { object-fit: contain; }
   .vt-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 3px; display: block; }
@@ -768,6 +771,72 @@
   .statkachel { flex: 1 1 140px; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 16px; }
   .statkachel .zahl { font-size: 23px; font-weight: 700; }
   .statkachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; }
+  /* ---------- Auswertungen: Sammlung & Markt ----------
+     Zwei Seiten, ein Baukasten: Kennzahlenband oben, darunter Tafeln mit je einer Frage.
+     Diagramme sind handgezeichnetes SVG — die App hat keinen Build-Schritt und soll
+     wegen zweier Kurven keine Bibliothek nachladen. */
+  .an-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 20px; }
+  .an-kachel { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 15px; }
+  .an-kachel .zahl { font-size: 24px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .an-kachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-bottom: 3px; }
+  .an-kachel .neben { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 3px; }
+  .an-kachel .zahl.plus { color: var(--gruen); } .an-kachel .zahl.minus { color: var(--akzent); }
+  .an-tafel { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px;
+              padding: 16px 18px 18px; margin-bottom: 16px; }
+  .an-tafel > h3 { margin: 0 0 3px; font-size: 15.5px; }
+  .an-tafel > .unter { margin: 0 0 14px; font-size: 12px; color: var(--mut); line-height: 1.5; }
+  .an-zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .an-zwei { grid-template-columns: 1fr; } }
+  /* Hinweis statt Diagramm, solange die Messreihe zu kurz ist. Lieber ein ehrlicher Satz
+     als eine Kurve, die aus drei Punkten eine Marktaussage macht. */
+  .an-duenn { border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px;
+              font-size: 12.5px; color: var(--mut); line-height: 1.6; background: var(--panel2); }
+  .an-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; font-size: 12px; font-weight: 600; }
+  .an-legende span { display: inline-flex; align-items: center; gap: 6px; color: var(--mut); }
+  .an-legende i { width: 11px; height: 3px; border-radius: 2px; display: inline-block; }
+  .an-svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .an-svg text { font-family: inherit; font-variant-numeric: tabular-nums; }
+  /* Balkenliste: Beschriftung links, Balken, Zahl rechts — eine Zeile je Gruppe */
+  .an-balken { display: grid; grid-template-columns: minmax(70px, 34%) 1fr auto; gap: 5px 10px; align-items: center; }
+  .an-balken .nm { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .an-balken .bar { height: 9px; border-radius: 0 4px 4px 0; background: var(--d2); min-width: 2px; }
+  .an-balken .zl { font-size: 12px; font-weight: 700; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .an-balken .spur { background: var(--panel2); border-radius: 0 4px 4px 0; height: 9px; }
+  .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  /* Tabellen: Zahlen rechts, Ziffern in gleicher Breite, waagerecht scrollbar am Handy */
+  .an-tab-rahmen { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
+  .an-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 420px; }
+  .an-tab th { text-align: left; font-size: 11px; color: var(--mut); font-weight: 700; padding: 0 8px 7px 0;
+               border-bottom: 1.5px solid var(--line); white-space: nowrap; }
+  .an-tab td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .an-tab tr:last-child td { border-bottom: none; }
+  .an-tab .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .an-tab .nm { font-weight: 600; }
+  .an-tab .set { font-size: 11px; color: var(--mut); }
+  .an-tab img { width: 30px; border-radius: 3px; display: block; background: var(--panel2); }
+  .an-plus { color: var(--gruen); font-weight: 700; } .an-minus { color: var(--akzent); font-weight: 700; }
+  /* Kartenraster für „teuerste Karten“ */
+  .an-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 11px; }
+  .an-karte { text-align: left; }
+  .an-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; border-radius: 6px; background: var(--panel2); display: block; }
+  .an-karte .p { font-size: 12.5px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .an-karte .n { font-size: 11px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Pro-Schranke */
+  .an-sperre { text-align: center; max-width: 460px; margin: 30px auto; }
+  .an-sperre h3 { font-size: 19px; margin: 0 0 8px; }
+  .an-sperre p { font-size: 13.5px; color: var(--mut); line-height: 1.65; margin: 0 0 18px; }
+  .an-sperre ul { text-align: left; font-size: 13px; color: var(--mut); line-height: 1.9; margin: 0 0 20px;
+                  padding-left: 20px; }
+  .an-tip { position: absolute; top: 4px; pointer-events: none; background: var(--card);
+            border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 10px; font-size: 11.5px;
+            font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.16); display: grid; gap: 3px;
+            min-width: 118px; z-index: 3; }
+  .an-tip strong { font-size: 11px; color: var(--mut); }
+  .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
+  .an-rest { display: none; }
+  .an-marke { font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+              background: var(--gelb); color: #14161C; text-transform: uppercase; }
   .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 14px; padding-bottom: 20px; }
   .bcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; cursor: pointer;
            display: flex; flex-direction: column; gap: 8px; text-align: left; }
@@ -1168,6 +1237,7 @@
       <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
       <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
       <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
+      <button id="seg-markt" onclick="ansicht('markt')" data-i18n="markt">Markt</button>
     </div>
     <div style="flex:1"></div>
     <div class="menuwrap desktop-only">
@@ -1471,6 +1541,8 @@
         <div class="menu-lbl" data-i18n="mm_entdecken">Entdecken</div>
         <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
+        <button onclick="ansicht('markt')"><span data-i18n="markt">Markt</span> <span class="an-marke" style="margin-left:4px">Pro</span></button>
+        <button onclick="ansicht('auswertung')"><span data-i18n="an_t">Auswertung</span> <span class="an-marke" style="margin-left:4px">Pro</span></button>
         <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
         <button onclick="fotoOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
         <div class="trenn"></div>
@@ -2105,6 +2177,10 @@
     <div class="f-chips" id="sm-filter"></div>
     <div style="flex:1"></div>
     <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" data-i18n-ph="sm_ph" oninput="sammlungSuchen()">
+    <button class="btn sekundaer" style="font-size:12.5px;padding:7px 13px" onclick="ansicht('auswertung')">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 13.5h12"/><path d="M4 13.5V8M8 13.5V3.5M12 13.5v-4"/></svg>
+      <span data-i18n="an_t">Auswertung</span>
+    </button>
     <select class="feld" id="sm-sort" style="width:auto" onchange="sammlungLaden()">
       <option value="neu">Zuletzt hinzugefügt</option>
       <option value="wert">Wert</option>
@@ -2113,6 +2189,38 @@
     </select>
   </div>
   <div class="sm-gitter" id="sm-gitter"></div>
+</div>
+
+<!-- Auswertung der eigenen Sammlung -->
+<div id="auswertungseite" class="seite-voll hidden">
+  <div class="planer-kopf">
+    <button class="btn sekundaer" style="font-size:13px" onclick="auswertungSchliessen()">‹ <span data-i18n="sammlung">Sammlung</span></button>
+    <div style="font-size:15px;font-weight:700" data-i18n="an_t">Auswertung</div>
+    <span class="an-marke">Pro</span>
+    <div style="flex:1"></div>
+    <select class="feld" id="an-zeit" style="width:auto" onchange="auswertungLaden()">
+      <option value="30" data-i18n="an_30">30 Tage</option>
+      <option value="90" selected data-i18n="an_90">90 Tage</option>
+      <option value="365" data-i18n="an_365">1 Jahr</option>
+    </select>
+  </div>
+  <div class="seite-rumpf st-rumpf" id="an-rumpf"></div>
+</div>
+
+<!-- Marktseite -->
+<div id="marktseite" class="seite-voll hidden">
+  <div class="planer-kopf">
+    <button class="btn sekundaer" style="font-size:13px" onclick="marktSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
+    <div style="font-size:15px;font-weight:700" data-i18n="markt">Markt</div>
+    <span class="an-marke">Pro</span>
+    <div style="flex:1"></div>
+    <select class="feld" id="mk-zeit" style="width:auto" onchange="marktLaden()">
+      <option value="30" data-i18n="an_30">30 Tage</option>
+      <option value="90" selected data-i18n="an_90">90 Tage</option>
+      <option value="365" data-i18n="an_365">1 Jahr</option>
+    </select>
+  </div>
+  <div class="seite-rumpf st-rumpf" id="mk-rumpf"></div>
 </div>
 
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
@@ -2218,6 +2326,72 @@ const T = {
     bv_bild: 'Doppelseite als Bild sichern', bv_bild_fertig: 'Bild gesichert',
     bv_bild_fehler: 'Das Bild ließ sich nicht erzeugen',
 
+    // ---------- Auswertungen: Sammlung & Markt ----------
+    markt: 'Markt', an_t: 'Auswertung',
+    an_u: 'Was deine Sammlung wert ist, woher der Wert kommt und wie er sich bewegt. Preise von Cardmarket, täglich neu.',
+    an_30: '30 Tage', an_90: '90 Tage', an_365: '1 Jahr',
+    an_stk: 'Stück', an_tage: 'Tage', an_fehler: 'Die Zahlen ließen sich nicht laden. Versuch es gleich noch einmal.',
+    an_keine_daten: 'Dazu liegen noch keine Zahlen vor.',
+    an_leer: 'Deine Sammlung ist noch leer. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab. Danach steht hier, was sie wert ist.',
+    an_markt_login: 'Für die Marktzahlen brauchst du ein Konto.',
+    // Pro-Schranke
+    an_pro_t: 'Auswertung gehört zu Pro', an_mpro_t: 'Die Marktzahlen gehören zu Pro',
+    an_pro_u: 'Die Preise holen wir täglich für den ganzen Katalog. Das Rechnen daraus ist die Arbeit, für die Pro bezahlt.',
+    an_pro_1: 'Wert deiner Sammlung, Tag für Tag',
+    an_pro_2: 'Aufteilung nach Seltenheit, Set, Pokémon, Typ und Jahrzehnt',
+    an_pro_3: 'Einsatz gegen heutigen Wert – je Karte und im Ganzen',
+    an_pro_4: 'Die Marktseite mit Indizes, Bewegungen und dem Vergleich Europa/USA',
+    an_mpro_1: 'Indizes für alte, mittlere und neue Karten',
+    an_mpro_2: 'Die größten Bewegungen der Messreihe',
+    an_mpro_3: 'Europa gegen USA: wo dieselbe Karte günstiger ist',
+    an_mpro_4: 'Wertverteilung im Katalog und alle Sets im Vergleich',
+    an_kostprobe: 'Eine Kostprobe: die fünf Sets mit dem höchsten Schnitt.',
+    // Sammlung
+    an_wert: 'Wert', an_einsatz: 'Eingesetzt', an_gewinn: 'Gewinn',
+    an_mit_preis: 'mit Kaufpreis erfasst', an_auf_einsatz: 'auf den Einsatz',
+    an_kein_kaufpreis: 'Trag Kaufpreise ein, dann rechnen wir hier deine Rendite.',
+    an_ohne_preis: 'Ohne Preis', an_ohne_preis_u: 'Karten, für die Cardmarket keinen Wert führt',
+    an_verlauf: 'Wertverlauf',
+    an_verlauf_u: 'Auf fester Grundlage gerechnet: gezählt werden nur Karten, die am ersten und am letzten Tag einen Preis hatten. Sonst stiege die Kurve allein dadurch, dass mit der Zeit mehr Karten erfasst sind.',
+    an_basis: 'Grundlage: {n} von {g} Karten, die die Reihe von Anfang bis Ende tragen – {p} % des heutigen Werts.',
+    an_basis_index: 'Bewegung, nicht Wert: erster Tag = 100. Getragen von {n} deiner {g} Karten, das sind {p} % des heutigen Werts. Sobald der tägliche Preislauf länger läuft, steht hier wieder ein Eurobetrag.',
+    an_bewegung_kurz: 'Bewegung', an_ohne_angabe: 'ohne Angabe', an_uebrige: 'übrige',
+    an_mehr: 'Weitere {n} zeigen', an_leer_suchen: 'Karten suchen', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
+    an_beide_boersen: 'Europa / USA', an_abstand: 'Abstand',
+    an_verworfen: '{n} weitere Paare lagen mehr als 70 % auseinander und sind ausgelassen – dort vergleicht die Quelle zwei verschiedene Drucke.',
+    an_reihe_kurz: 'Die Messreihe ist noch zu kurz für eine Kurve.',
+    an_reihe_kurz_s: 'Die Messreihe deiner Karten reicht erst über {n} Tage. Ab drei Tagen zeichnen wir hier den Verlauf – vorher wäre jede Steigung Zufall aus dem Erfassungslauf.',
+    an_aufteilung: 'Woher der Wert kommt',
+    an_aufteilung_u: 'Nicht wie viele Karten, sondern wie viel Wert in jeder Gruppe steckt.',
+    an_g_seltenheit: 'Seltenheit', an_g_set: 'Set', an_g_pokemon: 'Pokémon', an_g_typ: 'Typ',
+    an_g_art: 'Art', an_g_jahrzehnt: 'Jahrzehnt', an_g_zustand: 'Zustand',
+    an_posten: 'Größte Posten', an_posten_u: 'Deine Sammlung nach Wert sortiert.',
+    an_karte: 'Karte', an_anzahl: 'Anzahl', an_stueckpreis: 'Stück', an_gekauft: 'Gekauft für', an_rendite: 'Rendite',
+    // Markt
+    an_markt_t: 'Markt',
+    an_markt_u: 'Der ganze westliche Katalog, täglich neu bepreist. Cardmarket in Euro, TCGplayer in Dollar.',
+    an_erfasst: 'Karten mit Preis', an_erfasst_u: 'westlicher Katalog, Cardmarket',
+    an_us_preise: 'davon mit US-Preis', an_us_preise_u: 'TCGplayer, Grundlage des Vergleichs',
+    an_reihe: 'Messreihe', an_seit: 'seit {d}',
+    an_indizes: 'Indizes', 
+    an_indizes_u: 'Je die 400 teuersten Karten einer Ära, am ersten Tag auf 100 gesetzt. Alt heißt bis 2003, neu ab 2020.',
+    an_ix_alt: 'Alt (bis 2003)', an_ix_mitte: 'Mitte', an_ix_neu: 'Neu (ab 2020)',
+    an_index_hin: 'Nicht der Marktwert, sondern seine Bewegung: 100 ist der erste Tag der Reihe.',
+    an_index_kurz: 'Die Messreihe trägt noch keinen Index. Sie beginnt mit dem ersten vollständigen Preislauf und wächst täglich – ab drei Tagen zeichnen wir die Kurven.',
+    an_bewegung: 'Größte Bewegungen', an_bewegung_u: 'Vom ersten bis zum letzten Tag der Messreihe, ab 2 € Kartenwert.',
+    an_gewinner: 'Gestiegen', an_verlierer: 'Gefallen',
+    an_beweg_basis: 'Grundlage: {n} Karten mit Preis an beiden Tagen ({v} bis {b}).',
+    an_beweg_kurz: 'Für einen Vergleich braucht es zwei Tage in der Reihe. Morgen steht hier etwas.',
+    an_eu_us: 'Europa gegen USA',
+    an_eu_us_u: 'Dieselbe Karte, zwei Börsen. Der Umrechnungskurs steckt im Median aller Paare, ist also gemessen und nicht gesetzt. Sortiert nach dem Unterschied in Euro, nicht nach Prozent: an einer teuren Karte sind 40 % mehr wert als 70 % an einer billigen.',
+    an_hier_guenstiger: 'In Europa günstiger', an_dort_guenstiger: 'In den USA günstiger',
+    an_kurs_hin: 'Gemessener Kurs: {k} € je Dollar, aus {n} Kartenpaaren. Versand, Zoll und Einfuhrumsatzsteuer sind nicht eingerechnet.',
+    an_vg_kurz: 'Für den Vergleich fehlen noch Karten mit Preis auf beiden Börsen.',
+    an_verteilung: 'Wertverteilung', an_verteilung_u: 'Wie viele Karten in welcher Preisklasse liegen – und wie viel Wert dort steckt.',
+    an_wie_viele: 'Wie viele Karten', an_wie_viel_wert: 'Wie viel Wert',
+    an_sets: 'Sets im Vergleich', an_sets_u: 'Ab 15 bepreisten Karten, nach Schnitt sortiert.',
+    an_set: 'Set', an_karten: 'Karten', an_schnitt: 'Schnitt', an_summe: 'Summe', an_teuerste_karte: 'Teuerste',
+    an_teuerste: 'Teuerste Karten', an_teuerste_u: 'Was der Katalog gerade oben führt.',
     sammlung: 'Sammlung', sm_t: 'Meine Sammlung',
     sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
     sm_login: 'Für die Sammlung brauchst du ein Konto.',
@@ -2454,6 +2628,69 @@ const T = {
 
     th_unterwasser: 'Underwater', th_nachts: 'At night', th_mehrere: 'Several Pokémon', bv_bild: 'Save spread as image', bv_bild_fertig: 'Image saved', bv_bild_fehler: 'Could not create the image',
 
+    // ---------- Analytics: collection & market ----------
+    markt: 'Market', an_t: 'Analytics',
+    an_u: 'What your collection is worth, where that value sits and how it moves. Cardmarket prices, refreshed daily.',
+    an_30: '30 days', an_90: '90 days', an_365: '1 year',
+    an_stk: 'cards', an_tage: 'days', an_fehler: 'Could not load the figures. Please try again.',
+    an_keine_daten: 'No figures for this yet.',
+    an_leer: 'Your collection is still empty. Tick the cards you own in the binder – or photograph a page. Then this page tells you what it is worth.',
+    an_markt_login: 'You need an account for the market figures.',
+    an_pro_t: 'Analytics is part of Pro', an_mpro_t: 'The market figures are part of Pro',
+    an_pro_u: 'We fetch prices for the whole catalogue every day. Turning them into figures is the work Pro pays for.',
+    an_pro_1: 'The value of your collection, day by day',
+    an_pro_2: 'Split by rarity, set, Pokémon, type and decade',
+    an_pro_3: 'What you paid against what it is worth – per card and in total',
+    an_pro_4: 'The market page with indices, movers and the Europe/US comparison',
+    an_mpro_1: 'Indices for old, middle and new cards',
+    an_mpro_2: 'The biggest movers in the series',
+    an_mpro_3: 'Europe against the US: where the same card is cheaper',
+    an_mpro_4: 'Value spread across the catalogue and every set compared',
+    an_kostprobe: 'A taste: the five sets with the highest average.',
+    an_wert: 'Value', an_einsatz: 'Spent', an_gewinn: 'Gain',
+    an_mit_preis: 'recorded with a purchase price', an_auf_einsatz: 'on what you spent',
+    an_kein_kaufpreis: 'Add purchase prices and we will work out your return here.',
+    an_ohne_preis: 'No price', an_ohne_preis_u: 'cards Cardmarket carries no value for',
+    an_verlauf: 'Value over time',
+    an_verlauf_u: 'Worked out on a fixed basis: only cards that had a price on both the first and the last day count. Otherwise the line would rise simply because more cards get priced over time.',
+    an_basis: 'Basis: {n} of {g} cards carry the series from start to end – {p} % of today\'s value.',
+    an_basis_index: 'Movement, not value: first day = 100. Carried by {n} of your {g} cards, which is {p} % of today\'s value. Once the daily price run has been going longer, a euro figure returns here.',
+    an_bewegung_kurz: 'Movement', an_ohne_angabe: 'not stated', an_uebrige: 'others',
+    an_mehr: 'Show {n} more', an_leer_suchen: 'Find cards', an_von_bis: 'Before → now', an_aenderung: 'Change',
+    an_beide_boersen: 'Europe / US', an_abstand: 'Gap',
+    an_verworfen: '{n} further pairs sat more than 70 % apart and were left out – there the source compares two different printings.',
+    an_reihe_kurz: 'The series is still too short to draw.',
+    an_reihe_kurz_s: 'The series for your cards only spans {n} days. From three days on we draw the line here – before that any slope is an artefact of the price run.',
+    an_aufteilung: 'Where the value sits',
+    an_aufteilung_u: 'Not how many cards, but how much value each group holds.',
+    an_g_seltenheit: 'Rarity', an_g_set: 'Set', an_g_pokemon: 'Pokémon', an_g_typ: 'Type',
+    an_g_art: 'Kind', an_g_jahrzehnt: 'Decade', an_g_zustand: 'Condition',
+    an_posten: 'Biggest holdings', an_posten_u: 'Your collection sorted by value.',
+    an_karte: 'Card', an_anzahl: 'Count', an_stueckpreis: 'Each', an_gekauft: 'Paid', an_rendite: 'Return',
+    an_markt_t: 'Market',
+    an_markt_u: 'The whole western catalogue, repriced daily. Cardmarket in euros, TCGplayer in dollars.',
+    an_erfasst: 'Cards with a price', an_erfasst_u: 'western catalogue, Cardmarket',
+    an_us_preise: 'of those with a US price', an_us_preise_u: 'TCGplayer, the basis of the comparison',
+    an_reihe: 'Series', an_seit: 'since {d}',
+    an_indizes: 'Indices',
+    an_indizes_u: 'The 400 most expensive cards of each era, set to 100 on the first day. Old means up to 2003, new from 2020.',
+    an_ix_alt: 'Old (to 2003)', an_ix_mitte: 'Middle', an_ix_neu: 'New (from 2020)',
+    an_index_hin: 'Not the market value but its movement: 100 is the first day of the series.',
+    an_index_kurz: 'The series does not carry an index yet. It starts with the first full price run and grows daily – we draw the lines from three days on.',
+    an_bewegung: 'Biggest movers', an_bewegung_u: 'First to last day of the series, cards from €2 up.',
+    an_gewinner: 'Up', an_verlierer: 'Down',
+    an_beweg_basis: 'Basis: {n} cards priced on both days ({v} to {b}).',
+    an_beweg_kurz: 'A comparison needs two days in the series. Come back tomorrow.',
+    an_eu_us: 'Europe against the US',
+    an_eu_us_u: 'Same card, two marketplaces. The exchange rate is the median of every pair, so it is measured rather than set. Sorted by the difference in euros rather than percent: 40 % on an expensive card beats 70 % on a cheap one.',
+    an_hier_guenstiger: 'Cheaper in Europe', an_dort_guenstiger: 'Cheaper in the US',
+    an_kurs_hin: 'Measured rate: €{k} per dollar, from {n} card pairs. Shipping, customs and import VAT are not included.',
+    an_vg_kurz: 'Not enough cards priced on both marketplaces yet.',
+    an_verteilung: 'Value spread', an_verteilung_u: 'How many cards sit in each price band – and how much value sits there.',
+    an_wie_viele: 'How many cards', an_wie_viel_wert: 'How much value',
+    an_sets: 'Sets compared', an_sets_u: 'From 15 priced cards up, sorted by average.',
+    an_set: 'Set', an_karten: 'Cards', an_schnitt: 'Average', an_summe: 'Total', an_teuerste_karte: 'Top card',
+    an_teuerste: 'Most expensive cards', an_teuerste_u: 'What the catalogue currently carries at the top.',
     sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
 
     best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
@@ -4797,9 +5034,9 @@ function vitrineBlatt(blatt, doppelt) {
   }
   // Standard: die ersten Seiten leicht versetzt hintereinander — das sieht aus wie ein Binder,
   // in dem schon geblättert wurde, und zeigt auf einen Blick, dass mehr als eine Seite drin ist.
-  const hinten = blatt.seiten.length > 2 ? seite(2, 'hinten3') : '';
   const mitte = blatt.seiten.length > 1 ? seite(1, 'hinten2') : '';
-  return `<div class="vt-blatt stapel">${hinten}${mitte}${seite(0, 'vorn')}</div>`;
+  const hinten = blatt.seiten.length > 2 ? seite(2, 'hinten3') : '';
+  return `<div class="vt-blatt stapel">${seite(0, 'vorn')}${mitte}${hinten}</div>`;
 }
 
 const VT_ARTEN = { dex: 'vt_a_dex', artwork: 'vt_a_artwork', kuenstler: 'vt_a_kuenstler',
@@ -4812,7 +5049,7 @@ function zeichneVitrine() {
   }
   $('vt-gitter').innerHTML = VT.binder.map((b) => `
     <div class="vt-karte">
-      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:8px 8px 0;background:#14161a">
+      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:10px 10px 0;background:${VT.doppelseite ? '#14161a' : 'var(--panel2)'}">
         ${vitrineBlatt(b.blatt, VT.doppelseite)}
       </div>
       <div class="vt-txt">
@@ -5120,7 +5357,7 @@ function zeichneProfilBinder() {
 
   $('po-gitter').innerHTML = liste.map((b) => `
     <div class="vt-karte">
-      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:8px 8px 0;background:#14161a">
+      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:10px 10px 0;background:var(--panel2)">
         ${vitrineBlatt(b.blatt, false)}
       </div>
       <div class="vt-txt">
@@ -5522,7 +5759,7 @@ async function blaetternBild() {
 /** Genau einen Reiter markieren. Vorher setzte jede Ansicht ihre eigenen Klassen —
  *  schloss man den Planer, während die Startseite offen war, leuchteten zwei. */
 function reiterSetzen(id) {
-  for (const r of ['seg-start', 'seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine']) {
+  for (const r of ['seg-start', 'seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine', 'seg-markt']) {
     const el = $(r);
     if (el) el.classList.toggle('on', r === id);
   }
@@ -5763,13 +6000,18 @@ function zeichnePreisSumme() {
 // ---------- Planer ----------
 function ansicht(w) {
   profilseiteSchliessen();
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (w !== 'profil' && !$('profilseite').classList.contains('hidden')) profilSchliessen();   // Reiter über der Profilseite
   if (w === 'start') { startOeffnen(); return; }
   if (typeof startSchliessen === 'function' && !$('startseite').classList.contains('hidden')) startSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
   if (w !== 'sammlung') sammlungSchliessen();
+  if (w !== 'markt') marktSchliessen();
+  if (w !== 'auswertung') auswertungSchliessen();
   if (w === 'sammlung') { ansichtSammlung(); return; }
   if (w === 'vitrine') { ansichtVitrine(); return; }
+  if (w === 'markt') { marktOeffnen(); return; }
+  if (w === 'auswertung') { auswertungOeffnen(); return; }
   if (w === 'planer') planerOeffnen(); else planerSchliessen();
 }
 function planerOeffnen() {
@@ -5789,6 +6031,451 @@ function planerSchliessen() {
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
   mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
   zeichneBinder();
+}
+
+
+/* ==========================================================================
+   Auswertungen: eigene Sammlung und Markt
+
+   Die Diagramme sind von Hand gezeichnetes SVG. Die App hat keinen Build-Schritt,
+   und zwei Kurventypen rechtfertigen keine nachgeladene Bibliothek — dafür passen
+   sie sich den Farbtokens an und funktionieren hell wie dunkel ohne Sonderfall.
+   ========================================================================== */
+
+const AN = { daten: null, markt: null, gruppe: 'nach_seltenheit', kurven: {}, nr: 0 };
+
+const anEur = (n, stellen) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+  { minimumFractionDigits: stellen == null ? 2 : stellen, maximumFractionDigits: stellen == null ? 2 : stellen }) + ' €';
+const anZahl = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de');
+const anProz = (n) => (n > 0 ? '+' : '') + (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+  { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+/** Datum kurz: „2. Sep." bzw. „Sep 2". */
+function anTag(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString(LANG === 'en' ? 'en' : 'de', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+/** Eine Kennzahl-Kachel. `art` färbt die Zahl grün oder rot. */
+function anKachel(lbl, zahl, neben, art) {
+  return `<div class="an-kachel"><div class="lbl">${esc(lbl)}</div>`
+    + `<div class="zahl ${art || ''}">${zahl}</div>`
+    + (neben ? `<div class="neben">${neben}</div>` : '') + '</div>';
+}
+
+/** Hinweis, solange die Messreihe zu kurz ist. Lieber ein ehrlicher Satz als eine
+ *  Kurve, die aus drei Punkten eine Marktaussage macht. */
+function anDuenn(text) { return `<div class="an-duenn">${text}</div>`; }
+
+/** Waagerechte Balken: Beschriftung, Balken, Zahl. `items` = [{name, wert, anzahl}]. */
+/** Die Auswertung liefert zwei Platzhalter, die erst hier eine Sprache bekommen:
+ *  „?" für fehlende Angaben und „übrige" für den zusammengefassten Rest. */
+function anGruppenname(n) {
+  if (n === '?') return t('an_ohne_angabe');
+  if (n === 'übrige') return t('an_uebrige');
+  return n;
+}
+
+function anBalken(items, opt) {
+  opt = opt || {};
+  if (!items || !items.length) return anDuenn(t('an_keine_daten'));
+  const max = Math.max(...items.map((i) => Math.abs(i.wert))) || 1;
+  const farbe = opt.farbe || 'var(--d2)';
+  return '<div class="an-balken">' + items.map((i) => {
+    const b = Math.max(2, Math.round(Math.abs(i.wert) / max * 100));
+    const zusatz = i.anzahl != null ? ` · ${anZahl(i.anzahl)} ${t('an_stk')}` : '';
+    const nm = anGruppenname(i.name) + (i.rest ? ` (${i.rest})` : '');
+    return `<div class="nm" title="${esc(nm)}${zusatz}">${esc(nm)}</div>`
+      + `<div class="spur"><div class="bar" style="width:${b}%;background:${farbe}"></div></div>`
+      + `<div class="zl">${opt.roh ? anZahl(i.wert) : anEur(i.wert, 0)}</div>`;
+  }).join('') + '</div>';
+}
+
+/** Liniendiagramm. `reihen` = [{name, farbe, punkte:[{datum, wert}]}].
+ *  Beschriftet jede Kurve am Ende direkt — so trägt nicht die Farbe allein die Identität. */
+function anLinie(reihen, opt) {
+  opt = opt || {};
+  reihen = (reihen || []).filter((r) => r.punkte && r.punkte.length >= 2);
+  if (!reihen.length) return anDuenn(opt.leer || t('an_reihe_kurz'));
+  // Der viewBox wird auf die tatsächliche Breite gelegt, damit eine SVG-Einheit einem
+  // Bildschirmpunkt entspricht. Sonst schrumpft die Beschriftung am Handy auf ein Drittel.
+  const eng = window.innerWidth < 700;
+  const W = eng ? 340 : 760, H = opt.hoehe || (eng ? 190 : 210);
+  const L = eng ? 34 : 52, R = eng ? 12 : 96, O = 12, U = eng ? 22 : 26;
+  const sg = eng ? 9 : 10.5;
+  const alle = reihen.flatMap((r) => r.punkte.map((p) => p.wert));
+  let min = Math.min(...alle), max = Math.max(...alle);
+  if (min === max) { min -= 1; max += 1; }
+  const luft = (max - min) * 0.12; min -= luft; max += luft;
+  if (!opt.index && min > 0 && min < (max - min) * 0.6) min = 0;   // Nulllinie, wo sie ehrlich ist
+  const tage = reihen[0].punkte.map((p) => p.datum);
+  const x = (i) => L + (tage.length < 2 ? 0 : i / (tage.length - 1) * (W - L - R));
+  const y = (v) => O + (1 - (v - min) / (max - min)) * (H - O - U);
+  const fmt = opt.fmt || ((v) => anEur(v, 0));
+
+  let g = '';
+  for (let k = 0; k <= 3; k++) {
+    const v = min + (max - min) * k / 3, yy = y(v);
+    g += `<line x1="${L}" y1="${yy.toFixed(1)}" x2="${W - R}" y2="${yy.toFixed(1)}" stroke="var(--d-gitter)" stroke-width="1"/>`
+      + `<text x="${L - 6}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" font-size="${sg}" fill="var(--mut)">${fmt(v)}</text>`;
+  }
+  const marken = tage.length <= 3 ? tage.map((_, i) => i) : [0, Math.floor((tage.length - 1) / 2), tage.length - 1];
+  marken.forEach((i) => {
+    g += `<text x="${x(i).toFixed(1)}" y="${H - 7}" text-anchor="${i === 0 ? 'start' : i === tage.length - 1 ? 'end' : 'middle'}" font-size="${sg}" fill="var(--mut)">${esc(anTag(tage[i]))}</text>`;
+  });
+
+  reihen.forEach((r) => {
+    const d = r.punkte.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.wert).toFixed(1)}`).join(' ');
+    const le = r.punkte.length - 1;
+    g += `<path d="${d}" fill="none" stroke="${r.farbe}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`
+      + `<circle cx="${x(le).toFixed(1)}" cy="${y(r.punkte[le].wert).toFixed(1)}" r="3.5" fill="${r.farbe}" stroke="var(--card)" stroke-width="2"/>`
+      + (eng ? '' : `<text x="${W - R + 8}" y="${(y(r.punkte[le].wert) + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="${r.farbe}">${esc(r.name)}</text>`);
+  });
+
+  const legende = (eng || opt.legende) && reihen.length
+    ? `<div class="an-legende">${reihen.map((r) => `<span><i style="background:${r.farbe}"></i>${esc(r.name)}</span>`).join('')}</div>`
+    : '';
+  const id = 'anl' + (++AN.nr);
+  AN.kurven[id] = { reihen: reihen, tage: tage, L: L, R: R, W: W, fmt: fmt };
+  return `${opt.legende_oben === false ? '' : legende}<div style="position:relative">
+    <svg class="an-svg" id="${id}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.titel || '')}"
+         onmousemove="anZeiger(event,'${id}')" onmouseleave="anZeigerWeg('${id}')">
+      ${g}<line class="an-zeiger hidden" y1="${O}" y2="${H - U}" stroke="var(--mut)" stroke-width="1" stroke-dasharray="3 3"/>
+    </svg>
+    <div class="an-tip hidden" id="${id}-tip"></div></div>`;
+}
+
+/** Fadenkreuz und Werte am Mauszeiger. */
+function anZeiger(ev, id) {
+  const c = AN.kurven[id], svg = $(id); if (!c || !svg) return;
+  const b = svg.getBoundingClientRect(), sk = c.W / b.width;
+  const px = (ev.clientX - b.left) * sk;
+  const spanne = c.W - c.L - c.R;
+  let i = Math.round((px - c.L) / (spanne || 1) * (c.tage.length - 1));
+  i = Math.max(0, Math.min(c.tage.length - 1, i));
+  const xx = c.L + (c.tage.length < 2 ? 0 : i / (c.tage.length - 1) * spanne);
+  const linie = svg.querySelector('.an-zeiger');
+  linie.setAttribute('x1', xx); linie.setAttribute('x2', xx); linie.classList.remove('hidden');
+  const tip = $(id + '-tip');
+  tip.innerHTML = `<strong>${esc(anTag(c.tage[i]))}</strong>`
+    + c.reihen.map((r) => r.punkte[i] ? `<span><i style="background:${r.farbe}"></i>${esc(r.name)} ${c.fmt(r.punkte[i].wert)}</span>` : '').join('');
+  tip.classList.remove('hidden');
+  const links = Math.min(Math.max(0, xx / sk - 60), b.width - 130);
+  tip.style.left = links + 'px';
+}
+function anZeigerWeg(id) {
+  const svg = $(id); if (!svg) return;
+  svg.querySelector('.an-zeiger').classList.add('hidden');
+  $(id + '-tip').classList.add('hidden');
+}
+
+/** Die Pro-Schranke — was es gibt und warum es etwas kostet. */
+function anSperre(punkte, titel) {
+  return `<div class="an-sperre">
+    <span class="an-marke">Pro</span>
+    <h3 style="margin-top:12px">${titel || t('an_pro_t')}</h3>
+    <p>${t('an_pro_u')}</p>
+    <ul>${punkte.map((p) => `<li>${p}</li>`).join('')}</ul>
+    <button class="btn" onclick="upgradeOeffnen('')">${t('upgrade')}</button></div>`;
+}
+
+/* -------------------------------------------------- Auswertung der Sammlung */
+
+function auswertungOeffnen() {
+  if (!S.user) return loginOeffnen(t('sm_login'));
+  planerSchliessen(); vitrineSchliessen(); marktSchliessen(); profilseiteSchliessen();
+  $('auswertungseite').classList.remove('hidden');
+  ebeneOeffnen(auswertungSchliessen);
+  reiterSetzen('seg-sammlung');
+  mnavMarkieren('mnav-mehr');
+  auswertungLaden();
+}
+function auswertungSchliessen() {
+  if (!$('auswertungseite') || $('auswertungseite').classList.contains('hidden')) return;
+  ebeneAufraeumen(auswertungSchliessen);
+  $('auswertungseite').classList.add('hidden');
+  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
+}
+
+async function auswertungLaden() {
+  const r = $('an-rumpf');
+  r.innerHTML = `<div style="padding:40px;text-align:center">${lader('gross', t('laedt'))}</div>`;
+  try {
+    AN.daten = await api('api/analytics/sammlung?tage=' + $('an-zeit').value);
+  } catch (e) {
+    r.innerHTML = anDuenn(t('an_fehler')); return;
+  }
+  zeichneAuswertung();
+}
+
+function zeichneAuswertung() {
+  const d = AN.daten, r = $('an-rumpf');
+  if (!d.pro) {
+    r.innerHTML = anSperre([t('an_pro_1'), t('an_pro_2'), t('an_pro_3'), t('an_pro_4')]);
+    return;
+  }
+  if (d.leer) {
+    r.innerHTML = `<h1>${t('an_t')}</h1><div class="unter">${t('an_u')}</div>`
+      + anDuenn(t('an_leer'))
+      + `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+          <button class="btn" onclick="ansicht('suche')">${t('an_leer_suchen')}</button>
+          <button class="btn sekundaer" onclick="fotoOeffnen()">${t('foto_menu')}</button>
+         </div>`;
+    return;
+  }
+  const gewinn = d.gewinn;
+  let band = anKachel(t('an_wert'), anEur(d.wert),
+    `${anZahl(d.karten)} ${t('an_stk')} · ${anZahl(d.verschiedene)} ${t('sm_verschieden')}`);
+  if (d.einsatz != null) {
+    band += anKachel(t('an_einsatz'), anEur(d.einsatz),
+      `${anZahl(d.mit_kaufpreis)} ${t('an_mit_preis')}`);
+    const proz = d.einsatz > 0 ? (gewinn / d.einsatz * 100) : 0;
+    band += anKachel(t('an_gewinn'), (gewinn > 0 ? '+' : '') + anEur(gewinn),
+      d.einsatz > 0 ? anProz(proz) + ' ' + t('an_auf_einsatz') : '', gewinn > 0 ? 'plus' : gewinn < 0 ? 'minus' : '');
+  } else {
+    band += anKachel(t('an_einsatz'), '—', t('an_kein_kaufpreis'));
+  }
+  if (d.ohne_preis) band += anKachel(t('an_ohne_preis'), anZahl(d.ohne_preis), t('an_ohne_preis_u'));
+
+  // Solange die Historie jung ist, tragen nur wenige Karten die Kurve. Ihre Euro-Summe
+  // wäre dann ein Bruchteil des Sammlungswerts direkt darüber — als Zahl unter einem
+  // Diagramm namens „Wertverlauf" schlicht irreführend. Deshalb erst ab 60 % Deckung
+  // Euro, darunter eine Indexkurve, die nur die Bewegung zeigt.
+  const v = d.verlauf || {};
+  const deckung = v.anteil == null ? 0 : v.anteil;
+  const inEuro = deckung >= 60;
+  let kurve;
+  if (v.punkte && v.punkte.length >= 2) {
+    const start = v.punkte[0].eur || 1;
+    kurve = anLinie([{ name: inEuro ? t('an_wert') : t('an_bewegung_kurz'), farbe: 'var(--d1)',
+                       punkte: v.punkte.map((p) => ({ datum: p.datum, wert: inEuro ? p.eur : p.eur / start * 100 })) }],
+                    { titel: t('an_verlauf'), index: !inEuro, fmt: inEuro ? null : (x) => x.toFixed(0) })
+      + `<div class="unter" style="margin:10px 0 0;font-size:11.5px">${
+          (inEuro ? t('an_basis') : t('an_basis_index'))
+            .replace('{n}', anZahl(v.von || v.basis)).replace('{g}', anZahl(v.gesamt || 0))
+            .replace('{p}', deckung.toLocaleString(LANG === 'en' ? 'en' : 'de'))}</div>`;
+  } else {
+    kurve = anDuenn(t('an_reihe_kurz_s').replace('{n}', anZahl(v.tage || 0)));
+  }
+
+  const gruppen = [
+    ['nach_seltenheit', t('an_g_seltenheit')], ['nach_set', t('an_g_set')],
+    ['nach_pokemon', t('an_g_pokemon')], ['nach_typ', t('an_g_typ')],
+    ['nach_art', t('an_g_art')], ['nach_jahrzehnt', t('an_g_jahrzehnt')],
+    ['nach_zustand', t('an_g_zustand')],
+  ].filter(([k]) => (d[k] || []).length);
+  if (!gruppen.some(([k]) => k === AN.gruppe)) AN.gruppe = gruppen.length ? gruppen[0][0] : '';
+
+  r.innerHTML = `<h1>${t('an_t')}</h1>
+    <div class="unter">${t('an_u')}</div>
+    <div class="an-band">${band}</div>
+
+    <div class="an-tafel">
+      <h3>${t('an_verlauf')}</h3>
+      <div class="unter">${t('an_verlauf_u')}</div>
+      ${kurve}
+    </div>
+
+    <div class="an-tafel">
+      <h3>${t('an_aufteilung')}</h3>
+      <div class="unter">${t('an_aufteilung_u')}</div>
+      <div class="an-chips" id="an-gruppen">${gruppen.map(([k, l]) =>
+        `<button class="chip ${AN.gruppe === k ? 'on' : ''}" onclick="anGruppe('${k}')">${esc(l)}</button>`).join('')}</div>
+      <div id="an-gruppe-inhalt">${anBalken(d[AN.gruppe])}</div>
+    </div>
+
+    <div class="an-tafel">
+      <h3>${t('an_posten')}</h3>
+      <div class="unter">${t('an_posten_u')}</div>
+      <div id="an-posten">${anPostenTabelle(d.karten_liste)}</div>
+    </div>`;
+}
+
+function anGruppe(k) {
+  AN.gruppe = k;
+  document.querySelectorAll('#an-gruppen .chip').forEach((b) => b.classList.toggle('on', b.getAttribute('onclick').includes(`'${k}'`)));
+  $('an-gruppe-inhalt').innerHTML = anBalken(AN.daten[k]);
+}
+
+/** Lange Listen werden gekürzt gezeigt. Vollständig war die Marktseite am Handy über
+ *  8.000 Punkte hoch — niemand scrollt so weit, und der Rest steht einen Klick entfernt. */
+function anMehr(id, zahl) {
+  const el = $(id); if (!el) return;
+  el.querySelectorAll('.an-rest').forEach((r) => r.classList.remove('an-rest'));
+  const k = $(id + '-mehr'); if (k) k.remove();
+}
+function anKuerzen(liste, n) {
+  return { sicht: liste.slice(0, n), rest: Math.max(0, liste.length - n) };
+}
+function anMehrKnopf(id, rest) {
+  return rest ? `<button class="btn sekundaer" id="${id}-mehr" style="font-size:12.5px;padding:7px 14px;margin-top:12px"
+    onclick="anMehr('${id}')">${t('an_mehr').replace('{n}', anZahl(rest))}</button>` : '';
+}
+
+function anPostenTabelle(liste) {
+  if (!liste || !liste.length) return anDuenn(t('an_keine_daten'));
+  return `<div class="an-tab-rahmen"><table class="an-tab">
+    <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('an_anzahl')}</th>
+      <th class="r">${t('an_stueckpreis')}</th><th class="r">${t('an_wert')}</th>
+      <th class="r">${t('an_gekauft')}</th><th class="r">${t('an_rendite')}</th></tr></thead>
+    <tbody>${liste.map((k, i) => `<tr class="${i >= 15 ? 'an-rest' : ''}">
+      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
+      <td><div class="nm">${esc(k.name)}</div><div class="set">${esc(k.set || '')}${k.nr ? ' · ' + esc(k.nr) : ''}${k.variante && k.variante !== 'normal' ? ' · ' + esc(k.variante) : ''}</div></td>
+      <td class="r">${anZahl(k.anzahl)}</td>
+      <td class="r">${k.preis != null ? anEur(k.preis) : '—'}</td>
+      <td class="r"><strong>${anEur(k.wert)}</strong><div class="set">${k.anteil} %</div></td>
+      <td class="r">${k.kaufpreis != null ? anEur(k.kaufpreis) : '—'}</td>
+      <td class="r">${k.rendite != null ? `<span class="${k.rendite >= 0 ? 'an-plus' : 'an-minus'}">${anProz(k.rendite)}</span>` : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>${anMehrKnopf('an-posten', Math.max(0, liste.length - 15))}`;
+}
+
+/* ------------------------------------------------------------------ Markt */
+
+function marktOeffnen() {
+  if (!S.user) return loginOeffnen(t('an_markt_login'));
+  planerSchliessen(); vitrineSchliessen(); sammlungSchliessen(); auswertungSchliessen(); profilseiteSchliessen();
+  $('marktseite').classList.remove('hidden');
+  ebeneOeffnen(marktSchliessen);
+  reiterSetzen('seg-markt');
+  mnavMarkieren('mnav-mehr');
+  marktLaden();
+}
+function marktSchliessen() {
+  if (!$('marktseite') || $('marktseite').classList.contains('hidden')) return;
+  ebeneAufraeumen(marktSchliessen);
+  $('marktseite').classList.add('hidden');
+  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
+}
+
+async function marktLaden() {
+  const r = $('mk-rumpf');
+  r.innerHTML = `<div style="padding:40px;text-align:center">${lader('gross', t('laedt'))}</div>`;
+  try {
+    AN.markt = await api('api/analytics/markt?tage=' + $('mk-zeit').value);
+  } catch (e) {
+    r.innerHTML = anDuenn(t('an_fehler')); return;
+  }
+  zeichneMarkt();
+}
+
+function zeichneMarkt() {
+  const d = AN.markt, r = $('mk-rumpf'), st = d.stand || {};
+  const kopf = `<h1>${t('an_markt_t')}</h1><div class="unter">${t('an_markt_u')}</div>
+    <div class="an-band">
+      ${anKachel(t('an_erfasst'), anZahl(st.karten_mit_preis), t('an_erfasst_u'))}
+      ${anKachel(t('an_us_preise'), anZahl(st.karten_mit_usd), t('an_us_preise_u'))}
+      ${anKachel(t('an_reihe'), anZahl(st.reihe_tage) + ' ' + t('an_tage'),
+                 st.reihe_beginnt ? t('an_seit').replace('{d}', anTag(st.reihe_beginnt)) : '')}
+    </div>`;
+
+  if (!d.pro) {
+    r.innerHTML = kopf + anSperre([t('an_mpro_1'), t('an_mpro_2'), t('an_mpro_3'), t('an_mpro_4')], t('an_mpro_t'))
+      + (d.sets && d.sets.length ? `<div class="an-tafel"><h3>${t('an_sets')}</h3>
+          <div class="unter">${t('an_kostprobe')}</div>${anSetTabelle(d.sets)}</div>` : '');
+    return;
+  }
+
+  const ix = d.indizes || {};
+  const farben = { vintage: 'var(--d1)', mitte: 'var(--d3)', modern: 'var(--d2)' };
+  const namen = { vintage: t('an_ix_alt'), mitte: t('an_ix_mitte'), modern: t('an_ix_neu') };
+  const reihen = Object.keys(namen).filter((k) => ix[k] && (ix[k].index || []).length >= 2)
+    .map((k) => ({ name: namen[k], farbe: farben[k],
+                   punkte: ix[k].index.map((p) => ({ datum: p.datum, wert: p.wert })) }));
+  const indexTafel = reihen.length
+    ? anLinie(reihen, { index: true, legende: true, fmt: (v) => v.toFixed(0), titel: t('an_indizes') })
+      + `<div class="unter" style="margin:10px 0 0;font-size:11.5px">${t('an_index_hin')}</div>`
+    : anDuenn(t('an_index_kurz'));
+
+  const bw = d.bewegung || {};
+  const bewegTafel = (bw.hoch || []).length || (bw.runter || []).length
+    ? `<div class="an-zwei">
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--gruen)">${t('an_gewinner')}</div>${anBewegTabelle(bw.hoch, 'mk-hoch')}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--akzent)">${t('an_verlierer')}</div>${anBewegTabelle(bw.runter, 'mk-runter')}</div>
+       </div>
+       <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('an_beweg_basis')
+          .replace('{n}', anZahl(bw.basis || 0)).replace('{v}', bw.von ? anTag(bw.von) : '?').replace('{b}', bw.bis ? anTag(bw.bis) : '?')}</div>`
+    : anDuenn(t('an_beweg_kurz'));
+
+  const vg = d.vergleich || {};
+  const vgTafel = vg.kurs
+    ? `<div class="an-zwei">
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_hier_guenstiger')}</div>${anVgTabelle(vg.guenstiger_eu, 'mk-eu')}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_dort_guenstiger')}</div>${anVgTabelle(vg.guenstiger_us, 'mk-us')}</div>
+       </div>
+       <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('an_kurs_hin')
+          .replace('{k}', vg.kurs.toFixed(3)).replace('{n}', anZahl(vg.geprueft || vg.paare))}
+          ${vg.verworfen ? ' ' + t('an_verworfen').replace('{n}', anZahl(vg.verworfen)) : ''}</div>`
+    : anDuenn(t('an_vg_kurz'));
+
+  r.innerHTML = kopf + `
+    <div class="an-tafel"><h3>${t('an_indizes')}</h3>
+      <div class="unter">${t('an_indizes_u')}</div>${indexTafel}</div>
+
+    <div class="an-tafel"><h3>${t('an_eu_us')}</h3>
+      <div class="unter">${t('an_eu_us_u')}</div>${vgTafel}</div>
+
+    <div class="an-tafel"><h3>${t('an_bewegung')}</h3>
+      <div class="unter">${t('an_bewegung_u')}</div>${bewegTafel}</div>
+
+    <div class="an-tafel"><h3>${t('an_verteilung')}</h3>
+      <div class="unter">${t('an_verteilung_u')}</div>
+      <div class="an-zwei">
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viele')}</div>
+          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.anzahl })), { roh: true, farbe: 'var(--d2)' })}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viel_wert')}</div>
+          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.summe })), { farbe: 'var(--d3)' })}</div>
+      </div></div>
+
+    <div class="an-tafel"><h3>${t('an_sets')}</h3>
+      <div class="unter">${t('an_sets_u')}</div>${anSetTabelle(d.sets)}</div>
+
+    <div class="an-tafel"><h3>${t('an_teuerste')}</h3>
+      <div class="unter">${t('an_teuerste_u')}</div>
+      <div class="an-karten">${(d.teuerste || []).map((k) => `<button class="an-karte" onclick="detailOeffnen('${esc(k.id)}')">
+        <img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="p">${anEur(k.eur, 0)}</div><div class="n" title="${esc(k.name)}">${esc(k.name)}</div></button>`).join('')}</div></div>`;
+}
+
+function anBewegTabelle(liste, id) {
+  if (!liste || !liste.length) return anDuenn(t('an_keine_daten'));
+  const grenze = window.innerWidth < 700 ? 5 : 10;
+  return `<div id="${id}"><div class="an-tab-rahmen"><table class="an-tab" style="min-width:0">
+    <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('an_von_bis')}</th><th class="r">${t('an_aenderung')}</th></tr></thead>
+    <tbody>${liste.map((k, i) => `<tr class="${i >= grenze ? 'an-rest' : ''}">
+      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
+      <td><div class="nm">${esc(k.name)}</div><div class="set">${esc(k.set || '')}${k.nr ? ' · ' + esc(k.nr) : ''}</div></td>
+      <td class="r">${anEur(k.alt)} → <strong>${anEur(k.neu)}</strong></td>
+      <td class="r"><span class="${k.prozent >= 0 ? 'an-plus' : 'an-minus'}">${anProz(k.prozent)}</span></td>
+    </tr>`).join('')}</tbody></table></div>${anMehrKnopf(id, Math.max(0, liste.length - grenze))}</div>`;
+}
+
+function anVgTabelle(liste, id) {
+  if (!liste || !liste.length) return anDuenn(t('an_keine_daten'));
+  const grenze = window.innerWidth < 700 ? 5 : 10;
+  return `<div id="${id}"><div class="an-tab-rahmen"><table class="an-tab" style="min-width:0">
+    <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('an_beide_boersen')}</th><th class="r">${t('an_abstand')}</th></tr></thead>
+    <tbody>${liste.map((k, i) => `<tr class="${i >= grenze ? 'an-rest' : ''}">
+      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
+      <td><div class="nm">${esc(k.name)}</div><div class="set">${esc(k.set || '')}${k.nr ? ' · ' + esc(k.nr) : ''}</div></td>
+      <td class="r">${anEur(k.eur)}<div class="set">$ ${k.usd.toFixed(2)}</div></td>
+      <td class="r"><span class="${k.abstand <= 0 ? 'an-plus' : 'an-minus'}">${anProz(k.abstand)}</span>
+        ${k.differenz != null ? `<div class="set">${(k.differenz > 0 ? '+' : '') + anEur(k.differenz, 0)}</div>` : ''}</td>
+    </tr>`).join('')}</tbody></table></div>${anMehrKnopf(id, Math.max(0, liste.length - grenze))}</div>`;
+}
+
+function anSetTabelle(liste) {
+  if (!liste || !liste.length) return anDuenn(t('an_keine_daten'));
+  return `<div id="mk-sets"><div class="an-tab-rahmen"><table class="an-tab">
+    <thead><tr><th>${t('an_set')}</th><th class="r">${t('an_karten')}</th>
+      <th class="r">${t('an_schnitt')}</th><th class="r">${t('an_summe')}</th>
+      <th class="r">${t('an_teuerste_karte')}</th></tr></thead>
+    <tbody>${liste.map((k, i) => `<tr class="${i >= 10 ? 'an-rest' : ''}">
+      <td><div class="nm">${esc(k.set_name || k.set_id)}</div><div class="set">${esc((k.release_date || '').slice(0, 4))}</div></td>
+      <td class="r">${anZahl(k.n)}</td>
+      <td class="r"><strong>${anEur(k.schnitt)}</strong></td>
+      <td class="r">${anEur(k.summe, 0)}</td>
+      <td class="r">${anEur(k.teuerste, 0)}</td>
+    </tr>`).join('')}</tbody></table></div>${anMehrKnopf('mk-sets', Math.max(0, liste.length - 10))}</div>`;
 }
 
 /** Verteilung der Karten im Binder: nach Jahrzehnt, Seltenheit und Set. Zahlen, die man

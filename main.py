@@ -315,6 +315,18 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_binders_user ON binders(user_id)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_binders_sichtbar ON binders(sichtbar)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
+    # Amerikanische Preise (TCGplayer) neben den europäischen (Cardmarket). Beide kommen
+    # aus derselben TCGdex-Antwort; der Vergleich der zwei Märkte ist eine Zahl, die sonst
+    # niemand zeigt, und sie kostet keinen zusätzlichen Abruf.
+    for befehl in ("ALTER TABLE card_prices ADD COLUMN usd REAL",
+                   "ALTER TABLE card_prices ADD COLUMN usd_holo REAL",
+                   "ALTER TABLE card_prices ADD COLUMN tcgplayer_id INTEGER",
+                   "ALTER TABLE price_history ADD COLUMN usd REAL"):
+        try:
+            con.execute(befehl)
+        except Exception:
+            pass
+    con.execute("CREATE INDEX IF NOT EXISTS idx_ph_datum ON price_history(datum)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_pokemon_familie ON pokemon(familie)")
     con.commit()
     con.close()
@@ -909,25 +921,75 @@ def _symbole_job():
         list(pool.map(hole, ids))
 
 
+# Gemessen: 8.500 Karten in 60 s, also rund 140 je Sekunde. Der ganze bepreiste Katalog
+# läuft damit in gut zwei Minuten durch — deshalb wird täglich alles aufgefrischt statt
+# einen Teil zu rotieren. Das ist nicht nur bequemer, es ist die Voraussetzung dafür, dass
+# die Auswertungen überhaupt etwas aussagen: Index und Bewegungsliste vergleichen dieselbe
+# Karte an zwei Tagen. Bei rotierender Auffrischung hätte jede Karte nur alle acht Tage
+# einen Messpunkt, und keine zwei Karten dieselben zwei Tage.
+PREIS_TAGESLAUF = 25000      # obere Schranke; deckt den ganzen bepreisten Katalog ab
+PREIS_STAPEL = 2500          # Erstbefüllung: so viele noch unbepreiste Karten je Lauf
+
+
+def _preis_schreiben(con, reihen):
+    """Ergebnisse eines Laufs in Preistabelle und Historie ablegen."""
+    heute = _heute()
+    for cid, eur, holo, usd, usd_holo, tid in reihen:
+        con.execute(
+            "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id, updated_at)"
+            " VALUES (?,?,?,?,?,?,datetime('now'))"
+            " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur, eur_holo=excluded.eur_holo,"
+            " usd=COALESCE(excluded.usd, card_prices.usd),"
+            " usd_holo=COALESCE(excluded.usd_holo, card_prices.usd_holo),"
+            " tcgplayer_id=COALESCE(excluded.tcgplayer_id, card_prices.tcgplayer_id),"
+            " updated_at=excluded.updated_at",
+            (cid, eur, holo, usd, usd_holo, tid))
+        if eur is not None or usd is not None:
+            con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
+                        " ON CONFLICT(card_id, datum) DO UPDATE SET"
+                        " eur=COALESCE(excluded.eur, price_history.eur),"
+                        " usd=COALESCE(excluded.usd, price_history.usd)",
+                        (cid, heute, eur, usd))
+
+
 def _preishistorie_job():
-    """Täglich: alle bekannten Preise auffrischen und in die Historie schreiben."""
+    """Preise erfassen und auffrischen.
+
+    Vorher lief das nur über Karten, die schon einmal jemand angesehen hatte — dadurch
+    kannte die Datenbank 649 von 33.700 Karten und jede Marktaussage stand auf Sand.
+    Jetzt holt jeder Lauf zuerst Karten ohne Preis dazu (der Katalog ist nach etwa zehn
+    Läufen vollständig) und frischt danach die ältesten Einträge auf."""
     con = get_db()
-    ids = [r["card_id"] for r in con.execute("SELECT card_id FROM card_prices ORDER BY updated_at LIMIT 3000")]
+    # Westliche Karten mit Bild zuerst: japanische Sets haben bei Cardmarket meist keinen Preis
+    neue = [r["id"] for r in con.execute(
+        "SELECT c.id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+        " WHERE p.card_id IS NULL AND COALESCE(c.region,'intl') = 'intl'"
+        " AND (c.image_de IS NOT NULL OR c.image_en IS NOT NULL)"
+        " ORDER BY c.release_date DESC LIMIT ?", (PREIS_STAPEL,))]
+    # Solange noch erfasst wird, hat das Vorrang — sonst der ganze bepreiste Katalog.
+    alt = [] if neue else [r["card_id"] for r in con.execute(
+        "SELECT card_id FROM card_prices ORDER BY updated_at LIMIT ?", (PREIS_TAGESLAUF,))]
+    offen = con.execute(
+        "SELECT COUNT(*) c FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+        " WHERE p.card_id IS NULL AND COALESCE(c.region,'intl') = 'intl'"
+        " AND (c.image_de IS NOT NULL OR c.image_en IS NOT NULL)").fetchone()["c"]
     con.close()
+
+    ids = neue + alt
     if not ids:
         return
     with httpx.Client(timeout=20, headers=UA) as client:
         with ThreadPoolExecutor(6) as pool:
-            ergebnisse = list(pool.map(lambda c: _fetch_price(client, c), ids))
+            ergebnisse = list(pool.map(lambda c: _fetch_price_voll(client, c), ids))
     con = get_db()
-    for cid, eur, holo in ergebnisse:
-        con.execute("INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at) VALUES (?,?,?,datetime('now'))",
-                    (cid, eur, holo))
-        if eur is not None:
-            con.execute("INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)", (cid, _heute(), eur))
+    _preis_schreiben(con, ergebnisse)
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preise_offen', ?)",
+                (str(max(0, offen - len(neue))),))
     con.commit()
     con.close()
+    print(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt,"
+          f" {max(0, offen - len(neue))} offen")
 
 
 def _aufraeumen_job():
@@ -985,8 +1047,13 @@ def _hintergrund_takt():
             _cache_job()
             con = get_db()
             letzter = con.execute("SELECT value FROM kv WHERE key='preishistorie_lauf'").fetchone()
+            offen_row = con.execute("SELECT value FROM kv WHERE key='preise_offen'").fetchone()
             con.close()
-            if not letzter or letzter["value"] < datetime_str_vor(23):
+            offen = int((offen_row["value"] if offen_row else "0") or 0)
+            # Solange der Katalog noch nicht erfasst ist, läuft es stündlich weiter; danach
+            # genügt einmal am Tag, weil Cardmarket ohnehin nur täglich neu rechnet.
+            abstand = 0.75 if offen > 0 else 23
+            if not letzter or letzter["value"] < datetime_str_vor(abstand):
                 _preishistorie_job()
         except Exception:
             pass
@@ -2419,10 +2486,21 @@ except Exception as _e:  # pragma: no cover
 
 def _fetch_price(client, card_id):
     """→ (card_id, eur, eur_holo). Japanische IDs (Großbuchstaben) laufen über den ja-Pfad."""
+    cid, eur, holo, _usd, _uh, _tid = _fetch_price_voll(client, card_id)
+    return cid, eur, holo
+
+
+def _fetch_price_voll(client, card_id):
+    """→ (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id).
+
+    Dieselbe Antwort trägt beide Märkte: Cardmarket in Euro und TCGplayer in Dollar.
+    Die TCGplayer-Produktnummer wird mitgenommen, weil sie der Schlüssel zu allen
+    Anbietern gegradeter Preise ist — falls das später einmal dazukommt."""
     lang = "ja" if card_id[:1].isupper() else "en"
     try:
         d = client.get(f"{TCGDEX}/{lang}/cards/{card_id}").json()
-        cm = (d.get("pricing") or {}).get("cardmarket") or {}
+        preise = d.get("pricing") or {}
+        cm = preise.get("cardmarket") or {}
         eur = holo = None
         for key in ("trend", "avg30", "avg", "low"):
             if cm.get(key) is not None:
@@ -2430,10 +2508,30 @@ def _fetch_price(client, card_id):
         for key in ("trend-holo", "avg30-holo", "avg-holo", "low-holo"):
             if cm.get(key):
                 holo = round(float(cm[key]), 2); break
-        return card_id, eur, holo
+
+        tp = preise.get("tcgplayer") or {}
+        usd = usd_holo = None
+        tid = None
+        # TCGplayer gliedert nach Druckvariante. „normal“ ist der Grundpreis, die Holo-Varianten
+        # der Aufpreis; welche es gibt, hängt von der Karte ab.
+        for name in ("normal", "1st-edition", "unlimited"):
+            v = tp.get(name)
+            if isinstance(v, dict) and v.get("marketPrice") is not None:
+                usd = round(float(v["marketPrice"]), 2)
+                tid = tid or v.get("productId")
+                break
+        for name in ("holofoil", "reverse-holofoil", "1st-edition-holofoil"):
+            v = tp.get(name)
+            if isinstance(v, dict) and v.get("marketPrice") is not None:
+                usd_holo = round(float(v["marketPrice"]), 2)
+                tid = tid or v.get("productId")
+                break
+        if usd is None and usd_holo is not None:
+            usd = usd_holo
+        return card_id, eur, holo, usd, usd_holo, tid
     except Exception:
         pass
-    return card_id, None, None
+    return card_id, None, None, None, None, None
 
 
 @app.post("/api/preise")
@@ -3528,6 +3626,18 @@ try:
 except Exception as _e:  # pragma: no cover
     print("Sammlung-Modul nicht geladen:", _e)
     _sammlung_kennzahlen = None
+
+
+# --- Auswertungen: Sammlung & Markt (Modul analytics.py) -------------------
+
+try:
+    import analytics as _analytics  # noqa: E402
+    _analytics_kennzahlen = _analytics.register(
+        app, get_db=get_db, require_user=_require_user, ist_pro=_ist_pro,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Analytics-Modul nicht geladen:", _e)
+    _analytics_kennzahlen = None
 
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
