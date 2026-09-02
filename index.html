@@ -745,7 +745,8 @@
   .planer-kopf { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card);
                  border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
   .planer-rumpf { flex: 1; overflow: auto; padding: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-content: start; }
-  .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; width: 300px; }
+  .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px;
+                  width: var(--planer-w, 300px); }
   body.dunkle-seiten .planer-seite { background: #101216; border-color: rgba(255,255,255,.1); }
   body.dunkle-seiten .planer-seite .ps-titel { color: #8a919d; }
   .planer-seite .ps-titel { font-size: 12px; font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
@@ -874,10 +875,6 @@
   .zst-liste span { font-size: 10px; font-weight: 800; color: var(--mut); }
   .zst-liste strong { font-size: 12.5px; }
   .zst-hin { font-size: 10.5px; color: var(--mut); line-height: 1.5; margin-top: 6px; }
-  /* Rasterwähler in der Kopfzeile jeder Planer-Seite */
-  .ps-raster { border: 1.5px solid var(--line); border-radius: 7px; background: var(--card); color: var(--mut);
-               font-size: 11.5px; font-weight: 700; padding: 2px 4px; cursor: pointer; }
-  .ps-raster:hover { border-color: var(--akzent); color: var(--ink); }
   /* Zielmodus: jedes Fach ist ein möglicher Landeplatz */
   body.ziel-modus #planer-rumpf .slot { cursor: crosshair; }
   body.ziel-modus #planer-rumpf .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
@@ -1918,6 +1915,10 @@
     <button class="btn sekundaer mobil-only" style="font-size:13px" onclick="ansicht('suche')">‹ <span data-i18n="m_suche">Suche</span></button>
     <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
     <div style="flex:1"></div>
+    <div class="binder-groesse desktop-only" style="width:150px" title="${''}">
+      <span data-i18n="pl_zoom">Größe</span>
+      <input type="range" id="pl-zoom" min="220" max="620" step="20" oninput="planerZoom(this.value)">
+    </div>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
   </div>
   <div class="planer-rumpf" id="planer-rumpf"></div>
@@ -2494,7 +2495,7 @@ const T = {
     sm_wert_posten: 'Wert dieses Postens', sm_je_stueck: 'je Stück',
     rk_fehlen: 'Dir fehlen noch {n} Karten', rk_ohne: 'Für {n} davon kennt Cardmarket keinen Preis.',
     sm_ohne_zustand: 'ohne Zustand wird mit dem Trend gerechnet',
-    s_seite_raster: 'Raster dieser Seite', raster_seite: 'Seite {n} steht jetzt auf {r}',
+    pl_zoom: 'Größe',
     gemischt: '(gemischt)',
     // Druckdialog
     ex_dialog: 'Drucken …', dr_t: 'Drucken',
@@ -2846,7 +2847,7 @@ const T = {
     sm_wert_posten: 'Value of this entry', sm_je_stueck: 'each',
     rk_fehlen: 'You are still missing {n} cards', rk_ohne: 'Cardmarket has no price for {n} of them.',
     sm_ohne_zustand: 'without a condition the trend is used',
-    s_seite_raster: 'Grid for this page', raster_seite: 'Page {n} is now {r}',
+    pl_zoom: 'Size',
     gemischt: '(mixed)',
     ex_dialog: 'Print …', dr_t: 'Print',
     dr_u: 'Placeholders to cut out, at real card size. What you pick fills A4 sheets in order.',
@@ -4502,22 +4503,6 @@ function seiteFaecher(nr) {
   return S.binder.items.slice(p.start, p.start + p.laenge);
 }
 
-/** Raster einer einzelnen Seite ändern. Die Fächer bleiben, wo sie sind — nur die
- *  Grenzen dahinter verschieben sich, deshalb wird auf ein Vielfaches aufgefüllt. */
-function seiteRasterSetzen(nr, layout) {
-  if (!LAYOUTS[layout] || S.nurAnsicht) return;
-  const opt = S.binder.options = S.binder.options || {};
-  const je = opt.seitenLayouts = opt.seitenLayouts || {};
-  merken('raster');
-  if (layout === S.binder.layout) delete je[nr]; else je[nr] = layout;
-  // Nach der Änderung fehlen der Seite womöglich Fächer: bis zu ihrem Ende auffüllen,
-  // sonst rutscht die nächste Seite in die Lücke.
-  const p = seiteInfo(nr);
-  while (S.binder.items.length < p.start + p.laenge) S.binder.items.push({ type: 'empty' });
-  speichern(); zeichneBinder();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
-  toastUndo(t('raster_seite').replace('{n}', nr + 1).replace('{r}', layout.replace('x', '×')));
-}
 
 function slotInhalt(item) {
   if (!item) return '+';
@@ -5779,8 +5764,13 @@ function ebeneZu(schliesser) {
   schliesser();
 }
 
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', (ev) => {
   if (EBENEN.length) { const schliessen = EBENEN.pop(); try { schliessen(); } catch (e) {} return; }
+  // Ein Eintrag, den eine längst geschlossene Ebene hinterlassen hat. Er trägt die Adresse
+  // von damals — wer seither den Binder gewechselt hat, würde hier zurück in den alten
+  // geworfen, samt Neuladen. Der Eintrag wird eingesammelt, die Adresse geradegezogen,
+  // sonst passiert nichts.
+  if (ev.state && ev.state.bpEbene) { routeZurueck(); return; }
   // Nichts offen: dann hat sich die Route geändert – etwa Zurück aus der Nur-Ansicht in die
   // Vitrine oder zu einem anderen Binder. Die Seite baut sich dafür sauber neu auf; vorher
   // blieb die alte Ansicht einfach stehen und wirkte, als käme man nie wieder heraus.
@@ -6529,6 +6519,7 @@ function ansicht(w) {
 }
 function planerOeffnen() {
   hashSetzen('planer');
+  planerZoomInit();
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
@@ -7168,9 +7159,6 @@ function zeichnePlaner() {
     }
     html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
       <span class="ps-akt">
-        <select class="ps-raster" title="${t('s_seite_raster')}" onchange="seiteRasterSetzen(${seite},this.value)">
-          ${Object.keys(LAYOUTS).map((l) => `<option value="${l}" ${sp.layout === l ? 'selected' : ''}>${l.replace('x', '×')}</option>`).join('')}
-        </select>
         <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">${ic('palette', 16)}</button>
         <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
         <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
@@ -8153,6 +8141,20 @@ function anzeigeName() { return S.user ? (S.user.name || S.user.email.split('@')
 
 
 // ---------- Planer: Aktionen nur mit Auswahl ----------
+/** Wie groß die Seiten im Planer stehen — gilt für alle auf einmal und bleibt gemerkt.
+ *  Wer 40 Seiten sortiert, will sie klein; wer eine Seite feinlegt, will sie groß. */
+function planerZoom(px) {
+  document.documentElement.style.setProperty('--planer-w', px + 'px');
+  try { localStorage.setItem('bp_planer_w', px); } catch (e) {}
+}
+function planerZoomInit() {
+  let px = 300;
+  try { px = parseInt(localStorage.getItem('bp_planer_w'), 10) || 300; } catch (e) {}
+  document.documentElement.style.setProperty('--planer-w', px + 'px');
+  const el = $('pl-zoom');
+  if (el) el.value = px;
+}
+
 function planerAktionen() {
   const n = S.auswahl.size;
   $('planer-bar').classList.toggle('hidden', n === 0);
