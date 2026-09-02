@@ -318,7 +318,8 @@ def init_db():
     # Amerikanische Preise (TCGplayer) neben den europäischen (Cardmarket). Beide kommen
     # aus derselben TCGdex-Antwort; der Vergleich der zwei Märkte ist eine Zahl, die sonst
     # niemand zeigt, und sie kostet keinen zusätzlichen Abruf.
-    for befehl in ("ALTER TABLE card_prices ADD COLUMN usd REAL",
+    for befehl in ("ALTER TABLE card_prices ADD COLUMN cm_produkt INTEGER",
+                   "ALTER TABLE card_prices ADD COLUMN usd REAL",
                    "ALTER TABLE card_prices ADD COLUMN usd_holo REAL",
                    "ALTER TABLE card_prices ADD COLUMN tcgplayer_id INTEGER",
                    "ALTER TABLE price_history ADD COLUMN usd REAL"):
@@ -932,24 +933,55 @@ PREIS_STAPEL = 2500          # Erstbefüllung: so viele noch unbepreiste Karten 
 
 
 def _preis_schreiben(con, reihen):
-    """Ergebnisse eines Laufs in Preistabelle und Historie ablegen."""
+    """Ergebnisse eines Laufs ablegen. Fehlgeschlagene Abrufe werden übergangen —
+    der alte Preis bleibt lieber stehen, als durch einen Ausfall gelöscht zu werden."""
     heute = _heute()
-    for cid, eur, holo, usd, usd_holo, tid in reihen:
+    geschrieben = 0
+    for cid, ok, eur, holo, usd, usd_holo, tid, pid in reihen:
+        if not ok:
+            continue
+        geschrieben += 1
         con.execute(
-            "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id, updated_at)"
-            " VALUES (?,?,?,?,?,?,datetime('now'))"
+            "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id,"
+            " cm_produkt, updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'))"
             " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur, eur_holo=excluded.eur_holo,"
             " usd=COALESCE(excluded.usd, card_prices.usd),"
             " usd_holo=COALESCE(excluded.usd_holo, card_prices.usd_holo),"
             " tcgplayer_id=COALESCE(excluded.tcgplayer_id, card_prices.tcgplayer_id),"
+            " cm_produkt=excluded.cm_produkt,"
             " updated_at=excluded.updated_at",
-            (cid, eur, holo, usd, usd_holo, tid))
+            (cid, eur, holo, usd, usd_holo, tid, pid))
         if eur is not None or usd is not None:
             con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
                         " ON CONFLICT(card_id, datum) DO UPDATE SET"
                         " eur=COALESCE(excluded.eur, price_history.eur),"
                         " usd=COALESCE(excluded.usd, price_history.usd)",
                         (cid, heute, eur, usd))
+    return geschrieben
+
+
+def _mehrdeutige_produkte(reihen):
+    """Karten aussortieren, deren Cardmarket-Produkt noch anderen Karten gehört.
+
+    TCGdex ordnet gleichnamige Karten desselben Sets gern demselben Produkt zu — die
+    vier Mewtwo/Mew-Promos aus „XY Black Star Promos" hingen alle an Produkt 554275 und
+    trugen deshalb denselben Preis von 5.550 €, während die eigentliche Karte bei knapp
+    170 € steht. Welche der Karten den Preis zu Recht trägt, lässt sich von außen nicht
+    entscheiden, also bekommt keine einen: eine leere Stelle ist ehrlich, eine falsche
+    Zahl nicht. Die Produktnummer wird trotzdem gespeichert, damit der Fall nachvollzogen
+    werden kann.
+
+    → Menge der Karten-IDs, deren Europreis verworfen werden muss."""
+    nach_produkt = {}
+    for e in reihen:
+        cid, ok, eur, pid = e[0], e[1], e[2], e[7]
+        if ok and pid is not None and eur is not None:
+            nach_produkt.setdefault(pid, []).append(cid)
+    raus = set()
+    for pid, karten in nach_produkt.items():
+        if len(karten) > 1:
+            raus.update(karten)
+    return raus
 
 
 def _preishistorie_job():
@@ -981,14 +1013,32 @@ def _preishistorie_job():
     with httpx.Client(timeout=20, headers=UA) as client:
         with ThreadPoolExecutor(6) as pool:
             ergebnisse = list(pool.map(lambda c: _fetch_price_voll(client, c), ids))
+
+    # Ein paar Ausfälle sind normal (Zeitüberschreitung, einzelne 404). Fällt aber ein
+    # Fünftel aus, ist die Quelle selbst gestört; dann wird gar nichts geschrieben,
+    # sonst wandert der Ausfall als Datenstand in die Historie.
+    fehl = sum(1 for e in ergebnisse if not e[1])
+    if fehl > len(ergebnisse) * 0.2:
+        print(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
+        return
+
+    # Preise verwerfen, die an einem mehrfach vergebenen Cardmarket-Produkt hängen.
+    mehrdeutig = _mehrdeutige_produkte(ergebnisse)
+    if mehrdeutig:
+        ergebnisse = [
+            (e[0], e[1], None, None, e[4], e[5], e[6], e[7]) if e[0] in mehrdeutig else e
+            for e in ergebnisse
+        ]
+
     con = get_db()
-    _preis_schreiben(con, ergebnisse)
+    geschrieben = _preis_schreiben(con, ergebnisse)
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preise_offen', ?)",
                 (str(max(0, offen - len(neue))),))
     con.commit()
     con.close()
-    print(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt,"
+    print(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt, {geschrieben} geschrieben,"
+          f" {fehl} fehlgeschlagen, {len(mehrdeutig)} mehrdeutig verworfen,"
           f" {max(0, offen - len(neue))} offen")
 
 
@@ -1722,8 +1772,16 @@ def card_detail(card_id: str):
     k["set"] = dict(sr) if sr else None
     if k["set"]:
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
-    pr = con.execute("SELECT eur, eur_holo, updated_at FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
-    k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"]} if pr else None
+    pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt FROM card_prices"
+                     " WHERE card_id = ?", (card_id,)).fetchone()
+    # Fehlt der Preis, weil das Cardmarket-Produkt noch anderen Karten gehört? Dann soll
+    # die Karte das sagen können, statt kommentarlos einen Strich zu zeigen.
+    geteilt = 0
+    if pr and pr["eur"] is None and pr["cm_produkt"]:
+        geteilt = con.execute("SELECT COUNT(*) c FROM card_prices WHERE cm_produkt = ?",
+                              (pr["cm_produkt"],)).fetchone()["c"]
+    k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"],
+                  "geteilt": geteilt if geteilt > 1 else 0} if pr else None
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
         "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
     andere = []
@@ -2489,26 +2547,33 @@ except Exception as _e:  # pragma: no cover
 
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
 
-def _fetch_price(client, card_id):
-    """→ (card_id, eur, eur_holo). Japanische IDs (Großbuchstaben) laufen über den ja-Pfad."""
-    cid, eur, holo, _usd, _uh, _tid = _fetch_price_voll(client, card_id)
-    return cid, eur, holo
-
-
 def _fetch_price_voll(client, card_id):
-    """→ (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id).
+    """→ (card_id, ok, eur, eur_holo, usd, usd_holo, tcgplayer_id, cm_produkt).
 
     Dieselbe Antwort trägt beide Märkte: Cardmarket in Euro und TCGplayer in Dollar.
     Die TCGplayer-Produktnummer wird mitgenommen, weil sie der Schlüssel zu allen
-    Anbietern gegradeter Preise ist — falls das später einmal dazukommt."""
+    Anbietern gegradeter Preise ist — falls das später einmal dazukommt.
+
+    `ok` unterscheidet „abgerufen, kein Preis vorhanden" von „Abruf fehlgeschlagen".
+    Ohne diese Unterscheidung sahen beide Fälle gleich aus (überall None), und ein
+    Ausfall der Quelle hätte beim nächsten Lauf sämtliche Preise auf NULL gesetzt —
+    mit frischem `updated_at`, sodass nicht einmal aufgefallen wäre, woher es kam.
+
+    Mitgenommen wird auch `idProduct`, die Cardmarket-Produktnummer. Sie ist der
+    Schlüssel zur Preisprüfung: TCGdex hängt gelegentlich mehrere Karten an dasselbe
+    Produkt (gleichnamige Promos etwa), und dann steht bei allen der Preis von einer."""
     lang = "ja" if card_id[:1].isupper() else "en"
     try:
-        d = client.get(f"{TCGDEX}/{lang}/cards/{card_id}").json()
+        r = client.get(f"{TCGDEX}/{lang}/cards/{card_id}")
+        if r.status_code != 200:
+            return card_id, False, None, None, None, None, None, None
+        d = r.json()
         preise = d.get("pricing") or {}
         cm = preise.get("cardmarket") or {}
         eur = holo = None
+        # Eine 0 ist bei Cardmarket keine Preisangabe, sondern eine fehlende.
         for key in ("trend", "avg30", "avg", "low"):
-            if cm.get(key) is not None:
+            if cm.get(key):
                 eur = round(float(cm[key]), 2); break
         for key in ("trend-holo", "avg30-holo", "avg-holo", "low-holo"):
             if cm.get(key):
@@ -2533,10 +2598,10 @@ def _fetch_price_voll(client, card_id):
                 break
         if usd is None and usd_holo is not None:
             usd = usd_holo
-        return card_id, eur, holo, usd, usd_holo, tid
+        return card_id, True, eur, holo, usd, usd_holo, tid, cm.get("idProduct")
     except Exception:
         pass
-    return card_id, None, None, None, None, None
+    return card_id, False, None, None, None, None, None, None
 
 
 @app.post("/api/preise")
@@ -2575,14 +2640,31 @@ async def preise(request: Request):
         nachgeladen = [] if frei_gedrosselt else fehlt[:400]
     if nachgeladen:
         # Die Abrufe laufen im Threadpool; im Event-Loop stand der ganze Dienst 5 bis 15 Sekunden.
-        for cid, eur, eur_holo in await run_in_threadpool(_preise_holen, nachgeladen):
+        for cid, ok, eur, eur_holo, pid in await run_in_threadpool(_preise_holen, nachgeladen):
+            if not ok:
+                continue          # Ausfall der Quelle: den vorhandenen Stand nicht anfassen
+            # Gehört das Cardmarket-Produkt noch anderen Karten, ist der Preis nicht
+            # dieser Karte zuzuordnen — dieselbe Regel wie im Nachtlauf.
+            if pid is not None and eur is not None:
+                andere = con.execute(
+                    "SELECT COUNT(*) c FROM card_prices WHERE cm_produkt = ? AND card_id <> ?",
+                    (pid, cid)).fetchone()["c"]
+                if andere:
+                    eur = eur_holo = None
             result[cid] = eur; holo[cid] = eur_holo
+            # INSERT OR REPLACE würde usd, tcgplayer_id und cm_produkt mitlöschen.
             con.execute(
-                "INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at)"
-                " VALUES (?,?,?,datetime('now'))", (cid, eur, eur_holo))
+                "INSERT INTO card_prices (card_id, eur, eur_holo, cm_produkt, updated_at)"
+                " VALUES (?,?,?,?,datetime('now'))"
+                " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur,"
+                " eur_holo=excluded.eur_holo,"
+                " cm_produkt=COALESCE(excluded.cm_produkt, card_prices.cm_produkt),"
+                " updated_at=excluded.updated_at",
+                (cid, eur, eur_holo, pid))
             if eur is not None:
                 con.execute(
-                    "INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)",
+                    "INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
+                    " ON CONFLICT(card_id, datum) DO UPDATE SET eur=excluded.eur",
                     (cid, _heute(), eur))
         if user:
             con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
@@ -2598,10 +2680,14 @@ async def preise(request: Request):
 
 
 def _preise_holen(ids):
-    """Netzabrufe gesammelt im Threadpool — der Aufrufer bleibt frei."""
+    """Netzabrufe gesammelt im Threadpool — der Aufrufer bleibt frei.
+
+    → [(card_id, ok, eur, eur_holo, cm_produkt)]. Der Status wird durchgereicht, damit
+    ein Ausfall der Quelle nicht als „kein Preis" in der Datenbank landet."""
     with httpx.Client(timeout=20, headers=UA) as client:
         with ThreadPoolExecutor(8) as pool:
-            return list(pool.map(lambda c: _fetch_price(client, c), ids))
+            roh = list(pool.map(lambda c: _fetch_price_voll(client, c), ids))
+    return [(e[0], e[1], e[2], e[3], e[7]) for e in roh]
 
 
 def datetime_str_vor(stunden):

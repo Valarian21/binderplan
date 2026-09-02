@@ -2329,7 +2329,9 @@ const T = {
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
-    kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis', pf_sprache_ui: 'Sprache der Oberfläche',
+    kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis',
+    preis_geteilt: 'Cardmarket führt diese Karte gemeinsam mit {n} weiteren unter einem Produkt – ein eigener Preis lässt sich daraus nicht ableiten.',
+    pf_sprache_ui: 'Sprache der Oberfläche',
     f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
     m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
@@ -2657,7 +2659,9 @@ const T = {
     vpf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
-    kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price', pf_sprache_ui: 'Interface language',
+    kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price',
+    preis_geteilt: 'Cardmarket lists this card together with {n} others under one product – no price of its own can be derived from that.',
+    pf_sprache_ui: 'Interface language',
     f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
     m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
     tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
@@ -7533,6 +7537,11 @@ async function detailOeffnen(idOrIdx) {
         ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
       </div>
     </div>`;
+  if (preis.geteilt > 1 && $('detail-preis-stand')) {
+    // Kein Preis, weil Cardmarket diese Karte mit anderen unter einem Produkt führt.
+    $('detail-preis-stand').textContent = t('preis_geteilt').replace('{n}', preis.geteilt);
+    return;
+  }
   if (preis.eur == null) {   // Preis nachladen, falls noch nie geholt
     try { const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [k.id] }) });
       if (detailKarte && detailKarte.id === k.id) {
