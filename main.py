@@ -1058,8 +1058,11 @@ def admin_mailtest(request: Request, key: str = "", an: str = ""):
     ok = _mail_senden(an, "Binderplan – Testmail",
                       "Diese Nachricht bestätigt, dass der Mailversand von binderplan.app "
                       "funktioniert.\n\nViele Grüße\nBinderplan")
-    return {"stand": stand, "gesendet": ok,
-            "hinweis": "" if ok else "Der Server hat die Anmeldung abgelehnt — Benutzername oder Passwort prüfen."}
+    return {"stand": stand, "gesendet": ok, "fehler": "" if ok else _mail_letzter_fehler,
+            "hinweis": "" if ok else "Der Server hat die Nachricht nicht angenommen. Bei "
+                                     "„authentication failed“ stimmen Benutzername oder Passwort "
+                                     "nicht — eine reine Weiterleitung hat kein Passwort und kann "
+                                     "nicht senden; dafür braucht es ein echtes Postfach."}
 
 
 @app.post("/api/admin/sync")
@@ -1984,6 +1987,9 @@ def _neue_session(con, user_id) -> str:
 
 # --- E-Mail-Versand (SMTP aus .env: SMTP_HOST/PORT/USER/PASS/FROM) ----------
 
+_mail_letzter_fehler = ""
+
+
 def _mail_senden(an: str, betreff: str, text: str) -> bool:
     import smtplib
     from email.message import EmailMessage
@@ -1996,6 +2002,11 @@ def _mail_senden(an: str, betreff: str, text: str) -> bool:
     msg["Subject"] = betreff
     msg["From"] = f'{env.get("SMTP_FROM_NAME", "Binderplan")} <{env.get("SMTP_FROM", user)}>'
     msg["To"] = an
+    # Gesendet wird über das Postfach, das die Zugangsdaten hat; antworten sollen die Kunden
+    # aber dorthin, wo die Weiterleitung hängt. Deshalb sind Absender und Antwortadresse getrennt.
+    antwort = env.get("SMTP_REPLY_TO") or ""
+    if antwort:
+        msg["Reply-To"] = antwort
     msg.set_content(text)
     try:
         port = int(env.get("SMTP_PORT", "587") or 587)
@@ -2010,7 +2021,10 @@ def _mail_senden(an: str, betreff: str, text: str) -> bool:
                 s.login(user, env.get("SMTP_PASS", ""))
                 s.send_message(msg)
         return True
-    except Exception:
+    except Exception as e:
+        global _mail_letzter_fehler
+        _mail_letzter_fehler = f"{type(e).__name__}: {e}"[:300]
+        print("Mailversand fehlgeschlagen:", _mail_letzter_fehler)
         return False
 
 
@@ -2019,6 +2033,29 @@ def _mail_nebenbei(an, betreff, text) -> bool:
     if not _mail_konfiguriert():
         return False
     threading.Thread(target=_mail_senden, args=(an, betreff, text), daemon=True).start()
+    return True
+
+
+def betreiber_melden(text: str) -> bool:
+    """Kurze Nachricht an den Betreiber über denselben Telegram-Bot wie Jarvis.
+
+    Zweiter Kanal neben der E-Mail: Solange kein Postfach zum Senden eingerichtet ist, wäre ein
+    Kündigungswunsch sonst nur eine Zeile in der Datenbank, die niemand sieht. Läuft im
+    Hintergrund und schlägt still fehl — eine Meldung darf nie einen Kundenvorgang aufhalten."""
+    env = _env()
+    token, chat = env.get("TELEGRAM_TOKEN"), env.get("TELEGRAM_CHAT")
+    if not token or not chat:
+        return False
+
+    def senden():
+        try:
+            httpx.post(f"https://api.telegram.org/bot{token}/sendMessage",
+                       json={"chat_id": chat, "text": text[:3500],
+                             "disable_web_page_preview": True}, timeout=15)
+        except Exception as e:
+            print("Telegram-Meldung fehlgeschlagen:", e)
+
+    threading.Thread(target=senden, daemon=True).start()
     return True
 
 
@@ -2371,6 +2408,7 @@ try:
     _abo_api = abo.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user,
         env=_env, mail_senden=_mail_senden, mail_konfiguriert=_mail_konfiguriert, basis=BASE,
+        melden=betreiber_melden,
     )
 except Exception as _e:  # pragma: no cover
     print("Abo-Modul nicht geladen:", _e)

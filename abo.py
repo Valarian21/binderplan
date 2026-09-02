@@ -400,9 +400,11 @@ def _kuendigung_drossel(request: Request, grenze: int = 3, fenster: int = 3600):
     _kuendigungen[ip] = treffer
 
 
-def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_konfiguriert, basis):
+def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_konfiguriert,
+             basis, melden=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
-                mail_senden=mail_senden, mail_konfiguriert=mail_konfiguriert, basis=basis)
+                mail_senden=mail_senden, mail_konfiguriert=mail_konfiguriert, basis=basis,
+                melden=melden)
 
     con = get_db()
     con.executescript(
@@ -780,7 +782,21 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
             return {"ok": True, "gekuendigt": gekuendigt, "bis": bis[:10],
                     "mail": mail_konfiguriert()}
 
-        # Fall 2: nicht angemeldet → Bestätigungslink an die Adresse
+        # Fall 2a: ohne Mailversand gibt es keinen Bestätigungslink. Die Kündigung trotzdem
+        # abzulehnen wäre der schlechtere Weg — § 312k BGB verlangt, dass die Erklärung ohne
+        # Hürden abgegeben werden kann, und mit Zugang ist sie wirksam. Sie wird deshalb sofort
+        # ausgeführt und dem Betreiber gemeldet, damit er einen Missbrauch bemerken würde.
+        if user and user.get("stripe_sub") and not mail_konfiguriert():
+            con.close()
+            gekuendigt, bis = await run_in_threadpool(_kuendigung_ausfuehren, user, notiz)
+            if gekuendigt and _dep.get("melden"):
+                _dep["melden"](f"Binderplan: Kündigung über das Formular (ohne Login, kein "
+                               f"Mailversand eingerichtet).\nKonto: {user['email']}\n"
+                               f"Läuft bis: {bis[:10]}\nNotiz: {notiz[:200] or '—'}")
+            return {"ok": True, "gekuendigt": gekuendigt, "bis": bis[:10], "mail": False,
+                    "ohne_bestaetigung": True}
+
+        # Fall 2b: mit Mailversand → Bestätigungslink an die hinterlegte Adresse
         verschickt = False
         if user and user.get("stripe_sub") and mail_konfiguriert():
             token = secrets.token_urlsafe(24)
