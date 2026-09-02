@@ -225,6 +225,32 @@ def get_db():
     return con
 
 
+# Preise je Zustand veröffentlicht keine Börse. Was sich vertreten lässt: der Trend
+# steht für ein nahezu neues Exemplar, darunter die Abschläge, mit denen im Handel
+# gerechnet wird. Für Poor gilt der echte Tiefstpreis, wo er darunter liegt — ein
+# tatsächliches Angebot schlägt jede Ableitung. Dieselben Werte stehen im Kartendetail;
+# beide Stellen müssen zusammenpassen, sonst widersprechen sich Anzeige und Bewertung.
+ZUSTAND_FAKTOR = {"M": 1.10, "NM": 1.00, "EX": 0.85, "GD": 0.70,
+                  "LP": 0.55, "PL": 0.42, "PO": 0.30}
+
+
+def preis_fuer_posten(eur, eur_holo, eur_low, variante="normal", zustand=""):
+    """Was ein einzelnes Exemplar wert ist — Ausprägung und Zustand eingerechnet.
+
+    Ohne Zustandsangabe bleibt es beim Trend: wer nichts angegeben hat, soll keine
+    stillschweigende Abwertung bekommen."""
+    basis = eur_holo if (variante in ("holo", "reverse") and eur_holo) else eur
+    if basis is None:
+        return None
+    f = ZUSTAND_FAKTOR.get((zustand or "").upper())
+    if not f:
+        return round(basis, 2)
+    wert = basis * f
+    if (zustand or "").upper() == "PO" and eur_low is not None:
+        wert = min(wert, eur_low)
+    return round(wert, 2)
+
+
 def _spalte_da(con, tabelle, spalte):
     """Gibt es die Spalte schon? Der Pruefstein fuer additive Migrationen."""
     try:
@@ -1068,6 +1094,20 @@ def _preishistorie_job():
     if fehl > len(ergebnisse) * 0.2:
         print(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
         return
+
+    # Cardmarket führt neben dem Trend eine zweite Reihe für die Reverse-/Holo-Ausgabe.
+    # Gibt es die Karte nur in einer Form — Base-Set-Glurak, jede LV.X —, gehört diese
+    # zweite Zahl zu nichts: bei Glaziola standen 234,59 € Trend neben 91,45 € „Holo".
+    # Wird sie hier verworfen, stimmt es überall: Anzeige, Sammlungswert, Auswertung.
+    con = get_db()
+    nur_holo = {r["id"] for r in con.execute(
+        "SELECT id FROM cards WHERE COALESCE(has_normal,0) = 0 AND COALESCE(has_reverse,0) = 0")}
+    con.close()
+    if nur_holo:
+        ergebnisse = [
+            (e[0], e[1], e[2], None, e[4], e[5], e[6], e[7], e[8]) if e[0] in nur_holo else e
+            for e in ergebnisse
+        ]
 
     # Preise verwerfen, die an einem mehrfach vergebenen Cardmarket-Produkt hängen.
     mehrdeutig = _mehrdeutige_produkte(ergebnisse)
@@ -3880,6 +3920,7 @@ try:
     _sammlung_kennzahlen = _sammlung.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user, env=_env,
         card_query=_card_query, card_select=_CARD_SELECT, card_brief=_card_brief,
+        preis_fuer_posten=preis_fuer_posten,
     )
 except Exception as _e:  # pragma: no cover
     print("Sammlung-Modul nicht geladen:", _e)
@@ -3892,7 +3933,7 @@ try:
     import analytics as _analytics  # noqa: E402
     _analytics_kennzahlen = _analytics.register(
         app, get_db=get_db, require_user=_require_user, ist_pro=_ist_pro,
-        ist_pro_stufe=_ist_pro_stufe,
+        ist_pro_stufe=_ist_pro_stufe, preis_fuer_posten=preis_fuer_posten,
     )
 except Exception as _e:  # pragma: no cover
     print("Analytics-Modul nicht geladen:", _e)

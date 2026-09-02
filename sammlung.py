@@ -47,7 +47,8 @@ def _spr(v):
     return v if v in SPRACHEN else ""
 
 
-def register(app, *, get_db, current_user, require_user, env, card_query, card_select, card_brief):
+def register(app, *, get_db, current_user, require_user, env, card_query, card_select, card_brief,
+             preis_fuer_posten=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
                 card_query=card_query, card_select=card_select, card_brief=card_brief)
 
@@ -92,6 +93,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         return aus
 
     def _preise(card_ids):
+        """→ {card_id: {eur, eur_holo, eur_low}} — alles, was die Bewertung braucht."""
         if not card_ids:
             return {}
         con = get_db()
@@ -99,11 +101,20 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         ids = list(card_ids)
         for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
             marken = ",".join("?" * len(teil))
-            for r in con.execute(f"SELECT card_id, eur FROM card_prices WHERE card_id IN ({marken})", teil):
+            for r in con.execute("SELECT card_id, eur, eur_holo, eur_low FROM card_prices"
+                                 f" WHERE card_id IN ({marken})", teil):
                 if r["eur"]:
-                    aus[r["card_id"]] = r["eur"]
+                    aus[r["card_id"]] = {"eur": r["eur"], "eur_holo": r["eur_holo"],
+                                         "eur_low": r["eur_low"]}
         con.close()
         return aus
+
+    def _posten_wert(preis, posten):
+        """Wert eines einzelnen Postens — Ausprägung und Zustand eingerechnet."""
+        if not preis or not preis_fuer_posten:
+            return None
+        return preis_fuer_posten(preis.get("eur"), preis.get("eur_holo"), preis.get("eur_low"),
+                                 posten.get("variante") or "normal", posten.get("zustand") or "")
 
     # --- Endpunkte ---------------------------------------------------------
 
@@ -158,8 +169,16 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                                "sprache": e.get("sprache") or "", "kaufpreis": e["kaufpreis"],
                                "gekauft_am": e.get("gekauft_am"), "notiz": e["notiz"]} for e in eigene]
             kurz["varianten"] = kurz["posten"]      # alter Name, solange die Oberfläche ihn nutzt
-            kurz["eur"] = preise.get(r["id"])
-            kurz["wert"] = round((preise.get(r["id"]) or 0) * kurz["anzahl"], 2)
+            pr = preise.get(r["id"])
+            kurz["eur"] = pr["eur"] if pr else None
+            # Jeder Posten wird mit seinem eigenen Zustand bewertet. Vorher galt für alle
+            # derselbe Trend — eine Poor-Karte zählte so viel wie eine Near-Mint-Karte.
+            summe = 0
+            for pkt in kurz["posten"]:
+                w = _posten_wert(pr, pkt)
+                pkt["stueckwert"] = w
+                summe += (w or 0) * (pkt["anzahl"] or 0)
+            kurz["wert"] = round(summe, 2)
             kurz["geplant"] = geplant.get(r["id"], 0)
             karten.append(kurz)
 
@@ -182,8 +201,13 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         user = require_user(request)
         besitz = _besitz(user["id"])
         preise = _preise(list(besitz))
-        wert = sum((preise.get(c) or 0) * n for c, n in besitz.items())
         con = get_db()
+        # Der Gesamtwert summiert die Posten einzeln, damit der Zustand zählt.
+        wert = 0.0
+        for r in con.execute("SELECT card_id, variante, zustand, anzahl FROM sammlung"
+                             " WHERE user_id = ?", (user["id"],)):
+            w = _posten_wert(preise.get(r["card_id"]), dict(r))
+            wert += (w or 0) * (r["anzahl"] or 0)
         gezahlt = con.execute("SELECT SUM(kaufpreis * anzahl) s FROM sammlung WHERE user_id = ?"
                               " AND kaufpreis IS NOT NULL", (user["id"],)).fetchone()["s"] or 0
         mit_preis = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id = ? AND kaufpreis IS NOT NULL",
@@ -335,7 +359,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             marken = ",".join("?" * len(teil))
             for r in con.execute(f"{card_select} WHERE cards.id IN ({marken})", teil):
                 k = card_brief(r)
-                k["eur"] = preise.get(r["id"])
+                # _preise liefert seit der Zustandsbewertung ein Objekt je Karte.
+                pr = preise.get(r["id"])
+                k["eur"] = pr["eur"] if pr else None
                 aus.append(k)
         con.close()
         aus.sort(key=lambda k: -(k["eur"] or 0))
@@ -377,6 +403,49 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.commit()
         con.close()
         return {"ok": True, "uebernommen": neu}
+
+    @app.get("/api/sammlung/restkosten")
+    def restkosten(request: Request, binder: str = ""):
+        """Was noch fehlt und was es kosten würde — je Binder oder über alle.
+
+        Die Frage, die jeder mit einem halbvollen Binder hat. Alle Zahlen liegen längst
+        vor, sie wurden nur nie zusammengerechnet."""
+        user = require_user(request)
+        besitz = _besitz(user["id"])
+        con = get_db()
+        ids = [i.strip() for i in binder.split(",") if i.strip()][:20]
+        wo = "user_id = ?"
+        args = [user["id"]]
+        if ids:
+            wo += " AND id IN (%s)" % ",".join("?" * len(ids))
+            args += ids
+        geplant = {}
+        for r in con.execute(f"SELECT id, name, items FROM binders WHERE {wo}", args):
+            try:
+                items = json.loads(r["items"] or "[]")
+            except Exception:
+                continue
+            offen = [i["id"] for i in items
+                     if i.get("type") == "card" and i.get("id") and i["id"] not in besitz]
+            if offen:
+                geplant[r["id"]] = {"name": r["name"], "offen": offen}
+        con.close()
+        alle = sorted({c for g in geplant.values() for c in g["offen"]})
+        preise = _preise(alle)
+        aus = []
+        for bid, g in geplant.items():
+            teuer = sorted(((c, (preise.get(c) or {}).get("eur") or 0) for c in set(g["offen"])),
+                           key=lambda x: -x[1])
+            aus.append({
+                "binder": bid, "name": g["name"],
+                "fehlt": len(set(g["offen"])),
+                "summe": round(sum((preise.get(c) or {}).get("eur") or 0 for c in set(g["offen"])), 2),
+                "ohne_preis": sum(1 for c in set(g["offen"]) if not preise.get(c)),
+                "teuerste": [{"id": c, "eur": e} for c, e in teuer[:5] if e],
+            })
+        aus.sort(key=lambda x: -x["summe"])
+        return {"binder": aus, "summe": round(sum(b["summe"] for b in aus), 2),
+                "fehlt": sum(b["fehlt"] for b in aus)}
 
     @app.get("/api/sammlung/besitz")
     def besitz_liste(request: Request):

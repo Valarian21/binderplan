@@ -138,7 +138,7 @@ def _gruppieren(zeilen, schluessel, wert, stueck=None, grenze=10):
     return aus
 
 
-def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None):
+def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fuer_posten=None):
     # Die Sammlungsauswertung gehört zum Sammeln und steckt schon in Plus; die Marktzahlen
     # sind Händlerwerkzeug und bleiben Pro vorbehalten. Fehlt die Unterscheidung (ältere
     # Einbindung), gilt für beide dieselbe Schranke.
@@ -159,9 +159,9 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None):
         besitz = [dict(r) for r in con.execute(
             "SELECT s.card_id, s.variante, s.anzahl, s.zustand, s.kaufpreis, s.gekauft_am,"
             " c.name_de, c.name_en, c.rarity, c.set_id, c.types, c.first_dex, c.release_date,"
-            " c.category, c.region, c.local_id,"
+            " c.category, c.region, c.local_id, s.sprache,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name,"
-            " p.eur, p.eur_holo, p.usd"
+            " p.eur, p.eur_holo, p.eur_low, p.usd"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id"
             " LEFT JOIN card_prices p ON p.card_id = s.card_id"
             " WHERE s.user_id = ? AND s.anzahl > 0", (user["id"],))]
@@ -169,9 +169,12 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None):
             con.close()
             return {"pro": True, "leer": True}
 
-        # Holo- und Reverse-Exemplare kosten mehr; kennt Cardmarket dafür einen eigenen
-        # Preis, gilt der.
+        # Jedes Exemplar mit seinem eigenen Zustand: eine Poor-Karte ist nicht so viel
+        # wert wie eine Near-Mint-Karte. Ohne Zustandsangabe bleibt es beim Trend.
         def preis(z):
+            if preis_fuer_posten:
+                return preis_fuer_posten(z["eur"], z["eur_holo"], z["eur_low"],
+                                         z["variante"], z["zustand"] or "")
             if z["variante"] in ("holo", "reverse") and z["eur_holo"]:
                 return z["eur_holo"]
             return z["eur"]

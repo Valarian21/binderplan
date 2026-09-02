@@ -857,6 +857,13 @@
   .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
   .an-rest { display: none; }
+  /* Restkosten im Binder */
+  .wb-rest { background: var(--panel2); border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .wb-rest .wr-zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+                       font-size: 12.5px; font-weight: 600; }
+  .wb-rest .wr-zeile strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .wb-rest .wr-hin { font-size: 10.5px; color: var(--mut); margin-top: 3px; line-height: 1.4; }
+  .wb-rest .wr-link { font-size: 11.5px; font-weight: 700; color: var(--blau); margin-top: 5px; padding: 0; }
   /* Abgeleitete Zustandspreise */
   .zst { margin-top: 10px; }
   .zst-titel { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
@@ -1534,6 +1541,7 @@
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
+      <div id="wb-rest" class="hidden wb-rest"></div>
       <div id="wb-preise" class="hidden preisbox"></div>
       <div id="wb-verlauf" class="hidden wv-box"></div>
       <div class="bp-hilfe" data-i18n="hilfe2">Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.</div>
@@ -1636,13 +1644,13 @@
       <div><div class="f-lbl" data-i18n="f_variante">Variante</div>
         <select class="feld" id="smp-variante"></select></div>
       <div><div class="f-lbl" data-i18n="s_zustand">Zustand</div>
-        <select class="feld" id="smp-zustand"></select></div>
+        <select class="feld" id="smp-zustand" onchange="smPostenWert()"></select></div>
     </div>
     <div class="f-zweispaltig" style="margin-top:10px">
       <div><div class="f-lbl" data-i18n="kartensprache">Kartensprache</div>
         <select class="feld" id="smp-sprache"></select></div>
       <div><div class="f-lbl" data-i18n="an_anzahl">Anzahl</div>
-        <input class="feld" id="smp-anzahl" type="number" min="1" max="999" value="1"></div>
+        <input class="feld" id="smp-anzahl" type="number" min="1" max="999" value="1" oninput="smPostenWert()"></div>
     </div>
     <div class="f-zweispaltig" style="margin-top:10px">
       <div><div class="f-lbl" data-i18n="an_gekauft">Gekauft für</div>
@@ -1652,6 +1660,7 @@
     </div>
     <div style="margin-top:10px"><div class="f-lbl" data-i18n="sm_notiz">Notiz</div>
       <input class="feld" id="smp-notiz" maxlength="200" placeholder="…" data-i18n-ph="sm_notiz_ph"></div>
+    <div class="unter" id="smp-wert" style="margin:12px 0 0;font-size:12.5px"></div>
     <div style="display:flex;justify-content:space-between;gap:10px;margin-top:16px">
       <button class="btn sekundaer gefahr hidden" id="smp-loeschen" onclick="smPostenSpeichern(true)" data-i18n="sm_entfernen">Entfernen</button>
       <div style="flex:1"></div>
@@ -2482,6 +2491,9 @@ const T = {
     sm_posten_neu: 'Posten hinzufügen', sm_posten_aendern: 'Posten ändern',
     sm_posten_u: 'Zustand und Sprache gehören zum Exemplar. Dieselbe Karte in zwei Ausprägungen sind zwei Posten.',
     sm_ohne_angabe: 'offen', sm_gekauft_am: 'Gekauft am', sm_notiz: 'Notiz', sm_notiz_ph: 'z. B. Tausch mit Anna',
+    sm_wert_posten: 'Wert dieses Postens', sm_je_stueck: 'je Stück',
+    rk_fehlen: 'Dir fehlen noch {n} Karten', rk_ohne: 'Für {n} davon kennt Cardmarket keinen Preis.',
+    sm_ohne_zustand: 'ohne Zustand wird mit dem Trend gerechnet',
     s_seite_raster: 'Raster dieser Seite', raster_seite: 'Seite {n} steht jetzt auf {r}',
     gemischt: '(gemischt)',
     // Druckdialog
@@ -2831,6 +2843,9 @@ const T = {
     sm_posten_neu: 'Add entry', sm_posten_aendern: 'Edit entry',
     sm_posten_u: 'Condition and language belong to the copy. The same card in two forms is two entries.',
     sm_ohne_angabe: 'open', sm_gekauft_am: 'Bought on', sm_notiz: 'Note', sm_notiz_ph: 'e.g. trade with Anna',
+    sm_wert_posten: 'Value of this entry', sm_je_stueck: 'each',
+    rk_fehlen: 'You are still missing {n} cards', rk_ohne: 'Cardmarket has no price for {n} of them.',
+    sm_ohne_zustand: 'without a condition the trend is used',
     s_seite_raster: 'Grid for this page', raster_seite: 'Page {n} is now {r}',
     gemischt: '(mixed)',
     ex_dialog: 'Print …', dr_t: 'Print',
@@ -4627,6 +4642,7 @@ function zeichneBinder() {
     $('wb-sammel-zahl').textContent = `${gesammelt} / ${sammelbar}`;
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
   }
+  restkostenZeigen();
   seitenfarbeAnwenden();
   const seitenZahl = seiten;
   if ($('wb-seite-vor')) $('wb-seite-vor').disabled = S.nurAnsicht || S.seite <= 0;
@@ -5964,7 +5980,7 @@ function zeichneSammlung() {
         <div class="sm-meta">${esc(k.set_name || '')} · ${esc(k.local_id || '')}</div>
         ${(k.posten || []).length ? `<div class="sm-posten">${k.posten.map((p, pi) =>
           `<button class="sm-pchip" onclick="event.stopPropagation();smPostenAus('${esc(k.id)}',${pi})"
-                   title="${t('sm_posten_aendern')}">${p.anzahl}× ${smPostenLabel(p)}</button>`).join('')}
+                   title="${t('sm_posten_aendern')}${p.stueckwert != null ? ' · ' + p.stueckwert.toFixed(2).replace('.', ',') + ' €' : ''}">${p.anzahl}× ${smPostenLabel(p)}</button>`).join('')}
           <button class="sm-pchip neu" onclick="event.stopPropagation();smPostenOeffnen('${esc(k.id)}')"
                   title="${t('sm_posten_neu')}">＋</button></div>` : ''}
         ${k.eur != null ? `<div class="sm-wert">${(k.wert != null ? k.wert : k.eur).toFixed(2).replace('.', ',')} €</div>` : ''}
@@ -5992,6 +6008,7 @@ async function sammlungAufnehmen(id, opt) {
                              anzahl: opt.anzahl || 1 }),
     });
     S.besitz[id] = d.anzahl;
+    restkostenNeu();
     zeichneErgebnisse(); zeichneBinder();
     toast(t('sm_aufgenommen').replace('{n}', d.anzahl));
   } catch (e) { toast(e.message); }
@@ -6012,7 +6029,25 @@ function smPostenOeffnen(cardId, posten) {
   $('smp-gekauft').value = p.gekauft_am || '';
   $('smp-notiz').value = p.notiz || '';
   $('smp-loeschen').classList.toggle('hidden', !posten);
+  smPostenWert();
   modalOeffnen('modal-sm-posten');
+}
+
+/** Was dieses Exemplar mit dem gewählten Zustand wert ist — sofort beim Umstellen.
+ *  Dieselben Faktoren wie im Backend; sie stehen dort als ZUSTAND_FAKTOR. */
+const ZUSTAND_FAKTOR = { M: 1.10, NM: 1.00, EX: 0.85, GD: 0.70, LP: 0.55, PL: 0.42, PO: 0.30 };
+function smPostenWert() {
+  const el = $('smp-wert'); if (!el) return;
+  const k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
+  const basis = k && k.eur;
+  if (!basis) { el.textContent = ''; return; }
+  const z = $('smp-zustand').value;
+  const f = ZUSTAND_FAKTOR[z] || 1;
+  const anz = Math.max(1, parseInt($('smp-anzahl').value, 10) || 1);
+  const stueck = basis * f;
+  el.innerHTML = `${t('sm_wert_posten')}: <strong>${(stueck * anz).toFixed(2).replace('.', ',')} €</strong>`
+    + (anz > 1 ? ` <span style="opacity:.7">(${stueck.toFixed(2).replace('.', ',')} € ${t('sm_je_stueck')})</span>` : '')
+    + (z ? '' : ` <span style="opacity:.7">– ${t('sm_ohne_zustand')}</span>`);
 }
 
 async function smPostenSpeichern(loeschen) {
@@ -6035,6 +6070,7 @@ async function smPostenSpeichern(loeschen) {
     });
     modalSchliessen();
     await besitzLaden();
+    restkostenNeu();
     sammlungLaden(); zeichneBinder(); zeichneErgebnisse();
   } catch (e) { toast(e.message); }
 }
@@ -6052,6 +6088,40 @@ function smPostenAus(cardId, index) {
   const k = (SM.karten || []).find((x) => x.id === cardId);
   smPostenOeffnen(cardId, k && k.posten ? k.posten[index] : null);
 }
+
+/* ---------- Restkosten ----------
+   „Dir fehlen 12 Karten, zusammen etwa 87 €" — die Frage, die jeder mit einem halb
+   vollen Binder hat. Die Zahlen lagen längst vor, sie wurden nur nie zusammengerechnet. */
+
+const REST = { binder: null, daten: null, laeuft: false };
+
+async function restkostenZeigen() {
+  const box = $('wb-rest'); if (!box) return;
+  if (!S.user || S.nurAnsicht || !S.binder || !S.binder.id) { box.classList.add('hidden'); return; }
+  if (REST.binder === S.binder.id && REST.daten) return restkostenMalen();
+  if (REST.laeuft) return;
+  REST.laeuft = true;
+  try {
+    const d = await api('api/sammlung/restkosten?binder=' + encodeURIComponent(S.binder.id));
+    REST.binder = S.binder.id;
+    REST.daten = (d.binder || [])[0] || { fehlt: 0, summe: 0, ohne_preis: 0 };
+  } catch (e) { REST.daten = null; }
+  REST.laeuft = false;
+  restkostenMalen();
+}
+function restkostenMalen() {
+  const box = $('wb-rest'), d = REST.daten;
+  if (!d || !d.fehlt) { box.classList.add('hidden'); return; }
+  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+    { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  box.classList.remove('hidden');
+  box.innerHTML = `<div class="wr-zeile"><span>${t('rk_fehlen').replace('{n}', d.fehlt)}</span>
+      <strong>${d.summe ? '≈ ' + eur(d.summe) : '–'}</strong></div>`
+    + (d.ohne_preis ? `<div class="wr-hin">${t('rk_ohne').replace('{n}', d.ohne_preis)}</div>` : '')
+    + `<button class="wr-link" onclick="kaufliste()">${t('ex_kauf')}</button>`;
+}
+/** Nach jeder Änderung an der Sammlung neu rechnen. */
+function restkostenNeu() { REST.binder = null; REST.daten = null; restkostenZeigen(); }
 
 async function sammlungWeg(id) {
   try {
