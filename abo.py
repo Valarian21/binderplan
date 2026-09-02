@@ -20,11 +20,13 @@
 import hashlib
 import hmac
 import json
+import secrets
 import time
 from datetime import datetime
 
 import httpx
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse
 
 STRIPE_API = "https://api.stripe.com/v1"
@@ -175,6 +177,9 @@ def _buchen(con, user_id, delta_abo, delta_kauf, grund, ref=""):
 
 
 def gutschrift(user_id, menge, grund, ref="", auf_abo=False):
+    """auf_abo=True schreibt ins monatliche Guthaben (verfällt), sonst ins gekaufte (bleibt).
+    Bei Erstattungen gehört das Geld dorthin zurück, wo es herkam — sonst würde aus verfallendem
+    Abo-Guthaben unverfallbares Kaufguthaben."""
     con = _dep["get_db"]()
     u = _buchen(con, user_id, menge if auf_abo else 0, 0 if auf_abo else menge, grund, ref)
     con.commit()
@@ -192,32 +197,56 @@ def abbuchen(user, menge, grund, ref=""):
         con.close()
         raise HTTPException(402, detail={"code": "keine_credits", "benoetigt": menge, "saldo": stand})
     aus_abo = min(int(u.get("credits_abo") or 0), menge)
-    u = _buchen(con, user["id"], -aus_abo, -(menge - aus_abo), grund, ref)
+    # Die Bedingung steht im UPDATE selbst: zwei gleichzeitige Abrufe (Doppelklick auf „Drucken“)
+    # lasen sonst beide denselben Stand und buchten beide ab.
+    treffer = con.execute(
+        "UPDATE users SET credits_abo = credits_abo - ?, credits = credits - ?"
+        " WHERE id = ? AND COALESCE(credits_abo,0) >= ? AND COALESCE(credits,0) >= ?",
+        (aus_abo, menge - aus_abo, user["id"], aus_abo, menge - aus_abo)).rowcount
+    if not treffer:
+        con.close()
+        raise HTTPException(402, detail={"code": "keine_credits", "benoetigt": menge, "saldo": saldo(u)})
+    u = _user_frisch(con, user["id"])
+    con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
+                " VALUES (?,?,?,?,?,?)", (user["id"], -menge, grund, ref, saldo(u), _now()))
     con.commit()
     con.close()
     return saldo(u)
 
 
-def auffrischen(user, con=None):
-    """Monatliches Abo-Guthaben nachlegen, wenn eine neue Periode begonnen hat. Läuft über den
-    Stripe-Webhook (invoice.paid) und zusätzlich faul beim Abruf, damit ein verpasstes Event
-    niemanden ohne Guthaben zurücklässt."""
+def auffrischen(user, con=None, stripe_marke=None):
+    """Monatliches Abo-Guthaben nachlegen, wenn eine neue Periode begonnen hat.
+
+    Zwei Wege führen hierher, und sie dürfen sich nicht in die Quere kommen: der Stripe-Webhook
+    (checkout.session.completed und invoice.paid melden beim Neuabschluss dieselbe Periode) und
+    der faule Nachschlag beim Abruf, falls ein Ereignis verloren geht. Der Webhook gibt darum
+    `stripe_marke` mit (der Beginn der Stripe-Periode). Ist diese Marke schon verbucht, passiert
+    nichts — vorher schrieben beide Ereignisse gut, und ein neues Plus-Abo startete mit 120
+    statt 80 Credits."""
     if not user or not ist_bezahlt(user):
         return user
     menge = tarif(user)["credits"]
-    if not menge or (user.get("credits_periode") or "") == _monat():
+    if not menge:
+        return user
+    marke = str(stripe_marke) if stripe_marke else ""
+    if marke:
+        if (user.get("credits_marke") or "") == marke:
+            return user
+    elif (user.get("credits_periode") or "") == _monat():
         return user
     eigen = con is None
     con = con or _dep["get_db"]()
     frisch = _user_frisch(con, user["id"])
-    if frisch and (frisch.get("credits_periode") or "") != _monat():
+    schon_da = ((frisch.get("credits_marke") or "") == marke) if marke else \
+               ((frisch.get("credits_periode") or "") == _monat())
+    if frisch and not schon_da:
         # Reste bleiben stehen, aber gedeckelt – sonst sammeln Karteileichen unbegrenzt an
         rest = min(int(frisch.get("credits_abo") or 0), int(menge * (STAPEL_FAKTOR - 1)))
-        con.execute("UPDATE users SET credits_abo = ?, credits_periode = ? WHERE id = ?",
-                    (rest + menge, _monat(), user["id"]))
+        con.execute("UPDATE users SET credits_abo = ?, credits_periode = ?, credits_marke = ? WHERE id = ?",
+                    (rest + menge, _monat(), marke, user["id"]))
         con.execute("INSERT INTO credit_buchungen (user_id, delta, grund, ref, saldo_danach, created_at)"
                     " VALUES (?,?,?,?,?,?)",
-                    (user["id"], menge, "abo_guthaben", _monat(),
+                    (user["id"], menge, "abo_guthaben", marke or _monat(),
                      rest + menge + int(frisch.get("credits") or 0), _now()))
         con.commit()
         frisch = _user_frisch(con, user["id"])
@@ -315,6 +344,12 @@ def _abo_aus_stripe(con, user_id, sub):
     preis = (((sub.get("items") or {}).get("data") or [{}])[0].get("price") or {})
     plan, intervall = _plan_aus_preis(preis.get("id"))
     aktiv = status in ("active", "trialing")
+    if aktiv and not plan:
+        # Preis-ID nicht in der .env (alter Preis, in Stripe von Hand angelegt): den bisherigen
+        # Plan behalten statt einen zahlenden Kunden stillschweigend auf Gratis zu setzen.
+        alt = con.execute("SELECT plan FROM users WHERE id=?", (user_id,)).fetchone()
+        plan = (alt["plan"] if alt else "") or "plus"
+        print(f"Stripe-Preis unbekannt ({preis.get('id')}), Plan bleibt {plan} für Nutzer {user_id}")
     con.execute(
         "UPDATE users SET plan=?, stripe_sub=?, abo_status=?, abo_bis=?, abo_kuendigt=?, abo_intervall=?"
         " WHERE id=?",
@@ -395,7 +430,13 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
                   "ALTER TABLE users ADD COLUMN abo_status TEXT",
                   "ALTER TABLE users ADD COLUMN abo_bis TEXT",
                   "ALTER TABLE users ADD COLUMN abo_kuendigt INTEGER DEFAULT 0",
-                  "ALTER TABLE users ADD COLUMN abo_intervall TEXT"):
+                  "ALTER TABLE users ADD COLUMN abo_intervall TEXT",
+                  # Marke der zuletzt gutgeschriebenen Stripe-Periode (siehe auffrischen)
+                  "ALTER TABLE users ADD COLUMN credits_marke TEXT",
+                  # Kündigung ohne Login: Einmal-Link an die hinterlegte Adresse
+                  "ALTER TABLE users ADD COLUMN kuend_token TEXT",
+                  "ALTER TABLE users ADD COLUMN kuend_bis TEXT",
+                  "ALTER TABLE users ADD COLUMN kuend_notiz TEXT"):
         try:
             con.execute(alter)
         except Exception:
@@ -483,7 +524,7 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         else:
             daten["subscription_data"] = {"metadata": {"art": art, "variante": variante,
                                                        "user": str(user["id"])}}
-        sitzung = _stripe("checkout/sessions", daten)
+        sitzung = await run_in_threadpool(_stripe, "checkout/sessions", daten)
         con.execute(
             "INSERT INTO bestellungen (user_id, art, variante, betrag, waehrung, session_id,"
             " widerruf_text, zustimmung_am, status, created_at) VALUES (?,?,?,?,'EUR',?,?,?,?,?)",
@@ -585,9 +626,8 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
             sub = _stripe(f"subscriptions/{obj['subscription']}", methode="GET")
             plan = _abo_aus_stripe(con, user["id"], sub)
             if plan and plan != "free":
-                con.execute("UPDATE users SET credits_periode = '' WHERE id = ?", (user["id"],))
-                con.commit()
-                auffrischen(_user_frisch(con, user["id"]), con)
+                auffrischen(_user_frisch(con, user["id"]), con,
+                            stripe_marke=f"{sub.get('id')}:{sub.get('current_period_start')}")
         elif art == "paket" and variante in PAKETE:
             _buchen(con, user["id"], 0, PAKETE[variante]["credits"], "kauf", variante)
             con.commit()
@@ -611,7 +651,11 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
     async def webhook(request: Request):
         roh = await request.body()
         geheim = env().get("STRIPE_WEBHOOK_SECRET", "")
-        if geheim and not _signatur_ok(roh, request.headers.get("stripe-signature", ""), geheim):
+        if not geheim:
+            # Ohne Secret ließe sich jedes Ereignis fälschen — ein erfundenes
+            # checkout.session.completed schaltet sonst ein Abo frei.
+            raise HTTPException(503, "Webhook nicht eingerichtet")
+        if not _signatur_ok(roh, request.headers.get("stripe-signature", ""), geheim):
             raise HTTPException(400, "Signatur ungültig")
         ereignis = json.loads(roh.decode())
         typ, obj = ereignis.get("type"), (ereignis.get("data") or {}).get("object") or {}
@@ -650,10 +694,14 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
                                       (obj["subscription"],)).fetchone()
                     user = dict(row) if row else None
                     if user and ist_bezahlt(user):
-                        con.execute("UPDATE users SET credits_periode = '', abo_status='active'"
-                                    " WHERE id = ?", (user["id"],))
+                        con.execute("UPDATE users SET abo_status='active' WHERE id = ?", (user["id"],))
                         con.commit()
-                        auffrischen(_user_frisch(con, user["id"]), con)
+                        # Dieselbe Marke wie beim Checkout: die erste Rechnung eines neuen Abos
+                        # darf nicht ein zweites Mal gutschreiben.
+                        zeile = ((obj.get("lines") or {}).get("data") or [{}])[0]
+                        start = (zeile.get("period") or {}).get("start") or obj.get("period_start")
+                        auffrischen(_user_frisch(con, user["id"]), con,
+                                    stripe_marke=f"{obj['subscription']}:{start}")
             elif typ == "invoice.payment_failed":
                 if obj.get("subscription"):
                     con.execute("UPDATE users SET abo_status='zahlung_offen' WHERE stripe_sub=?",
@@ -682,18 +730,10 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
             raise HTTPException(404, "Seite nicht gefunden")
         return HTMLResponse(pfad.read_text(encoding="utf-8"))
 
-    @app.post("/api/kuendigung")
-    async def kuendigung_formular(request: Request):
-        """Kündigungsformular ohne Login: identifiziert über die E-Mail, kündigt zum
-        Laufzeitende und bestätigt in Textform. Ohne passendes Abo wird trotzdem freundlich
-        geantwortet, damit das Formular nicht verrät, welche Konten es gibt."""
-        _kuendigung_drossel(request)
-        data = await request.json()
-        email = str(data.get("email") or "").strip().lower()[:200]
-        notiz = str(data.get("notiz") or "")[:500]
+    def _kuendigung_ausfuehren(user, notiz=""):
+        """Kündigt das Abo bei Stripe zum Laufzeitende und protokolliert den Vorgang.
+        Läuft im Threadpool und öffnet dafür eine eigene DB-Verbindung."""
         con = get_db()
-        row = con.execute("SELECT * FROM users WHERE lower(email) = ?", (email,)).fetchone()
-        user = dict(row) if row else None
         gekuendigt, bis = False, ""
         if user and user.get("stripe_sub"):
             try:
@@ -703,17 +743,88 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
                             (bis, user["id"]))
                 con.commit()
                 gekuendigt = True
-            except Exception:
-                pass
+            except Exception as e:
+                print("Kündigung bei Stripe fehlgeschlagen:", e)
         con.execute("INSERT INTO bestellungen (user_id, art, variante, betrag, waehrung, session_id,"
                     " widerruf_text, zustimmung_am, status, created_at)"
                     " VALUES (?,?,?,?,'EUR',?,?,?,?,?)",
-                    (user["id"] if user else 0, "kuendigung", email, 0, "", notiz, _now(),
+                    (user["id"] if user else 0, "kuendigung", "", 0, "", notiz, _now(),
                      "bestaetigt" if gekuendigt else "kein_abo", _now()))
         con.commit()
         con.close()
-        if gekuendigt:
-            _kuendigung_mail(email, bis[:10])
-        return {"ok": True, "gekuendigt": gekuendigt, "bis": bis[:10], "mail": mail_konfiguriert()}
+        if gekuendigt and user:
+            _kuendigung_mail(user["email"], bis[:10])
+        return gekuendigt, bis
+
+    @app.post("/api/kuendigung")
+    async def kuendigung_formular(request: Request):
+        """Kündigungsformular ohne Login (§ 312k BGB).
+
+        Die Adresse allein darf nicht genügen: sonst kündigt jeder, der die E-Mail eines Kunden
+        kennt, dessen Abo. Deshalb geht ein Bestätigungslink an die Adresse — nur wer das
+        Postfach hat, schließt die Kündigung ab. Wer angemeldet ist, kündigt direkt.
+        Die Antwort ist immer dieselbe, damit das Formular nicht verrät, welche Konten es gibt."""
+        _kuendigung_drossel(request)
+        data = await request.json()
+        email = str(data.get("email") or "").strip().lower()[:200]
+        notiz = str(data.get("notiz") or "")[:500]
+        con = get_db()
+        row = con.execute("SELECT * FROM users WHERE lower(email) = ?", (email,)).fetchone()
+        user = dict(row) if row else None
+        angemeldet = current_user(request)
+
+        # Fall 1: angemeldet und es ist das eigene Konto → sofort kündigen
+        if user and angemeldet and angemeldet["id"] == user["id"]:
+            con.close()
+            gekuendigt, bis = await run_in_threadpool(_kuendigung_ausfuehren, user, notiz)
+            return {"ok": True, "gekuendigt": gekuendigt, "bis": bis[:10],
+                    "mail": mail_konfiguriert()}
+
+        # Fall 2: nicht angemeldet → Bestätigungslink an die Adresse
+        verschickt = False
+        if user and user.get("stripe_sub") and mail_konfiguriert():
+            token = secrets.token_urlsafe(24)
+            con.execute("UPDATE users SET kuend_token = ?, kuend_bis = datetime('now', '+2 hours'),"
+                        " kuend_notiz = ? WHERE id = ?", (token, notiz, user["id"]))
+            con.commit()
+            verschickt = bool(mail_senden(
+                user["email"], "Binderplan – Kündigung bestätigen",
+                "Hallo,\n\nüber das Formular auf binderplan.app wurde eine Kündigung für dieses "
+                "Konto angefordert. Mit einem Klick auf diesen Link (2 Stunden gültig) wird sie "
+                "wirksam — zum Ende der bezahlten Laufzeit:\n\n"
+                f"{_app_url()}/kuendigen?bestaetigen={token}\n\n"
+                "Warst du das nicht, ignoriere diese E-Mail einfach. Ohne den Klick ändert sich "
+                "nichts.\n\nViele Grüße\nBinderplan"))
+        con.execute("INSERT INTO bestellungen (user_id, art, variante, betrag, waehrung, session_id,"
+                    " widerruf_text, zustimmung_am, status, created_at)"
+                    " VALUES (?,?,?,?,'EUR',?,?,?,?,?)",
+                    (user["id"] if user else 0, "kuendigung_angefragt", "", 0, "", notiz, _now(),
+                     "wartet" if verschickt else "kein_abo", _now()))
+        con.commit()
+        con.close()
+        return {"ok": True, "gekuendigt": False, "bestaetigung": True,
+                "mail": mail_konfiguriert(), "verschickt": verschickt}
+
+    @app.post("/api/kuendigung/bestaetigen")
+    async def kuendigung_bestaetigen(request: Request):
+        """Zweiter Schritt: den Link aus der Mail einlösen."""
+        data = await request.json()
+        token = str(data.get("token") or "").strip()
+        if not token:
+            raise HTTPException(400, "Kein Bestätigungscode.")
+        con = get_db()
+        row = con.execute("SELECT * FROM users WHERE kuend_token = ? AND kuend_token != ''"
+                          " AND kuend_bis > datetime('now')", (token,)).fetchone()
+        if not row:
+            con.close()
+            raise HTTPException(400, "Dieser Link ist abgelaufen oder wurde schon benutzt. "
+                                     "Bitte das Formular noch einmal ausfüllen.")
+        user = dict(row)
+        con.execute("UPDATE users SET kuend_token = '' WHERE id = ?", (user["id"],))
+        con.commit()
+        con.close()
+        gekuendigt, bis = await run_in_threadpool(_kuendigung_ausfuehren, user,
+                                                  user.get("kuend_notiz") or "")
+        return {"ok": True, "gekuendigt": gekuendigt, "bis": bis[:10]}
 
     return {"tarif": tarif, "konto_info": konto_info}

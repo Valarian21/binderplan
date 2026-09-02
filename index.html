@@ -49,6 +49,20 @@
              /* Breite aus der Höhe: Kopf + Fuß brauchen ~150 px, der Rest gehört der Doppelseite.
                 --bv-ratio setzt bvZeichne() je Raster (4×3 ist breiter als 3×4). */
              max-width: min(1240px, 96vw, calc((100vh - 150px) * var(--bv-ratio, 1.43))); }
+  .imp-tab { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  .imp-tab td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .imp-tab .imp-roh { color: var(--mut); font-family: ui-monospace, monospace; font-size: 11.5px; max-width: 190px; overflow-wrap: anywhere; }
+  .imp-tab .imp-set { color: var(--mut); font-size: 11.5px; }
+  .imp-tab .imp-ok { text-align: right; font-weight: 700; color: var(--gruen); width: 26px; }
+  .imp-tab tr.unsicher .imp-ok { color: var(--gelb); }
+  .imp-tab tr.fehlt .imp-ok { color: var(--mut); }
+  .imp-tab tr.fehlt td { opacity: .65; }
+  .imp-rest { font-size: 12px; color: var(--mut); margin-top: 8px; }
+  .pf-pw-stand { font-size: 11.5px; color: var(--mut); margin-top: 8px; }
+  .wv-box { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1.5px solid var(--line);
+            border-radius: 10px; background: var(--card); }
+  .wv-box .wv-spark { width: 78px; height: 26px; flex-shrink: 0; }
+  .wv-box .wv-text { font-size: 12px; color: var(--mut); }
   .bv-seite { background: var(--bseite); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
               display: grid; gap: clamp(4px, .7vw, 9px); flex: 1 1 0; min-width: 0;
               align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
@@ -126,6 +140,10 @@
   .bv-x { position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
           background: rgba(255,255,255,.12); color: #fff; font-size: 20px; }
   .bv-x:hover { background: rgba(255,255,255,.24); }
+  @media (max-width: 700px) and (orientation: portrait) {
+    .bv-buch { max-width: 96vw; }
+    .bv-seite { border-radius: 10px !important; }
+  }
   @media (max-width: 720px) {
     .bv-ruecken { width: 14px; flex-basis: 14px; }
     .bv-ring { width: 9px; height: 9px; border-width: 2px; }
@@ -216,6 +234,7 @@
 
 
   /* Leiste über einem fremden, öffentlichen Binder */
+  .vt-hab { font-size: 12.5px; color: var(--gruen); font-weight: 700; }
   .vt-ansichtleiste { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
                       padding: 10px 14px; margin: 0 auto 12px; max-width: min(700px, 100%);
                       border: 2px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -693,10 +712,13 @@
   body.nur-ansicht.von-vitrine .ansicht-cta { margin-left: 0; }
   body.nur-ansicht .nur-edit, body.nur-ansicht .mnav { display: none !important; }
   body.nur-ansicht .spalte-binder { padding-bottom: 24px; }
-  body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
+  body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht .bp-hilfe { display: none !important; }
   .st-leer { margin-top: 10px; }
   #f-presets .chip { font-size: 11.5px; padding: 3px 9px; }
   .f-region { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .f-klang { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .f-klang-lbl { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .f-klang-zurueck { font-size: 11px; color: var(--blau); text-decoration: underline; }
   .f-region .segment button { padding: 6px 11px; font-size: 12.5px; }
   .f-region .lang-toggle button { padding: 5px 8px; font-size: 11.5px; }
   .setwahl-inhalt .setcode { font-family: ui-monospace, monospace; font-size: 10.5px; background: var(--panel2); border-radius: 5px; padding: 1px 5px; color: var(--mut); flex-shrink: 0; }
@@ -718,6 +740,10 @@
   .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
   .d-kein-bild small { font-weight: 500; color: var(--mut); font-size: 11.5px; }
   .slot .spmark { left: auto; right: 2px; bottom: 21px; background: var(--ink); }
+  .slot .hat-mark { position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%;
+                    border: 1.5px solid rgba(255,255,255,.5); background: rgba(20,22,28,.5); color: #fff;
+                    font-size: 11px; line-height: 14px; text-align: center; font-weight: 700; }
+  .slot .hat-mark.ja { background: var(--gruen); border-color: var(--gruen); }
   .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: 12.5px; }
   .detail .d-grid > div { min-width: 0; }
   .d-fam .btn { white-space: nowrap; }
@@ -729,6 +755,8 @@
   .st-leer .onb-tpl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   /* ---------- 2026-08-27: Kopfzeile, Filter, Onboarding, Detail, Varianten, Undo ---------- */
   .mobil-only { display: none !important; }
+  .seiten-nav .seite-btn { font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--line); }
+  .seiten-nav .seite-btn:hover { border-color: var(--blau); color: var(--blau); }
   .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }
   .namefeld:hover, .namefeld:focus-within { background: var(--panel2); }
   .namefeld .stift { color: var(--mut); font-size: 13px; }
@@ -793,6 +821,9 @@
     #planer { top: 54px; padding-bottom: 62px; }
     .planer-bar { bottom: 72px; border-radius: 16px; }
     .bp-tools { flex-wrap: wrap; }
+    /* Am Handy trägt die Zeile nur die Navigation plus „Seite …“ — sieben nackte Symbole
+       nebeneinander waren nicht zuzuordnen. */
+    .seiten-nav #wb-seite-vor, .seiten-nav #wb-seite-zurueck { display: none; }
     .detail .d-grid { grid-template-columns: 1fr; }
     .detail .d-bild { max-width: 240px; margin: 0 auto; }
     .onb-tpl { grid-template-columns: 1fr 1fr; }
@@ -946,13 +977,8 @@
         <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
         <div class="bw-liste" id="bw-liste"></div>
         <div class="trenn"></div>
-        <div class="menu-lbl" data-i18n="neu_lbl">Neu anlegen</div>
-        <button onclick="neuLeer()" data-i18n="m_leer">Leerer Binder</button>
-        <button onclick="modalOeffnen('modal-master')" data-i18n="m_master">Master Set …</button>
-        <button onclick="modalOeffnen('modal-dex')" data-i18n="m_dex">Pokédex-Binder …</button>
-        <button onclick="modalOeffnen('modal-poke')" data-i18n="m_poke">Ein Pokémon – alle Karten …</button>
-        <button onclick="modalOeffnen('modal-kuenstler')" data-i18n="m_illu">Künstler-Binder …</button>
-        <button onclick="importOeffnen()" data-i18n="m_import">Liste importieren …</button>
+        <div class="trenn"></div>
+        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
       </div>
     </div>
     <div class="segment desktop-only" role="tablist">
@@ -1006,7 +1032,11 @@
           <button id="reg-intl" class="on" onclick="regionSetzen('intl')" data-i18n="reg_west">Westlich</button>
           <button id="reg-jp" onclick="regionSetzen('jp')" data-i18n="reg_jp">Japan</button>
         </div>
-        <div class="lang-toggle" id="f-lang" title="Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)" data-i18n-title="klang_t"><button id="f-lang-de" class="on" onclick="setKartensprache('de')">DE</button><button id="f-lang-en" onclick="setKartensprache('en')">EN</button></div>
+      </div>
+      <div class="f-klang" id="f-lang">
+        <span class="f-klang-lbl" data-i18n="klang_lbl">Karten in</span>
+        <div class="lang-toggle" title="Namen, Bilder und PDF der Karten" data-i18n-title="klang_t"><button id="f-lang-de" class="on" onclick="setKartensprache('de')">DE</button><button id="f-lang-en" onclick="setKartensprache('en')">EN</button></div>
+        <button class="f-klang-zurueck hidden" id="f-klang-hinweis" onclick="kartenspracheFolgen()" data-i18n="klang_folgen">folgt der Oberfläche</button>
       </div>
       <div>
         <div class="f-lbl" data-i18n="f_suche">Suche</div>
@@ -1124,7 +1154,6 @@
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
           <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-          <label class="schalter" title="Fach antippen = als „hab ich“ markieren" data-i18n-title="sammel_t"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammeln</span></label>
           <div class="menuwrap">
             <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen" data-i18n-title="binder_opt_t">⋯</button>
             <div class="menu hidden" id="menu-binder" style="min-width:260px">
@@ -1177,15 +1206,17 @@
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5 4 12.5M1.6 10.1 4 12.6l2.4-2.5"/></svg>
         </button>
-        <button onclick="seiteAnhaengen()" class="nur-edit" style="margin-left:6px" title="Neue leere Seite anhängen" aria-label="Neue Seite" data-i18n-title="neue_seite">
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-            <rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/></svg>
-        </button>
-        <button onclick="artworkOeffnen()" class="nur-edit" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite" data-i18n-title="aw_t"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg></button>
-        <button onclick="themaOeffnen()" class="nur-edit" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-            <circle cx="9" cy="9" r="5.4"/><path d="M13.2 13.2 17 17"/><path d="M6.6 10.4c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/></svg>
-        </button>
+        <div class="menuwrap nur-edit" style="margin-left:6px">
+          <button onclick="menuToggle('menu-seite')" class="seite-btn" data-i18n="seite_menue">Seite …</button>
+          <div class="menu hidden" id="menu-seite" style="right:0;left:auto;min-width:230px">
+            <button onclick="seiteAnhaengen()" data-i18n="neue_seite_lbl">Neue leere Seite anhängen</button>
+            <button onclick="seiteZiehen(-1)" data-i18n="s_seite_hoch">Seite nach vorn</button>
+            <button onclick="seiteZiehen(1)" data-i18n="s_seite_runter">Seite nach hinten</button>
+            <div class="trenn"></div>
+            <button onclick="artworkOeffnen()" data-i18n="aw_t">Artwork-Seite gestalten</button>
+            <button onclick="themaOeffnen()" data-i18n="th_titel">Seite nach Thema</button>
+          </div>
+        </div>
         <button onclick="blaetternOeffnen()" style="margin-left:2px" title="Durchblättern" aria-label="Durchblättern" data-i18n-title="bv_titel">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/>
@@ -1197,6 +1228,7 @@
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
       <div id="wb-preise" class="hidden preisbox"></div>
+      <div id="wb-verlauf" class="hidden wv-box"></div>
       <div class="bp-hilfe" data-i18n="hilfe2">Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.</div>
     </div>
   </div>
@@ -1227,6 +1259,7 @@
         <span data-i18n="mehr_nav">Mehr</span>
       </button>
       <div class="menu hidden" id="mobil-mehr">
+        <div class="menu-lbl" data-i18n="mm_drucken">Drucken</div>
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
@@ -1234,11 +1267,14 @@
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
         <div class="trenn"></div>
+        <div class="menu-lbl" data-i18n="mm_entdecken">Entdecken</div>
         <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
+        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
         <button onclick="fotoOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
-        <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
         <div class="trenn"></div>
+        <div class="menu-lbl" data-i18n="mm_konto">Konto &amp; Einstellungen</div>
+        <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
         <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
         <button onclick="themeWechsel()"><span data-i18n="pf_design">Design</span>: <span class="theme-stand"></span></button>
         <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
@@ -1532,7 +1568,7 @@
 
     <div class="st-abschnitt">
       <div class="st-titel"><h2 data-i18n="st_deine">Deine Binder</h2>
-        <span class="mehr" onclick="event.stopPropagation();menuToggle('menu-st-neu')" data-i18n="st_neu">Neuer Binder</span></div>
+        <span class="mehr" onclick="vorlagenOeffnen()" data-i18n="st_neu">Neuer Binder</span></div>
       <div class="binder-grid" id="st-grid"></div>
     </div>
 
@@ -1617,6 +1653,7 @@
           <div class="feld-lbl" data-i18n="pf_pw_neu">Neues Passwort (mindestens 8 Zeichen)</div>
           <input class="feld" id="pf-pw-neu" type="password" autocomplete="new-password">
           <button class="btn sekundaer" style="font-size:13px;margin-top:12px" onclick="pwAendern()" data-i18n="pf_pw_btn">Passwort speichern</button>
+          <div class="pf-pw-stand" id="pf-pw-stand"></div>
         </div>
       </div>
 
@@ -1643,6 +1680,23 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="modal-vorlagen">
+  <div class="modal-box" style="max-width:620px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h3 data-i18n="vl_t">Neuen Binder anlegen</h3>
+    <p class="modal-u" data-i18n="vl_u">Womit soll er gefüllt werden?</p>
+    <div class="onb-tpl vl-gitter">
+      <button onclick="vorlage('master')"><strong data-i18n="tpl_master">Master Set</strong><span data-i18n="tpl_master_u">jede Karte eines Sets</span></button>
+      <button onclick="vorlage('dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
+      <button onclick="vorlage('poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
+      <button onclick="vorlage('illu')"><strong data-i18n="tpl_illu">Künstler</strong><span data-i18n="tpl_illu_u">alle Karten eines Illustrators</span></button>
+      <button onclick="vorlage('foto')"><strong data-i18n="tpl_foto">Aus Fotos</strong><span data-i18n="tpl_foto_u">Seiten abfotografieren, Karten werden erkannt</span></button>
+      <button onclick="vorlage('import')"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
+      <button onclick="vorlage('leer')"><strong data-i18n="m_leer">Leerer Binder</strong><span data-i18n="vl_leer_u">Karte für Karte selbst suchen</span></button>
     </div>
   </div>
 </div>
@@ -1860,7 +1914,7 @@ const T = {
     s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
     pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
     pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
-    preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise 1× am Tag aktualisieren',
+    preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise vom Vortag (1× täglich neu)',
     kaufliste_csv: 'Kaufliste als CSV', zum_start: 'zum Start', beliebt: 'Beliebt',
     up_recht_kurz: 'Endpreise, keine Umsatzsteuer (§ 19 UStG).',
     best_agb_html: 'Ich akzeptiere die <a href="recht#agb" target="_blank" data-i18n="agb_kurz">AGB</a> und habe die <a href="recht#datenschutz" target="_blank">Datenschutzerklärung</a> sowie die <a href="recht#widerruf" target="_blank">Widerrufsbelehrung</a> gelesen.',
@@ -1871,30 +1925,30 @@ const T = {
     best_btn: 'Zahlungspflichtig bestellen', best_hin: 'Weiterleitung zu Stripe. Wir speichern keine Zahlungsdaten.',
     best_leistung: 'Leistung', best_laufzeit: 'Laufzeit', best_gesamt: 'Gesamt heute', best_verlaengert: 'verlängert sich automatisch, jederzeit zum Laufzeitende kündbar',
     best_einmalig: 'Einmalzahlung, kein Abo', best_fehlt: 'Bitte bestätige beide Punkte, um fortzufahren.',
-    credits: 'Credits', credits_kaufen: 'Credits kaufen', kein_guthaben: 'Nicht genug Credits',
+    credits: 'Credits', credits_kaufen: 'Credits kaufen',
     guthaben: 'Guthaben', guthaben_abo: 'davon monatlich', guthaben_gekauft: 'davon gekauft',
     journal: 'Letzte Buchungen', j_start: 'Startguthaben', j_kauf: 'Credits gekauft', j_artwork: 'Artwork-Seite',
     j_abo_guthaben: 'Monatsguthaben', j_erstattung_fehler: 'Rückbuchung (fehlgeschlagen)', j_erstattung: 'Erstattung', j_test: 'Korrektur',
     waehlen: 'Wählen', aktuell: 'Dein Tarif', kuendigen: 'Abo kündigen', kuendigen_frage: 'Abo wirklich zum Laufzeitende kündigen?',
     gekuendigt: 'Gekündigt zum', reaktivieren: 'Kündigung zurücknehmen', reaktiviert: 'Dein Abo läuft weiter.',
-    abo_bis: 'Verlängert sich am', tarif_wechseln: 'Tarif wechseln', zahlung_offen: 'Zahlung offen – bitte Zahlungsmittel prüfen.',
+    abo_bis: 'Verlängert sich am',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: 'Seite füllen',
     aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
     aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
-    aw_kont_monat: 'Noch {n} von {m} Artwork-Seiten in diesem Monat.', aw_kont_frei: 'Deine Probeseite ist kostenlos – Pro-Konten erzeugen 20 Seiten im Monat.',
-    aw_kont_leer: 'Kontingent aufgebraucht.', aw_kont_leer_frei: 'Probeseite verbraucht – mit Pro gibt es 20 Artwork-Seiten im Monat.',
-    gate_artwork: 'Deine kostenlose Probeseite ist verbraucht.', aw_login: 'Zum Erzeugen von Artwork-Seiten bitte anmelden – die erste Seite ist kostenlos.',
+   
+   
+    aw_login: 'Zum Erzeugen von Artwork-Seiten bitte anmelden – die erste Seite ist kostenlos.',
     aw_kein_anker: 'Lege zuerst mindestens eine Karte in ein Fach dieser Seite.', aw_kein_platz: 'Auf dieser Seite ist kein Fach frei, das die KI füllen könnte.',
     aw_laeuft_schon: 'Es läuft bereits eine Artwork-Seite – bitte kurz warten.', aw_fehler: 'Das hat leider nicht geklappt', aw_geloescht: 'Artwork gelöscht.',
     aw_privat: 'KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.',
     aw_druck_hint: 'Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.',
-    aw_up_r: 'KI-Artwork-Seiten', aw_up_f: '1 Probeseite', aw_up_p: '20 / Monat', aw_erg_info: '{k} Karte(n) · {f} Fächer mit Artwork · {s}',
+    aw_erg_info: '{k} Karte(n) · {f} Fächer mit Artwork · {s}',
     stil_karte: 'Wie die Karte', stil_comic: 'Comic', stil_foto: 'Fotorealistisch', stil_aquarell: 'Aquarell', stil_oel: 'Ölgemälde', stil_anime: 'Anime',
     stil_retro: 'Retro 90er', stil_pixel: 'Pixel-Art', stil_neon: 'Neon', stil_skizze: 'Bleistift', stil_minimal: 'Minimal', stil_dunkel: 'Dark Fantasy',
     undo: 'Rückgängig', undo_ok: 'Rückgängig gemacht.', hinzugefuegt_1: 'Karte im Binder',
-    f_mehr: 'Erweiterte Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus', m_poke: 'Ein Pokémon – alle Karten …',
-    m_import: 'Liste importieren …', m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
+    f_mehr: 'Erweiterte Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus',
+    m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
     m_poke_jp: 'Japanische Karten dazunehmen', alle_karten: 'alle Karten', s_rainbow: 'Regenbogen (nach Typ)',
     m_import_t: 'Liste importieren', m_import_u: 'Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.',
     import_datei: 'Datei wählen (.csv/.txt)', import_pruefen: 'Prüfen', import_btn: 'In den Binder', imp_erkannt: 'erkannt', imp_unklar: 'unklar', imp_kein_treffer: 'kein Treffer',
@@ -1909,25 +1963,25 @@ const T = {
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
     kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis', pf_sprache_ui: 'Sprache der Oberfläche',
     f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
-    m_illu: 'Künstler-Binder …', m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
+    m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
     tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
     illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
     first_ed: '1st Edition', alle_trainer: 'Alle', pdf_erzeugt: 'PDF wird erzeugt …', pdf_oeffnen: 'PDF öffnen', pdf_geladen: 'PDF heruntergeladen –',
-    neu_lbl: 'Neu anlegen', raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.',
+    raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.',
     mehr_nav: 'Mehr', gewaehlt: 'gewählt', zu_leer: 'Fächer freimachen', eigener_binder: 'Eigenen Binder planen',
     name_t: 'Wie sollen wir dich nennen?', name_u: 'Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.', spaeter: 'Später',
     pw_hint: 'Mindestens 8 Zeichen.', up_r1: 'Gespeicherte Binder', up_r2: 'Platzhalter-PDF', up_r2f: '1 / Monat', up_r3: 'Checkliste & Preise ansehen', up_r4: 'Preise sofort aktualisieren', up_r4f: '1× täglich', up_r5: 'Kaufliste als CSV',
     s_details: 'Details', s_frei_davor: 'Leeres Fach davor', s_frei_danach: 'Leeres Fach danach', s_zu_leer: 'Fach freimachen (Karte raus)', s_entfernen: 'Fach entfernen',
     s_seite_hoch: 'Seite nach vorn', s_seite_runter: 'Seite nach hinten', s_seite_weg: 'Seite entfernen', s_seite_fach: 'Leeres Fach anhängen', s_seite_wahl: 'Seite wählen',
-    erg_leer: 'Keine Karten gefunden.', ex_alle: 'Platzhalter-PDF – alle Karten', ex_fehlend: 'Platzhalter-PDF – nur fehlende', ex_check2: 'Checkliste',
+    erg_leer: 'Keine Karten gefunden.', ex_alle: 'Platzhalter-PDF – alle Karten', ex_fehlend: 'Platzhalter-PDF – nur fehlende',
     verlauf_bald: 'Preisverlauf: ab morgen, täglich neu.', zustand_ph: 'Zustand, z. B. NM',
-    neu_alt: '+ Neu / Vorlagen', m_leer: 'Leerer Binder', m_master: 'Master Set …', m_dex: 'Pokédex-Binder …',
+    m_leer: 'Leerer Binder',
     meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', pdf: 'Drucken',
     f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
     f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
     alle: '+ Alle Treffer …', alle_ende: '… ans Ende anhängen', alle_seite: '… ab nächster freier Seite',
     mehr: 'Mehr laden', binder: 'Binder', seite: 'Seite', leeren: 'Binder leeren',
-    hilfe: 'Karten ziehen zum Umsortieren, ✕ entfernt. Gedruckt wird in 63 × 88 mm mit „Seite · Fach“-Beschriftung.',
+   
     m_master_t: 'Master Set anlegen', m_master_u: 'Jede Karte des Sets einmal, sortiert nach Setnummer.',
     m_reverse: 'Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)',
     m_dex_t: 'Pokédex-Binder anlegen', m_dex_u: 'Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.',
@@ -2042,26 +2096,26 @@ const T = {
       dark: 'Dunkle (Dark)', light: 'Helle (Light)', trainer: 'Trainer', energie: 'Energie' },
     typen: { Grass: 'Pflanze', Fire: 'Feuer', Water: 'Wasser', Lightning: 'Elektro', Psychic: 'Psycho',
       Fighting: 'Kampf', Darkness: 'Finsternis', Metal: 'Metall', Fairy: 'Fee', Dragon: 'Drache', Colorless: 'Farblos' },
-    bestaetigen_viele: 'Karten wirklich alle hinzufügen?', bestaetigen_leeren: 'Alle Fächer aus diesem Binder entfernen?',
+    bestaetigen_viele: 'Karten wirklich alle hinzufügen?',
     bestaetigen_loeschen: 'Diesen Binder wirklich löschen?', binder_leer: 'Der Binder ist noch leer.',
-    pdf_dauert: 'PDF wird erzeugt – bei vielen Karten dauert der erste Export etwas …',
-    hinzugefuegt: 'Karten hinzugefügt', angelegt: 'Fächer angelegt', gespeichert: 'gespeichert ✓',
+   
+    hinzugefuegt: 'Karten hinzugefügt', angelegt: 'Fächer angelegt',
     speichert: 'speichert …', fehler_speichern: 'Speichern fehlgeschlagen!', neuer_binder: 'Mein Binder',
     sync: 'Kartendatenbank wird aufgebaut …', keine_sets: 'Kein Set gefunden.', pokemon_gew: 'Pokémon ausgewählt',
     erst_waehlen: 'Bitte erst auswählen', zu_viele: 'Mehr als 2000 Treffer – bitte enger filtern',
     anmelden: 'Anmelden', registrieren: 'Registrieren', anmelden_t: 'Anmelden', passwort: 'Passwort',
     agb_text: 'Ich akzeptiere die AGB und die Datenschutzerklärung.',
     agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
-    konto: 'Konto', tarif_frei: 'Kostenlos', upgrade: 'Tarif & Credits', abo_verwalten: 'Abo verwalten',
-    ex_alle_alt: 'PDF – alle Karten (S/W)', ex_fehlend_alt: 'PDF – nur fehlende Karten',
-    ex_check_alt: 'Checkliste ohne Bilder (zählt nicht als Export)', ex_kauf: 'Kaufliste als CSV (Pro)',
+    tarif_frei: 'Kostenlos', upgrade: 'Tarif & Credits', abo_verwalten: 'Abo verwalten',
+   
+    ex_kauf: 'Kaufliste als CSV (Pro)',
     ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
     gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
     gate_pdf: 'Für den PDF-Export brauchst du ein kostenloses Konto — dein erster Export ist frei.',
     gate_binder: 'Mehr als 2 Binder gibt es mit Binderplan Pro.',
     gate_export: 'Dein freier Export für diesen Monat ist verbraucht.',
     gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
-    gate_preise: 'Für Preise brauchst du ein kostenloses Konto.',
+   
     preise_morgen: 'Free-Konto: Preise wurden heute schon aktualisiert — morgen wieder (oder mit Pro sofort).',
     zahlung_ok: 'Zahlung erfolgreich — vielen Dank!', zahlung_abbruch: 'Zahlung abgebrochen.',
     willkommen: 'Willkommen!', uebernommen: 'Binder wurden deinem Konto zugeordnet.',
@@ -2070,16 +2124,16 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
-    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', sammel_t: 'Fach antippen = als „hab ich“ markieren', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
     mail_fehlt: 'Mail-Versand ist noch nicht eingerichtet — bitte beim Betreiber melden.',
     pw_geaendert: 'Passwort geändert — du bist angemeldet.',
     m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Suche',
-    start: 'Übersicht', profil: 'Profil & Konto', zur_werkbank: 'Zur Werkbank ›',
-    hallo: 'Hallo', st_unter: 'Deine Binder auf einen Blick — klick einen an, um weiterzuplanen.',
-    st_binder: 'Binder', st_faecher: 'Fächer geplant', st_gesammelt: 'Karten gesammelt',
+    start: 'Übersicht', profil: 'Profil & Konto',
+    hallo: 'Hallo',
+    st_binder: 'Binder', st_faecher: 'Fächer geplant',
     st_neu: 'Neuer Binder', st_zuletzt: 'zuletzt',
     mode_master: 'Master Set', mode_dex: 'Pokédex', mode_custom: 'Frei geplant',
     pf_konto: 'Konto', pf_tarif: 'Tarif', pf_binderzahl: 'Binder',
@@ -2103,7 +2157,7 @@ const T = {
     s_artwork: 'Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
     pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
     pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
-    preise_live: 'Refresh prices any time', preise_tag: 'Refresh prices once a day',
+    preise_live: 'Refresh prices any time', preise_tag: 'Prices from the previous day (refreshed once daily)',
     kaufliste_csv: 'Shopping list as CSV', zum_start: 'to start with', beliebt: 'Popular',
     up_recht_kurz: 'Final prices, no VAT (§ 19 UStG, German small business rule).',
     best_agb_html: 'I accept the <a href="recht#agb" target="_blank">terms</a> and have read the <a href="recht#datenschutz" target="_blank">privacy policy</a> and the <a href="recht#widerruf" target="_blank">right of withdrawal</a>.',
@@ -2114,30 +2168,30 @@ const T = {
     best_btn: 'Order with obligation to pay', best_hin: 'You will be redirected to Stripe. We never store payment details.',
     best_leistung: 'Product', best_laufzeit: 'Term', best_gesamt: 'Total today', best_verlaengert: 'renews automatically, cancel any time to the end of the term',
     best_einmalig: 'One-off payment, no subscription', best_fehlt: 'Please confirm both points to continue.',
-    credits: 'Credits', credits_kaufen: 'Buy credits', kein_guthaben: 'Not enough credits',
+    credits: 'Credits', credits_kaufen: 'Buy credits',
     guthaben: 'Balance', guthaben_abo: 'monthly allowance', guthaben_gekauft: 'purchased',
     journal: 'Recent entries', j_start: 'Welcome credits', j_kauf: 'Credits purchased', j_artwork: 'Artwork page',
     j_abo_guthaben: 'Monthly allowance', j_erstattung_fehler: 'Refund (failed run)', j_erstattung: 'Refund', j_test: 'Correction',
     waehlen: 'Choose', aktuell: 'Your plan', kuendigen: 'Cancel subscription', kuendigen_frage: 'Really cancel at the end of the term?',
     gekuendigt: 'Cancelled as of', reaktivieren: 'Undo cancellation', reaktiviert: 'Your subscription continues.',
-    abo_bis: 'Renews on', tarif_wechseln: 'Change plan', zahlung_offen: 'Payment pending – please check your payment method.',
+    abo_bis: 'Renews on',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: 'Fill the page',
     aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
     aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
-    aw_kont_monat: '{n} of {m} artwork pages left this month.', aw_kont_frei: 'Your trial page is free – Pro accounts create 20 pages per month.',
-    aw_kont_leer: 'Quota used up.', aw_kont_leer_frei: 'Trial page used – Pro gives you 20 artwork pages per month.',
-    gate_artwork: 'Your free trial page has been used.', aw_login: 'Please sign in to create artwork pages – the first one is free.',
+   
+   
+    aw_login: 'Please sign in to create artwork pages – the first one is free.',
     aw_kein_anker: 'Place at least one card in a pocket of this page first.', aw_kein_platz: 'There is no free pocket on this page for the AI to fill.',
     aw_laeuft_schon: 'An artwork page is already being generated – please wait a moment.', aw_fehler: 'That did not work', aw_geloescht: 'Artwork deleted.',
     aw_privat: 'AI image for private use. The original card stays untouched in its pocket; the cut-outs are labelled “Page · Slot”.',
     aw_druck_hint: 'Print on heavy paper (≥ 200 g) or photo paper, cut along the grey lines, slide into the empty sleeves.',
-    aw_up_r: 'AI artwork pages', aw_up_f: '1 trial page', aw_up_p: '20 / month', aw_erg_info: '{k} card(s) · {f} pockets with artwork · {s}',
+    aw_erg_info: '{k} card(s) · {f} pockets with artwork · {s}',
     stil_karte: 'Like the card', stil_comic: 'Comic', stil_foto: 'Photorealistic', stil_aquarell: 'Watercolor', stil_oel: 'Oil painting', stil_anime: 'Anime',
     stil_retro: 'Retro 90s', stil_pixel: 'Pixel art', stil_neon: 'Neon', stil_skizze: 'Pencil', stil_minimal: 'Minimal', stil_dunkel: 'Dark fantasy',
     undo: 'Undo', undo_ok: 'Undone.', hinzugefuegt_1: 'Card added',
-    f_mehr: 'Advanced filters', ansicht: 'Size', sammeln: 'Collect mode', m_poke: 'One Pokémon – all cards …',
-    m_import: 'Import list …', m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
+    f_mehr: 'Advanced filters', ansicht: 'Size', sammeln: 'Collect mode',
+    m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
     m_poke_jp: 'Include Japanese cards', alle_karten: 'all cards', s_rainbow: 'Rainbow (by type)',
     m_import_t: 'Import a list', m_import_u: 'One card per line – e.g. “sv1 25”, “Charizard 4/102”, “1x Charizard (Base Set) 4” or the CSV exports of TCG Collector, Collectr and Cardmarket wants.',
     import_datei: 'Choose file (.csv/.txt)', import_pruefen: 'Check', import_btn: 'Add to binder', imp_erkannt: 'matched', imp_unklar: 'unclear', imp_kein_treffer: 'no match',
@@ -2152,25 +2206,25 @@ const T = {
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
     kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price', pf_sprache_ui: 'Interface language',
     f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
-    m_illu: 'Artist binder …', m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
+    m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
     tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
     illu_karten: 'cards', d_illu: 'Illustration', d_regmark: 'Regulation mark', d_fam: 'Evolution line', d_fam_btn: 'Evolution line as binder', d_illu_btn: 'All by this artist',
     first_ed: '1st edition', alle_trainer: 'All', pdf_erzeugt: 'Generating PDF …', pdf_oeffnen: 'Open PDF', pdf_geladen: 'PDF downloaded –',
-    neu_lbl: 'Create new', raster: 'Grid', auffuellen: 'Fill page with empty slots', hilfe2: 'Drag to reorder, ⋯ on a slot for free slots, ✕ removes.',
+    raster: 'Grid', auffuellen: 'Fill page with empty slots', hilfe2: 'Drag to reorder, ⋯ on a slot for free slots, ✕ removes.',
     mehr_nav: 'More', gewaehlt: 'selected', zu_leer: 'Free the slots', eigener_binder: 'Plan your own binder',
     name_t: 'What should we call you?', name_u: 'Shown in the greeting – change it any time in your profile.', spaeter: 'Later',
     pw_hint: 'At least 8 characters.', up_r1: 'Saved binders', up_r2: 'Placeholder PDF', up_r2f: '1 / month', up_r3: 'Checklist & prices', up_r4: 'Refresh prices instantly', up_r4f: 'once a day', up_r5: 'Buy list as CSV',
     s_details: 'Details', s_frei_davor: 'Empty slot before', s_frei_danach: 'Empty slot after', s_zu_leer: 'Free the slot (remove card)', s_entfernen: 'Remove slot',
     s_seite_hoch: 'Move page forward', s_seite_runter: 'Move page back', s_seite_weg: 'Remove page', s_seite_fach: 'Append empty slot', s_seite_wahl: 'Select page',
-    erg_leer: 'No cards found.', ex_alle: 'Placeholder PDF – all cards', ex_fehlend: 'Placeholder PDF – missing only', ex_check2: 'Checklist',
+    erg_leer: 'No cards found.', ex_alle: 'Placeholder PDF – all cards', ex_fehlend: 'Placeholder PDF – missing only',
     verlauf_bald: 'Price history: from tomorrow, updated daily.', zustand_ph: 'Condition, e.g. NM',
-    neu_alt: '+ New / Templates', m_leer: 'Empty binder', m_master: 'Master set …', m_dex: 'Pokédex binder …',
+    m_leer: 'Empty binder',
     meine: 'My binders', preise: 'Prices', planer: 'Planner', pdf: 'Print',
     f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
     f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
     alle: '+ All results …', alle_ende: '… append at the end', alle_seite: '… start on next free page',
     mehr: 'Load more', binder: 'Binder', seite: 'Page', leeren: 'Clear binder',
-    hilfe: 'Drag cards to reorder, ✕ removes. Prints at 63 × 88 mm with “page · slot” labels.',
+   
     m_master_t: 'Create master set', m_master_u: 'Every card of the set once, ordered by set number.',
     m_reverse: 'Also plan reverse holos (card appears twice)',
     m_dex_t: 'Create Pokédex binder', m_dex_u: 'One slot per Pokémon — prints number, name and image.',
@@ -2214,26 +2268,26 @@ const T = {
       dark: 'Dark', light: 'Light', trainer: 'Trainer', energie: 'Energy' },
     typen: { Grass: 'Grass', Fire: 'Fire', Water: 'Water', Lightning: 'Lightning', Psychic: 'Psychic',
       Fighting: 'Fighting', Darkness: 'Darkness', Metal: 'Metal', Fairy: 'Fairy', Dragon: 'Dragon', Colorless: 'Colorless' },
-    bestaetigen_viele: 'really add all of them?', bestaetigen_leeren: 'Remove all slots from this binder?',
+    bestaetigen_viele: 'really add all of them?',
     bestaetigen_loeschen: 'Really delete this binder?', binder_leer: 'This binder is still empty.',
-    pdf_dauert: 'Generating PDF – the first export may take a moment …',
-    hinzugefuegt: 'cards added', angelegt: 'slots created', gespeichert: 'saved ✓',
+   
+    hinzugefuegt: 'cards added', angelegt: 'slots created',
     speichert: 'saving …', fehler_speichern: 'Saving failed!', neuer_binder: 'My binder',
     sync: 'Building card database …', keine_sets: 'No set found.', pokemon_gew: 'Pokémon selected',
     erst_waehlen: 'Please choose first', zu_viele: 'More than 2000 results – please narrow the filters',
     anmelden: 'Sign in', registrieren: 'Sign up', anmelden_t: 'Sign in', passwort: 'Password',
     agb_text: 'I accept the terms of service and the privacy policy.',
     agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
-    konto: 'Account', tarif_frei: 'Free', upgrade: 'Plans & credits', abo_verwalten: 'Manage subscription',
-    ex_alle_alt: 'PDF – all cards (B/W)', ex_fehlend_alt: 'PDF – missing cards only',
-    ex_check_alt: 'Checklist without images (does not count as export)', ex_kauf: 'Buy list as CSV (Pro)',
+    tarif_frei: 'Free', upgrade: 'Plans & credits', abo_verwalten: 'Manage subscription',
+   
+    ex_kauf: 'Buy list as CSV (Pro)',
     ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
     gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
     gate_pdf: 'PDF export needs a free account — your first export is free.',
     gate_binder: 'More than 2 binders come with Binderplan Pro.',
     gate_export: 'Your free export for this month is used up.',
     gate_pro: 'This feature is part of Binderplan Pro.',
-    gate_preise: 'Prices need a free account.',
+   
     preise_morgen: 'Free account: prices were already refreshed today — again tomorrow (or instantly with Pro).',
     zahlung_ok: 'Payment successful — thank you!', zahlung_abbruch: 'Payment cancelled.',
     willkommen: 'Welcome!', uebernommen: 'Your binders were linked to your account.',
@@ -2242,16 +2296,16 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
-    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', sammel_t: 'Tap a slot to mark it as “got it”', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
     mail_fehlt: 'Email sending is not set up yet — please contact the operator.',
     pw_geaendert: 'Password changed — you are signed in.',
     m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Search',
-    start: 'Overview', profil: 'Profile & account', zur_werkbank: 'To the workbench ›',
-    hallo: 'Hello', st_unter: 'All your binders at a glance — click one to keep planning.',
-    st_binder: 'Binders', st_faecher: 'Slots planned', st_gesammelt: 'Cards collected',
+    start: 'Overview', profil: 'Profile & account',
+    hallo: 'Hello',
+    st_binder: 'Binders', st_faecher: 'Slots planned',
     st_neu: 'New binder', st_zuletzt: 'updated',
     mode_master: 'Master set', mode_dex: 'Pokédex', mode_custom: 'Custom',
     pf_konto: 'Account', pf_tarif: 'Plan', pf_binderzahl: 'Binders',
@@ -2279,7 +2333,11 @@ function spracheVomBrowser() {
   return 'de';
 }
 let LANG = localStorage.getItem('bp_lang') || spracheVomBrowser();     // Sprache der Oberfläche
-let KLANG = localStorage.getItem('bp_klang') || LANG;                  // Kartennamen, Bilder, PDF: de | en
+// Kartennamen, Bilder und PDF folgen der Oberfläche, solange niemand sie ausdrücklich
+// getrennt hat. Zwei gleich aussehende „DE | EN“-Schalter nebeneinander waren die häufigste
+// Verwechslung in der Werkbank.
+let KLANG_EIGEN = localStorage.getItem('bp_klang_eigen') === '1';
+let KLANG = KLANG_EIGEN ? (localStorage.getItem('bp_klang') || LANG) : LANG;
 const t = (k) => T[LANG][k] || T.de[k] || k;
 // Bild-/Namenssprache: japanische Karten haben nur einen Scan (liegt in der en-Spalte)
 const kl = () => (filter.region === 'jp' ? 'en' : KLANG);
@@ -2393,7 +2451,7 @@ async function api(pfad, opts) {
 
 // Zentrale Behandlung der Konto-/Limit-Fehlercodes
 function gate(err) {
-  if (err.code === 'login') { loginOeffnen(t('gate_pdf')); return true; }
+  if (err.code === 'login') { loginOeffnen(t(err.detail && err.detail.grund ? err.detail.grund : 'gate_login')); return true; }
   if (err.code === 'limit_binder') { upgradeOeffnen(t('gate_binder')); return true; }
   if (err.code === 'limit_export') { upgradeOeffnen(t('gate_export')); return true; }
   if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro')); return true; }
@@ -2456,14 +2514,25 @@ themeAnwenden();
 
 // ---------- Sprache ----------
 // Kartensprache (Filterspalte DE|EN): Namen, Bilder, Set-Namen, PDF – die Oberfläche bleibt, wie sie ist
-function setKartensprache(lang) {
-  KLANG = lang; localStorage.setItem('bp_klang', lang);
+function setKartensprache(lang, automatisch) {
+  KLANG = lang;
+  localStorage.setItem('bp_klang', lang);
+  if (!automatisch) { KLANG_EIGEN = true; localStorage.setItem('bp_klang_eigen', '1'); }
+  if ($('f-klang-hinweis')) $('f-klang-hinweis').classList.toggle('hidden', !KLANG_EIGEN);
   $('f-lang-de').classList.toggle('on', lang === 'de'); $('f-lang-en').classList.toggle('on', lang === 'en');
   zeichneErgebnisse(); zeichneBinder(); baueSetSelect(); zeichneSetWahlKnopf();
   if (!$('planer').classList.contains('hidden')) zeichnePlaner();
 }
+/** Zurück zum Normalfall: Kartensprache = Oberfläche. */
+function kartenspracheFolgen() {
+  KLANG_EIGEN = false;
+  localStorage.removeItem('bp_klang_eigen');
+  setKartensprache(LANG, true);
+}
+
 function setLang(lang) {
   LANG = lang; localStorage.setItem('bp_lang', lang);
+  if (!KLANG_EIGEN && KLANG !== lang) setKartensprache(lang, true);   // Karten folgen der Oberfläche
   try { document.cookie = 'bp_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}   // Startseite / vs. /en
   $('lang-de').classList.toggle('on', lang === 'de');
   $('lang-en').classList.toggle('on', lang === 'en');
@@ -2624,7 +2693,10 @@ function setToken(token) {
 
 function kontoAnzeigen() {
   if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
-  if (typeof besitzLaden === 'function') besitzLaden().then(() => { if (S.binder) zeichneBinder(); });
+  if (typeof besitzLaden === 'function') besitzLaden().then(() => {
+    if (S.binder) zeichneBinder();
+    if (typeof habStandZeigen === 'function') habStandZeigen();
+  });
   const btn = $('btn-konto');
   if (S.user) {
     btn.textContent = anzeigeName() + (S.user.plan !== 'free' ? '' : '');
@@ -2925,7 +2997,7 @@ async function startLaden() {
   $('st-tun').innerHTML = [
     ['kamera', t('tpl_foto'), t('tpl_foto_u'), 'startSchliessen();fotoOeffnen()'],
     ['motiv', t('th_titel'), t('st_thema_u'), 'startSchliessen();themaOeffnen()'],
-    ['raster', t('st_neu'), t('st_neu_u'), "event.stopPropagation();menuToggle('menu-st-neu')"],
+    ['raster', t('st_neu'), t('st_neu_u'), 'vorlagenOeffnen()'],
     ['vitrine', t('vt_t'), t('st_vitrine_u'), "startSchliessen();ansicht('vitrine')"],
   ].map(([icn, titel, unter, fn]) => `<button onclick="${fn}"><span class="st-ic">${ic(icn, 20)}</span>
       <span><strong>${esc(titel)}</strong><small>${esc(unter)}</small></span></button>`).join('');
@@ -2963,16 +3035,8 @@ function zeichneStartBinder(liste) {
       <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
   }).join('') + `
-    <div class="bcard neu menuwrap" onclick="menuToggle('menu-st-neu')">
+    <div class="bcard neu" onclick="vorlagenOeffnen()">
       <div style="font-size:26px">+</div><div style="font-weight:700">${t('st_neu')}</div>
-      <div class="menu hidden" id="menu-st-neu" style="top:auto;bottom:12px;left:12px;right:12px">
-        <button onclick="startNeu('master')">${t('tpl_master')}</button>
-        <button onclick="startNeu('dex')">${t('tpl_dex')}</button>
-        <button onclick="startNeu('poke')">${t('tpl_poke')}</button>
-        <button onclick="startNeu('illu')">${t('tpl_illu')}</button>
-        <button onclick="startNeu('import')">${t('tpl_import')}</button>
-        <button onclick="startNeu('leer')">${t('m_leer')}</button>
-      </div>
     </div>`;
 }
 
@@ -2992,6 +3056,7 @@ async function startNeu(art) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (art === 'leer') { $('startseite').classList.add('hidden'); await neuLeer(); return; }
   $('startseite').classList.add('hidden');
+  if (art === 'vorlagen') return vorlagenOeffnen();
   // Ohne aktiven Binder (frisches Konto, gelöschter Binder) stünde die Werkbank auf null und jeder
   // Klick würfe einen Fehler – ein lokaler Gast-Binder ist der sichere Boden, bis die Vorlage kommt.
   if (!S.binder) { S.binder = lokalerBinder(); binderAnzeigen(); }
@@ -3019,6 +3084,8 @@ function profilFuellen() {
   const u = S.user;
   if (!u) return;
   $('pf-email').textContent = u.email;
+  // Wann wurde das Passwort zuletzt geändert? Eine Zeile, die zeigt, dass der Wechsel ankam.
+  if ($('pf-pw-stand')) $('pf-pw-stand').textContent = u.pw_geaendert_am ? t('pf_pw_stand').replace('{d}', u.pw_geaendert_am) : '';
   $('pf-name').value = u.name || '';
   $('pf-plan').textContent = u.plan_name || t('tarif_frei');
   const bis = u.abo_kuendigt && u.abo_bis ? `${t('gekuendigt')} ${u.abo_bis}` : (u.abo_bis ? `${t('abo_bis')} ${u.abo_bis}` : '');
@@ -3134,6 +3201,30 @@ function binderAnzeigen() {
 }
 
 // ---------- Menüs & Modale ----------
+/** Ein Ort für alle Vorlagen. Vorher lagen dieselben sechs Einstiege im Binder-Wechsler,
+ *  im leeren Binder, auf der Startseite und im Mehr-Menü — jeweils mit eigener Reihenfolge. */
+function vorlagenOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!$('startseite').classList.contains('hidden')) startSchliessen();
+  modalOeffnen('modal-vorlagen');
+}
+
+function vorlage(art) {
+  // Der Dialog wird getauscht, nicht geschlossen und neu geöffnet: der Ebenen-Eintrag bleibt
+  // bestehen (er schließt ohnehin jedes offene Modal), und es gibt keinen Verlaufssprung,
+  // dessen verzögertes popstate den neuen Dialog gleich wieder zumachen würde.
+  $('modal-vorlagen').classList.add('hidden');
+  if (art === 'leer') { modalSchliessen(); return neuLeer(); }
+  const ziel = art === 'foto' ? 'modal-foto' : art === 'import' ? 'modal-import'
+             : art === 'master' ? 'modal-master' : art === 'poke' ? 'modal-poke'
+             : art === 'illu' ? 'modal-kuenstler' : 'modal-dex';
+  $(ziel).classList.remove('hidden');
+  if (ziel === 'modal-master') zeichneSetliste();
+  if (ziel === 'modal-dex') zeichneGens();
+  if (ziel === 'modal-import') { $('import-vorschau').innerHTML = ''; $('import-btn').disabled = true; }
+  if (ziel === 'modal-foto') fotoSchritt(1);
+}
+
 function menuToggle(id) {
   document.querySelectorAll('.menu').forEach((m) => { if (m.id !== id) m.classList.add('hidden'); });
   $(id).classList.toggle('hidden');
@@ -3144,6 +3235,10 @@ document.addEventListener('click', (ev) => {
 // Escape schließt Modale und offene Menüs — daneben tippen schließt bewusst nichts mehr
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') {
+    // Über die eigenen Schließer gehen, damit Aufräumarbeiten laufen: der Foto-Import bleibt
+    // während des Hochladens offen, und das Artwork-Modal stoppt seine Abfrage.
+    if (!$('modal-foto').classList.contains('hidden')) { fotoSchliessen(); return; }
+    if (!$('modal-artwork').classList.contains('hidden')) { artworkSchliessen(); return; }
     modalSchliessen();
     document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   }
@@ -3211,7 +3306,22 @@ function zeichneSetliste() {
   $('set-liste').innerHTML = html || `<div style="padding:14px;color:var(--mut)">${t('keine_sets')}</div>`;
 }
 
-async function masterErstellen() {
+/** Knopf sperren, Fehler zeigen: zwei Klicks legten zwei Binder an, ein Serverfehler ließ
+ *  den Dialog stumm offen stehen. */
+async function mitKnopf(knopf, fn) {
+  const el = typeof knopf === 'string' ? document.querySelector(knopf) : knopf;
+  if (el) { if (el.disabled) return; el.disabled = true; el.dataset.alt = el.textContent; el.textContent = t('arbeitet'); }
+  try {
+    await fn();
+  } catch (e) {
+    if (!gate(e)) toast((e.detail && e.detail.text) || e.message || t('fehler_laden'));
+  } finally {
+    if (el) { el.disabled = false; el.textContent = el.dataset.alt || t('anlegen'); }
+  }
+}
+
+async function masterErstellen() { return mitKnopf('#modal-master .btn:not(.sekundaer)', _masterErstellen); }
+async function _masterErstellen() {
   if (!wzSet) return toast(t('erst_waehlen'));
   const s = S.meta.sets.find((x) => x.id === wzSet);
   const name = 'Master Set ' + ((LANG === 'en' ? s.name_en : s.name) || s.name_en || wzSet);
@@ -3241,7 +3351,8 @@ function zeichneGens() {
 }
 function genToggle(g) { wzGens.has(g) ? wzGens.delete(g) : wzGens.add(g); zeichneGens(); }
 
-async function dexErstellen() {
+async function dexErstellen() { return mitKnopf('#modal-dex .btn:not(.sekundaer)', _dexErstellen); }
+async function _dexErstellen() {
   if (!wzGens.size) return toast(t('erst_waehlen'));
   const gens = [...wzGens].sort((a, b) => a - b);
   const d = await api('api/pokedex?gens=' + gens.join(','));
@@ -3589,6 +3700,11 @@ function bildFehlt(img) {
 function slotExtras(item, idx) {
   if (S.nurAnsicht) {
     let html = '';
+    // Wer angemeldet ist und eine Sammlung führt, sieht sofort, welche Karten er schon hat.
+    // Das macht aus einem fremden Binder eine Einkaufsliste statt nur einer Galerie.
+    if (S.user && item && item.type === 'card') {
+      html += `<span class="hat-mark ${besitzt(item) ? 'ja' : ''}">${besitzt(item) ? '✓' : ''}</span>`;
+    }
     if (item && VMARK[item.variant]) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
     if (S.preiseAn && item && item.type === 'card') {   // der Preis-Schalter gilt auch in der Nur-Ansicht
       const p = preisFuer(item);
@@ -3670,7 +3786,7 @@ function zeichneBinder() {
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
   const gesammelt = S.binder.items.filter((i) => besitzt(i)).length;
-  $('wb-sammel').classList.toggle('hidden', sammelbar === 0 || !document.body.classList.contains('sammeln'));
+  $('wb-sammel').classList.toggle('hidden', sammelbar === 0);
   if (sammelbar) {
     $('wb-sammel-zahl').textContent = `${gesammelt} / ${sammelbar}`;
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
@@ -3782,11 +3898,20 @@ function bvRueckenEl() {
   return el;
 }
 
+/** Hochkant am Handy ist eine Doppelseite 350 px breit — die Karten wären Briefmarken.
+ *  Dort wird nur eine Seite gezeigt; das Wischen blättert weiter wie gehabt. */
+function bvEinzeln() { return window.innerWidth < 700 && window.innerHeight > window.innerWidth; }
+
 function bvZeichne() {
   const [c, r] = LAYOUTS[S.binder.layout] || [3, 3];
   $('blaettern').style.setProperty('--bv-ratio', ((2 * (c * 63 + (c - 1) * 6 + 24) + 26) / (r * 88 + (r - 1) * 6 + 24)).toFixed(3));
   const links = bvLinks(BV.spread), rechts = bvRechts(BV.spread);
-  $('bv-buch').replaceChildren(bvSeiteEl(links, 'links'), bvRueckenEl(), bvSeiteEl(rechts, 'rechts'));
+  if (bvEinzeln()) {
+    const nr = rechts >= 0 && rechts < bvSeitenZahl() ? rechts : links;
+    $('bv-buch').replaceChildren(bvSeiteEl(nr, 'rechts'));
+  } else {
+    $('bv-buch').replaceChildren(bvSeiteEl(links, 'links'), bvRueckenEl(), bvSeiteEl(rechts, 'rechts'));
+  }
   const gesamt = bvSeitenZahl();
   const sichtbar = [links, rechts].filter((n) => n >= 0 && n < gesamt).map((n) => n + 1);
   $('bv-zaehler').textContent = sichtbar.length === 2
@@ -4043,6 +4168,10 @@ function themaUebernehmen(modus) {
   } else {
     const start = S.seite * pp;
     while (S.binder.items.length < start + pp) S.binder.items.push({ type: 'empty' });
+    // Belegte Fächer bleiben stehen. Vorher ersetzte „Auf diese Seite“ die ganze Seite —
+    // wer eine halb gefüllte Seite ergänzen wollte, verlor die Karten, die schon drin waren.
+    const belegt = S.binder.items.slice(start, start + pp).filter((i) => i && i.type !== 'empty').length;
+    if (belegt && !confirm(t('th_ueberschreiben').replace('{n}', belegt))) return;
     S.binder.items.splice(start, pp, ...karten.slice(0, pp),
       ...Array.from({ length: Math.max(0, pp - karten.length) }, () => ({ type: 'empty' })));
   }
@@ -4251,6 +4380,7 @@ function ansichtVitrine() {
 }
 function vitrineSchliessen() {
   if ($('vitrine').classList.contains('hidden')) return;
+  ebeneAufraeumen(vitrineSchliessen);
   $('vitrine').classList.add('hidden');
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
@@ -4414,13 +4544,47 @@ async function ansichtBegleitung() {
     ${d.oeffentlich ? `<button class="vt-herz ${d.gestimmt ? 'an' : ''}" id="vt-herz-einzel" onclick="ansichtStimme()">
         ${ic('herz', 15, d.gestimmt ? 'voll' : '')}<span>${d.stimmen}</span></button>` : ''}
     <div style="flex:1"></div>
+    <span class="vt-hab" id="vt-hab"></span>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="seiteUebernehmen()">${t('vt_seite_uebernehmen')}</button>
+    <button class="btn sekundaer hidden" style="font-size:12.5px" id="vt-fehlend" onclick="fehlendeUebernehmen()">${t('vt_fehlende')}</button>
     <button class="btn" style="font-size:12.5px" onclick="binderKopieren()">${t('vt_binder_kopieren')}</button>
     ${d.oeffentlich ? `<button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(S.binder.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>` : ''}`;
   const banner = document.querySelector('.ansicht-banner');
   (banner || document.querySelector('.kopf')).after(leiste);
   if (d.oeffentlich) document.body.classList.add('von-vitrine');   // öffentliche Binder haben immer einen Weg zurück
   ansichtGroesse();
+  habStandZeigen();
+}
+
+/** „12 von 27 hast du schon“ – nur mit Konto, denn ohne Sammlung gibt es nichts zu vergleichen. */
+function habStandZeigen() {
+  const feld = $('vt-hab');
+  if (!feld || !S.binder) return;
+  const karten = S.binder.items.filter((i) => i && i.type === 'card');
+  if (!S.user || !karten.length) { feld.textContent = ''; return; }
+  const habe = karten.filter(besitzt).length;
+  feld.textContent = t('vt_hab').replace('{n}', habe).replace('{g}', karten.length);
+  const knopf = $('vt-fehlend');
+  if (knopf) knopf.classList.toggle('hidden', habe >= karten.length);
+}
+
+/** Nur die Karten übernehmen, die in der eigenen Sammlung fehlen. */
+async function fehlendeUebernehmen() {
+  if (!S.user) return loginOeffnen(t('vt_login'));
+  const fehlen = S.binder.items.filter((i) => i && i.type === 'card' && !besitzt(i)).map(fremdesFach);
+  if (!fehlen.length) return toast(t('vt_nichts_fehlt'));
+  const ziel = await zielBinder();
+  if (!ziel) return uebernehmenAlsNeu(fehlen, t('vt_kopie_name').replace('{n}', S.binder.name));
+  if (!confirm(t('vt_seite_frage').replace('{n}', fehlen.length).replace('{b}', ziel.name))) return;
+  const pp = LAYOUTS[ziel.layout] ? (LAYOUTS[ziel.layout][0] * LAYOUTS[ziel.layout][1]) : 9;
+  while (ziel.items.length % pp) ziel.items.push({ type: 'empty' });
+  ziel.items.push(...fehlen);
+  try {
+    await api('api/binders/' + ziel.id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ziel),
+    });
+    toast(t('vt_uebernommen').replace('{n}', fehlen.length).replace('{b}', ziel.name));
+  } catch (e) { if (!gate(e)) toast(e.message); }
 }
 
 async function ansichtStimme() {
@@ -4500,7 +4664,10 @@ async function uebernehmenAlsNeu(items, name) {
 async function profilseiteOeffnen(name) {
   POF.name = name;
   POF.vonVitrine = !$('vitrine').classList.contains('hidden');   // nach dem Schließen dorthin zurück
-  vitrineSchliessen(); planerSchliessen();
+  // Die Vitrine wird nur verdeckt, nicht geschlossen: ihr Ebenen-Eintrag bleibt darunter
+  // liegen, damit Zurück von der Profilseite wieder in der Vitrine landet.
+  if (POF.vonVitrine) $('vitrine').classList.add('hidden'); else vitrineSchliessen();
+  planerSchliessen();
   $('profil-oeffentlich').classList.remove('hidden');
   ebeneOeffnen(profilseiteSchliessen);
   $('po-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
@@ -4530,6 +4697,8 @@ async function profilseiteOeffnen(name) {
   }
 }
 function profilseiteSchliessen() {
+  if ($('profil-oeffentlich').classList.contains('hidden')) return;
+  ebeneAufraeumen(profilseiteSchliessen);
   $('profil-oeffentlich').classList.add('hidden');
   if (POF.vonVitrine) { POF.vonVitrine = false; $('vitrine').classList.remove('hidden'); reiterSetzen('seg-vitrine'); }
 }
@@ -4550,6 +4719,17 @@ function hashSetzen(h) {
 function ebeneOeffnen(schliesser) {
   EBENEN.push(schliesser);
   try { history.pushState({ bpEbene: EBENEN.length }, ''); } catch (e) { /* alte Browser */ }
+}
+
+/** Eine Ansicht wurde direkt geschlossen (Reiterwechsel, nicht über Zurück): den Eintrag
+ *  aus dem Stapel nehmen. Liegt er obenauf, geht auch der Verlaufseintrag zurück. */
+function ebeneAufraeumen(schliesser) {
+  const i = EBENEN.lastIndexOf(schliesser);
+  if (i === -1) return;
+  EBENEN.splice(i, 1);
+  // Der Verlaufseintrag bleibt bewusst stehen. Ihn hier per history.back() einzusammeln wäre
+  // asynchron und käme dem pushState der Ansicht in die Quere, die gerade aufgeht.
+  // Ein übrig gebliebener Eintrag ist harmlos: der popstate-Handler prüft dann die Route.
 }
 
 /** Ebene programmatisch schließen (Klick auf ✕). Nimmt den Verlaufseintrag mit. */
@@ -4682,6 +4862,7 @@ function ansichtSammlung() {
 }
 function sammlungSchliessen() {
   if ($('sammlung').classList.contains('hidden')) return;
+  ebeneAufraeumen(sammlungSchliessen);
   $('sammlung').classList.add('hidden');
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
@@ -4972,6 +5153,7 @@ function dragDrop(ev) {
 // ---------- Preise ----------
 async function preiseUmschalten() {
   S.preiseAn = $('preis-toggle').checked;
+  if (!S.preiseAn && $('wb-verlauf')) $('wb-verlauf').classList.add('hidden');
   $('wb-preise').classList.toggle('hidden', !S.preiseAn);
   if (S.preiseAn) await preiseLaden();
   zeichneBinder();
@@ -4985,6 +5167,7 @@ async function preiseLaden() {
     Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
     if (d.gedrosselt) toast(t('preise_morgen'));
     else if (d.offen > 0) toast(t('preise_offen'));
+    wertverlaufLaden();
     zeichneBinder();
     if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   } catch (e) {
@@ -4998,6 +5181,27 @@ function preisFuer(item) {
   if (item.variant === 'holo' || item.variant === 'reverse') { const h = S.preiseHolo[item.id]; if (h != null) return h; }
   return S.preise[item.id];
 }
+/** Wertverlauf des Binders: die Tabelle price_history sammelt täglich, sichtbar war davon
+ *  bisher nichts. Zeigt die Linie der letzten 30 Tage und die Veränderung zur Vorwoche. */
+async function wertverlaufLaden() {
+  const box = $('wb-verlauf');
+  if (!box || !S.binder || !S.binder.id || !S.preiseAn) { if (box) box.classList.add('hidden'); return; }
+  try {
+    const d = await api('api/binders/' + S.binder.id + '/wert?tage=30');
+    if (!d.punkte || d.punkte.length < 2) { box.classList.add('hidden'); return; }
+    const ys = d.punkte.map((p) => p.eur);
+    const min = Math.min(...ys), max = Math.max(...ys);
+    const pts = ys.map((y, i) => `${(i / (ys.length - 1) * 100).toFixed(1)},${(30 - (max === min ? 15 : (y - min) / (max - min) * 24 + 3)).toFixed(1)}`).join(' ');
+    const delta = d.veraenderung;
+    const zeichen = delta > 0 ? '+' : '';
+    const farbe = delta > 0 ? 'var(--gruen)' : delta < 0 ? 'var(--akzent)' : 'var(--mut)';
+    box.innerHTML = `<svg viewBox="0 0 100 32" preserveAspectRatio="none" class="wv-spark">
+        <polyline points="${pts}" fill="none" stroke="${farbe}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <span class="wv-text">${delta == null ? '' : `<b style="color:${farbe}">${zeichen}${delta.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</b> ${t('wv_woche')}`}</span>`;
+    box.classList.remove('hidden');
+  } catch (e) { box.classList.add('hidden'); }
+}
+
 function zeichnePreisSumme() {
   if (!S.preiseAn) return;
   let summe = 0; let fehlen = 0;
@@ -5008,6 +5212,7 @@ function zeichnePreisSumme() {
   }
   const fmt = summe.toFixed(2).replace('.', LANG === 'de' ? ',' : '.');
   $('wb-preise').textContent = `${t('gesamt')}: ${fmt} €` + (fehlen ? ` (+${fehlen}?)` : '');
+  $('wb-preise').title = fehlen ? t('s_ohne_preis').replace('{n}', fehlen) : '';
 }
 
 // ---------- Planer ----------
@@ -5033,6 +5238,8 @@ function planerOeffnen() {
   zeichnePlaner();
 }
 function planerSchliessen() {
+  if ($('planer').classList.contains('hidden')) return;
+  ebeneAufraeumen(planerSchliessen);
   $('planer').classList.add('hidden');
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
   $('mnav-planer').classList.remove('on'); if (!document.body.classList.contains('binder-an')) $('mnav-suche').classList.add('on'); else $('mnav-binder').classList.add('on');
@@ -5080,7 +5287,16 @@ function planerKlick(ev, idx) {
     S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
   }
   letzterKlick = idx;
-  zeichnePlaner();
+  auswahlZeigen();
+}
+
+/** Nur die Markierung umschalten. Ein Pokédex-Binder hat bis zu 1.000 Fächer — den ganzen
+ *  Baum für einen Klick neu zu bauen, ließ jede Auswahl ruckeln. */
+function auswahlZeigen() {
+  document.querySelectorAll('#planer-rumpf .slot[data-idx]').forEach((el) => {
+    el.classList.toggle('gewaehlt', S.auswahl.has(Number(el.dataset.idx)));
+  });
+  planerAktionen();
 }
 function seiteWaehlen(seite) {
   const pp = proSeite();
@@ -5088,9 +5304,9 @@ function seiteWaehlen(seite) {
     const idx = seite * pp + s;
     if (S.binder.items[idx]) S.auswahl.add(idx);
   }
-  zeichnePlaner();
+  auswahlZeigen();
 }
-function auswahlLeeren() { S.auswahl.clear(); zeichnePlaner(); }
+function auswahlLeeren() { S.auswahl.clear(); auswahlZeigen(); }
 
 function auswahlVerschieben(wohin) {
   if (!S.auswahl.size) return toast(t('erst_waehlen'));
@@ -5168,12 +5384,21 @@ function speichern() {
   if (!S.binder.id) { if (S.binder.items.length) binderAnlegenWennNoetig(); return; }
   $('wb-status').textContent = t('speichert');
   clearTimeout(S.speicherTimer);
-  S.speicherTimer = setTimeout(async () => {
-    try {
-      await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
-      $('wb-status').textContent = t('gespeichert');
-    } catch (e) { $('wb-status').textContent = t('fehler_speichern'); }
-  }, 700);
+  // Den Binder hier festhalten, nicht erst beim Ausführen: wer innerhalb der 700 ms den Binder
+  // wechselt, schrieb sonst die Daten des alten in den neuen — und der alte blieb ungespeichert.
+  const binder = S.binder;
+  const inhalt = JSON.stringify(binder);
+  S.speicherTimer = setTimeout(() => sichereJetzt(binder, inhalt), 700);
+}
+
+async function sichereJetzt(binder, inhalt) {
+  clearTimeout(S.speicherTimer);
+  try {
+    await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: inhalt });
+    if (S.binder === binder) $('wb-status').textContent = t('gespeichert');
+  } catch (e) {
+    if (S.binder === binder) $('wb-status').textContent = t('fehler_speichern');
+  }
 }
 
 async function _binderSichern() {
@@ -5252,7 +5477,9 @@ async function kaufliste() {
 function teilen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.binder || !S.binder.id) return toast(t('binder_leer'));
-  const url = location.origin + location.pathname + '#ansicht/' + S.binder.id;
+  // /b/<id> liefert Vorschaubild und Beschreibung an Chats und Netzwerke und schickt
+  // Menschen sofort weiter in die Ansicht. Der alte #ansicht-Link funktioniert weiter.
+  const url = location.origin + '/b/' + S.binder.id;
   (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
     .then(() => toast(t('link_kopiert')))
     .catch(() => prompt('Link:', url));
@@ -5338,10 +5565,10 @@ async function _binderAnlegen() {
 }
 
 // ---------- Sammel-Modus ----------
-function sammelnToggle() {
-  document.body.classList.toggle('sammeln', $('sammel-toggle').checked);
-  zeichneBinder();
-}
+// Der Haken „hab ich“ ist der meistgenutzte Klick im Binder und braucht keinen eigenen Modus
+// mehr: er ist immer sichtbar. Der Klick auf das Fach selbst setzt ihn.
+document.body.classList.add('sammeln');
+function sammelnToggle() { zeichneBinder(); }
 
 // ---------- Fächer frei anordnen ----------
 function freiesFach(idx) {
@@ -5411,20 +5638,20 @@ function seiteVerschieben(seite, d) {
   while (S.binder.items.length % pp) S.binder.items.push({ type: 'empty' });   // volle Seiten, damit nichts verrutscht
   const items = S.binder.items;
   const block = items.splice(a, pp); items.splice(b, 0, ...block);
-  S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneBinder();
+  S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
 }
 function seiteEntfernen(seite) {
   const pp = proSeite();
   merken('seite');
   S.binder.items.splice(seite * pp, pp);
-  S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneBinder(); zeichneErgebnisse();
+  S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder(); zeichneErgebnisse();
   toastUndo(t('s_seite_weg'));
 }
 function seiteLeeresFach(seite) {
   const pp = proSeite(); const ende = Math.min((seite + 1) * pp, S.binder.items.length);
   merken('fach');
   S.binder.items.splice(ende, 0, { type: 'empty' });
-  speichern(); zeichnePlaner(); zeichneBinder();
+  speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
 }
 function auswahlZuLeer() {
   if (!S.auswahl.size) return;
@@ -5434,7 +5661,8 @@ function auswahlZuLeer() {
   toastUndo(t('zu_leer'));
 }
 function slotKlick(idx) {
-  if (document.body.classList.contains('sammeln')) hatToggle(idx);
+  const item = S.binder.items[idx];
+  if (item && item.type === 'card') hatToggle(idx);
 }
 
 // ---------- Filter: „Mehr Filter“ ----------
@@ -5550,10 +5778,16 @@ function mehrFilterZahl() {
 const VARIANTEN = ['normal', 'reverse', 'holo', 'first', 'pokeball', 'masterball'];
 const VMARK = { reverse: 'REV', holo: 'HOLO', first: '1ST', pokeball: 'PB', masterball: 'MB' };
 let detailKarte = null; let detailVariante = 'normal'; let detailSprache = 'de';
+/** Bei schon offenem Dialog nur den Inhalt tauschen: „andere Drucke“ legte sonst je Klick
+ *  eine neue Ebene und einen Verlaufseintrag an — am Handy verschluckte Zurück danach Klicks. */
+function detailModalZeigen() {
+  if ($('modal-detail').classList.contains('hidden')) modalOeffnen('modal-detail');
+}
+
 async function detailOeffnen(idOrIdx) {
   const id = typeof idOrIdx === 'number' ? (S.ergebnisse[idOrIdx] || {}).id : idOrIdx;
   if (!id) return;
-  modalOeffnen('modal-detail');
+  detailModalZeigen();
   $('detail-inhalt').innerHTML = `<div style="padding:40px;text-align:center;color:var(--mut)">…</div>`;
   let k;
   try { k = await api('api/cards/' + encodeURIComponent(id) + '/detail'); } catch (e) { $('detail-inhalt').textContent = '?'; return; }
@@ -5573,7 +5807,8 @@ async function detailOeffnen(idOrIdx) {
     return `<button class="chip ${detailVariante === v ? 'on' : ''}" style="${erlaubt ? '' : 'opacity:.45'}" onclick="detailVariante='${v}';zeichneDetailChips()">${t('v_' + v)}</button>`;
   };
   const andere = (k.andere || []).map((a) => `<button onclick="detailOeffnen('${a.id}')" title="${esc(nm(a))} · ${esc(setNm(a))}"><img loading="lazy" src="${imgUrl(a.id)}" alt=""><span>${esc(setNm(a))} · ${esc(a.local_id || '')}</span></button>`).join('');
-  const cm = 'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
+  const cm = 'https://www.cardmarket.com/' + (LANG === 'en' ? 'en' : 'de')
+    + '/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
   $('detail-inhalt').innerHTML = `
     <div class="d-grid">
       <div>${k.img ? `<img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}" onerror="this.outerHTML='<div class=d-kein-bild>${esc(nm(k))}<small>${t('kein_scan')}</small></div>'">`
@@ -5640,7 +5875,8 @@ function pokeInfo() {
   $('poke-info').textContent = p ? `#${String(p.dex).padStart(3, '0')} ${LANG === 'en' ? p.name_en : p.name}` : '';
   $('poke-info').dataset.dex = p ? p.dex : '';
 }
-async function pokeErstellen() {
+async function pokeErstellen() { return mitKnopf('#modal-poke .btn:not(.sekundaer)', _pokeErstellen); }
+async function _pokeErstellen() {
   await ladePokedex(); pokeInfo();
   const dex = Number($('poke-info').dataset.dex || 0);
   if (!dex) return toast(t('erst_waehlen'));
@@ -5650,7 +5886,7 @@ async function pokeErstellen() {
   const d = await api('api/cards/ids?' + q + '&region=intl');
   let ids = d.ids;
   if ($('poke-jp').checked) { try { ids = ids.concat((await api('api/cards/ids?' + q + '&region=jp')).ids); } catch (e) {} }
-  if (!ids.length) return toast('0');
+  if (!ids.length) return toast(t('keine_karten'));
   const name = (LANG === 'en' ? p.name_en : p.name) + ' – ' + (fam ? t('d_fam') : t('alle_karten'));
   if (!await binderSpeichernNeu(name, 'custom', ids.map((id) => ({ type: 'card', id })), { dex, familie: fam })) return;
   modalSchliessen(); toast(ids.length + ' ' + t('angelegt'));
@@ -5666,12 +5902,13 @@ function illuInfo() {
   $('illu-info').textContent = i ? `${i.name} · ${i.anzahl} ${t('illu_karten')}` : '';
   $('illu-info').dataset.name = i ? i.name : '';
 }
-async function kuenstlerErstellen() {
+async function kuenstlerErstellen() { return mitKnopf('#modal-kuenstler .btn:not(.sekundaer)', _kuenstlerErstellen); }
+async function _kuenstlerErstellen() {
   illuInfo();
   const name = $('illu-info').dataset.name;
   if (!name) return toast(t('erst_waehlen'));
   const d = await api('api/cards/ids?illustrator=' + encodeURIComponent(name) + '&sort=datum&limit=2000&region=intl');
-  if (!d.ids.length) return toast('0');
+  if (!d.ids.length) return toast(t('keine_karten'));
   if (!await binderSpeichernNeu(name, 'custom', d.ids.map((id) => ({ type: 'card', id })), { illustrator: name })) return;
   modalSchliessen(); toast(d.ids.length + ' ' + t('angelegt'));
 }
@@ -5690,10 +5927,19 @@ async function importPruefen() {
     const d = await api('api/import/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     importTreffer = d.treffer;
     $('import-stand').textContent = `${d.treffer.length} ${t('imp_erkannt')}${d.unklar.length ? ` · ${d.unklar.length} ${t('imp_unklar')}` : ''}`;
-    $('import-vorschau').innerHTML = `<table class="imp-tab">${d.treffer.map((x) => `<tr><td>${esc(x.zeile)}</td><td>→ <strong>${esc(x.name)}</strong> · ${esc(x.set_name || '')} ${esc(x.local_id || '')}${x.sicher ? '' : ' <span style="color:var(--mut)">?</span>'}</td></tr>`).join('')}
-      ${d.unklar.map((z) => `<tr><td class="u">${esc(z)}</td><td class="u">${t('imp_kein_treffer')}</td></tr>`).join('')}</table>`;
+    // Vier Spalten statt einer Textwurst: Eingabe, Treffer, Set, Sicherheit.
+    // „?“ heißt: erkannt, aber die Setnummer war nicht eindeutig.
+    const zeile = (x, ok) => `<tr class="${ok ? (x.sicher === false ? 'unsicher' : '') : 'fehlt'}">
+      <td class="imp-roh">${esc(ok ? x.zeile : x)}</td>
+      <td>${ok ? '<strong>' + esc(x.name) + '</strong>' + (x.local_id ? ' · ' + esc(x.local_id) : '')
+               : '<span style="color:var(--mut)">' + t('imp_kein_treffer') + '</span>'}</td>
+      <td class="imp-set">${ok ? esc(x.set_name || '') : ''}</td>
+      <td class="imp-ok">${ok ? (x.sicher === false ? '?' : '✓') : '✕'}</td></tr>`;
+    $('import-vorschau').innerHTML = `<table class="imp-tab">${d.treffer.map((x) => zeile(x, true)).join('')}
+      ${d.unklar.map((z) => zeile(z, false)).join('')}</table>`
+      + (d.abgeschnitten ? `<div class="imp-rest">${t('imp_gekuerzt').replace('{n}', d.abgeschnitten)}</div>` : '');
     $('import-btn').disabled = !d.treffer.length;
-  } catch (e) { $('import-stand').textContent = '?'; }
+  } catch (e) { $('import-stand').textContent = t('fehler_laden'); }
 }
 async function importUebernehmen() {
   if (!importTreffer.length || !S.binder) return;

@@ -25,6 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
+from starlette.concurrency import run_in_threadpool
 from fastapi import HTTPException, Request
 from PIL import Image
 
@@ -508,7 +509,21 @@ def _auswahl(thema, kandidaten, anzahl):
 
 # --- Einhängen ---------------------------------------------------------------
 
+def _admin_vergleich(echt, key, request=None):
+    """Zeitkonstant vergleichen; Schlüssel darf auch als Kopfzeile X-Admin-Key kommen."""
+    import hmac
+    if not echt:
+        return False
+    kandidat = key or ""
+    if request is not None and not kandidat:
+        kandidat = request.headers.get("x-admin-key", "")
+    return hmac.compare_digest(kandidat, echt)
+
+
 def register(app, *, get_db, current_user, require_user, ist_pro, card_image_path, env, CACHE, abo, admin_key):
+    def _admin_ok(key, request=None):
+        return _admin_vergleich(admin_key(), key, request)
+
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
                 card_image_path=card_image_path, env=env, CACHE=CACHE, abo=abo, admin_key=admin_key)
 
@@ -616,7 +631,11 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         scope_ids = _scope_ids(str(data.get("scope") or "alle"))
         ohne = {str(x) for x in (data.get("ohne") or []) if x}
         _kontingent(request)
+        return await run_in_threadpool(_plan_rechnen, thema, anker, anzahl, scope_ids, ohne)
 
+    def _plan_rechnen(thema, anker, anzahl, scope_ids, ohne):
+        """Zwei bis drei Modellaufrufe mit bis zu 180 s Zeitlimit — die gehören in den
+        Threadpool, sonst steht der ganze Dienst so lange."""
         kosten = 0.0
         if anker:
             profil, k = _profil_aus_karte(anker)
@@ -645,9 +664,10 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         }
 
     @app.post("/api/themen/sichten")
-    def themen_sichten(key: str = "", budget: float = 2.0, scope: str = "", stop: bool = False):
+    def themen_sichten(request: Request, key: str = "", budget: float = 2.0, scope: str = "",
+                       stop: bool = False):
         """Hintergrund-Sichtung starten oder stoppen (Wartung, daher mit Admin-Schlüssel)."""
-        if not admin_key() or key != admin_key():
+        if not _admin_ok(key, request):
             raise HTTPException(403)
         if stop:
             _lauf["stop"] = True

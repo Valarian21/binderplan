@@ -18,6 +18,7 @@ import time
 
 import httpx
 from fastapi import HTTPException, Request, UploadFile
+from starlette.concurrency import run_in_threadpool
 from PIL import Image, ImageOps
 
 _dep = {}
@@ -325,7 +326,11 @@ def register(app, *, get_db, current_user, require_user, env, CACHE, admin_key):
             raise HTTPException(400, "Das ist kein lesbares Bild")
         img.thumbnail((2000, 2000))
         _kontingent(request)
+        return await run_in_threadpool(_foto_auswerten, img, layout, raster)
 
+    def _foto_auswerten(img, layout, raster):
+        """Bilderkennung: ein Modellaufruf für die Kästchen (bis 120 s) plus Fingerabdruck-
+        Vergleich über 9.000 Bilder. Beides im Threadpool, damit der Dienst antwortbereit bleibt."""
         kosten = 0.0
         cols, rows = (int(x) for x in (layout.split("x") + ["3"])[:2]) if re.fullmatch(r"\d+x\d+", layout) else (3, 3)
         if raster:

@@ -9,6 +9,8 @@
 # (POST /api/admin/sync bzw. automatisch beim ersten Start). Bilder werden
 # erst bei Bedarf geladen und auf Platte gecacht.
 
+import html
+import datetime
 import io
 import json
 import re
@@ -21,7 +23,8 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from starlette.concurrency import run_in_threadpool
 
 BASE = Path(__file__).parent
 DB = BASE / "app.db"
@@ -444,8 +447,15 @@ def _sync_sets(client, con):
             serie = detail.get("serie") or {}
             cc = detail.get("cardCount") or {}
             con.execute(
-                "INSERT OR REPLACE INTO sets (id,name,serie_id,serie_name,release_date,total,official,symbol,name_en,serie_name_en)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                # ON CONFLICT statt REPLACE: REPLACE löscht die Zeile und legt sie neu an,
+                # dabei fielen symbol_alt und region auf ihren Standard zurück.
+                "INSERT INTO sets (id,name,serie_id,serie_name,release_date,total,official,symbol,name_en,serie_name_en)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(id) DO UPDATE SET name=excluded.name, serie_id=excluded.serie_id,"
+                " serie_name=excluded.serie_name, release_date=excluded.release_date,"
+                " total=excluded.total, official=excluded.official,"
+                " symbol=COALESCE(excluded.symbol, sets.symbol), name_en=excluded.name_en,"
+                " serie_name_en=excluded.serie_name_en",
                 (detail["id"], detail.get("name"), serie.get("id"), serie.get("name"),
                  detail.get("releaseDate"), cc.get("total"), cc.get("official"),
                  detail.get("symbol"), en_names.get(detail["id"]),
@@ -484,9 +494,19 @@ def _sync_cards(client, con):
             set_id = (c.get("set") or {}).get("id") or c["id"].rsplit("-", 1)[0]
             kind = _card_kind(c.get("category"), c.get("stage"), c.get("suffix"), c.get("name"))
             con.execute(
-                "INSERT OR REPLACE INTO cards (id,set_id,local_id,local_num,name_de,name_en,"
+                # Nur die Spalten anfassen, die aus diesem Abruf stammen. Mit REPLACE waren nach
+                # jedem Sync Illustrator, HP, Regulation Mark, Trainer-Typ, Erstauflage,
+                # Ersatzbild und der japanische Name leer — die Filter darauf liefen ins Nichts.
+                "INSERT INTO cards (id,set_id,local_id,local_num,name_de,name_en,"
                 "image_de,image_en,category,rarity,stage,suffix,kind,dex_ids,first_dex,types,"
-                "has_normal,has_reverse,has_holo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "has_normal,has_reverse,has_holo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(id) DO UPDATE SET set_id=excluded.set_id, local_id=excluded.local_id,"
+                " local_num=excluded.local_num, name_de=excluded.name_de, name_en=excluded.name_en,"
+                " image_de=excluded.image_de, image_en=excluded.image_en, category=excluded.category,"
+                " rarity=excluded.rarity, stage=excluded.stage, suffix=excluded.suffix,"
+                " kind=excluded.kind, dex_ids=excluded.dex_ids, first_dex=excluded.first_dex,"
+                " types=excluded.types, has_normal=excluded.has_normal,"
+                " has_reverse=excluded.has_reverse, has_holo=excluded.has_holo",
                 (c["id"], set_id, c.get("localId"), _local_num(c.get("localId")),
                  de.get("name"), c.get("name"), de.get("image"), c.get("image"),
                  c.get("category"), c.get("rarity"), c.get("stage"), c.get("suffix"), kind,
@@ -509,8 +529,10 @@ def _sync_cards(client, con):
             continue
         set_id = cid.rsplit("-", 1)[0]
         con.execute(
-            "INSERT OR REPLACE INTO cards (id,set_id,local_id,local_num,name_de,image_de,kind)"
-            " VALUES (?,?,?,?,?,?, 'pokemon')",
+            "INSERT INTO cards (id,set_id,local_id,local_num,name_de,image_de,kind)"
+            " VALUES (?,?,?,?,?,?, 'pokemon')"
+            " ON CONFLICT(id) DO UPDATE SET set_id=excluded.set_id, local_id=excluded.local_id,"
+            " local_num=excluded.local_num, name_de=excluded.name_de, image_de=excluded.image_de",
             (cid, set_id, c.get("localId"), _local_num(c.get("localId")),
              c.get("name"), c.get("image")),
         )
@@ -998,11 +1020,46 @@ def _admin_key():
     return m.group(1).strip() if m else None
 
 
+def admin_ok(key: str, request: Request = None) -> bool:
+    """Vergleich zeitkonstant (hmac.compare_digest); der Schlüssel darf auch als Kopfzeile
+    X-Admin-Key kommen, damit er nicht in den nginx-Zugriffsprotokollen landet."""
+    import hmac as _hmac
+    echt = _admin_key()
+    if not echt:
+        return False
+    kandidat = key or ""
+    if request is not None and not kandidat:
+        kandidat = request.headers.get("x-admin-key", "")
+    return _hmac.compare_digest(kandidat, echt)
+
+
 # --- Basis-Endpunkte --------------------------------------------------------
 
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/api/admin/mailtest")
+def admin_mailtest(request: Request, key: str = "", an: str = ""):
+    """Prüft die SMTP-Zugangsdaten aus der .env mit einer echten Testmail.
+    Aufruf: curl -X POST "http://127.0.0.1:8103/api/admin/mailtest?key=…&an=du@example.com" """
+    if not admin_ok(key, request):
+        raise HTTPException(403, "Falscher Schlüssel")
+    env = _env()
+    stand = {"host": env.get("SMTP_HOST", ""), "port": env.get("SMTP_PORT", ""),
+             "user": env.get("SMTP_USER", ""), "passwort_gesetzt": bool(env.get("SMTP_PASS")),
+             "absender": env.get("SMTP_FROM", ""), "konfiguriert": _mail_konfiguriert()}
+    if not an:
+        return {"stand": stand, "hinweis": "Zum Senden ?an=<adresse> angeben."}
+    if not _mail_konfiguriert():
+        return {"stand": stand, "gesendet": False,
+                "grund": "SMTP_HOST, SMTP_USER und SMTP_PASS müssen in der .env stehen."}
+    ok = _mail_senden(an, "Binderplan – Testmail",
+                      "Diese Nachricht bestätigt, dass der Mailversand von binderplan.app "
+                      "funktioniert.\n\nViele Grüße\nBinderplan")
+    return {"stand": stand, "gesendet": ok,
+            "hinweis": "" if ok else "Der Server hat die Anmeldung abgelehnt — Benutzername oder Passwort prüfen."}
 
 
 @app.post("/api/admin/sync")
@@ -1697,17 +1754,26 @@ def _import_zeile(zeile, con):
 
 @app.post("/api/import/parse")
 async def import_parse(request: Request):
+    _drossel(request, "import")
     data = await request.json()
-    text = str(data.get("text") or "")[:200000]
+    text = str(data.get("text") or "")[:60000]
+    return await run_in_threadpool(_import_parse_sync, text)
+
+
+def _import_parse_sync(text: str):
+    """Läuft im Threadpool: jede Zeile kostet eine Suche über den ganzen Katalog.
+    300 Zeilen sind rund 10 Sekunden Rechenzeit — mehr nimmt eine Anfrage nicht."""
     con = get_db()
     treffer, unklar = [], []
-    for zeile in text.splitlines()[:2000]:
+    zeilen = text.splitlines()
+    for zeile in zeilen[:300]:
         e = _import_zeile(zeile, con)
         if e is None:
             continue
         (treffer if e["id"] else unklar).append(e)
     con.close()
-    return {"treffer": treffer, "unklar": [u["zeile"] for u in unklar]}
+    return {"treffer": treffer, "unklar": [u["zeile"] for u in unklar],
+            "abgeschnitten": max(0, len(zeilen) - 300)}
 
 
 @app.get("/api/pokedex")
@@ -1742,7 +1808,8 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # Einfache Drossel je IP: Registrierung und Anmeldung sind teuer (PBKDF2 mit 120.000 Runden)
 # und jedes neue Konto bringt Start-Credits — ohne Bremse ließe sich beides ausnutzen.
 _versuche = {}
-LIMITS = {"register": (5, 3600), "login": (12, 900), "reset": (5, 3600)}
+LIMITS = {"register": (5, 3600), "login": (12, 900), "reset": (5, 3600),
+          "import": (20, 600), "melden": (10, 3600), "kuendigung": (5, 3600)}
 
 
 def client_ip(request: Request) -> str:
@@ -1784,7 +1851,8 @@ def _spalten_nachruesten():
     for befehl in ("ALTER TABLE users ADD COLUMN email_bestaetigt TEXT",
                    "ALTER TABLE users ADD COLUMN bestaetigung_token TEXT",
                    "ALTER TABLE users ADD COLUMN bestaetigung_bis TEXT",
-                   "ALTER TABLE users ADD COLUMN start_credits_am TEXT"):
+                   "ALTER TABLE users ADD COLUMN start_credits_am TEXT",
+                   "ALTER TABLE users ADD COLUMN pw_geaendert_am TEXT"):
         try:
             con.execute(befehl)
         except Exception:
@@ -1828,12 +1896,18 @@ def _hash_pw(pw: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), 120_000).hex()
 
 
+# Der Cookie existiert nur, damit <img src="…">-Tags Bilder laden können — dort lässt sich
+# kein Authorization-Kopf setzen. Für alles andere zählt allein der Bearer-Token: sonst genügt
+# ein Link auf /api/binders/<id>/pdf, um beim Opfer einen Monats-Export und Credits zu verbrauchen.
+_COOKIE_PFADE = ("/api/artwork/",)
+
+
 def _current_user(request: Request):
     token = ""
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         token = auth[7:].strip()
-    if not token:
+    if not token and any(request.url.path.startswith(p) for p in _COOKIE_PFADE):
         token = request.cookies.get("bp_token", "")
     if not token:
         return None
@@ -1896,6 +1970,7 @@ def _user_info(user):
         "kaufliste": abo.darf_kaufliste(user),
         "stripe": bool(_env().get("STRIPE_SECRET_KEY")),
         "email_bestaetigt": _bestaetigt(user),
+        "pw_geaendert_am": (user.get("pw_geaendert_am") or "")[:10],
         "mail_moeglich": _mail_konfiguriert(),
         **abo.konto_info(user),
     }
@@ -1948,8 +2023,11 @@ def _mail_nebenbei(an, betreff, text) -> bool:
 
 
 def _mail_konfiguriert() -> bool:
+    """Erst wenn alle drei Angaben stehen, gilt der Versand als eingerichtet. Das Passwort
+    gehört ausdrücklich dazu: mit Host und Benutzer allein würde die App bestätigte E-Mails
+    verlangen, aber keine Bestätigungsmail zustellen können — niemand käme mehr ins Konto."""
     env = _env()
-    return bool(env.get("SMTP_HOST") and env.get("SMTP_USER"))
+    return bool(env.get("SMTP_HOST") and env.get("SMTP_USER") and env.get("SMTP_PASS"))
 
 
 @app.post("/api/auth/passwort_vergessen")
@@ -1970,7 +2048,7 @@ async def passwort_vergessen(request: Request):
         )
         con.commit()
         app_url = _env().get("APP_URL", "https://binderplan.app")
-        _mail_senden(
+        _mail_nebenbei(
             email, "Binderplan – Passwort zurücksetzen",
             "Hallo,\n\n"
             "für dein Binderplan-Konto wurde ein neues Passwort angefordert. "
@@ -2000,7 +2078,8 @@ async def passwort_neu(request: Request):
         raise HTTPException(400, "Der Link ist ungültig oder abgelaufen — bitte neu anfordern.")
     salt = secrets.token_hex(16)
     con.execute(
-        "UPDATE users SET pw_hash = ?, salt = ?, reset_token = '', reset_bis = '' WHERE id = ?",
+        "UPDATE users SET pw_hash = ?, salt = ?, reset_token = '', reset_bis = '',"
+        " pw_geaendert_am = datetime('now') WHERE id = ?",
         (_hash_pw(pw, salt), salt, row["id"]),
     )
     con.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
@@ -2024,17 +2103,21 @@ async def auth_register(request: Request):
     # Geburtsdatum: gebraucht wird es erst beim Veröffentlichen in der Vitrine (ab 16,
     # Art. 8 DSGVO). Es hier zu fragen ist ehrlicher, als es später nachzufordern.
     geb = str(data.get("geburtsdatum") or "").strip()
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", geb):
+    # date.fromisoformat statt Regex: „2000-99-99“ passt auf das Muster, ist aber kein Datum
+    try:
+        from datetime import date as _date
+        geb_datum = _date.fromisoformat(geb)
+    except ValueError:
         raise HTTPException(400, "Bitte gib dein Geburtsdatum an.")
-    jahr = int(geb[:4])
-    if jahr < 1900 or jahr > int(time.strftime("%Y")):
+    if geb_datum.year < 1900 or geb_datum > _date.today():
         raise HTTPException(400, "Dieses Geburtsdatum stimmt nicht.")
     salt = secrets.token_hex(16)
+    pw_hash = await run_in_threadpool(_hash_pw, pw, salt)
     con = get_db()
     try:
         cur = con.execute(
             "INSERT INTO users (email, pw_hash, salt, geburtsdatum) VALUES (?,?,?,?)",
-            (email, _hash_pw(pw, salt), salt, geb),
+            (email, pw_hash, salt, geb),
         )
     except sqlite3.IntegrityError:
         con.close()
@@ -2116,7 +2199,12 @@ async def auth_login(request: Request):
     pw = str(data.get("passwort") or "")
     con = get_db()
     row = con.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    if not row or _hash_pw(pw, row["salt"]) != row["pw_hash"]:
+    # PBKDF2 mit 120.000 Runden braucht ~75 ms CPU. Im Event-Loop stünde währenddessen der
+    # ganze Dienst; im Threadpool läuft er weiter. Auch ohne Treffer wird gerechnet, sonst
+    # verrät die Antwortzeit, welche Adressen es gibt.
+    salt = row["salt"] if row else "00" * 16
+    hash_neu = await run_in_threadpool(_hash_pw, pw, salt)
+    if not row or hash_neu != row["pw_hash"]:
         con.close()
         raise HTTPException(401, "E-Mail oder Passwort stimmt nicht.")
     token = _neue_session(con, row["id"])
@@ -2145,13 +2233,14 @@ async def passwort_aendern(request: Request):
     neu = str(data.get("neu") or "")
     if len(neu) < 8:
         raise HTTPException(400, "Das neue Passwort braucht mindestens 8 Zeichen.")
-    if _hash_pw(alt, user["salt"]) != user["pw_hash"]:
+    if await run_in_threadpool(_hash_pw, alt, user["salt"]) != user["pw_hash"]:
         raise HTTPException(400, "Das aktuelle Passwort stimmt nicht.")
     salt = secrets.token_hex(16)
+    hash_neu = await run_in_threadpool(_hash_pw, neu, salt)
     con = get_db()
     con.execute(
-        "UPDATE users SET pw_hash = ?, salt = ? WHERE id = ?",
-        (_hash_pw(neu, salt), salt, user["id"]),
+        "UPDATE users SET pw_hash = ?, salt = ?, pw_geaendert_am = datetime('now') WHERE id = ?",
+        (hash_neu, salt, user["id"]),
     )
     con.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
     token = _neue_session(con, user["id"])
@@ -2344,17 +2433,16 @@ async def preise(request: Request):
     else:
         nachgeladen = [] if frei_gedrosselt else fehlt[:400]
     if nachgeladen:
-        with httpx.Client(timeout=20, headers=UA) as client:
-            with ThreadPoolExecutor(8) as pool:
-                for cid, eur, eur_holo in pool.map(lambda c: _fetch_price(client, c), nachgeladen):
-                    result[cid] = eur; holo[cid] = eur_holo
-                    con.execute(
-                        "INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at)"
-                        " VALUES (?,?,?,datetime('now'))", (cid, eur, eur_holo))
-                    if eur is not None:
-                        con.execute(
-                            "INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)",
-                            (cid, _heute(), eur))
+        # Die Abrufe laufen im Threadpool; im Event-Loop stand der ganze Dienst 5 bis 15 Sekunden.
+        for cid, eur, eur_holo in await run_in_threadpool(_preise_holen, nachgeladen):
+            result[cid] = eur; holo[cid] = eur_holo
+            con.execute(
+                "INSERT OR REPLACE INTO card_prices (card_id, eur, eur_holo, updated_at)"
+                " VALUES (?,?,?,datetime('now'))", (cid, eur, eur_holo))
+            if eur is not None:
+                con.execute(
+                    "INSERT OR REPLACE INTO price_history (card_id, datum, eur) VALUES (?,?,?)",
+                    (cid, _heute(), eur))
         if user:
             con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
         else:
@@ -2366,6 +2454,13 @@ async def preise(request: Request):
     con.close()
     return {"preise": result, "holo": holo, "offen": max(0, len(fehlt) - len(nachgeladen)),
             "gedrosselt": frei_gedrosselt}
+
+
+def _preise_holen(ids):
+    """Netzabrufe gesammelt im Threadpool — der Aufrufer bleibt frei."""
+    with httpx.Client(timeout=20, headers=UA) as client:
+        with ThreadPoolExecutor(8) as pool:
+            return list(pool.map(lambda c: _fetch_price(client, c), ids))
 
 
 def datetime_str_vor(stunden):
@@ -2382,7 +2477,11 @@ def _fetch_asset(urls, target: Path):
         try:
             r = httpx.get(url, timeout=30, headers=UA, follow_redirects=True)
             if r.status_code == 200 and r.content:
-                target.write_bytes(r.content)
+                # Erst daneben schreiben, dann umbenennen: ein Abbruch mittendrin hinterließ
+                # sonst eine kaputte Datei, die wegen des immutable-Headers ewig ausgeliefert wird.
+                tmp = target.with_suffix(target.suffix + ".tmp")
+                tmp.write_bytes(r.content)
+                tmp.replace(target)
                 return True
         except Exception:
             continue
@@ -2477,7 +2576,7 @@ def _binder_payload(data):
         "mode": data.get("mode") if data.get("mode") in ("master", "dex", "custom") else "custom",
         "layout": layout,
         "options": json.dumps(data.get("options") or {}),
-        "items": json.dumps(items),
+        "items": json.dumps(_items_saeubern(items)),
     }
 
 
@@ -2524,6 +2623,15 @@ async def binder_update(binder_id: str, request: Request):
     data = await request.json()
     p = _binder_payload(data)
     con = get_db()
+    # Ein Binder in der Vitrine trägt seinen Namen öffentlich. Die Prüfung lief bisher nur
+    # beim Veröffentlichen — danach ließ sich beliebiger Text nachschieben.
+    alt = con.execute("SELECT name, COALESCE(sichtbar,0) sichtbar FROM binders WHERE id=?",
+                      (binder_id,)).fetchone()
+    if alt and alt["sichtbar"] and (alt["name"] or "") != p["name"] and globals().get("_vitrine"):
+        ok, grund = await run_in_threadpool(_vitrine._text_ok, p["name"])
+        if not ok:
+            con.close()
+            raise HTTPException(400, detail={"code": "text", "text": grund})
     cur = con.execute(
         "UPDATE binders SET name=?, mode=?, layout=?, options=?, items=?,"
         " updated_at=datetime('now') WHERE id=?",
@@ -2534,6 +2642,78 @@ async def binder_update(binder_id: str, request: Request):
     if cur.rowcount == 0:
         raise HTTPException(404, "Binder nicht gefunden")
     return {"ok": True}
+
+
+ITEM_FELDER = {"type", "id", "dex", "variant", "zustand", "sprache", "have", "artwork", "slot", "layout"}
+ITEM_TYPEN = {"card", "dex", "empty", "art"}
+
+
+def _items_saeubern(items):
+    """Nur bekannte Felder und Typen speichern. Vorher ließ sich jedes beliebige Objekt
+    ablegen, das später in fremden Vitrine-Ansichten und im PDF wieder auftauchte."""
+    sauber = []
+    for i in items[:5000]:
+        if not isinstance(i, dict) or i.get("type") not in ITEM_TYPEN:
+            continue
+        e = {k: v for k, v in i.items() if k in ITEM_FELDER}
+        for k in ("id", "variant", "zustand", "sprache", "artwork"):
+            if k in e and e[k] is not None:
+                e[k] = str(e[k])[:80]
+        sauber.append(e)
+    return sauber
+
+
+# --- Wertverlauf ------------------------------------------------------------
+# Die Tabelle price_history sammelt seit Wochen täglich Preise, sichtbar war davon nichts.
+# Der Endpunkt summiert je Tag die Karten eines Binders — daraus wird die Linie „was ist
+# meine Sammlung heute wert“ und die Zahl „+12 € seit letzter Woche“.
+
+@app.get("/api/binders/{binder_id}/wert")
+def binder_wert(binder_id: str, request: Request, tage: int = 30):
+    user = _current_user(request)
+    binder = _load_binder(binder_id)
+    _binder_lesen_erlaubt(binder_id, user)
+    ids = list({i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")})
+    if not ids:
+        return {"punkte": [], "karten": 0, "aktuell": None, "veraenderung": None}
+    tage = max(7, min(365, tage))
+    von = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=tage)).strftime("%Y-%m-%d")
+    con = get_db()
+    reihen = []
+    for start in range(0, len(ids), 400):
+        teil = ids[start:start + 400]
+        marken = ",".join("?" * len(teil))
+        reihen += [dict(r) for r in con.execute(
+            f"SELECT datum, card_id, eur FROM price_history"
+            f" WHERE card_id IN ({marken}) AND datum >= ? AND eur IS NOT NULL", (*teil, von))]
+    con.close()
+
+    # Vergleichbar wird die Linie nur mit einer festen Basis: den Karten, für die es am
+    # ersten und am letzten Tag einen Preis gibt. Sonst stiege der Wert allein dadurch, dass
+    # mit der Zeit mehr Karten einen Preis bekommen — das sähe wie Wertzuwachs aus.
+    nach_tag = {}
+    for r in reihen:
+        nach_tag.setdefault(r["datum"], {})[r["card_id"]] = r["eur"]
+    tage = sorted(nach_tag)
+    if len(tage) < 2:
+        return {"punkte": [], "karten": len(ids), "aktuell": None, "veraenderung": None, "basis": 0}
+    basis = set(nach_tag[tage[0]]) & set(nach_tag[tage[-1]])
+    if len(basis) < 3:
+        return {"punkte": [], "karten": len(ids), "aktuell": None, "veraenderung": None, "basis": len(basis)}
+    letzte, punkte = {}, []
+    for datum in tage:
+        # Preise fortschreiben: ein Tag ohne frischen Wert ist kein Wertverlust
+        letzte.update({k: v for k, v in nach_tag[datum].items() if k in basis})
+        if len(letzte) < len(basis):
+            continue
+        punkte.append({"datum": datum, "eur": round(sum(letzte.values()), 2)})
+    if not punkte:
+        return {"punkte": [], "karten": len(ids), "aktuell": None, "veraenderung": None, "basis": len(basis)}
+    aktuell = punkte[-1]["eur"]
+    grenze = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
+    vergleich = next((p["eur"] for p in punkte if p["datum"] >= grenze), punkte[0]["eur"])
+    return {"punkte": punkte[-90:], "karten": len(ids), "basis": len(basis), "aktuell": aktuell,
+            "veraenderung": round(aktuell - vergleich, 2)}
 
 
 def _load_binder(binder_id):
@@ -2820,6 +3000,25 @@ def _bilder_vorladen(card_ids, lang):
     return sum(1 for p in pfade if p is None)
 
 
+def _binder_lesen_erlaubt(binder_id: str, user):
+    """Drucken darf man den eigenen Binder, einen anonymen (die IDs sind unratbar und werden
+    als Link geteilt) und jeden, der in der Vitrine steht. Fremde private Binder nicht —
+    ein Export lädt bis zu mehrere tausend hochauflösende Bilder nach."""
+    con = get_db()
+    row = con.execute("SELECT user_id, COALESCE(sichtbar,0) sichtbar FROM binders WHERE id = ?",
+                      (binder_id,)).fetchone()
+    con.close()
+    if not row:
+        return
+    if not row["user_id"]:
+        return
+    if user and row["user_id"] == user["id"]:
+        return
+    if row["sichtbar"]:
+        return
+    raise HTTPException(403, "Dieser Binder gehört jemand anderem.")
+
+
 @app.post("/api/binders/{binder_id}/pdf_vorbereiten")
 def binder_pdf_vorbereiten(binder_id: str, request: Request):
     """Schritt 1 des Exports: Bilder laden (parallel), damit das PDF danach in Sekunden kommt.
@@ -2838,20 +3037,23 @@ def binder_pdf_vorbereiten(binder_id: str, request: Request):
 def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_fehlende: int = 0):
     user = _require_user(request)
     binder = _load_binder(binder_id)
+    _binder_lesen_erlaubt(binder_id, user)
     per_page = LAYOUTS.get(binder["layout"], 9)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     if variante == "checkliste":
         return _checkliste_pdf(binder, lang, bool(nur_fehlende))
-    # Fremde, veröffentlichte Artwork-Seiten kosten einmalig Credits (siehe vitrine.py)
-    if globals().get("_vitrine"):
-        _vitrine.druckrecht_sichern(user, binder["items"])
     # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten – ein zweiter Abruf desselben Binders
-    # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei
+    # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei.
+    # Die Limit-Prüfung steht bewusst VOR der Credit-Abbuchung für fremde Artwork-Seiten:
+    # sonst wurde bezahlt und danach mit 402 abgebrochen.
     letzter = (user.get("letzter_export") or "").split(":", 1)
     kulanz = len(letzter) == 2 and letzter[0] == binder_id and letzter[1] >= datetime_str_vor(0.5)
     grenze = _limit_exporte(user)
     if grenze is not None and not kulanz and _exporte_benutzt(user) >= grenze:
         raise HTTPException(402, detail={"code": "limit_export"})
+    # Fremde, veröffentlichte Artwork-Seiten kosten einmalig Credits (siehe vitrine.py)
+    if globals().get("_vitrine"):
+        _vitrine.druckrecht_sichern(user, binder["items"])
 
     con = get_db()
     card_ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
@@ -3189,7 +3391,7 @@ try:
     import vitrine as _vitrine  # noqa: E402
     _vitrine_kennzahlen = _vitrine.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user,
-        env=_env, admin_key=_admin_key, load_binder=_load_binder, abo=abo,
+        env=_env, admin_key=_admin_key, load_binder=_load_binder, abo=abo, drossel=_drossel,
     )
 except Exception as _e:  # pragma: no cover
     print("Vitrine-Modul nicht geladen:", _e)
@@ -3272,6 +3474,117 @@ def asset(name: str):
         raise HTTPException(404)
     typ = {"css": "text/css; charset=utf-8", "woff2": "font/woff2"}.get(name.rsplit(".", 1)[-1])
     return FileResponse(f, media_type=typ, headers=IMG_HEADERS)
+
+
+@app.get("/api/binders/{binder_id}/vorschau.png")
+def binder_vorschau(binder_id: str, request: Request):
+    """Bild der ersten Binderseite, wie es beim Teilen in Chats und Netzwerken erscheint.
+    Ohne so ein Bild zeigt ein geteilter Link nur den App-Namen — mit ihm wirbt jeder
+    geteilte Binder für sich selbst. Wird im Cache abgelegt und bei Änderungen neu gebaut."""
+    binder = _load_binder(binder_id)
+    _binder_lesen_erlaubt(binder_id, _current_user(request))
+    stand = re.sub(r"[^0-9]", "", str(binder.get("updated_at") or ""))[:14]
+    ziel = CACHE / "vorschau" / f"{re.sub(r'[^A-Za-z0-9_-]', '_', binder_id)}.{stand}.png"
+    if not ziel.exists():
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        for alt in ziel.parent.glob(f"{re.sub(r'[^A-Za-z0-9_-]', '_', binder_id)}.*.png"):
+            try:
+                alt.unlink()
+            except OSError:
+                pass
+        _vorschau_bauen(binder, ziel)
+    return FileResponse(ziel, media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=3600"})
+
+
+def _vorschau_bauen(binder, ziel: Path):
+    """1200×630 (das Format, das Chats und soziale Netzwerke erwarten): dunkle Binderseite,
+    die ersten neun Fächer, Name und Kartenzahl."""
+    from PIL import ImageDraw, ImageFont
+    B, H = 1200, 630
+    bild = Image.new("RGB", (B, H), "#14161a")
+    zeichnen = ImageDraw.Draw(bild)
+    spalten, zeilen = 3, 3
+    try:
+        spalten, zeilen = (int(x) for x in str(binder.get("layout") or "3x3").split("x")[:2])
+    except ValueError:
+        pass
+    spalten = max(1, min(5, spalten)); zeilen = max(1, min(5, zeilen))
+    lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
+
+    rand, fuge = 40, 12
+    hoehe = H - 2 * rand - 60
+    fach_h = int((hoehe - (zeilen - 1) * fuge) / zeilen)
+    fach_b = int(fach_h * 63 / 88)
+    gitter_b = spalten * fach_b + (spalten - 1) * fuge
+    x0 = (B - gitter_b) // 2
+    y0 = rand
+    zeichnen.rounded_rectangle([x0 - 18, y0 - 18, x0 + gitter_b + 18, y0 + zeilen * fach_h + (zeilen - 1) * fuge + 18],
+                               22, fill="#1c1f25")
+    items = [i for i in binder["items"][:spalten * zeilen]]
+    for nr in range(spalten * zeilen):
+        sx = x0 + (nr % spalten) * (fach_b + fuge)
+        sy = y0 + (nr // spalten) * (fach_h + fuge)
+        zeichnen.rounded_rectangle([sx, sy, sx + fach_b, sy + fach_h], 6, fill="#24272e")
+        item = items[nr] if nr < len(items) else None
+        if not item or item.get("type") != "card" or not item.get("id"):
+            continue
+        pfad = _card_image_path(item["id"], lang)
+        if not pfad:
+            continue
+        try:
+            karte = Image.open(pfad).convert("RGB")
+            karte = ImageOps.fit(karte, (fach_b, fach_h), Image.LANCZOS)
+            bild.paste(karte, (sx, sy))
+        except Exception:
+            pass
+
+    name = (binder.get("name") or "Binderplan")[:48]
+    karten = sum(1 for i in binder["items"] if i.get("type") == "card")
+    schrift, klein = None, None
+    for pfad in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
+        try:
+            schrift = ImageFont.truetype(pfad, 34); klein = ImageFont.truetype(pfad, 22); break
+        except OSError:
+            continue
+    unten = H - rand - 18
+    zeichnen.text((rand, unten - 34), name, fill="#ECEEF2", font=schrift)
+    zeichnen.text((rand, unten + 4), f"{karten} Karten · binderplan.app", fill="#9AA1AE", font=klein)
+    bild.save(ziel, "PNG", optimize=True)
+
+
+@app.get("/b/{binder_id}")
+def binder_teilen_seite(binder_id: str, request: Request):
+    """Adresse zum Teilen. Sie liefert Vorschaubild und Beschreibung für Chats und
+    Netzwerke aus und schickt Menschen sofort in die Ansicht des Binders weiter."""
+    try:
+        binder = _load_binder(binder_id)
+        _binder_lesen_erlaubt(binder_id, None)
+    except HTTPException:
+        return RedirectResponse("/", status_code=302)
+    basis = (_env().get("APP_URL") or "https://binderplan.app").rstrip("/")
+    name = html.escape((binder.get("name") or "Binder")[:80])
+    karten = sum(1 for i in binder["items"] if i.get("type") == "card")
+    seiten = max(1, -(-len(binder["items"]) // LAYOUTS.get(binder["layout"], 9)))
+    beschreibung = html.escape(f"{karten} Karten auf {seiten} Seiten – geplant mit Binderplan.")
+    ziel = f"{basis}/app#ansicht/{html.escape(binder_id)}"
+    return HTMLResponse(f"""<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<title>{name} · Binderplan</title>
+<meta name="description" content="{beschreibung}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{name}">
+<meta property="og:description" content="{beschreibung}">
+<meta property="og:image" content="{basis}/api/binders/{html.escape(binder_id)}/vorschau.png">
+<meta property="og:url" content="{basis}/b/{html.escape(binder_id)}">
+<meta property="og:site_name" content="Binderplan">
+<meta name="twitter:card" content="summary_large_image">
+<meta http-equiv="refresh" content="0; url={ziel}">
+</head><body style="font-family:sans-serif;padding:40px;text-align:center">
+<p><a href="{ziel}">{name} in Binderplan öffnen</a></p>
+<script>location.replace({json.dumps(ziel)});</script>
+</body></html>""")
 
 
 @app.get("/recht")

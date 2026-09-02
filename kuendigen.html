@@ -44,7 +44,9 @@
 <body>
 <div class="wrap">
   <h1>Verträge hier kündigen</h1>
-  <div class="unter">Hier kündigst du dein Binderplan-Abo – ohne Anmeldung, in einem Schritt.</div>
+  <div class="unter">Hier kündigst du dein Binderplan-Abo – ohne Anmeldung. Zur Sicherheit
+  schicken wir einen Bestätigungslink an die hinterlegte E-Mail-Adresse; erst dein Klick darauf
+  macht die Kündigung wirksam. So kann niemand fremde Verträge kündigen.</div>
 
   <div class="karte">
     <form id="form" onsubmit="absenden(event)">
@@ -69,9 +71,10 @@
       <label for="notiz">Nachricht (optional)</label>
       <textarea id="notiz" maxlength="500" placeholder="Zum Beispiel der Grund deiner Kündigung – freiwillig."></textarea>
 
-      <button class="btn" id="senden" type="submit">Jetzt kündigen</button>
+      <button class="btn" id="senden" type="submit">Kündigung anfordern</button>
       <div class="hinweis">
-        Wir bestätigen deine Kündigung sofort auf dieser Seite und zusätzlich per E-Mail.
+        Du bekommst sofort eine E-Mail mit einem Bestätigungslink (2 Stunden gültig). Nach dem
+        Klick ist die Kündigung wirksam und wir bestätigen sie noch einmal per E-Mail.
         Dein Zugang bleibt bis zum Ende der bezahlten Laufzeit bestehen; danach läuft dein Konto
         kostenlos weiter. Bereits gekaufte Credits bleiben erhalten.
       </div>
@@ -111,22 +114,66 @@ async function absenden(ev) {
         + 'Dein Abo endet am ' + (d.bis || 'Ende der Laufzeit') + '. Bis dahin kannst du alles weiter nutzen. '
         + 'Es wird nichts mehr abgebucht.'
         + (d.mail ? '<br>Eine Bestätigung ist per E-Mail unterwegs.' : '');
+    } else if (d.bestaetigung && d.verschickt) {
+      box.className = 'ergebnis ok';
+      box.innerHTML = '<strong>Bitte bestätige noch kurz.</strong><br>'
+        + 'Wir haben dir einen Link an die angegebene Adresse geschickt (2 Stunden gültig). '
+        + 'Sobald du darauf klickst, ist die Kündigung wirksam – zum Ende der bezahlten Laufzeit. '
+        + 'Bis dahin ändert sich nichts.';
+    } else if (d.bestaetigung && !d.mail) {
+      box.className = 'ergebnis info';
+      box.innerHTML = '<strong>Deine Nachricht ist eingegangen.</strong><br>'
+        + 'Der automatische Versand ist gerade nicht erreichbar. Melde dich bitte in der App an '
+        + 'und kündige im Profil unter „Tarif &amp; Credits“, oder schreib uns an '
+        + '<a href="mailto:support@binderplan.app">support@binderplan.app</a> – '
+        + 'deine Kündigung gilt auch per E-Mail und wird auf heute datiert.';
     } else {
       box.className = 'ergebnis info';
       box.innerHTML = '<strong>Deine Nachricht ist eingegangen.</strong><br>'
         + 'Zu dieser E-Mail-Adresse ist aktuell kein laufendes Abo hinterlegt – es wird also '
         + 'ohnehin nichts abgebucht. Falls du mit einer anderen Adresse bezahlt hast, sende das '
         + 'Formular bitte noch einmal damit ab oder schreib uns an '
-        + '<a href="mailto:schulte.marcel1995@gmail.com">schulte.marcel1995@gmail.com</a>.';
+        + '<a href="mailto:support@binderplan.app">support@binderplan.app</a>.';
     }
   } catch (e) {
     btn.disabled = false; btn.textContent = 'Jetzt kündigen';
     box.className = 'ergebnis info';
     box.innerHTML = 'Das hat leider nicht geklappt. Bitte schreib uns kurz an '
-      + '<a href="mailto:schulte.marcel1995@gmail.com">schulte.marcel1995@gmail.com</a> – '
+      + '<a href="mailto:support@binderplan.app">support@binderplan.app</a> – '
       + 'deine Kündigung gilt auch per E-Mail.';
   }
 }
+
+// Zweiter Schritt: Link aus der Bestätigungsmail (…/kuendigen?bestaetigen=TOKEN)
+(async function () {
+  const token = new URLSearchParams(location.search).get('bestaetigen');
+  if (!token) return;
+  const box = document.getElementById('ergebnis');
+  document.getElementById('form').style.display = 'none';
+  box.className = 'ergebnis info';
+  box.textContent = 'Kündigung wird bestätigt …';
+  try {
+    const r = await fetch('/api/kuendigung/bestaetigen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
+    });
+    const d = await r.json();
+    if (r.ok && d.gekuendigt) {
+      box.className = 'ergebnis ok';
+      box.innerHTML = '<strong>Deine Kündigung ist wirksam.</strong><br>'
+        + 'Dein Abo endet am ' + (d.bis || 'Ende der Laufzeit') + '. Bis dahin kannst du alles weiter '
+        + 'nutzen, danach läuft dein Konto kostenlos weiter. Gekaufte Credits behältst du. '
+        + 'Eine Bestätigung ist per E-Mail unterwegs.';
+    } else {
+      box.className = 'ergebnis info';
+      box.innerHTML = '<strong>' + ((d && d.detail) || 'Der Link ist abgelaufen.') + '</strong><br>'
+        + 'Bitte fülle das Formular noch einmal aus – <a href="/kuendigen">hier</a>.';
+    }
+  } catch (e) {
+    box.className = 'ergebnis info';
+    box.innerHTML = 'Das hat leider nicht geklappt. Bitte schreib uns an '
+      + '<a href="mailto:support@binderplan.app">support@binderplan.app</a>.';
+  }
+})();
 </script>
 </body>
 </html>

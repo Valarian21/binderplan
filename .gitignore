@@ -4,3 +4,6 @@ app.db-*
 cache/
 .env
 __pycache__/
+backups/
+wacht.log
+backup.log

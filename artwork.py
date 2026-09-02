@@ -1031,9 +1031,19 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
         except Exception:
             pass
     # Jobs, die einen Neustart nicht überlebt haben
+    # Beim Neustart abgebrochene Jobs: die Credits gehören zurück. Vorher blieb der Nutzer
+    # auf 12 bis 32 Credits sitzen, ohne je ein Bild gesehen zu haben.
+    offen = con.execute("SELECT id, user_id, COALESCE(credits,0) c FROM artworks"
+                        " WHERE status='laeuft'").fetchall()
     con.execute("UPDATE artworks SET status='fehler', fehler='Abgebrochen (Neustart)' WHERE status='laeuft'")
     con.commit()
     con.close()
+    for zeile in offen:
+        if zeile["c"] and zeile["user_id"]:
+            try:
+                _dep["abo"].gutschrift(zeile["user_id"], zeile["c"], "erstattung_neustart", zeile["id"])
+            except Exception as e:
+                print("Rückbuchung nach Neustart fehlgeschlagen:", zeile["id"], e)
 
     @app.get("/api/artwork/stile")
     def artwork_stile(request: Request):

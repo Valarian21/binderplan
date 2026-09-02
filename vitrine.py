@@ -16,6 +16,7 @@ import time
 
 import httpx
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 _dep = {}
 
@@ -39,6 +40,19 @@ NAME_PROMPT = (
     "Fantasienamen, Pokémon-Namen, Anspielungen und schräger Humor sind erlaubt.\n"
     'Antwort als JSON: {"ok": true|false, "grund": "kurz, deutsch"}\n\nText: '
 )
+
+
+def _admin_ok(key, request=None):
+    """Zeitkonstanter Vergleich; der Schlüssel darf auch als Kopfzeile X-Admin-Key kommen,
+    damit er nicht in den Zugriffsprotokollen des Webservers landet."""
+    import hmac
+    echt = (_dep.get("admin_key") or (lambda: None))()
+    if not echt:
+        return False
+    kandidat = key or ""
+    if request is not None and not kandidat:
+        kandidat = request.headers.get("x-admin-key", "")
+    return hmac.compare_digest(kandidat, echt)
 
 
 def _now():
@@ -100,9 +114,9 @@ def druckrecht_sichern(user, items):
     return f(user, items) if f else []
 
 
-def register(app, *, get_db, current_user, require_user, env, admin_key, load_binder, abo):
+def register(app, *, get_db, current_user, require_user, env, admin_key, load_binder, abo, drossel=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
-                admin_key=admin_key, load_binder=load_binder, abo=abo)
+                admin_key=admin_key, load_binder=load_binder, abo=abo, drossel=drossel)
 
     con = get_db()
     con.executescript("""
@@ -160,7 +174,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         if not re.fullmatch(r"[A-Za-zÄÖÜäöüß0-9 ._-]{%d,%d}" % (NAME_MIN, NAME_MAX), name):
             raise HTTPException(400, f"Der Anzeigename braucht {NAME_MIN}–{NAME_MAX} Zeichen "
                                      "(Buchstaben, Ziffern, Punkt, Unterstrich, Bindestrich).")
-        ok, grund = _text_ok(name + " " + kurztext)
+        ok, grund = await run_in_threadpool(_text_ok, name + " " + kurztext)
         if not ok:
             raise HTTPException(400, grund)
         con = get_db()
@@ -224,7 +238,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                                                               "text": "Bitte lege zuerst einen Anzeigenamen fest."})
             if p.get("gesperrt"):
                 con.close(); raise HTTPException(403, "Dein Profil ist gesperrt.")
-            ok, grund = _text_ok(row["name"] or "")
+            ok, grund = await run_in_threadpool(_text_ok, row["name"] or "")
             if not ok:
                 con.close(); raise HTTPException(400, f"Der Bindername geht so nicht: {grund}")
             con.execute("UPDATE binders SET sichtbar = 1, veroeffentlicht_at = COALESCE(veroeffentlicht_at, ?)"
@@ -372,6 +386,9 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
 
     @app.post("/api/vitrine/meldung")
     async def meldung(request: Request):
+        drossel = _dep.get("drossel")
+        if drossel:
+            drossel(request, "melden")
         data = await request.json()
         typ = str(data.get("ziel_typ") or "")[:16]
         ziel = str(data.get("ziel_id") or "")[:64]
@@ -387,8 +404,8 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         return {"ok": True}
 
     @app.get("/api/admin/meldungen")
-    def admin_meldungen(key: str = "", status: str = "offen"):
-        if not admin_key() or key != admin_key():
+    def admin_meldungen(request: Request, key: str = "", status: str = "offen"):
+        if not _admin_ok(key, request):
             raise HTTPException(403)
         con = get_db()
         reihen = con.execute("SELECT * FROM meldungen WHERE status = ? ORDER BY created_at DESC LIMIT 200",
@@ -446,18 +463,33 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                                                      "und steht nicht öffentlich."})
         if not offen:
             return []
-        preis = abo.ARTWORK_FREMD * len(offen)
-        if abo.saldo(user) < preis:
-            raise HTTPException(402, detail={"code": "credits", "benoetigt": preis,
-                                             "text": f"Für {len(offen)} fremde Artwork-Seite(n) brauchst du "
-                                                     f"{preis} Credits."})
-        abo.abbuchen(user, preis, "artwork_fremd", ",".join(r["id"] for r in offen))
+        # Erst die Freigabe eintragen, dann abbuchen. INSERT OR IGNORE meldet über rowcount,
+        # welche Zeilen wirklich neu sind — zwei gleichzeitige Exporte (Doppelklick auf „Drucken“)
+        # bezahlten sonst beide für dieselbe Seite.
         con = get_db()
-        con.executemany("INSERT OR IGNORE INTO artwork_freigaben (user_id, artwork_id, created_at) VALUES (?,?,?)",
-                        [(user["id"], r["id"], _now()) for r in offen])
+        wirklich_neu = []
+        for r in offen:
+            if con.execute("INSERT OR IGNORE INTO artwork_freigaben (user_id, artwork_id, created_at)"
+                           " VALUES (?,?,?)", (user["id"], r["id"], _now())).rowcount:
+                wirklich_neu.append(r)
         con.commit()
         con.close()
-        return [r["id"] for r in offen]
+        if not wirklich_neu:
+            return []
+        preis = abo.ARTWORK_FREMD * len(wirklich_neu)
+        try:
+            abo.abbuchen(user, preis, "artwork_fremd", ",".join(r["id"] for r in wirklich_neu))
+        except HTTPException:
+            # Guthaben reicht nicht: die eben reservierten Freigaben wieder zurücknehmen
+            con = get_db()
+            con.executemany("DELETE FROM artwork_freigaben WHERE user_id = ? AND artwork_id = ?",
+                            [(user["id"], r["id"]) for r in wirklich_neu])
+            con.commit()
+            con.close()
+            raise HTTPException(402, detail={"code": "credits", "benoetigt": preis,
+                                             "text": f"Für {len(wirklich_neu)} fremde Artwork-Seite(n) brauchst du "
+                                                     f"{preis} Credits."})
+        return [r["id"] for r in wirklich_neu]
 
     _dep["druckrecht_sichern"] = druckrecht_sichern
 
