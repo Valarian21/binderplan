@@ -227,6 +227,9 @@ ANALYSE_PROMPT = (
     "(the artwork box); ignore the frame, name, HP, attacks and text. Answer with a single JSON object:\n"
     '{"box": [ymin, xmin, ymax, xmax] of the illustration window in 0-1000 normalized coordinates of the whole image '
     "(for full-art cards where the illustration covers the entire card use the card edges),\n"
+    '"aufdrucke": true if the artwork area carries printed card elements on top of it – name plate, HP, attack '
+    "text box, energy or set symbols, rarity mark, illustrator credit, holo pattern overlay; false if the "
+    "artwork box is clean illustration only,\n"
     '"subject": the main subject – species, pose, size within the frame, facing/moving direction,\n'
     '"scene": setting and background elements with their placement (e.g. "volcano on the left, lava lake below"),\n'
     '"edges": {"left": which BACKGROUND/scenery elements (never the creature) touch or are cut off at the left edge '
@@ -529,7 +532,17 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
         "calm – the source stays the most detailed and most important area.\n"
         + (_zonen_regeln(cols, rows, anker, namen, regie) if mehrere else "")
-        + "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
+        # Zweithäufigster Fehler nach der duplizierten Kreatur: die Vorlage IST eine Spielkarte,
+        # und bei Ganzbildkarten liegen Namensfeld, HP, Attackentext und Symbole direkt auf der
+        # Illustration. Das Modell liest sie als Bildbestandteil und malt eine zweite Karte
+        # mitsamt Rahmen und Text ins Umfeld. Deshalb die Aufdrucke ausdruecklich benennen.
+        + "- The finished part is a scan of a printed trading card. Anything printed ON it – name plate, HP "
+        "number, attack and rules text, energy, set and rarity symbols, illustrator credit, card border, "
+        "rounded corners, holo sparkle overlay – is print on top of the picture, NOT part of the scene. "
+        "None of it may appear in the painted areas, and no second card, card frame, panel or rectangle of "
+        "any kind may be painted. Outside the finished part there is only the depicted world.\n"
+        "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
+
         "Not a single gray pixel may remain.\n"
         "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
         f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; what "
@@ -583,6 +596,8 @@ def _zonen_regeln(cols, rows, anker, namen, regie):
 
 # --- Kontrolle (Vision-Modell prüft die Fortsetzung an den Kanten) ---------------------------------
 
+# Die Nachkontrolle sucht bisher nach Gitterlinien und doppelten Kreaturen; der zweite
+# Kartenrahmen gehoert in dieselbe Liste.
 PRUEF_PROMPT = (
     "You are a strict art director checking an 'extended art' painting. IMAGE 1 is the source: the illustration of "
     "a trading card (it may include the card's frame, name, text boxes and symbols – that is expected and NOT a "
@@ -598,7 +613,10 @@ PRUEF_PROMPT = (
     "bigger than the card – that is the worst failure and always means ok=false. Also check for a second copy at "
     "any size, as shadow, reflection, silhouette or abstract shape in its colours.\n"
     "3. Are there frames, borders, straight seams, tiles, panels, text, or gray areas?\n"
-    "4. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
+    "4. Is any CARD element repeated in the painted area – a second card frame or rounded rectangle, another name "
+    "plate, HP number, attack or rules text, energy/set/rarity symbol, illustrator credit? The source card's own "
+    "print is fine; a copy of it anywhere in the surroundings always means ok=false.\n"
+    "5. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
     'Answer with JSON only: {"ok": true|false, "probleme": ["concrete problem with location", ...]}. '
     "ok is true unless the surroundings clearly fail to continue the scene (minor softness, the card's own frame, "
     "text or rectangular edge are never problems)."

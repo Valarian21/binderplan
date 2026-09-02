@@ -499,6 +499,11 @@
   .sm-karte .sm-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
   .sm-karte .sm-meta { font-size: 10px; color: var(--mut); margin-top: 1px; }
   .sm-karte .sm-wert { font-size: 11px; font-weight: 800; color: var(--gruen); margin-top: 3px; }
+  .sm-posten { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+  .sm-pchip { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 999px;
+              border: 1.5px solid var(--line); background: var(--card); color: var(--mut); line-height: 1.4; }
+  .sm-pchip:hover { border-color: var(--akzent); color: var(--akzent); }
+  .sm-pchip.neu { color: var(--gruen); }
   .sm-karte .sm-anz { position: absolute; top: 4px; left: 4px; background: var(--kontur); color: #fff;
                       font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
   .sm-karte .sm-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
@@ -666,6 +671,14 @@
   .tk .rbtn { position: absolute; top: 5px; left: 5px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
               color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
   .tk .rbtn:hover { border-color: var(--akzent); color: var(--akzent); }
+  /* Sammlung: direkt aufnehmen, ohne Umweg über einen Binder */
+  .tk .sbtn { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 999px;
+              background: rgba(255,255,255,.92); border: 1.5px solid var(--line); color: var(--mut);
+              font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+              padding: 0 4px; min-width: 28px; width: auto; }
+  .tk .sbtn:hover { border-color: var(--gruen); color: var(--gruen); }
+  .tk .sbtn.hat { background: var(--gruen); border-color: var(--gruen); color: #fff; }
+  :root[data-theme="dark"] .tk .sbtn { background: rgba(25,28,35,.92); }
 
   .spalte-binder { width: var(--binder-w, 324px); flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
                    padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
@@ -1603,6 +1616,41 @@
   </div>
 </div>
 
+<!-- Ein Posten der Sammlung: Ausprägung, Anzahl, Kauf -->
+<div class="overlay hidden" id="modal-sm-posten">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 id="smp-titel">Posten</h2>
+    <div class="unter" data-i18n="sm_posten_u">Zustand und Sprache gehören zum Exemplar. Dieselbe Karte in zwei Ausprägungen sind zwei Posten.</div>
+    <div class="f-zweispaltig">
+      <div><div class="f-lbl" data-i18n="f_variante">Variante</div>
+        <select class="feld" id="smp-variante"></select></div>
+      <div><div class="f-lbl" data-i18n="s_zustand">Zustand</div>
+        <select class="feld" id="smp-zustand"></select></div>
+    </div>
+    <div class="f-zweispaltig" style="margin-top:10px">
+      <div><div class="f-lbl" data-i18n="kartensprache">Kartensprache</div>
+        <select class="feld" id="smp-sprache"></select></div>
+      <div><div class="f-lbl" data-i18n="an_anzahl">Anzahl</div>
+        <input class="feld" id="smp-anzahl" type="number" min="1" max="999" value="1"></div>
+    </div>
+    <div class="f-zweispaltig" style="margin-top:10px">
+      <div><div class="f-lbl" data-i18n="an_gekauft">Gekauft für</div>
+        <input class="feld" id="smp-kaufpreis" inputmode="decimal" placeholder="z. B. 12,50"></div>
+      <div><div class="f-lbl" data-i18n="sm_gekauft_am">Gekauft am</div>
+        <input class="feld" id="smp-gekauft" type="date"></div>
+    </div>
+    <div style="margin-top:10px"><div class="f-lbl" data-i18n="sm_notiz">Notiz</div>
+      <input class="feld" id="smp-notiz" maxlength="200" placeholder="…" data-i18n-ph="sm_notiz_ph"></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;margin-top:16px">
+      <button class="btn sekundaer gefahr hidden" id="smp-loeschen" onclick="smPostenSpeichern(true)" data-i18n="sm_entfernen">Entfernen</button>
+      <div style="flex:1"></div>
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="smPostenSpeichern(false)" data-i18n="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Fach-Menü (⋯ an einem Fach) -->
 <div class="menu hidden" id="menu-slot" style="position:fixed;z-index:95"></div>
 
@@ -2338,6 +2386,8 @@ const T = {
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
     kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis',
+    pr_ab: 'ab', pr_30: '30-Tage-Schnitt', pr_usa: 'USA',
+    pr_zustand_hin: 'Preise je Zustand führt keine der beiden Börsen – der Trend gilt über alle Zustände, die US-Preise für Near Mint.',
     preis_geteilt: 'Cardmarket führt diese Karte gemeinsam mit {n} weiteren unter einem Produkt – ein eigener Preis lässt sich daraus nicht ableiten.',
     pf_sprache_ui: 'Sprache der Oberfläche',
     f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
@@ -2414,6 +2464,11 @@ const T = {
     hierher: 'Hierher …', ziel_hinweis: 'Jetzt das Fach anklicken, an das die Auswahl soll.',
     luecken: 'Lücken schließen', keine_luecken: 'Es gibt keine leeren Fächer.',
     luecken_zu: '{n} leere Fächer entfernt',
+    // Sammlung: Posten mit Zustand und Sprache
+    sm_aufnehmen_t: 'In die Sammlung aufnehmen', sm_aufgenommen: 'In der Sammlung: {n}×',
+    sm_posten_neu: 'Posten hinzufügen', sm_posten_aendern: 'Posten ändern',
+    sm_posten_u: 'Zustand und Sprache gehören zum Exemplar. Dieselbe Karte in zwei Ausprägungen sind zwei Posten.',
+    sm_ohne_angabe: 'offen', sm_gekauft_am: 'Gekauft am', sm_notiz: 'Notiz', sm_notiz_ph: 'z. B. Tausch mit Anna',
     s_seite_raster: 'Raster dieser Seite', raster_seite: 'Seite {n} steht jetzt auf {r}',
     gemischt: '(gemischt)',
     // Druckdialog
@@ -2688,6 +2743,8 @@ const T = {
     ex_check: 'Checklist (no images)', neu: '+ New',
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
     kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price',
+    pr_ab: 'from', pr_30: '30-day average', pr_usa: 'US',
+    pr_zustand_hin: 'Neither marketplace publishes prices per condition – the trend covers all conditions, the US prices are for Near Mint.',
     preis_geteilt: 'Cardmarket lists this card together with {n} others under one product – no price of its own can be derived from that.',
     pf_sprache_ui: 'Interface language',
     f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
@@ -2754,6 +2811,10 @@ const T = {
     hierher: 'Move here …', ziel_hinweis: 'Now click the slot the selection should go to.',
     luecken: 'Close gaps', keine_luecken: 'There are no empty slots.',
     luecken_zu: '{n} empty slots removed',
+    sm_aufnehmen_t: 'Add to collection', sm_aufgenommen: 'In your collection: {n}×',
+    sm_posten_neu: 'Add entry', sm_posten_aendern: 'Edit entry',
+    sm_posten_u: 'Condition and language belong to the copy. The same card in two forms is two entries.',
+    sm_ohne_angabe: 'open', sm_gekauft_am: 'Bought on', sm_notiz: 'Note', sm_notiz_ph: 'e.g. trade with Anna',
     s_seite_raster: 'Grid for this page', raster_seite: 'Page {n} is now {r}',
     gemischt: '(mixed)',
     ex_dialog: 'Print …', dr_t: 'Print',
@@ -4298,11 +4359,14 @@ function zeichneErgebnisse() {
   }
   $('ergebnisse').innerHTML = S.ergebnisse.map((k, i) => {
     const n = anzahlImBinder(k.id);
+    const sn = S.user ? (S.besitz[k.id] || 0) : 0;
     const enb = KLANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
     const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
     return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('in_binder')}: +">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
       <button class="plus" onclick="event.stopPropagation();kartAdd(${i})">＋ ${t('in_binder')}</button>${enb}${jpb}
+      <button class="sbtn ${sn ? 'hat' : ''}" onclick="event.stopPropagation();sammlungAufnehmen('${esc(k.id)}')"
+              title="${t('sm_aufnehmen_t')}">${sn ? '✓ ' + sn : '＋'}</button>
       ${k.reverse ? `<span class="rbtn" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="Reverse Holo">R+</span>` : ''}
       ${n ? `<span class="anz">${n}</span>` : ''}
       <div class="tk-name">${nm(k)}</div>
@@ -5777,7 +5841,7 @@ async function bestaetigungEinloesen(token) {
 // Eine Wahrheit, zwei Blicke: der Binder ist der Plan, die Sammlung der Bestand.
 // Deshalb schreibt der Haken im Fach in die Sammlung und liest von dort — es gibt
 // kein zweites Häkchen, das auseinanderlaufen könnte.
-const SM = { filter: '', karten: [], zahlen: null, laeuft: false };
+const SM = { filter: '', karten: [], zahlen: null, laeuft: false, posten: null, postenAlt: {} };
 S.besitz = {};          // card_id → Anzahl, für die Fachanzeige im Binder
 
 async function besitzLaden() {
@@ -5809,7 +5873,19 @@ function sammlungSchliessen() {
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
 
+/** Die Auswahllisten des Postendialogs einmal befüllen. */
+function smAuswahlenFuellen() {
+  const v = $('smp-variante'); if (!v || v.options.length) return;
+  v.innerHTML = ['normal', 'reverse', 'holo', 'first', 'pokeball', 'masterball']
+    .map((x) => `<option value="${x}">${t('v_' + x) || x}</option>`).join('');
+  $('smp-zustand').innerHTML = SM_ZUSTAENDE
+    .map((x) => `<option value="${x}">${x || t('sm_ohne_angabe')}</option>`).join('');
+  $('smp-sprache').innerHTML = SM_SPRACHEN
+    .map((x) => `<option value="${x}">${x ? x.toUpperCase() : t('sm_ohne_angabe')}</option>`).join('');
+}
+
 function zeichneSammlungFilter() {
+  smAuswahlenFuellen();
   const z = SM.zahlen || {};
   $('sm-filter').innerHTML = [
     ['', t('sm_alle'), z.verschiedene],
@@ -5870,9 +5946,95 @@ function zeichneSammlung() {
       <div class="sm-txt">
         <div class="sm-name">${esc(k.name || k.id)}</div>
         <div class="sm-meta">${esc(k.set_name || '')} · ${esc(k.local_id || '')}</div>
+        ${(k.posten || []).length ? `<div class="sm-posten">${k.posten.map((p, pi) =>
+          `<button class="sm-pchip" onclick="event.stopPropagation();smPostenAus('${esc(k.id)}',${pi})"
+                   title="${t('sm_posten_aendern')}">${p.anzahl}× ${smPostenLabel(p)}</button>`).join('')}
+          <button class="sm-pchip neu" onclick="event.stopPropagation();smPostenOeffnen('${esc(k.id)}')"
+                  title="${t('sm_posten_neu')}">＋</button></div>` : ''}
         ${k.eur != null ? `<div class="sm-wert">${(k.wert != null ? k.wert : k.eur).toFixed(2).replace('.', ',')} €</div>` : ''}
       </div>
     </div>`).join('');
+}
+
+/* ---------- Sammlung ----------
+   Zustand und Sprache gehören zum einzelnen Exemplar, nicht zur Karte: dieselbe Karte
+   einmal auf Deutsch in NM und einmal auf Englisch in GD sind zwei Posten. Genauso lösen
+   es Collectr, die TCGplayer-Sammlung und der Dragon-Shield-Manager. */
+
+const SM_ZUSTAENDE = ['', 'M', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'];
+const SM_SPRACHEN = ['', 'de', 'en', 'fr', 'it', 'es', 'pt', 'jp', 'kr', 'cn', 'ru'];
+
+/** Karte aus der Suche aufnehmen — ohne Umweg über einen Binder. */
+async function sammlungAufnehmen(id, opt) {
+  if (!S.user) return loginOeffnen(t('sm_login'));
+  opt = opt || {};
+  try {
+    const d = await api('api/sammlung/aufnehmen', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card_id: id, variante: opt.variante || 'normal',
+                             zustand: opt.zustand || '', sprache: opt.sprache || '',
+                             anzahl: opt.anzahl || 1 }),
+    });
+    S.besitz[id] = d.anzahl;
+    zeichneErgebnisse(); zeichneBinder();
+    toast(t('sm_aufgenommen').replace('{n}', d.anzahl));
+  } catch (e) { toast(e.message); }
+}
+
+/** Der Dialog für einen einzelnen Posten. `posten` leer heißt: neu anlegen. */
+function smPostenOeffnen(cardId, posten) {
+  if (!S.user) return loginOeffnen(t('sm_login'));
+  SM.posten = { card_id: cardId, ...(posten || {}) };
+  SM.postenAlt = { zustand: (posten || {}).zustand || '', sprache: (posten || {}).sprache || '' };
+  const p = SM.posten;
+  $('smp-titel').textContent = posten ? t('sm_posten_aendern') : t('sm_posten_neu');
+  $('smp-variante').value = p.variante || 'normal';
+  $('smp-zustand').value = p.zustand || '';
+  $('smp-sprache').value = p.sprache || '';
+  $('smp-anzahl').value = p.anzahl || 1;
+  $('smp-kaufpreis').value = p.kaufpreis != null ? p.kaufpreis : '';
+  $('smp-gekauft').value = p.gekauft_am || '';
+  $('smp-notiz').value = p.notiz || '';
+  $('smp-loeschen').classList.toggle('hidden', !posten);
+  modalOeffnen('modal-sm-posten');
+}
+
+async function smPostenSpeichern(loeschen) {
+  const p = SM.posten;
+  const daten = {
+    card_id: p.card_id,
+    variante: $('smp-variante').value,
+    zustand: $('smp-zustand').value,
+    sprache: $('smp-sprache').value,
+    alt_zustand: SM.postenAlt.zustand,
+    alt_sprache: SM.postenAlt.sprache,
+    anzahl: loeschen ? 0 : Math.max(1, parseInt($('smp-anzahl').value, 10) || 1),
+    kaufpreis: $('smp-kaufpreis').value.trim().replace(',', '.') || null,
+    gekauft_am: $('smp-gekauft').value || null,
+    notiz: $('smp-notiz').value.trim(),
+  };
+  try {
+    await api('api/sammlung/eintrag', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten),
+    });
+    modalSchliessen();
+    await besitzLaden();
+    sammlungLaden(); zeichneBinder(); zeichneErgebnisse();
+  } catch (e) { toast(e.message); }
+}
+
+/** Kurzform eines Postens: „NM · DE" — leere Angaben werden weggelassen. */
+function smPostenLabel(p) {
+  const teile = [];
+  if (p.variante && p.variante !== 'normal') teile.push(t('v_' + p.variante) || p.variante);
+  if (p.zustand) teile.push(p.zustand);
+  if (p.sprache) teile.push(p.sprache.toUpperCase());
+  return teile.length ? esc(teile.join(' · ')) : t('sm_ohne_angabe');
+}
+/** Den Posten aus der geladenen Liste holen und den Dialog damit öffnen. */
+function smPostenAus(cardId, index) {
+  const k = (SM.karten || []).find((x) => x.id === cardId);
+  smPostenOeffnen(cardId, k && k.posten ? k.posten[index] : null);
 }
 
 async function sammlungWeg(id) {
@@ -7716,7 +7878,8 @@ async function detailOeffnen(idOrIdx) {
         <div class="d-preise">
           <div class="d-preis"><div class="z">${fmt(preis.eur)}</div><div class="l">${t('preis_trend')}</div></div>
           ${preis.eur_holo ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
-          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div></div>
+          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div>
+          <div class="l" id="detail-spanne" style="margin-top:4px;line-height:1.5"></div></div>
         </div>
         ${spark}
         <div class="f-lbl">${t('variante')}</div>
@@ -7731,6 +7894,19 @@ async function detailOeffnen(idOrIdx) {
         ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
       </div>
     </div>`;
+  // Die Spanne unter den Trendpreis: Preise je Zustand führt keine der beiden Börsen,
+  // aber Tiefstpreis, 30-Tage-Schnitt und die US-Spanne zeigen den Handelsraum einer Karte.
+  const spanne = [];
+  if (preis.eur_low != null) spanne.push(`${t('pr_ab')} ${fmt(preis.eur_low)}`);
+  if (preis.eur_avg30 != null) spanne.push(`${t('pr_30')} ${fmt(preis.eur_avg30)}`);
+  if (preis.usd != null) {
+    const us = preis.usd_low != null && preis.usd_high != null
+      ? `$ ${preis.usd_low.toFixed(2)} – ${preis.usd_high.toFixed(2)}` : `$ ${preis.usd.toFixed(2)}`;
+    spanne.push(`${t('pr_usa')} ${us}`);
+  }
+  if (spanne.length && $('detail-spanne')) {
+    $('detail-spanne').innerHTML = esc(spanne.join(' · ')) + `<div style="margin-top:3px;opacity:.85">${t('pr_zustand_hin')}</div>`;
+  }
   if (preis.geteilt > 1 && $('detail-preis-stand')) {
     // Kein Preis, weil Cardmarket diese Karte mit anderen unter einem Produkt führt.
     $('detail-preis-stand').textContent = t('preis_geteilt').replace('{n}', preis.geteilt);

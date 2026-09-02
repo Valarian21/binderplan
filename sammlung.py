@@ -23,6 +23,9 @@ _dep = {}
 
 ZUSTAENDE = ["", "M", "NM", "EX", "GD", "LP", "PL", "PO"]
 VARIANTEN = ["normal", "reverse", "holo", "first", "pokeball", "masterball"]
+# Sprachen, die Cardmarket für Pokémon führt. Leer heißt „nicht festgelegt“ — das ist der
+# Zustand nach einem Haken im Binder, wo niemand nach der Sprache gefragt wurde.
+SPRACHEN = ["", "de", "en", "fr", "it", "es", "pt", "jp", "kr", "cn", "ru"]
 
 
 def _now():
@@ -32,6 +35,16 @@ def _now():
 def _var(v):
     v = str(v or "normal").strip().lower()
     return v if v in VARIANTEN else "normal"
+
+
+def _zus(v):
+    v = str(v or "").strip().upper()[:2]
+    return v if v in ZUSTAENDE else ""
+
+
+def _spr(v):
+    v = str(v or "").strip().lower()[:2]
+    return v if v in SPRACHEN else ""
 
 
 def register(app, *, get_db, current_user, require_user, env, card_query, card_select, card_brief):
@@ -127,18 +140,24 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             marken = ",".join("?" * len(teil))
             wo = (sql_where + f" AND cards.id IN ({marken})") if sql_where else f" WHERE cards.id IN ({marken})"
             treffer += con.execute(f"{card_select}{wo}", params + teil).fetchall()
-        eintraege = {(r["card_id"], r["variante"]): dict(r) for r in con.execute(
-            "SELECT * FROM sammlung WHERE user_id = ?", (user["id"],))}
+        eintraege = {}
+        for r in con.execute("SELECT * FROM sammlung WHERE user_id = ? ORDER BY zustand, sprache",
+                             (user["id"],)):
+            eintraege.setdefault(r["card_id"], []).append(dict(r))
         con.close()
 
         preise = _preise([r["id"] for r in treffer])
         karten = []
         for r in treffer:
             kurz = card_brief(r)
-            eigene = [e for (cid, _), e in eintraege.items() if cid == r["id"]]
+            eigene = eintraege.get(r["id"], [])
             kurz["anzahl"] = sum(e["anzahl"] for e in eigene)
-            kurz["varianten"] = [{"variante": e["variante"], "anzahl": e["anzahl"], "zustand": e["zustand"],
-                                  "kaufpreis": e["kaufpreis"], "notiz": e["notiz"]} for e in eigene]
+            # Ein Posten je Kombination aus Variante, Zustand und Sprache — die Oberfläche
+            # zeigt sie einzeln, damit man jeden für sich ändern kann.
+            kurz["posten"] = [{"variante": e["variante"], "anzahl": e["anzahl"], "zustand": e["zustand"] or "",
+                               "sprache": e.get("sprache") or "", "kaufpreis": e["kaufpreis"],
+                               "gekauft_am": e.get("gekauft_am"), "notiz": e["notiz"]} for e in eigene]
+            kurz["varianten"] = kurz["posten"]      # alter Name, solange die Oberfläche ihn nutzt
             kurz["eur"] = preise.get(r["id"])
             kurz["wert"] = round((preise.get(r["id"]) or 0) * kurz["anzahl"], 2)
             kurz["geplant"] = geplant.get(r["id"], 0)
@@ -151,9 +170,11 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         elif sortierung == "anzahl":
             karten.sort(key=lambda k: -k["anzahl"])
         else:
-            reihenfolge = {c: i for i, c in enumerate(
-                [k for k in eintraege and sorted(eintraege, key=lambda x: eintraege[x]["updated_at"] or "", reverse=True)] )}
-            karten.sort(key=lambda k: reihenfolge.get((k["id"], "normal"), 9999))
+            # Zuletzt angefasst zuerst. Je Karte zählt der jüngste ihrer Posten — seit
+            # Zustand und Sprache eigene Zeilen tragen, sind es mehrere.
+            juengste = {cid: max((e["updated_at"] or "") for e in liste_e)
+                        for cid, liste_e in eintraege.items()}
+            karten.sort(key=lambda k: juengste.get(k["id"], ""), reverse=True)
         return {"karten": karten[offset:offset + limit], "gesamt": len(karten)}
 
     @app.get("/api/sammlung/uebersicht")
@@ -189,9 +210,22 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         if not card_id:
             raise HTTPException(400, "Keine Karte angegeben")
         con = get_db()
-        row = con.execute("SELECT anzahl FROM sammlung WHERE user_id=? AND card_id=? AND variante=?",
+        # Der Haken kennt weder Zustand noch Sprache und arbeitet deshalb auf dem
+        # unbestimmten Posten. Wer die Karte schon mit Angaben erfasst hat, verliert sie
+        # durch das Abhaken nicht — es wird nur dieser eine Posten entfernt.
+        row = con.execute("SELECT anzahl FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
+                          " AND zustand='' AND sprache=''",
                           (user["id"], card_id, variante)).fetchone()
+        andere = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
+                             " AND (zustand<>'' OR sprache<>'')",
+                             (user["id"], card_id, variante)).fetchone()["c"]
         if row:
+            con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
+                        " AND zustand='' AND sprache=''", (user["id"], card_id, variante))
+            drin = bool(andere)
+        elif andere:
+            # Schon als bestimmter Posten vorhanden: der Haken nimmt ihn heraus, statt einen
+            # zweiten anzulegen — sonst stünde die Karte doppelt in der Sammlung.
             con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?",
                         (user["id"], card_id, variante))
             drin = False
@@ -216,9 +250,13 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             anzahl = max(0, min(999, int(data.get("anzahl", 1))))
         except Exception:
             anzahl = 1
-        zustand = str(data.get("zustand") or "").upper()[:2]
-        if zustand not in ZUSTAENDE:
-            zustand = ""
+        zustand = _zus(data.get("zustand"))
+        sprache = _spr(data.get("sprache"))
+        # Beim Ändern eines bestehenden Postens kann sich sein Schlüssel verschieben (aus
+        # „NM/de" wird „EX/en"). Der alte Stand muss deshalb mitkommen, sonst entsteht ein
+        # zweiter Posten statt einer Änderung.
+        alt_zustand = _zus(data.get("alt_zustand", zustand))
+        alt_sprache = _spr(data.get("alt_sprache", sprache))
         kaufpreis = data.get("kaufpreis")
         try:
             kaufpreis = round(float(kaufpreis), 2) if kaufpreis not in (None, "") else None
@@ -231,19 +269,55 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
 
         con = get_db()
         if anzahl == 0:
-            con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?",
-                        (user["id"], card_id, variante))
+            con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
+                        " AND zustand=? AND sprache=?",
+                        (user["id"], card_id, variante, alt_zustand, alt_sprache))
         else:
+            if (alt_zustand, alt_sprache) != (zustand, sprache):
+                con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
+                            " AND zustand=? AND sprache=?",
+                            (user["id"], card_id, variante, alt_zustand, alt_sprache))
             con.execute(
-                "INSERT INTO sammlung (user_id, card_id, variante, anzahl, zustand, kaufpreis, gekauft_am,"
-                " notiz, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
-                " ON CONFLICT(user_id, card_id, variante) DO UPDATE SET anzahl=excluded.anzahl,"
-                " zustand=excluded.zustand, kaufpreis=excluded.kaufpreis, gekauft_am=excluded.gekauft_am,"
+                "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, anzahl, kaufpreis,"
+                " gekauft_am, notiz, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(user_id, card_id, variante, zustand, sprache) DO UPDATE SET"
+                " anzahl=excluded.anzahl, kaufpreis=excluded.kaufpreis, gekauft_am=excluded.gekauft_am,"
                 " notiz=excluded.notiz, updated_at=excluded.updated_at",
-                (user["id"], card_id, variante, anzahl, zustand, kaufpreis, gekauft, notiz, _now(), _now()))
+                (user["id"], card_id, variante, zustand, sprache, anzahl, kaufpreis, gekauft, notiz,
+                 _now(), _now()))
         con.commit()
         con.close()
         return {"ok": True}
+
+    @app.post("/api/sammlung/aufnehmen")
+    async def aufnehmen(request: Request):
+        """Eine Karte in die Sammlung legen, ohne Umweg über einen Binder.
+
+        Der Weg über den Haken im Binder setzt voraus, dass die Karte dort geplant ist —
+        wer einfach besitzt, was er besitzt, hatte bisher keinen Weg. Mehrfaches Aufnehmen
+        derselben Karte in derselben Ausprägung erhöht die Anzahl."""
+        user = require_user(request)
+        data = await request.json()
+        card_id = str(data.get("card_id") or "").strip()
+        if not card_id:
+            raise HTTPException(400, "Keine Karte angegeben")
+        variante, zustand, sprache = _var(data.get("variante")), _zus(data.get("zustand")), _spr(data.get("sprache"))
+        try:
+            dazu = max(1, min(99, int(data.get("anzahl", 1))))
+        except Exception:
+            dazu = 1
+        con = get_db()
+        con.execute(
+            "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, anzahl, created_at, updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(user_id, card_id, variante, zustand, sprache) DO UPDATE SET"
+            " anzahl = MIN(999, sammlung.anzahl + excluded.anzahl), updated_at = excluded.updated_at",
+            (user["id"], card_id, variante, zustand, sprache, dazu, _now(), _now()))
+        gesamt = con.execute("SELECT SUM(anzahl) n FROM sammlung WHERE user_id=? AND card_id=?",
+                             (user["id"], card_id)).fetchone()["n"] or 0
+        con.commit()
+        con.close()
+        return {"ok": True, "anzahl": gesamt}
 
     @app.get("/api/sammlung/fehlt")
     def fehlt(request: Request, limit: int = 300):

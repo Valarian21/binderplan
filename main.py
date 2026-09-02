@@ -225,6 +225,14 @@ def get_db():
     return con
 
 
+def _spalte_da(con, tabelle, spalte):
+    """Gibt es die Spalte schon? Der Pruefstein fuer additive Migrationen."""
+    try:
+        return any(r[1] == spalte for r in con.execute(f"PRAGMA table_info({tabelle})"))
+    except Exception:
+        return False
+
+
 def init_db():
     con = get_db()
     con.executescript(
@@ -315,10 +323,43 @@ def init_db():
     con.execute("CREATE INDEX IF NOT EXISTS idx_binders_user ON binders(user_id)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_binders_sichtbar ON binders(sichtbar)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
+    # Zustand und Sprache gehören zum Exemplar, nicht zur Karte: wer dieselbe Karte einmal
+    # auf Deutsch in NM und einmal auf Englisch in GD besitzt, führt zwei Posten. Der alte
+    # Schlüssel (user_id, card_id, variante) ließ nur einen zu — Zustand war ein Feld, das
+    # beim zweiten Exemplar den ersten überschrieb, Sprache gab es gar nicht.
+    if not _spalte_da(con, "sammlung", "sprache"):
+        con.execute("""CREATE TABLE IF NOT EXISTS sammlung_neu (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER, card_id TEXT, variante TEXT DEFAULT 'normal',
+            zustand TEXT DEFAULT '', sprache TEXT DEFAULT '',
+            anzahl INTEGER DEFAULT 1, kaufpreis REAL, gekauft_am TEXT, notiz TEXT,
+            created_at TEXT, updated_at TEXT)""")
+        try:
+            con.execute("""INSERT INTO sammlung_neu
+                (user_id, card_id, variante, zustand, sprache, anzahl, kaufpreis, gekauft_am,
+                 notiz, created_at, updated_at)
+                SELECT user_id, card_id, variante, COALESCE(zustand,''), '', anzahl, kaufpreis,
+                       gekauft_am, notiz, created_at, updated_at FROM sammlung""")
+            con.execute("DROP TABLE sammlung")
+            con.execute("ALTER TABLE sammlung_neu RENAME TO sammlung")
+        except Exception as _e:
+            print("Sammlungs-Migration übersprungen:", _e)
+    con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sammlung_pos"
+                " ON sammlung(user_id, card_id, variante, zustand, sprache)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_sammlung_user ON sammlung(user_id)")
     # Amerikanische Preise (TCGplayer) neben den europäischen (Cardmarket). Beide kommen
     # aus derselben TCGdex-Antwort; der Vergleich der zwei Märkte ist eine Zahl, die sonst
     # niemand zeigt, und sie kostet keinen zusätzlichen Abruf.
-    for befehl in ("ALTER TABLE card_prices ADD COLUMN cm_produkt INTEGER",
+    # Zustandspreise gibt es bei keiner der beiden Börsen — Cardmarket rechnet den Trend
+    # über alle Zustände, TCGplayer nennt Near-Mint-Preise. Was es gibt, ist die Spanne:
+    # der niedrigste Angebotspreis und der 30-Tage-Schnitt in Europa, Tief/Mitte/Hoch in
+    # den USA. Zusammen sagen sie mehr über den Handelsraum einer Karte als eine Zahl.
+    for befehl in ("ALTER TABLE card_prices ADD COLUMN eur_low REAL",
+                   "ALTER TABLE card_prices ADD COLUMN eur_avg30 REAL",
+                   "ALTER TABLE card_prices ADD COLUMN usd_low REAL",
+                   "ALTER TABLE card_prices ADD COLUMN usd_mid REAL",
+                   "ALTER TABLE card_prices ADD COLUMN usd_high REAL",
+                   "ALTER TABLE card_prices ADD COLUMN cm_produkt INTEGER",
                    "ALTER TABLE card_prices ADD COLUMN usd REAL",
                    "ALTER TABLE card_prices ADD COLUMN usd_holo REAL",
                    "ALTER TABLE card_prices ADD COLUMN tcgplayer_id INTEGER",
@@ -937,20 +978,26 @@ def _preis_schreiben(con, reihen):
     der alte Preis bleibt lieber stehen, als durch einen Ausfall gelöscht zu werden."""
     heute = _heute()
     geschrieben = 0
-    for cid, ok, eur, holo, usd, usd_holo, tid, pid in reihen:
+    for cid, ok, eur, holo, usd, usd_holo, tid, pid, spanne in reihen:
         if not ok:
             continue
         geschrieben += 1
         con.execute(
             "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id,"
-            " cm_produkt, updated_at) VALUES (?,?,?,?,?,?,?,datetime('now'))"
+            " cm_produkt, eur_low, eur_avg30, usd_low, usd_mid, usd_high, updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))"
             " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur, eur_holo=excluded.eur_holo,"
             " usd=COALESCE(excluded.usd, card_prices.usd),"
             " usd_holo=COALESCE(excluded.usd_holo, card_prices.usd_holo),"
             " tcgplayer_id=COALESCE(excluded.tcgplayer_id, card_prices.tcgplayer_id),"
-            " cm_produkt=excluded.cm_produkt,"
+            " cm_produkt=excluded.cm_produkt, eur_low=excluded.eur_low,"
+            " eur_avg30=excluded.eur_avg30, usd_low=excluded.usd_low,"
+            " usd_mid=excluded.usd_mid, usd_high=excluded.usd_high,"
             " updated_at=excluded.updated_at",
-            (cid, eur, holo, usd, usd_holo, tid, pid))
+            (cid, eur, holo, usd, usd_holo, tid, pid,
+             (spanne or {}).get("eur_low"), (spanne or {}).get("eur_avg30"),
+             (spanne or {}).get("usd_low"), (spanne or {}).get("usd_mid"),
+             (spanne or {}).get("usd_high")))
         if eur is not None or usd is not None:
             con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
                         " ON CONFLICT(card_id, datum) DO UPDATE SET"
@@ -1026,7 +1073,7 @@ def _preishistorie_job():
     mehrdeutig = _mehrdeutige_produkte(ergebnisse)
     if mehrdeutig:
         ergebnisse = [
-            (e[0], e[1], None, None, e[4], e[5], e[6], e[7]) if e[0] in mehrdeutig else e
+            (e[0], e[1], None, None, e[4], e[5], e[6], e[7], e[8]) if e[0] in mehrdeutig else e
             for e in ergebnisse
         ]
 
@@ -1772,7 +1819,8 @@ def card_detail(card_id: str):
     k["set"] = dict(sr) if sr else None
     if k["set"]:
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
-    pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt FROM card_prices"
+    pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg30,"
+                     " usd, usd_low, usd_mid, usd_high FROM card_prices"
                      " WHERE card_id = ?", (card_id,)).fetchone()
     # Fehlt der Preis, weil das Cardmarket-Produkt noch anderen Karten gehört? Dann soll
     # die Karte das sagen können, statt kommentarlos einen Strich zu zeigen.
@@ -1781,7 +1829,10 @@ def card_detail(card_id: str):
         geteilt = con.execute("SELECT COUNT(*) c FROM card_prices WHERE cm_produkt = ?",
                               (pr["cm_produkt"],)).fetchone()["c"]
     k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"],
-                  "geteilt": geteilt if geteilt > 1 else 0} if pr else None
+                  "geteilt": geteilt if geteilt > 1 else 0,
+                  "eur_low": pr["eur_low"], "eur_avg30": pr["eur_avg30"],
+                  "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
+                  "usd_high": pr["usd_high"]} if pr else None
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
         "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
     andere = []
@@ -2471,7 +2522,7 @@ def konto_export(request: Request):
         "konto": {k: v for k, v in user.items() if k not in ("pw_hash", "salt", "reset_token")},
         "binder": liste("SELECT * FROM binders WHERE user_id = ?", user["id"]),
         "profil": liste("SELECT name, kurztext, avatar_card, created_at FROM profile WHERE user_id = ?", user["id"]),
-        "sammlung": liste("SELECT card_id, variante, anzahl, zustand, kaufpreis, gekauft_am, notiz, created_at FROM sammlung WHERE user_id = ?", user["id"]),
+        "sammlung": liste("SELECT card_id, variante, anzahl, zustand, sprache, kaufpreis, gekauft_am, notiz, created_at FROM sammlung WHERE user_id = ?", user["id"]),
         "herzen": liste("SELECT binder_id, created_at FROM stimmen WHERE user_id = ?", user["id"]),
         "artworks": liste("SELECT id, binder_id, seite, layout, anker, stil, wunsch, pokemon,"
                           " status, credits, created_at FROM artworks WHERE user_id = ?", user["id"]),
@@ -2548,7 +2599,7 @@ except Exception as _e:  # pragma: no cover
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
 
 def _fetch_price_voll(client, card_id):
-    """→ (card_id, ok, eur, eur_holo, usd, usd_holo, tcgplayer_id, cm_produkt).
+    """→ (card_id, ok, eur, eur_holo, usd, usd_holo, tcgplayer_id, cm_produkt, spanne).
 
     Dieselbe Antwort trägt beide Märkte: Cardmarket in Euro und TCGplayer in Dollar.
     Die TCGplayer-Produktnummer wird mitgenommen, weil sie der Schlüssel zu allen
@@ -2569,9 +2620,9 @@ def _fetch_price_voll(client, card_id):
             # Die Karte kennt die Quelle nicht — das ist ein Ergebnis, kein Ausfall. Als
             # Ausfall gezählt würden solche Karten jeden Lauf neu versucht und könnten
             # die Abbruchschwelle allein tragen.
-            return card_id, True, None, None, None, None, None, None
+            return card_id, True, None, None, None, None, None, None, {}
         if r.status_code != 200:
-            return card_id, False, None, None, None, None, None, None
+            return card_id, False, None, None, None, None, None, None, {}
         d = r.json()
         preise = d.get("pricing") or {}
         cm = preise.get("cardmarket") or {}
@@ -2584,8 +2635,12 @@ def _fetch_price_voll(client, card_id):
             if cm.get(key):
                 holo = round(float(cm[key]), 2); break
 
+        low = cm.get("low") or None
+        avg30 = cm.get("avg30") or None
+
         tp = preise.get("tcgplayer") or {}
         usd = usd_holo = None
+        u_low = u_mid = u_high = None
         tid = None
         # TCGplayer gliedert nach Druckvariante. „normal“ ist der Grundpreis, die Holo-Varianten
         # der Aufpreis; welche es gibt, hängt von der Karte ab.
@@ -2593,20 +2648,25 @@ def _fetch_price_voll(client, card_id):
             v = tp.get(name)
             if isinstance(v, dict) and v.get("marketPrice") is not None:
                 usd = round(float(v["marketPrice"]), 2)
+                u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
                 tid = tid or v.get("productId")
                 break
         for name in ("holofoil", "reverse-holofoil", "1st-edition-holofoil"):
             v = tp.get(name)
             if isinstance(v, dict) and v.get("marketPrice") is not None:
                 usd_holo = round(float(v["marketPrice"]), 2)
+                if u_low is None:
+                    u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
                 tid = tid or v.get("productId")
                 break
         if usd is None and usd_holo is not None:
             usd = usd_holo
-        return card_id, True, eur, holo, usd, usd_holo, tid, cm.get("idProduct")
+        return (card_id, True, eur, holo, usd, usd_holo, tid, cm.get("idProduct"),
+                {"eur_low": low, "eur_avg30": avg30, "usd_low": u_low,
+                 "usd_mid": u_mid, "usd_high": u_high})
     except Exception:
         pass
-    return card_id, False, None, None, None, None, None, None
+    return card_id, False, None, None, None, None, None, None, {}
 
 
 @app.post("/api/preise")
