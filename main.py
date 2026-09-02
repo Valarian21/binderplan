@@ -1702,6 +1702,7 @@ def _card_brief(row):
         # Welche Sprache das Bild hat: alte WotC-Sets haben bei TCGdex keine deutschen Scans
         "img_lang": "de" if row["image_de"] else ("en" if row["image_en"] else ("alt" if ("image_alt" in keys and row["image_alt"]) else None)),
         "holo": bool(row["has_holo"]), "first": bool(row["has_first"]) if "has_first" in keys else False,
+        "normal": bool(row["has_normal"]) if "has_normal" in keys else True,
         "illustrator": row["illustrator"] if "illustrator" in keys else None,
         "regmark": row["regulation_mark"] if "regulation_mark" in keys else None,
         "set_id": row["set_id"],
@@ -1824,12 +1825,17 @@ def card_detail(card_id: str):
                      " WHERE card_id = ?", (card_id,)).fetchone()
     # Fehlt der Preis, weil das Cardmarket-Produkt noch anderen Karten gehört? Dann soll
     # die Karte das sagen können, statt kommentarlos einen Strich zu zeigen.
+    # Zwei verschiedene Gründe für einen fehlenden Preis, und der Unterschied gehört
+    # in die Oberfläche: entweder gehört das Cardmarket-Produkt mehreren Karten, oder
+    # die Quelle führt für dieses Set gar keine Preisverknüpfung (ganze Sets wie Gym
+    # Heroes oder die meisten japanischen Reihen).
     geteilt = 0
+    ohne_quelle = bool(pr and pr["eur"] is None and not pr["cm_produkt"])
     if pr and pr["eur"] is None and pr["cm_produkt"]:
         geteilt = con.execute("SELECT COUNT(*) c FROM card_prices WHERE cm_produkt = ?",
                               (pr["cm_produkt"],)).fetchone()["c"]
     k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"],
-                  "geteilt": geteilt if geteilt > 1 else 0,
+                  "geteilt": geteilt if geteilt > 1 else 0, "ohne_quelle": ohne_quelle,
                   "eur_low": pr["eur_low"], "eur_avg30": pr["eur_avg30"],
                   "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
                   "usd_high": pr["usd_high"]} if pr else None

@@ -634,7 +634,7 @@
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
           border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap;
-          position: relative; z-index: 45; }
+          position: sticky; top: 0; z-index: 45; }
   .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
   .menuwrap { position: relative; }
   .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
@@ -857,6 +857,16 @@
   .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
   .an-rest { display: none; }
+  /* Abgeleitete Zustandspreise */
+  .zst { margin-top: 10px; }
+  .zst-titel { font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+               color: var(--mut); margin-bottom: 5px; }
+  .zst-liste { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 4px; }
+  .zst-liste div { display: flex; flex-direction: column; gap: 1px; padding: 5px 7px; border-radius: 8px;
+                   background: var(--panel2); font-variant-numeric: tabular-nums; }
+  .zst-liste span { font-size: 10px; font-weight: 800; color: var(--mut); }
+  .zst-liste strong { font-size: 12.5px; }
+  .zst-hin { font-size: 10.5px; color: var(--mut); line-height: 1.5; margin-top: 6px; }
   /* Rasterwähler in der Kopfzeile jeder Planer-Seite */
   .ps-raster { border: 1.5px solid var(--line); border-radius: 7px; background: var(--card); color: var(--mut);
                font-size: 11.5px; font-weight: 700; padding: 2px 4px; cursor: pointer; }
@@ -2387,8 +2397,11 @@ const T = {
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
     kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis',
     pr_ab: 'ab', pr_30: '30-Tage-Schnitt', pr_usa: 'USA',
+    zst_titel: 'Geschätzt nach Zustand',
+    zst_hin: 'Abgeleitet: der Trend gilt als Nähe-Neuwert, darunter die im Handel üblichen Abschläge; Poor nimmt den echten Tiefstpreis, wenn er niedriger liegt. Cardmarket veröffentlicht keine Preise je Zustand – das sind Rechenwerte, keine Messwerte.',
     pr_zustand_hin: 'Preise je Zustand führt keine der beiden Börsen – der Trend gilt über alle Zustände, die US-Preise für Near Mint.',
     preis_geteilt: 'Cardmarket führt diese Karte gemeinsam mit {n} weiteren unter einem Produkt – ein eigener Preis lässt sich daraus nicht ableiten.',
+    preis_ohne_quelle: 'Für dieses Set liefert unsere Preisquelle keine Cardmarket-Verknüpfung. Gehandelt wird die Karte dort trotzdem – uns fehlt nur die Zuordnung.',
     pf_sprache_ui: 'Sprache der Oberfläche',
     f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
     m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
@@ -2744,8 +2757,11 @@ const T = {
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
     kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price',
     pr_ab: 'from', pr_30: '30-day average', pr_usa: 'US',
+    zst_titel: 'Estimated by condition',
+    zst_hin: 'Derived: the trend stands for near-new, below it the discounts common in the trade; Poor takes the real lowest price where that is lower. Cardmarket publishes no prices per condition – these are calculated, not measured.',
     pr_zustand_hin: 'Neither marketplace publishes prices per condition – the trend covers all conditions, the US prices are for Near Mint.',
     preis_geteilt: 'Cardmarket lists this card together with {n} others under one product – no price of its own can be derived from that.',
+    preis_ohne_quelle: 'Our price source carries no Cardmarket link for this set. The card is traded there all the same – what is missing is the mapping.',
     pf_sprache_ui: 'Interface language',
     f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
     m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
@@ -4601,8 +4617,8 @@ function zeichneBinder() {
   // Leerer Binder: Einstieg erklären und die Vorlagen zeigen – das Raster erst ab der ersten Karte
   const leer = !S.nurAnsicht && S.binder.items.length === 0;
   $('wb-onb').classList.toggle('hidden', !leer);
-  $('wb-slots').classList.toggle('hidden', leer);
-  $('wb-nav').classList.toggle('hidden', leer);
+  $('wb-slots').classList.toggle('hidden', leer || S.galerie);
+  $('wb-nav').classList.toggle('hidden', leer || S.galerie);
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
   const gesammelt = S.binder.items.filter((i) => besitzt(i)).length;
@@ -7858,9 +7874,15 @@ async function detailOeffnen(idOrIdx) {
     spark = `<svg class="spark" viewBox="0 0 100 56" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--gruen)" stroke-width="2"/></svg>
       <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:-8px;margin-bottom:10px"><span>${verlauf[0].datum}</span><span>${t('verlauf')} · ${verlauf.length} ${t('tage')}</span><span>${verlauf[verlauf.length - 1].datum}</span></div>`;
   } else spark = `<div style="font-size:11.5px;color:var(--mut);margin-bottom:10px">${t('verlauf_bald')}</div>`;
+  // Nur die Ausprägungen zeigen, die es für diese Karte gibt. Pokéball- und
+  // Masterball-Muster stehen nicht im Katalog und bleiben deshalb wählbar.
+  const gibtEs = (v) => (v === 'normal' ? k.normal !== false
+    : v === 'reverse' ? !!k.reverse
+    : v === 'holo' ? !!k.holo
+    : v === 'first' ? !!k.first : true);
   const varChip = (v) => {
-    const erlaubt = v === 'normal' || (v === 'reverse' && k.reverse) || (v === 'holo' && (k.holo || preis.eur_holo)) || (v === 'first' && k.first) || v === 'pokeball' || v === 'masterball';
-    return `<button class="chip ${detailVariante === v ? 'on' : ''}" style="${erlaubt ? '' : 'opacity:.45'}" onclick="detailVariante='${v}';zeichneDetailChips()">${t('v_' + v)}</button>`;
+    if (!gibtEs(v) && (v === 'normal' || v === 'reverse' || v === 'holo' || v === 'first')) return '';
+    return `<button class="chip ${detailVariante === v ? 'on' : ''}" onclick="detailVariante='${v}';zeichneDetailChips()">${t('v_' + v)}</button>`;
   };
   const andere = (k.andere || []).map((a) => `<button onclick="detailOeffnen('${a.id}')" title="${esc(nm(a))} · ${esc(setNm(a))}"><img loading="lazy" src="${imgUrl(a.id)}" alt=""><span>${esc(setNm(a))} · ${esc(a.local_id || '')}</span></button>`).join('');
   const cm = 'https://www.cardmarket.com/' + (LANG === 'en' ? 'en' : 'de')
@@ -7877,9 +7899,10 @@ async function detailOeffnen(idOrIdx) {
         ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent);color:var(--akzent)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
         <div class="d-preise">
           <div class="d-preis"><div class="z">${fmt(preis.eur)}</div><div class="l">${t('preis_trend')}</div></div>
-          ${preis.eur_holo ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
+          ${preis.eur_holo && (k.normal !== false || k.reverse) ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
           <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" target="_blank" rel="noopener" style="font-size:12px">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div>
           <div class="l" id="detail-spanne" style="margin-top:4px;line-height:1.5"></div></div>
+          <div id="detail-zustaende" class="zst"></div>
         </div>
         ${spark}
         <div class="f-lbl">${t('variante')}</div>
@@ -7896,6 +7919,24 @@ async function detailOeffnen(idOrIdx) {
     </div>`;
   // Die Spanne unter den Trendpreis: Preise je Zustand führt keine der beiden Börsen,
   // aber Tiefstpreis, 30-Tage-Schnitt und die US-Spanne zeigen den Handelsraum einer Karte.
+  // Preise je Zustand veröffentlicht keine der beiden Börsen. Was sich vertreten lässt:
+  // der Trend als Nähe-Neuwert, der Tiefstpreis als das untere Ende, dazwischen die
+  // Abschläge, mit denen im Handel üblicherweise gerechnet wird. Das ist eine Ableitung
+  // und wird auch so benannt — keine gemessene Zahl.
+  const ZUSTAND_FAKTOR = [['M', 1.10], ['NM', 1.00], ['EX', 0.85], ['GD', 0.70],
+                          ['LP', 0.55], ['PL', 0.42], ['PO', 0.30]];
+  if (preis.eur && $('detail-zustaende')) {
+    const zeilen = ZUSTAND_FAKTOR.map(([z, f]) => {
+      // Poor bekommt den echten Tiefstpreis, wenn Cardmarket einen kennt und er unter
+      // dem geschätzten liegt — ein tatsächliches Angebot schlägt jede Schätzung.
+      let wert = preis.eur * f;
+      if (z === 'PO' && preis.eur_low != null) wert = Math.min(wert, preis.eur_low);
+      return `<div><span>${z}</span><strong>${fmt(wert)}</strong></div>`;
+    }).join('');
+    $('detail-zustaende').innerHTML =
+      `<div class="zst-titel">${t('zst_titel')}</div><div class="zst-liste">${zeilen}</div>
+       <div class="zst-hin">${t('zst_hin')}</div>`;
+  }
   const spanne = [];
   if (preis.eur_low != null) spanne.push(`${t('pr_ab')} ${fmt(preis.eur_low)}`);
   if (preis.eur_avg30 != null) spanne.push(`${t('pr_30')} ${fmt(preis.eur_avg30)}`);
@@ -7906,6 +7947,10 @@ async function detailOeffnen(idOrIdx) {
   }
   if (spanne.length && $('detail-spanne')) {
     $('detail-spanne').innerHTML = esc(spanne.join(' · ')) + `<div style="margin-top:3px;opacity:.85">${t('pr_zustand_hin')}</div>`;
+  }
+  if (preis.ohne_quelle && $('detail-preis-stand')) {
+    $('detail-preis-stand').textContent = t('preis_ohne_quelle');
+    return;
   }
   if (preis.geteilt > 1 && $('detail-preis-stand')) {
     // Kein Preis, weil Cardmarket diese Karte mit anderen unter einem Produkt führt.
