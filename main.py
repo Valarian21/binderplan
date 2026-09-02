@@ -2002,6 +2002,11 @@ def _ist_pro(user) -> bool:
     return abo.ist_bezahlt(user)
 
 
+def _ist_pro_stufe(user) -> bool:
+    """Nur Pro und der Lifetime-Altbestand — siehe abo.ist_pro."""
+    return abo.ist_pro(user)
+
+
 def _limit_binder(user):
     return abo.limit_binder(user)
 
@@ -2992,11 +2997,17 @@ COLS, ROWS = 3, 3
 PRINT_W = 744   # 63 mm bei 300 dpi
 
 
-def _print_image_path(card_id, lang="de"):
-    """Graustufen-JPEG in Druckauflösung, gecacht. Vorher wurde jedes Bild im PDF-Lauf
-    in voller Auflösung konvertiert und verlustfrei eingebettet (26 MB, 34 s für 64 Karten)."""
+def _print_image_path(card_id, lang="de", farbe=False):
+    """JPEG in Druckauflösung, gecacht. Vorher wurde jedes Bild im PDF-Lauf in voller
+    Auflösung konvertiert und verlustfrei eingebettet (26 MB, 34 s für 64 Karten).
+
+    Graustufen bleibt die Vorgabe: ein Platzhalter im Binder soll als Platzhalter
+    erkennbar sein und kostet so einen Bruchteil der Tinte. Farbe gibt es auf
+    ausdrücklichen Wunsch, in einem eigenen Cache-Zweig."""
     safe = re.sub(r"[^A-Za-z0-9._%-]", "_", card_id)
     suffix = "" if lang != "en" else ".en"
+    if farbe:
+        suffix += ".farbe"
     target = CACHE / "cards" / "print" / f"{safe}{suffix}.jpg"
     if target.exists():
         return target
@@ -3009,10 +3020,10 @@ def _print_image_path(card_id, lang="de"):
             bg = Image.new("RGB", img.size, "white")
             bg.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[-1])
             img = bg
-        gray = ImageOps.autocontrast(img.convert("L"), cutoff=1)
-        if gray.width > PRINT_W:
-            gray = gray.resize((PRINT_W, int(gray.height * PRINT_W / gray.width)), Image.LANCZOS)
-        gray.save(target, "JPEG", quality=84, optimize=True)
+        fertig = img.convert("RGB") if farbe else ImageOps.autocontrast(img.convert("L"), cutoff=1)
+        if fertig.width > PRINT_W:
+            fertig = fertig.resize((PRINT_W, int(fertig.height * PRINT_W / fertig.width)), Image.LANCZOS)
+        fertig.save(target, "JPEG", quality=84, optimize=True)
         return target
     except Exception:
         return None
@@ -3204,13 +3215,43 @@ def _zaehle_export(user, binder_id):
     con.close()
 
 
-def _bilder_vorladen(card_ids, lang):
+def _bilder_vorladen(card_ids, lang, farbe=False):
     """Hochauflösende Bilder parallel in den Cache holen (vorher lief das im PDF
     sequenziell: 64 Karten ≈ 40 s). → Anzahl fehlender Bilder."""
     ids = list(dict.fromkeys(i for i in card_ids if i))
     with ThreadPoolExecutor(8) as pool:
-        pfade = list(pool.map(lambda c: _print_image_path(c, lang), ids))
+        pfade = list(pool.map(lambda c: _print_image_path(c, lang, farbe), ids))
     return sum(1 for p in pfade if p is None)
+
+
+def _seiten_auswahl(text, seiten_gesamt):
+    """„1-3,7,10-" → Menge der gemeinten Seitennummern (1-basiert).
+
+    Leer oder unlesbar heißt: alle. Lieber zu viel drucken als schweigend zu wenig —
+    ein PDF mit fehlenden Seiten fällt erst am Drucker auf."""
+    if not text or not str(text).strip():
+        return None
+    treffer = set()
+    for teil in str(text).replace(" ", "").split(","):
+        if not teil:
+            continue
+        if "-" in teil:
+            a, _, b = teil.partition("-")
+            try:
+                von = int(a) if a else 1
+                bis = int(b) if b else seiten_gesamt
+            except ValueError:
+                continue
+            for n in range(max(1, von), min(seiten_gesamt, bis) + 1):
+                treffer.add(n)
+        else:
+            try:
+                n = int(teil)
+            except ValueError:
+                continue
+            if 1 <= n <= seiten_gesamt:
+                treffer.add(n)
+    return treffer or None
 
 
 def _binder_lesen_erlaubt(binder_id: str, user):
@@ -3232,8 +3273,8 @@ def _binder_lesen_erlaubt(binder_id: str, user):
     raise HTTPException(403, "Dieser Binder gehört jemand anderem.")
 
 
-@app.post("/api/binders/{binder_id}/pdf_vorbereiten")
-def binder_pdf_vorbereiten(binder_id: str, request: Request):
+@app.post("/api/binders/{binder_id}/pdf_vorbereiten")  # noqa: E302
+def binder_pdf_vorbereiten(binder_id: str, request: Request, farbe: int = 0):
     """Schritt 1 des Exports: Bilder laden (parallel), damit das PDF danach in Sekunden kommt.
     Nur für eigene Binder – sonst könnte ein beliebiges Konto über fremde Binder-IDs
     massenhaft Bild-Downloads auslösen."""
@@ -3242,12 +3283,13 @@ def binder_pdf_vorbereiten(binder_id: str, request: Request):
     binder = _load_binder(binder_id)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
-    fehlend = _bilder_vorladen(ids, lang) if ids else 0
+    fehlend = _bilder_vorladen(ids, lang, bool(farbe)) if ids else 0
     return {"karten": len(ids), "ohne_bild": fehlend}
 
 
 @app.get("/api/binders/{binder_id}/pdf")
-def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_fehlende: int = 0):
+def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_fehlende: int = 0,
+               seiten: str = "", farbe: int = 0, nur_art: int = 0):
     user = _require_user(request)
     binder = _load_binder(binder_id)
     _binder_lesen_erlaubt(binder_id, user)
@@ -3284,7 +3326,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     pokemon_names = {r["dex_id"]: (r[namensspalte] or r["name_de"])
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
     con.close()
-    _bilder_vorladen(card_ids, lang)
+    _bilder_vorladen(card_ids, lang, bool(farbe))
 
     buf = io.BytesIO()
     c = pdfcanvas.Canvas(buf, pagesize=A4)
@@ -3294,9 +3336,16 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     ox = (page_w - grid_w) / 2
     oy = (page_h - grid_h) / 2
 
+    # Seitenauswahl: „1-3,7" meint Binderseiten, nicht A4-Blätter — das ist die Zahl,
+    # die im Planer und in der Blattansicht steht.
+    seiten_gesamt = max(1, -(-len(binder["items"]) // per_page))
+    gewaehlt = _seiten_auswahl(seiten, seiten_gesamt)
     printable = [
         (idx, item) for idx, item in enumerate(binder["items"])
-        if item.get("type") != "empty" and not (nur_fehlende and item.get("have"))
+        if item.get("type") != "empty"
+        and not (nur_fehlende and item.get("have"))
+        and not (nur_art and item.get("type") != "art")
+        and (gewaehlt is None or (idx // per_page + 1) in gewaehlt)
     ]
 
     gesammelt = sum(1 for i in binder["items"] if i.get("have"))   # Druck: Stand im Binder
@@ -3345,7 +3394,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
             _draw_dex_cell(c, x, y, item, pokemon_names)
         else:
             card = card_rows.get(item.get("id"))
-            path = _print_image_path(item.get("id"), lang) if card else None
+            path = _print_image_path(item.get("id"), lang, bool(farbe)) if card else None
             if path:
                 try:
                     c.drawImage(str(path), x, y, CARD_W, CARD_H)   # JPEG-Pfad → DCT direkt eingebettet
@@ -3634,6 +3683,7 @@ try:
     import analytics as _analytics  # noqa: E402
     _analytics_kennzahlen = _analytics.register(
         app, get_db=get_db, require_user=_require_user, ist_pro=_ist_pro,
+        ist_pro_stufe=_ist_pro_stufe,
     )
 except Exception as _e:  # pragma: no cover
     print("Analytics-Modul nicht geladen:", _e)

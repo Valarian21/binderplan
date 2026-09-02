@@ -131,7 +131,20 @@ def tarif(user):
 
 
 def ist_bezahlt(user) -> bool:
+    """Irgendein bezahlter Tarif — Plus reicht."""
     return (user or {}).get("plan") in ("plus", "pro", "lifetime")
+
+
+def ist_pro(user) -> bool:
+    """Nur die oberste Stufe.
+
+    Plus und Pro unterschieden sich bis hierher ausschließlich in der Credit-Menge
+    (80 gegen 200) bei doppeltem Preis. Wer keine KI-Artworkseiten baut, hatte keinen
+    Grund für Pro. Die Marktzahlen sind das erste Merkmal, das die Stufe für sich
+    trägt: Indizes, Bewegungen und der Vergleich der Börsen sind Händlerwerkzeug,
+    während die Auswertung der eigenen Sammlung zum Sammeln selbst gehört und
+    deshalb schon in Plus steckt."""
+    return (user or {}).get("plan") in ("pro", "lifetime")
 
 
 def limit_binder(user):

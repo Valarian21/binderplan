@@ -138,7 +138,11 @@ def _gruppieren(zeilen, schluessel, wert, stueck=None, grenze=10):
     return aus
 
 
-def register(app, *, get_db, require_user, ist_pro):
+def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None):
+    # Die Sammlungsauswertung gehört zum Sammeln und steckt schon in Plus; die Marktzahlen
+    # sind Händlerwerkzeug und bleiben Pro vorbehalten. Fehlt die Unterscheidung (ältere
+    # Einbindung), gilt für beide dieselbe Schranke.
+    ist_markt_erlaubt = ist_pro_stufe or ist_pro
     from fastapi import Request
 
     # ---------------------------------------------------------------- Sammlung
@@ -265,7 +269,7 @@ def register(app, *, get_db, require_user, ist_pro):
     def markt(request: Request, tage: int = 90):
         """Der ganze Katalog. Ohne Pro nur der Stand und die teuersten Sets als Kostprobe."""
         user = require_user(request)
-        voll = ist_pro(user)
+        voll = ist_markt_erlaubt(user)
         tage = max(7, min(365, tage))
         con = get_db()
 

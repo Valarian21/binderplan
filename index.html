@@ -1253,8 +1253,7 @@
         <span data-i18n="pdf">Drucken</span>
       </button>
       <div class="menu hidden" id="menu-export">
-        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
-        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
+        <button onclick="druckOeffnen()" data-i18n="ex_dialog">Drucken …</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
         <button onclick="artworkOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <div class="trenn"></div>
@@ -1540,8 +1539,7 @@
       </button>
       <div class="menu hidden" id="mobil-mehr">
         <div class="menu-lbl" data-i18n="mm_drucken">Drucken</div>
-        <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
-        <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
+        <button onclick="druckOeffnen()" data-i18n="ex_dialog">Drucken …</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
         <button onclick="artworkOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
@@ -1551,7 +1549,7 @@
         <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
         <button onclick="ansicht('markt')"><span data-i18n="markt">Markt</span> <span class="an-marke" style="margin-left:4px">Pro</span></button>
-        <button onclick="ansicht('auswertung')"><span data-i18n="an_t">Auswertung</span> <span class="an-marke" style="margin-left:4px">Pro</span></button>
+        <button onclick="ansicht('auswertung')"><span data-i18n="an_t">Auswertung</span> <span class="an-marke" style="margin-left:4px">Plus</span></button>
         <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
         <button onclick="fotoOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
         <div class="trenn"></div>
@@ -1562,6 +1560,34 @@
         <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
         <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Druckdialog: was aufs Blatt kommt, wird vorher entschieden -->
+<div class="overlay hidden" id="modal-druck">
+  <div class="modal">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="dr_t">Drucken</h2>
+    <div class="unter" data-i18n="dr_u">Platzhalter zum Ausschneiden, im Maß echter Karten. Was du auswählst, landet fortlaufend auf A4-Blättern.</div>
+
+    <div class="f-lbl" data-i18n="dr_welche">Welche Seiten</div>
+    <div class="f-chips" id="dr-umfang" style="margin-bottom:10px"></div>
+    <input class="feld" id="dr-seiten" placeholder="z. B. 1-3, 7, 10-" data-i18n-ph="dr_ph"
+           oninput="druckUmfangFrei()" style="margin-bottom:4px">
+    <div class="unter" style="margin:0 0 14px;font-size:11.5px" data-i18n="dr_seiten_hin">Binderseiten, nicht Druckblätter. Leer lassen heißt: alle.</div>
+
+    <div class="f-lbl" data-i18n="dr_was">Was drucken</div>
+    <label class="schalter" style="margin-bottom:6px"><input type="checkbox" id="dr-fehlend" onchange="druckVorschau()"><span data-i18n="dr_nur_fehlend">Nur Karten, die mir noch fehlen</span></label>
+    <label class="schalter" style="margin-bottom:6px"><input type="checkbox" id="dr-nurart" onchange="druckVorschau()"><span data-i18n="dr_nur_art">Nur Artwork-Fächer</span></label>
+    <label class="schalter" style="margin-bottom:14px"><input type="checkbox" id="dr-farbe" onchange="druckVorschau()"><span data-i18n="dr_farbe">Kartenbilder in Farbe</span></label>
+    <div class="unter" style="margin:-8px 0 16px;font-size:11.5px" data-i18n="dr_farbe_hin">Artwork-Seiten kommen immer in Farbe. Kartenbilder stehen sonst in Graustufen – als Platzhalter erkennbar und sparsam im Verbrauch.</div>
+
+    <div class="bestell-box" id="dr-vorschau"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="druckStarten()" data-i18n="dr_start">PDF erzeugen</button>
     </div>
   </div>
 </div>
@@ -2208,7 +2234,7 @@
   <div class="planer-kopf">
     <button class="btn sekundaer" style="font-size:13px" onclick="auswertungSchliessen()">‹ <span data-i18n="sammlung">Sammlung</span></button>
     <div style="font-size:15px;font-weight:700" data-i18n="an_t">Auswertung</div>
-    <span class="an-marke">Pro</span>
+    <span class="an-marke">Plus</span>
     <div style="flex:1"></div>
     <select class="feld" id="an-zeit" style="width:auto" onchange="auswertungLaden()">
       <option value="30" data-i18n="an_30">30 Tage</option>
@@ -2347,12 +2373,12 @@ const T = {
     an_leer: 'Deine Sammlung ist noch leer. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab. Danach steht hier, was sie wert ist.',
     an_markt_login: 'Für die Marktzahlen brauchst du ein Konto.',
     // Pro-Schranke
-    an_pro_t: 'Auswertung gehört zu Pro', an_mpro_t: 'Die Marktzahlen gehören zu Pro',
+    an_pro_t: 'Auswertung gehört zu Plus', an_mpro_t: 'Die Marktzahlen gehören zu Pro',
     an_pro_u: 'Die Preise holen wir täglich für den ganzen Katalog. Das Rechnen daraus ist die Arbeit, für die Pro bezahlt.',
     an_pro_1: 'Wert deiner Sammlung, Tag für Tag',
     an_pro_2: 'Aufteilung nach Seltenheit, Set, Pokémon, Typ und Jahrzehnt',
     an_pro_3: 'Einsatz gegen heutigen Wert – je Karte und im Ganzen',
-    an_pro_4: 'Die Marktseite mit Indizes, Bewegungen und dem Vergleich Europa/USA',
+    an_pro_4: 'Live-Preise und die Kaufliste als CSV',
     an_mpro_1: 'Indizes für alte, mittlere und neue Karten',
     an_mpro_2: 'Die größten Bewegungen der Messreihe',
     an_mpro_3: 'Europa gegen USA: wo dieselbe Karte günstiger ist',
@@ -2373,7 +2399,19 @@ const T = {
     herausnehmen: 'Herausnehmen', s_herausnehmen_t: 'Fach ganz entfernen – alles dahinter rückt auf',
     hierher: 'Hierher …', ziel_hinweis: 'Jetzt das Fach anklicken, an das die Auswahl soll.',
     luecken: 'Lücken schließen', keine_luecken: 'Es gibt keine leeren Fächer.',
-    luecken_zu: '{n} leere Fächer entfernt', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
+    luecken_zu: '{n} leere Fächer entfernt',
+    // Druckdialog
+    ex_dialog: 'Drucken …', dr_t: 'Drucken',
+    dr_u: 'Platzhalter zum Ausschneiden, im Maß echter Karten. Was du auswählst, landet fortlaufend auf A4-Blättern.',
+    dr_welche: 'Welche Seiten', dr_alle: 'Ganzer Binder', dr_aktuell: 'Nur Seite {n}', dr_frei: 'Bereich …',
+    dr_ph: 'z. B. 1-3, 7, 10-', dr_seiten_hin: 'Binderseiten, nicht Druckblätter. Leer lassen heißt: alle.',
+    dr_was: 'Was drucken', dr_nur_fehlend: 'Nur Karten, die mir noch fehlen',
+    dr_nur_art: 'Nur Artwork-Fächer', dr_farbe: 'Kartenbilder in Farbe',
+    dr_farbe_hin: 'Artwork-Seiten kommen immer in Farbe. Kartenbilder stehen sonst in Graustufen – als Platzhalter erkennbar und sparsam im Verbrauch.',
+    dr_start: 'PDF erzeugen',
+    dr_v_alle: 'Alle {g} Binderseiten', dr_v_seiten: '{n} von {g} Binderseiten',
+    dr_v_faecher: 'Fächer im Druck', dr_v_art: 'Artwork', dr_v_blaetter: 'A4-Blätter',
+    dr_v_nichts: 'Mit dieser Auswahl bleibt nichts zu drucken.', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
     an_beide_boersen: 'Europa / USA', an_abstand: 'Abstand',
     an_verworfen: '{n} weitere Paare lagen mehr als 70 % auseinander und sind ausgelassen – dort vergleicht die Quelle zwei verschiedene Drucke.',
     an_reihe_kurz: 'Die Messreihe ist noch zu kurz für eine Kurve.',
@@ -2521,7 +2559,7 @@ const T = {
     ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
     gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
     gate_pdf: 'Für den PDF-Export brauchst du ein kostenloses Konto — dein erster Export ist frei.',
-    gate_binder: 'Mehr als 2 Binder gibt es mit Binderplan Pro.',
+    gate_binder: 'Mehr als 3 Binder gibt es ab Binderplan Plus.',
     gate_export: 'Dein freier Export für diesen Monat ist verbraucht.',
     gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
    
@@ -2653,12 +2691,12 @@ const T = {
     an_keine_daten: 'No figures for this yet.',
     an_leer: 'Your collection is still empty. Tick the cards you own in the binder – or photograph a page. Then this page tells you what it is worth.',
     an_markt_login: 'You need an account for the market figures.',
-    an_pro_t: 'Analytics is part of Pro', an_mpro_t: 'The market figures are part of Pro',
+    an_pro_t: 'Analytics is part of Plus', an_mpro_t: 'The market figures are part of Pro',
     an_pro_u: 'We fetch prices for the whole catalogue every day. Turning them into figures is the work Pro pays for.',
     an_pro_1: 'The value of your collection, day by day',
     an_pro_2: 'Split by rarity, set, Pokémon, type and decade',
     an_pro_3: 'What you paid against what it is worth – per card and in total',
-    an_pro_4: 'The market page with indices, movers and the Europe/US comparison',
+    an_pro_4: 'Live prices and the shopping list as CSV',
     an_mpro_1: 'Indices for old, middle and new cards',
     an_mpro_2: 'The biggest movers in the series',
     an_mpro_3: 'Europe against the US: where the same card is cheaper',
@@ -2677,7 +2715,18 @@ const T = {
     herausnehmen: 'Take out', s_herausnehmen_t: 'Remove the slot entirely – everything behind moves up',
     hierher: 'Move here …', ziel_hinweis: 'Now click the slot the selection should go to.',
     luecken: 'Close gaps', keine_luecken: 'There are no empty slots.',
-    luecken_zu: '{n} empty slots removed', an_von_bis: 'Before → now', an_aenderung: 'Change',
+    luecken_zu: '{n} empty slots removed',
+    ex_dialog: 'Print …', dr_t: 'Print',
+    dr_u: 'Placeholders to cut out, at real card size. What you pick fills A4 sheets in order.',
+    dr_welche: 'Which pages', dr_alle: 'Whole binder', dr_aktuell: 'Page {n} only', dr_frei: 'Range …',
+    dr_ph: 'e.g. 1-3, 7, 10-', dr_seiten_hin: 'Binder pages, not print sheets. Leave empty for all.',
+    dr_was: 'What to print', dr_nur_fehlend: 'Only cards I am still missing',
+    dr_nur_art: 'Artwork slots only', dr_farbe: 'Card images in colour',
+    dr_farbe_hin: 'Artwork pages always print in colour. Card images are greyscale otherwise – recognisable as placeholders and easy on the ink.',
+    dr_start: 'Create PDF',
+    dr_v_alle: 'All {g} binder pages', dr_v_seiten: '{n} of {g} binder pages',
+    dr_v_faecher: 'Slots in this print', dr_v_art: 'artwork', dr_v_blaetter: 'A4 sheets',
+    dr_v_nichts: 'Nothing left to print with this selection.', an_von_bis: 'Before → now', an_aenderung: 'Change',
     an_beide_boersen: 'Europe / US', an_abstand: 'Gap',
     an_verworfen: '{n} further pairs sat more than 70 % apart and were left out – there the source compares two different printings.',
     an_reihe_kurz: 'The series is still too short to draw.',
@@ -2760,7 +2809,7 @@ const T = {
     ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
     gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
     gate_pdf: 'PDF export needs a free account — your first export is free.',
-    gate_binder: 'More than 2 binders come with Binderplan Pro.',
+    gate_binder: 'More than 3 binders come with Binderplan Plus.',
     gate_export: 'Your free export for this month is used up.',
     gate_pro: 'This feature is part of Binderplan Pro.',
    
@@ -6212,9 +6261,9 @@ function anZeigerWeg(id) {
 }
 
 /** Die Pro-Schranke — was es gibt und warum es etwas kostet. */
-function anSperre(punkte, titel) {
+function anSperre(punkte, titel, stufe) {
   return `<div class="an-sperre">
-    <span class="an-marke">Pro</span>
+    <span class="an-marke">${stufe || 'Pro'}</span>
     <h3 style="margin-top:12px">${titel || t('an_pro_t')}</h3>
     <p>${t('an_pro_u')}</p>
     <ul>${punkte.map((p) => `<li>${p}</li>`).join('')}</ul>
@@ -6253,7 +6302,7 @@ async function auswertungLaden() {
 function zeichneAuswertung() {
   const d = AN.daten, r = $('an-rumpf');
   if (!d.pro) {
-    r.innerHTML = anSperre([t('an_pro_1'), t('an_pro_2'), t('an_pro_3'), t('an_pro_4')]);
+    r.innerHTML = anSperre([t('an_pro_1'), t('an_pro_2'), t('an_pro_3'), t('an_pro_4')], null, 'Plus');
     return;
   }
   if (d.leer) {
@@ -6829,20 +6878,116 @@ async function _binderSichern() {
   await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
 }
 
-async function exportPdf(variante, nurFehlende) {
+/* ---------- Druckdialog ----------
+   Vorher gab es zwei Menüeinträge, die sofort ein PDF des ganzen Binders erzeugten.
+   Bei 13 Seiten sind das 7 A4-Blätter, die niemand wollte, wenn nur eine Seite fehlte —
+   und ein verbrauchter Export im Monatskontingent. */
+
+const DR = { umfang: 'alle' };
+
+function druckOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.binder) return;
+  if (!S.binder.items.length) return toast(t('binder_leer'));
+  if (!S.user) return loginOeffnen(t('gate_pdf'));
+  DR.umfang = 'alle';
+  $('dr-seiten').value = '';
+  $('dr-fehlend').checked = false;
+  $('dr-nurart').checked = false;
+  $('dr-farbe').checked = false;
+  druckUmfangZeichnen();
+  druckVorschau();
+  modalOeffnen('modal-druck');
+}
+
+function druckUmfangZeichnen() {
+  const seite = (S.seite || 0) + 1;
+  $('dr-umfang').innerHTML = [
+    ['alle', t('dr_alle')],
+    ['aktuell', t('dr_aktuell').replace('{n}', seite)],
+    ['frei', t('dr_frei')],
+  ].map(([k, l]) => `<button class="chip ${DR.umfang === k ? 'on' : ''}" onclick="druckUmfang('${k}')">${esc(l)}</button>`).join('');
+}
+function druckUmfang(k) {
+  DR.umfang = k;
+  if (k === 'aktuell') $('dr-seiten').value = String((S.seite || 0) + 1);
+  if (k === 'alle') $('dr-seiten').value = '';
+  druckUmfangZeichnen(); druckVorschau();
+}
+/** Tippt jemand selbst etwas ein, ist das der freie Bereich. */
+function druckUmfangFrei() {
+  if (DR.umfang !== 'frei') { DR.umfang = 'frei'; druckUmfangZeichnen(); }
+  druckVorschau();
+}
+
+/** Dieselbe Auswahl wie im Backend, damit die Zahl im Dialog stimmt. */
+function druckSeitenMenge(text, gesamt) {
+  if (!text || !text.trim()) return null;
+  const menge = new Set();
+  for (const teil of text.replace(/\s/g, '').split(',')) {
+    if (!teil) continue;
+    if (teil.includes('-')) {
+      const [a, b] = teil.split('-');
+      const von = a ? parseInt(a, 10) : 1;
+      const bis = b ? parseInt(b, 10) : gesamt;
+      if (isNaN(von) || isNaN(bis)) continue;
+      for (let n = Math.max(1, von); n <= Math.min(gesamt, bis); n++) menge.add(n);
+    } else {
+      const n = parseInt(teil, 10);
+      if (!isNaN(n) && n >= 1 && n <= gesamt) menge.add(n);
+    }
+  }
+  return menge.size ? menge : null;
+}
+
+function druckVorschau() {
+  const pp = proSeite();
+  const gesamt = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  const menge = druckSeitenMenge($('dr-seiten').value, gesamt);
+  const fehlend = $('dr-fehlend').checked, nurArt = $('dr-nurart').checked;
+  let n = 0, art = 0;
+  S.binder.items.forEach((it, idx) => {
+    if (!it || it.type === 'empty') return;
+    if (fehlend && it.have) return;
+    if (nurArt && it.type !== 'art') return;
+    if (menge && !menge.has(Math.floor(idx / pp) + 1)) return;
+    n++; if (it.type === 'art') art++;
+  });
+  const blaetter = Math.max(1, Math.ceil(n / 9));
+  const seitenTxt = menge ? t('dr_v_seiten').replace('{n}', menge.size).replace('{g}', gesamt) : t('dr_v_alle').replace('{g}', gesamt);
+  $('dr-vorschau').innerHTML = n
+    ? `<div class="bestell-zeile"><span>${seitenTxt}</span><span></span></div>
+       <div class="bestell-zeile"><span>${t('dr_v_faecher')}</span><span><strong>${n}</strong>${art ? ` (${art} ${t('dr_v_art')})` : ''}</span></div>
+       <div class="bestell-zeile gesamt"><span>${t('dr_v_blaetter')}</span><span>${blaetter}</span></div>`
+    : `<div class="bestell-zeile"><span>${t('dr_v_nichts')}</span><span></span></div>`;
+  $('dr-vorschau').dataset.n = n;
+}
+
+function druckStarten() {
+  if (Number($('dr-vorschau').dataset.n || 0) === 0) return toast(t('dr_v_nichts'));
+  const seiten = DR.umfang === 'alle' ? '' : $('dr-seiten').value.trim();
+  modalSchliessen();
+  exportPdf('karten', $('dr-fehlend').checked ? 1 : 0, {
+    seiten, farbe: $('dr-farbe').checked ? 1 : 0, nur_art: $('dr-nurart').checked ? 1 : 0,
+  });
+}
+
+async function exportPdf(variante, nurFehlende, opt) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.binder) return;
   if (!S.binder.items.length) return toast(t('binder_leer'));
   if (!S.user) return loginOeffnen(t('gate_pdf'));
   try { await _binderSichern(); } catch (e) { if (gate(e)) return; }
+  opt = opt || {};
   const karten = (variante || 'karten') === 'karten';
   if (karten) {
-    // Schritt 1: Bilder parallel in den Druck-Cache (Graustufen-JPEG in Druckauflösung)
+    // Schritt 1: Bilder parallel in den Druck-Cache (JPEG in Druckauflösung)
     arbeitToast(t('pdf_bilder'));
-    try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten`, { method: 'POST' }); } catch (e) { arbeitToastEnde(); if (gate(e)) return; }
+    try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten?farbe=${opt.farbe || 0}`, { method: 'POST' }); } catch (e) { arbeitToastEnde(); if (gate(e)) return; }
   }
   arbeitToast(t('pdf_erzeugt'));
-  const url = `api/binders/${S.binder.id}/pdf?variante=${variante || 'karten'}&nur_fehlende=${nurFehlende ? 1 : 0}`;
+  const url = `api/binders/${S.binder.id}/pdf?variante=${variante || 'karten'}&nur_fehlende=${nurFehlende ? 1 : 0}`
+    + `&seiten=${encodeURIComponent(opt.seiten || '')}&farbe=${opt.farbe || 0}&nur_art=${opt.nur_art || 0}`;
   try {
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + S.token } });
     if (!r.ok) {
