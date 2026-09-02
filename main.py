@@ -2707,6 +2707,39 @@ def set_symbol_image(set_id: str):
 LAYOUTS = {"2x2": 4, "3x3": 9, "3x4": 12, "4x3": 12, "4x4": 16, "4x5": 20, "5x4": 20, "5x5": 25}
 
 
+def _seiten_plan(binder, mindestens=0):
+    """Wo jede Binderseite anfängt und wie groß sie ist.
+
+    Einzelne Seiten dürfen vom Standardraster abweichen; die Abweichungen stehen in
+    `options.seitenLayouts` als {Seitennummer: Raster}. Ohne diese Funktion rechnet
+    jede Stelle mit einer festen Seitenlänge und liegt bei gemischten Bindern daneben —
+    im PDF stünde dann die falsche Seitenzahl am Fach."""
+    items = binder.get("items") or []
+    je = ((binder.get("options") or {}).get("seitenLayouts")) or {}
+    standard = binder.get("layout") or "3x3"
+    plan, i, nr = [], 0, 0
+    while True:
+        roh = je.get(str(nr), je.get(nr))
+        layout = roh if roh in LAYOUTS else standard
+        laenge = LAYOUTS.get(layout, 9)
+        spalten, zeilen = RASTER.get(layout, (3, 3))
+        plan.append({"nr": nr, "start": i, "laenge": laenge,
+                     "spalten": spalten, "zeilen": zeilen, "layout": layout})
+        i += laenge
+        nr += 1
+        if i >= len(items) and nr > mindestens:
+            break
+    return plan
+
+
+def _seite_von(plan, idx):
+    """Seitennummer (0-basiert) eines Fachs."""
+    for p in plan:
+        if idx < p["start"] + p["laenge"]:
+            return p["nr"]
+    return plan[-1]["nr"]
+
+
 def _binder_payload(data):
     layout = data.get("layout") if data.get("layout") in LAYOUTS else "3x3"
     items = data.get("items") or []
@@ -2893,14 +2926,22 @@ RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4,
           "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
 
 
-def _blatt_vorschau(items, layout, seiten=3):
+def _blatt_vorschau(items, layout, seiten=3, seiten_layouts=None):
     """Die ersten Seiten eines Binders als Raster aus Fächern, leere Plätze inklusive.
-    Dieselbe Form wie in der Vitrine, damit beide Vorschauen gleich aussehen."""
+    Dieselbe Form wie in der Vitrine, damit beide Vorschauen gleich aussehen.
+
+    Jede Seite trägt ihr eigenes Raster: seit einzelne Seiten davon abweichen dürfen,
+    wäre eine gemeinsame Spaltenzahl für alle schlicht falsch."""
+    plan = _seiten_plan({"items": items, "layout": layout,
+                         "options": {"seitenLayouts": seiten_layouts or {}}})
     spalten, zeilen = RASTER.get(layout or "3x3", (3, 3))
-    pro_seite = spalten * zeilen
     aus = []
     for nr in range(max(1, min(4, seiten))):
-        teil = items[nr * pro_seite:(nr + 1) * pro_seite]
+        if nr >= len(plan):
+            break
+        sp = plan[nr]
+        pro_seite = sp["laenge"]
+        teil = items[sp["start"]:sp["start"] + pro_seite]
         if not teil and nr:
             break
         faecher = []
@@ -2919,7 +2960,7 @@ def _blatt_vorschau(items, layout, seiten=3):
                 faecher.append({"art": "leer"})
         if nr and all(f["art"] == "leer" for f in faecher):
             break
-        aus.append(faecher)
+        aus.append({"spalten": sp["spalten"], "zeilen": sp["zeilen"], "faecher": faecher})
     return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
 
 
@@ -2932,11 +2973,11 @@ def binder_list(request: Request, ids: str = ""):
     rows = []
     if user:
         rows += con.execute(
-            "SELECT id,name,mode,layout,items,updated_at FROM binders WHERE user_id = ?"
+            "SELECT id,name,mode,layout,options,items,updated_at FROM binders WHERE user_id = ?"
             " ORDER BY updated_at DESC", (user["id"],)).fetchall()
     if wanted:
         rows += con.execute(
-            "SELECT id,name,mode,layout,items,updated_at FROM binders WHERE user_id IS NULL"
+            "SELECT id,name,mode,layout,options,items,updated_at FROM binders WHERE user_id IS NULL"
             " AND id IN (%s)" % ",".join("?" * len(wanted)),
             wanted,
         ).fetchall()
@@ -2960,9 +3001,18 @@ def binder_list(request: Request, ids: str = ""):
             continue
         gesehen.add(bid)
         items = json.loads(r["items"] or "[]")
+        try:
+            optionen = json.loads(r["options"] or "{}")
+        except Exception:
+            optionen = {}
         result.append({
             "id": r["id"], "name": r["name"], "mode": r["mode"], "layout": r["layout"],
             "anzahl": len(items),
+            "seiten": len(_seiten_plan({"items": items, "layout": r["layout"],
+                                        "options": optionen})),
+            # Weicht mindestens eine Seite vom Standardraster ab? Sonst behauptet die
+            # Kachel „3×3" für einen Binder, in dem auch 4×4-Seiten stecken.
+            "gemischt": bool(optionen.get("seitenLayouts")),
             "gesammelt": (sum(1 for i in items if i.get("id") in besitz) if user
                           else sum(1 for i in items if i.get("have"))),
             "updated_at": r["updated_at"],
@@ -2970,7 +3020,7 @@ def binder_list(request: Request, ids: str = ""):
             "dex_vorschau": [i.get("dex") for i in items if i.get("type") == "dex"][:3],
             # Die ersten drei Seiten als Raster — die Startseite zeigt daraus einen Stapel,
             # der aussieht wie ein Binder, in dem man geblättert hat.
-            "blatt": _blatt_vorschau(items, r["layout"], 3),
+            "blatt": _blatt_vorschau(items, r["layout"], 3, optionen.get("seitenLayouts")),
         })
     return {"binder": result}
 
@@ -3144,16 +3194,16 @@ def _pdf_titelseite(c, binder, lang, stats):
     c.showPage()
 
 
-def _pdf_register(c, binder, lang, namen, per_page):
+def _pdf_register(c, binder, lang, namen, plan):
     """Register: welche Seite enthält was. Wer einen Binder mit zwanzig Seiten füllt, sucht
     sonst blätternd — mit „Seite 3: Arkani bis Dragoran“ findet er die Stelle sofort."""
-    seiten = max(1, -(-len(binder["items"]) // per_page))
+    seiten = len(plan)
     if seiten < 3:
         return                      # bei zwei Seiten ist ein Register nur Papierverschwendung
     page_w, page_h = A4
     zeilen = []
     for nr in range(seiten):
-        teil = binder["items"][nr * per_page:(nr + 1) * per_page]
+        teil = binder["items"][plan[nr]["start"]:plan[nr]["start"] + plan[nr]["laenge"]]
         karten = [namen.get(i.get("id")) for i in teil if i.get("type") == "card" and namen.get(i.get("id"))]
         if not karten:
             zeilen.append((nr + 1, "—"))
@@ -3293,7 +3343,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     user = _require_user(request)
     binder = _load_binder(binder_id)
     _binder_lesen_erlaubt(binder_id, user)
-    per_page = LAYOUTS.get(binder["layout"], 9)
+    plan = _seiten_plan(binder)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     if variante == "checkliste":
         return _checkliste_pdf(binder, lang, bool(nur_fehlende))
@@ -3338,14 +3388,14 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
 
     # Seitenauswahl: „1-3,7" meint Binderseiten, nicht A4-Blätter — das ist die Zahl,
     # die im Planer und in der Blattansicht steht.
-    seiten_gesamt = max(1, -(-len(binder["items"]) // per_page))
+    seiten_gesamt = len(plan)
     gewaehlt = _seiten_auswahl(seiten, seiten_gesamt)
     printable = [
         (idx, item) for idx, item in enumerate(binder["items"])
         if item.get("type") != "empty"
         and not (nur_fehlende and item.get("have"))
         and not (nur_art and item.get("type") != "art")
-        and (gewaehlt is None or (idx // per_page + 1) in gewaehlt)
+        and (gewaehlt is None or (_seite_von(plan, idx) + 1) in gewaehlt)
     ]
 
     gesammelt = sum(1 for i in binder["items"] if i.get("have"))   # Druck: Stand im Binder
@@ -3354,19 +3404,19 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         stats = [
             f"{gesamt} Karten geplant · {gesammelt} bereits gesammelt",
             f"{len(printable)} Proxys in diesem Druck · {max(1, -(-len(printable) // 9))} A4-Blätter",
-            f"Raster {binder['layout'].replace('x', ' × ')} · {max(1, -(-len(binder['items']) // per_page))} Binderseiten",
+            f"Raster {binder['layout'].replace('x', ' × ')} · {len(plan)} Binderseiten",
         ]
     else:
         stats = [
             f"{gesamt} cards planned · {gesammelt} already collected",
             f"{len(printable)} proxies in this print · {max(1, -(-len(printable) // 9))} A4 sheets",
-            f"Grid {binder['layout'].replace('x', ' × ')} · {max(1, -(-len(binder['items']) // per_page))} binder pages",
+            f"Grid {binder['layout'].replace('x', ' × ')} · {len(plan)} binder pages",
         ]
     _pdf_titelseite(c, binder, lang, stats)
     # Für das Register die Kartennamen in der Sprache des Drucks
     register_namen = {cid: ((r["name_en"] if lang == "en" else r["name_de"]) or r["name_de"] or r["name_en"] or "")
                       for cid, r in card_rows.items()}
-    _pdf_register(c, binder, lang, register_namen, per_page)
+    _pdf_register(c, binder, lang, register_namen, plan)
 
     cell = 0
     for idx, item in printable:
@@ -3378,8 +3428,9 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         x = ox + col * (CARD_W + GUTTER)
         y = oy + grid_h - (row + 1) * CARD_H - row * GUTTER
 
-        binder_page = idx // per_page + 1
-        slot = idx % per_page + 1
+        seiten_nr = _seite_von(plan, idx)
+        binder_page = seiten_nr + 1
+        slot = idx - plan[seiten_nr]["start"] + 1
         variant = item.get("variant") or "normal"
 
         if item.get("type") == "art":
@@ -3470,12 +3521,13 @@ def _binder_zeilen(binder, lang):
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
     preise = {r["card_id"]: r["eur"] for r in con.execute("SELECT card_id, eur FROM card_prices")}
     con.close()
-    per_page = LAYOUTS.get(binder["layout"], 9)
+    plan = _seiten_plan(binder)
     zeilen = []
     for idx, item in enumerate(binder["items"]):
         if item.get("type") in ("empty", "art"):
             continue
-        pos = f"{idx // per_page + 1}·{idx % per_page + 1}"
+        nr = _seite_von(plan, idx)
+        pos = f"{nr + 1}·{idx - plan[nr]['start'] + 1}"
         if item.get("type") == "dex":
             zeilen.append({"pos": pos, "name": f"#{item.get('dex'):03d} {pokemon_names.get(item.get('dex'), '')}",
                            "set": "Pokédex", "nr": "", "eur": None, "have": bool(item.get("have")),

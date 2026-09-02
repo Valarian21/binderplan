@@ -837,6 +837,10 @@
   .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
   .an-rest { display: none; }
+  /* Rasterwähler in der Kopfzeile jeder Planer-Seite */
+  .ps-raster { border: 1.5px solid var(--line); border-radius: 7px; background: var(--card); color: var(--mut);
+               font-size: 11.5px; font-weight: 700; padding: 2px 4px; cursor: pointer; }
+  .ps-raster:hover { border-color: var(--akzent); color: var(--ink); }
   /* Zielmodus: jedes Fach ist ein möglicher Landeplatz */
   body.ziel-modus #planer-rumpf .slot { cursor: crosshair; }
   body.ziel-modus #planer-rumpf .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
@@ -2400,6 +2404,8 @@ const T = {
     hierher: 'Hierher …', ziel_hinweis: 'Jetzt das Fach anklicken, an das die Auswahl soll.',
     luecken: 'Lücken schließen', keine_luecken: 'Es gibt keine leeren Fächer.',
     luecken_zu: '{n} leere Fächer entfernt',
+    s_seite_raster: 'Raster dieser Seite', raster_seite: 'Seite {n} steht jetzt auf {r}',
+    gemischt: '(gemischt)',
     // Druckdialog
     ex_dialog: 'Drucken …', dr_t: 'Drucken',
     dr_u: 'Platzhalter zum Ausschneiden, im Maß echter Karten. Was du auswählst, landet fortlaufend auf A4-Blättern.',
@@ -2716,6 +2722,8 @@ const T = {
     hierher: 'Move here …', ziel_hinweis: 'Now click the slot the selection should go to.',
     luecken: 'Close gaps', keine_luecken: 'There are no empty slots.',
     luecken_zu: '{n} empty slots removed',
+    s_seite_raster: 'Grid for this page', raster_seite: 'Page {n} is now {r}',
+    gemischt: '(mixed)',
     ex_dialog: 'Print …', dr_t: 'Print',
     dr_u: 'Placeholders to cut out, at real card size. What you pick fills A4 sheets in order.',
     dr_welche: 'Which pages', dr_alle: 'Whole binder', dr_aktuell: 'Page {n} only', dr_frei: 'Range …',
@@ -3230,14 +3238,13 @@ function ansichtAktivieren() {
 function zeichneGalerie() {
   const box = $('gal-seiten');
   if (!box || !S.binder) return;
-  const pp = proSeite();
-  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
-  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  const plan = seitenPlan();
   let html = '';
-  for (let seite = 0; seite < seiten; seite++) {
+  for (const sp of plan) {
+    const seite = sp.nr, cols = sp.cols;
     let faecher = '';
-    for (let i = 0; i < pp; i++) {
-      const item = S.binder.items[seite * pp + i];
+    for (let i = 0; i < sp.laenge; i++) {
+      const item = S.binder.items[sp.start + i];
       if (!item || item.type === 'empty') { faecher += '<div class="gal-fach leer"></div>'; continue; }
       const haken = S.user && item.type === 'card'
         ? `<span class="hat-mark ${besitzt(item) ? 'ja' : ''}">${besitzt(item) ? '✓' : ''}</span>` : '';
@@ -3645,7 +3652,7 @@ function zeichneStartBinder(liste) {
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
-      <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
+      <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
       ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
       <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
@@ -4267,9 +4274,9 @@ async function alleHinzufuegen(naechsteSeite) {
     if (d.ids.length > 300 && !confirm(d.ids.length + ' ' + t('bestaetigen_viele'))) return;
     merken('alle');
     if (naechsteSeite) {
-      const pp = proSeite();
-      const rest = S.binder.items.length % pp;
-      if (rest) for (let x = 0; x < pp - rest; x++) S.binder.items.push({ type: 'empty' });
+      const letzte = seiteInfo(Math.max(0, seitenAnzahl() - 1));
+      const rest = S.binder.items.length - letzte.start;
+      if (rest) for (let x = 0; x < letzte.laenge - rest; x++) S.binder.items.push({ type: 'empty' });
     }
     for (const id of d.ids) S.binder.items.push({ type: 'card', id });
     if (!await binderAnlegenWennNoetig()) return;
@@ -4298,6 +4305,71 @@ function binderBreiteInit() {
 }
 binderBreiteInit();
 function proSeite() { const [c, r] = LAYOUTS[S.binder.layout] || [3, 3]; return c * r; }
+
+/* ---------- Seitenmodell ----------
+   Ein Binder hat ein Standardraster, aber einzelne Seiten dürfen davon abweichen — im
+   Regal steht ja auch niemand mit lauter gleichen Hüllen. Die Abweichungen liegen in
+   `options.seitenLayouts` als {Seitennummer: Raster}; `options` wird ohnehin als freies
+   JSON gespeichert, es braucht also keine Schemaänderung.
+
+   Alles, was vorher `seite * proSeite()` gerechnet hat, fragt jetzt den Plan. Er ist die
+   einzige Stelle, die weiß, wo eine Seite anfängt und wie groß sie ist. */
+
+function seitenRaster(nr) {
+  const je = (S.binder && S.binder.options && S.binder.options.seitenLayouts) || {};
+  const l = je[nr];
+  return LAYOUTS[l] ? l : ((S.binder && S.binder.layout) || '3x3');
+}
+
+/** Der Plan aller Seiten. `mindestens` erzwingt Einträge über das Binderende hinaus —
+ *  gebraucht, wenn eine noch nicht vorhandene Seite befüllt werden soll. */
+function seitenPlan(mindestens) {
+  const items = (S.binder && S.binder.items) || [];
+  const plan = [];
+  let i = 0, nr = 0;
+  do {
+    const l = seitenRaster(nr);
+    const [c, r] = LAYOUTS[l] || [3, 3];
+    plan.push({ nr, start: i, laenge: c * r, cols: c, rows: r, layout: l });
+    i += c * r; nr++;
+  } while (i < items.length || nr <= (mindestens || 0));
+  return plan;
+}
+
+/** Eine einzelne Seite, auch wenn sie noch gar nicht befüllt ist. */
+function seiteInfo(nr) {
+  const plan = seitenPlan(nr);
+  return plan[nr] || plan[plan.length - 1];
+}
+function seitenAnzahl() { return seitenPlan().length; }
+/** Zu welcher Seite gehört ein Fach? */
+function seiteBei(idx) {
+  const plan = seitenPlan();
+  for (const p of plan) if (idx < p.start + p.laenge) return p.nr;
+  return plan.length - 1;
+}
+/** Die Fächer einer Seite, in der Länge der Seite (fehlende als undefined). */
+function seiteFaecher(nr) {
+  const p = seiteInfo(nr);
+  return S.binder.items.slice(p.start, p.start + p.laenge);
+}
+
+/** Raster einer einzelnen Seite ändern. Die Fächer bleiben, wo sie sind — nur die
+ *  Grenzen dahinter verschieben sich, deshalb wird auf ein Vielfaches aufgefüllt. */
+function seiteRasterSetzen(nr, layout) {
+  if (!LAYOUTS[layout] || S.nurAnsicht) return;
+  const opt = S.binder.options = S.binder.options || {};
+  const je = opt.seitenLayouts = opt.seitenLayouts || {};
+  merken('raster');
+  if (layout === S.binder.layout) delete je[nr]; else je[nr] = layout;
+  // Nach der Änderung fehlen der Seite womöglich Fächer: bis zu ihrem Ende auffüllen,
+  // sonst rutscht die nächste Seite in die Lücke.
+  const p = seiteInfo(nr);
+  while (S.binder.items.length < p.start + p.laenge) S.binder.items.push({ type: 'empty' });
+  speichern(); zeichneBinder();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('raster_seite').replace('{n}', nr + 1).replace('{r}', layout.replace('x', '×')));
+}
 
 function slotInhalt(item) {
   if (!item) return '+';
@@ -4385,10 +4457,11 @@ async function hatToggle(idx) {
 
 function zeichneBinder() {
   if (!S.binder) return;
-  const pp = proSeite();
-  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
-  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  const plan = seitenPlan();
+  const seiten = plan.length;
   if (S.seite >= seiten) S.seite = seiten - 1;
+  const sp = plan[Math.max(0, S.seite)] || plan[0];
+  const pp = sp.laenge, cols = sp.cols;
   $('wb-seite').textContent = S.seite + 1;
   $('wb-seiten').textContent = seiten;
   const druck = S.binder.items.filter((x) => x.type !== 'empty').length;
@@ -4399,7 +4472,7 @@ function zeichneBinder() {
   box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   let html = '';
   for (let s = 0; s < pp; s++) {
-    const idx = S.seite * pp + s;
+    const idx = sp.start + s;
     const item = S.binder.items[idx];
     if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
@@ -4422,7 +4495,7 @@ function zeichneBinder() {
     $('wb-sammel-balken').style.width = Math.round(gesammelt / sammelbar * 100) + '%';
   }
   seitenfarbeAnwenden();
-  const seitenZahl = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  const seitenZahl = seiten;
   if ($('wb-seite-vor')) $('wb-seite-vor').disabled = S.nurAnsicht || S.seite <= 0;
   if ($('wb-seite-zurueck')) $('wb-seite-zurueck').disabled = S.nurAnsicht || S.seite >= seitenZahl - 1;
   zeichnePreisSumme();
@@ -4435,7 +4508,7 @@ function zeichneBinder() {
 // Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen.
 const BV = { spread: 0, dreht: false, wartet: 0 };
 
-function bvSeitenZahl() { return Math.max(1, Math.ceil((S.binder?.items.length || 0) / proSeite())); }
+function bvSeitenZahl() { return S.binder ? seitenAnzahl() : 1; }
 // Wie im echten Album: Seite 1 liegt allein rechts, danach folgen Doppelseiten
 // (2|3, 4|5 …). Geht die Seitenzahl gerade auf, steht die letzte Seite allein links.
 function bvSpreads() { return 1 + Math.ceil(Math.max(0, bvSeitenZahl() - 1) / 2); }
@@ -4445,8 +4518,8 @@ function bvRechts(s) { return s === 0 ? 0 : s * 2; }
 /** Eine Binderseite als HTML. `seite` ist zwölfnullbasiert; außerhalb = leeres Blatt. */
 function bvSeiteHtml(seite, klasse) {
   const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
-  const pp = proSeite();
   if (seite < 0 || seite >= bvSeitenZahl()) return `<div class="bv-seite leer ${klasse}"></div>`;
+  const sp = seiteInfo(seite), pp = sp.laenge;
   const raster = `grid-template-columns:repeat(${cols},minmax(0,1fr))`;
   const faecher = S.binder.items.slice(seite * pp, seite * pp + pp);
 
@@ -4692,7 +4765,7 @@ function themaOeffnen(ankerId) {
   TH.vorschlag = []; TH.raus.clear();
   $('th-ergebnis').classList.add('hidden');
   $('th-fehler').textContent = '';
-  $('th-anzahl').value = Math.max(1, proSeite());
+  $('th-anzahl').value = Math.max(1, seiteInfo(S.seite || 0).laenge);
   $('th-chips').innerHTML = thChips().map((c) => `<button class="chip" onclick="$('th-thema').value=${JSON.stringify(c)};themaSuchen()">${esc(c)}</button>`).join('');
   themaScopeFuellen();
   themaAnkerZeichnen();
@@ -4790,9 +4863,10 @@ function themaUebernehmen(modus) {
   const karten = TH.vorschlag.filter((_, i) => !TH.raus.has(i)).map((k) => ({ type: 'card', id: k.id }));
   if (!karten.length) return toast(t('th_nichts_gewaehlt'));
   merken('thema');
-  const pp = proSeite();
+  const letzteS = seiteInfo(Math.max(0, seitenAnzahl() - 1));
+  const pp = letzteS.laenge;
   if (modus === 'anhaengen') {
-    while (S.binder.items.length % pp !== 0) S.binder.items.push({ type: 'empty' });
+    while (S.binder.items.length > letzteS.start && (S.binder.items.length - letzteS.start) % pp !== 0) S.binder.items.push({ type: 'empty' });
     S.binder.items.push(...karten);
     S.seite = Math.floor((S.binder.items.length - 1) / pp);
   } else {
@@ -4836,7 +4910,7 @@ function seitenfarbeSetzen(wert) {
  *  aber in der Werkbank und will die Reihenfolge dort geradeziehen. */
 function seiteZiehen(d) {
   if (!S.binder || S.nurAnsicht) return;
-  const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  const seiten = seitenAnzahl();
   const ziel = S.seite + d;
   if (ziel < 0 || ziel >= seiten) return;
   seiteVerschieben(S.seite, d);
@@ -4972,7 +5046,7 @@ function fotoTauschen(si, ki, ai) {
 function fotoKarteWeg(si, ki) { FI.seiten[si].splice(ki, 1); slotMenueZu(); zeichneFotoErgebnis(); }
 
 async function fotoUebernehmen(modus) {
-  const pp = proSeite();
+  const pp = seiteInfo(S.seite || 0).laenge;
   const items = [];
   for (const karten of FI.seiten) {
     for (let i = 0; i < pp; i++) items.push(karten[i] ? { type: 'card', id: karten[i].id } : { type: 'empty' });
@@ -5097,8 +5171,19 @@ function vitrineBlatt(blatt, doppelt) {
   // Die Fuge muss zum Ausschnitt passen: 4 Einheiten auf eine Zeile aus <spalten> Karten.
   // In Prozent der Gesamtbreite gerechnet, damit sie bei jeder Kachelgröße stimmt.
   const fuge = (sp) => (4 / (sp * 63 + (sp - 1) * 4) * 100).toFixed(3) + '%';
-  const seite = (nr, klasse) => `<div class="vt-seite ${klasse || ''}" style="grid-template-columns:repeat(${blatt.spalten},1fr);gap:${fuge(blatt.spalten)}">
-      ${blatt.seiten[nr].map((f) => fach(f, blatt.spalten, blatt.zeilen)).join('')}</div>`;
+  // Jede Seite bringt ihr eigenes Raster mit — einzelne Seiten dürfen vom Standard des
+  // Binders abweichen. Ältere Antworten lieferten je Seite nur die Fächerliste.
+  const seitenDaten = (nr) => {
+    const d = blatt.seiten[nr];
+    return Array.isArray(d)
+      ? { spalten: blatt.spalten, zeilen: blatt.zeilen, faecher: d }
+      : { spalten: d.spalten || blatt.spalten, zeilen: d.zeilen || blatt.zeilen, faecher: d.faecher || [] };
+  };
+  const seite = (nr, klasse) => {
+    const d = seitenDaten(nr);
+    return `<div class="vt-seite ${klasse || ''}" style="grid-template-columns:repeat(${d.spalten},1fr);gap:${fuge(d.spalten)}">
+      ${d.faecher.map((f) => fach(f, d.spalten, d.zeilen)).join('')}</div>`;
+  };
   if (doppelt && blatt.seiten.length > 1) {
     return `<div class="vt-blatt dop">${seite(0)}${seite(1)}</div>`;
   }
@@ -5332,8 +5417,7 @@ function fremdesFach(i) {
 
 async function seiteUebernehmen() {
   if (!S.user) return loginOeffnen(t('vt_login'));
-  const pp = proSeite();
-  const teil = S.binder.items.slice(S.seite * pp, S.seite * pp + pp).filter(Boolean);
+  const teil = seiteFaecher(S.seite).filter(Boolean);
   if (!teil.length) return toast(t('vt_seite_leer'));
   const ziel = await zielBinder();
   if (!ziel) return uebernehmenAlsNeu(teil, t('vt_kopie_name').replace('{n}', S.binder.name));
@@ -5773,8 +5857,8 @@ async function blaetternBild() {
     if (seite < 0 || seite >= bvSeitenZahl()) return;
     g.fillStyle = '#0e1013';
     g.fillRect(x0, 0, seitenB, seitenH);
-    const pp = proSeite();
-    const teil = S.binder.items.slice(seite * pp, seite * pp + pp);
+    const sp = seiteInfo(seite), pp = sp.laenge;
+    const teil = S.binder.items.slice(sp.start, sp.start + pp);
     const arts = teil.filter((i) => i && i.type === 'art');
     const ganz = arts.length >= 2 && arts.every((i) => i.artwork === arts[0].artwork);
     if (ganz) {
@@ -5846,7 +5930,7 @@ function reiterSetzen(id) {
 }
 
 function seiteWechsel(d) {
-  const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
+  const seiten = seitenAnzahl();
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
   zeichneBinder();
 }
@@ -6620,14 +6704,14 @@ async function statistikOeffnen() {
 }
 
 function zeichnePlaner() {
-  const pp = proSeite();
-  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
-  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  const plan = seitenPlan();
+  const seiten = plan.length;
   let html = '';
-  for (let seite = 0; seite < seiten; seite++) {
+  for (const sp of plan) {
+    const seite = sp.nr, pp = sp.laenge, cols = sp.cols;
     let slots = '';
     for (let s = 0; s < pp; s++) {
-      const idx = seite * pp + s;
+      const idx = sp.start + s;
       const item = S.binder.items[idx];
       if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
       slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
@@ -6638,6 +6722,9 @@ function zeichnePlaner() {
     }
     html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
       <span class="ps-akt">
+        <select class="ps-raster" title="${t('s_seite_raster')}" onchange="seiteRasterSetzen(${seite},this.value)">
+          ${Object.keys(LAYOUTS).map((l) => `<option value="${l}" ${sp.layout === l ? 'selected' : ''}>${l.replace('x', '×')}</option>`).join('')}
+        </select>
         <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">${ic('palette', 16)}</button>
         <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
         <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
@@ -6693,9 +6780,9 @@ document.addEventListener('keydown', (ev) => {
 });
 
 function seiteWaehlen(seite) {
-  const pp = proSeite();
-  for (let s = 0; s < pp; s++) {
-    const idx = seite * pp + s;
+  const sp = seiteInfo(seite);
+  for (let s = 0; s < sp.laenge; s++) {
+    const idx = sp.start + s;
     if (S.binder.items[idx]) S.auswahl.add(idx);
   }
   auswahlZeigen();
@@ -6799,14 +6886,14 @@ function lueckenSchliessen() {
 function seiteAnhaengen() {
   if (!S.binder || S.nurAnsicht) return;
   leereSeite();
-  S.seite = Math.max(0, Math.ceil(S.binder.items.length / proSeite()) - 1);
+  S.seite = Math.max(0, seitenAnzahl() - 1);
   zeichneBinder();
   toastUndo(t('neue_seite'));
 }
 
 function leereSeite() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  const pp = proSeite();
+  const pp = seiteInfo(seitenAnzahl()).laenge;
   merken('seite');
   for (let i = 0; i < pp; i++) S.binder.items.push({ type: 'empty' });
   speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
@@ -6941,8 +7028,8 @@ function druckSeitenMenge(text, gesamt) {
 }
 
 function druckVorschau() {
-  const pp = proSeite();
-  const gesamt = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  const plan = seitenPlan();
+  const gesamt = plan.length;
   const menge = druckSeitenMenge($('dr-seiten').value, gesamt);
   const fehlend = $('dr-fehlend').checked, nurArt = $('dr-nurart').checked;
   let n = 0, art = 0;
@@ -6950,7 +7037,7 @@ function druckVorschau() {
     if (!it || it.type === 'empty') return;
     if (fehlend && it.have) return;
     if (nurArt && it.type !== 'art') return;
-    if (menge && !menge.has(Math.floor(idx / pp) + 1)) return;
+    if (menge && !menge.has(seiteBei(idx) + 1)) return;
     n++; if (it.type === 'art') art++;
   });
   const blaetter = Math.max(1, Math.ceil(n / 9));
@@ -7157,7 +7244,7 @@ function slotMenue(ev, idx) {
   const r = ev.currentTarget.getBoundingClientRect();
   m.innerHTML = `
     ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
-    ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${Math.floor(idx / proSeite())})">${t('s_artwork')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('s_artwork')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
     ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ${ic('wechsel', 15)}</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
@@ -7198,30 +7285,61 @@ function fachFreimachen(idx) {
 }
 function seiteAuffuellen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  const pp = proSeite(); const rest = S.binder.items.length % pp;
+  const letzte = seiteInfo(Math.max(0, seitenAnzahl() - 1));
+  const rest = S.binder.items.length - letzte.start;
+  const pp = letzte.laenge;
   if (!rest) return toast(t('gespeichert'));
   merken('auffuellen');
   for (let i = 0; i < pp - rest; i++) S.binder.items.push({ type: 'empty' });
   speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
 }
+/** Zwei Nachbarseiten tauschen — mitsamt ihrem Raster, sonst zerfiele eine 4×4-Seite
+ *  beim Hochschieben in eine 3×3-Grenze. Getauscht werden also Block und Layout. */
 function seiteVerschieben(seite, d) {
-  const pp = proSeite(); const a = seite * pp, b = (seite + d) * pp;
-  if (b < 0 || b >= S.binder.items.length) return;
+  const ziel = seite + d;
+  if (ziel < 0 || ziel >= seitenAnzahl()) return;
+  const a = Math.min(seite, ziel), b = Math.max(seite, ziel);
+  const pa = seiteInfo(a), pb = seiteInfo(b);
   merken('seite');
-  while (S.binder.items.length % pp) S.binder.items.push({ type: 'empty' });   // volle Seiten, damit nichts verrutscht
+  // Beide Seiten auf ihre volle Länge bringen, damit der Tausch nichts abschneidet.
+  while (S.binder.items.length < pb.start + pb.laenge) S.binder.items.push({ type: 'empty' });
   const items = S.binder.items;
-  const block = items.splice(a, pp); items.splice(b, 0, ...block);
+  const blockA = items.slice(pa.start, pa.start + pa.laenge);
+  const blockB = items.slice(pb.start, pb.start + pb.laenge);
+  const mitte = items.slice(pa.start + pa.laenge, pb.start);
+  items.splice(pa.start, pb.start + pb.laenge - pa.start, ...blockB, ...mitte, ...blockA);
+  const je = (S.binder.options && S.binder.options.seitenLayouts) || null;
+  if (je) {
+    const ra = je[a], rb = je[b];
+    if (rb == null) delete je[a]; else je[a] = rb;
+    if (ra == null) delete je[b]; else je[b] = ra;
+  }
   S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
 }
+
+/** Nach dem Entfernen einer Seite rutschen alle Rasterzuweisungen dahinter mit. */
+function rasterNachziehen(ab, d) {
+  const je = S.binder.options && S.binder.options.seitenLayouts;
+  if (!je) return;
+  const neu = {};
+  for (const k of Object.keys(je)) {
+    const n = Number(k);
+    if (n === ab && d < 0) continue;             // die entfernte Seite selbst
+    neu[n > ab ? n + d : n] = je[k];
+  }
+  S.binder.options.seitenLayouts = neu;
+}
 function seiteEntfernen(seite) {
-  const pp = proSeite();
+  const sp = seiteInfo(seite);
   merken('seite');
-  S.binder.items.splice(seite * pp, pp);
+  S.binder.items.splice(sp.start, sp.laenge);
+  rasterNachziehen(seite, -1);
   S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder(); zeichneErgebnisse();
   toastUndo(t('s_seite_weg'));
 }
 function seiteLeeresFach(seite) {
-  const pp = proSeite(); const ende = Math.min((seite + 1) * pp, S.binder.items.length);
+  const sp = seiteInfo(seite);
+  const ende = Math.min(sp.start + sp.laenge, S.binder.items.length);
   merken('fach');
   S.binder.items.splice(ende, 0, { type: 'empty' });
   speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
@@ -7559,9 +7677,9 @@ function artworkOeffnen(seite) {
   if (!S.binder.items.length) return toast(t('binder_leer'));
   AW.seite = seite == null ? S.seite : seite;
   AW.aktuell = null; clearInterval(AW.poll);
-  const pp = proSeite();
+  const sp = seiteInfo(AW.seite), pp = sp.laenge;
   AW.anker = new Set();
-  for (let s = 0; s < pp; s++) { const it = S.binder.items[AW.seite * pp + s]; if (it && it.type === 'card') AW.anker.add(s); }
+  for (let s = 0; s < pp; s++) { const it = S.binder.items[sp.start + s]; if (it && it.type === 'card') AW.anker.add(s); }
   $('aw-seite-nr').textContent = AW.seite + 1;
   $('aw-fehler').textContent = '';
   AW.pokemon = []; zeichneArtworkPoke(); $('aw-poke').value = '';
@@ -7585,8 +7703,7 @@ function artworkAnsicht(w) {
 
 // Seitenraster: Kartenfächer (Anker) ↔ „KI übermalt“, leere Fächer = werden gemalt
 function zeichneArtworkGrid(ziel, interaktiv) {
-  const pp = proSeite();
-  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  const spg = seiteInfo(AW.seite), pp = spg.laenge, cols = spg.cols;
   let html = '';
   for (let s = 0; s < pp; s++) {
     const it = S.binder.items[AW.seite * pp + s];
@@ -7630,7 +7747,7 @@ function artworkKontingentText() {
 }
 
 async function artworkStarten() {
-  const pp = proSeite();
+  const pp = seiteInfo(AW.seite).laenge;
   $('aw-fehler').textContent = '';
   if (!AW.anker.size) { $('aw-fehler').textContent = t('aw_kein_anker'); return; }
   if (AW.anker.size >= pp) { $('aw-fehler').textContent = t('aw_kein_platz'); return; }
@@ -7762,9 +7879,9 @@ async function artworkPdf() {
 function artworkUebernehmen() {
   const aw = AW.aktuell; if (!aw || !S.binder) return;
   if (aw.layout !== S.binder.layout) return toast(t('aw_layout_anders'));
-  const pp = proSeite();
+  const spa = seiteInfo(aw.seite), pp = spa.laenge;
   merken('artwork');
-  while (S.binder.items.length < (aw.seite + 1) * pp) S.binder.items.push({ type: 'empty' });
+  while (S.binder.items.length < spa.start + pp) S.binder.items.push({ type: 'empty' });
   for (let s = 0; s < pp; s++) {
     if (aw.anker && aw.anker[String(s)]) continue;
     S.binder.items[aw.seite * pp + s] = { type: 'art', artwork: aw.id, slot: s, layout: aw.layout };

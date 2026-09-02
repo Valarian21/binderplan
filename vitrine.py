@@ -297,20 +297,42 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             return {"art": "dex", "dex": it["dex"]}
         return {"art": "leer"}
 
-    def _seiten_vorschau(items, layout, seiten=1):
+    def _seitenzahl(items, layout, seiten_layouts=None):
+        """Wie viele Binderseiten die Fächer ergeben — mit dem Raster jeder einzelnen
+        Seite, nicht mit einer festen Länge für alle."""
+        je = seiten_layouts or {}
+        n = i = 0
+        while i < len(items) or n == 0:
+            roh = je.get(str(n), je.get(n))
+            l = roh if roh in RASTER else (layout or "3x3")
+            sp, ze = RASTER.get(l, (3, 3))
+            i += sp * ze
+            n += 1
+        return max(1, n)
+
+    def _seiten_vorschau(items, layout, seiten=1, seiten_layouts=None):
         """Die ersten Seiten des Binders als Raster. Eine Binderseite ist das, was den Binder
-        ausmacht — vier Karten nebeneinander sahen aus wie eine beliebige Trefferliste."""
+        ausmacht — vier Karten nebeneinander sahen aus wie eine beliebige Trefferliste.
+
+        Jede Seite bringt ihr eigenes Raster mit, weil einzelne Seiten vom Standard
+        abweichen dürfen."""
         spalten, zeilen = RASTER.get(layout or "3x3", (3, 3))
-        pro_seite = spalten * zeilen
+        je = seiten_layouts or {}
         aus = []
+        start = 0
         for nr in range(max(1, min(3, seiten))):
-            teil = items[nr * pro_seite:(nr + 1) * pro_seite]
+            roh = je.get(str(nr), je.get(nr))
+            l = roh if roh in RASTER else (layout or "3x3")
+            sp, ze = RASTER.get(l, (3, 3))
+            pro_seite = sp * ze
+            teil = items[start:start + pro_seite]
+            start += pro_seite
             if not teil and nr:
                 break
             faecher = [_fach(teil[i] if i < len(teil) else None) for i in range(pro_seite)]
             if nr and all(f["art"] == "leer" for f in faecher):
                 break
-            aus.append(faecher)
+            aus.append({"spalten": sp, "zeilen": ze, "faecher": faecher})
         return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
 
     def _vorschau(items, anzahl=6):
@@ -389,11 +411,12 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 "id": r["id"], "name": r["name"], "besitzer": r["besitzer"] or "—",
                 "avatar_card": r["avatar_card"], "stimmen": r["stimmen"],
                 "gestimmt": r["id"] in meine, "karten": len(karten),
-                "seiten": max(1, -(-len(items) // (spalten * zeilen))), "layout": r["layout"],
+                "seiten": _seitenzahl(items, r["layout"], optionen.get("seitenLayouts")),
+                "layout": r["layout"],
                 "art": binder_art,
                 "veroeffentlicht_at": r["veroeffentlicht_at"],
                 "vorschau": _vorschau(items),
-                "blatt": _seiten_vorschau(items, r["layout"], 3),
+                "blatt": _seiten_vorschau(items, r["layout"], 3, optionen.get("seitenLayouts")),
                 "_punkte": _punkte(r["stimmen"], r["veroeffentlicht_at"] or ""),
             })
         con.close()
@@ -460,11 +483,12 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             spalten, zeilen = RASTER.get(r["layout"] or "3x3", (3, 3))
             binder.append({"id": r["id"], "name": r["name"], "stimmen": r["stimmen"],
                            "karten": anzahl, "layout": r["layout"],
-                           "seiten": max(1, -(-len(items) // (spalten * zeilen))),
+                           "seiten": _seitenzahl(items, r["layout"], optionen.get("seitenLayouts")),
                            "art": _binder_art(r["mode"], optionen, items),
                            "veroeffentlicht_at": r["veroeffentlicht_at"],
                            "vorschau": _vorschau(items, 4),
-                           "blatt": _seiten_vorschau(items, r["layout"], 1)})
+                           "blatt": _seiten_vorschau(items, r["layout"], 1,
+                                                     optionen.get("seitenLayouts"))})
         # Tauschliste: nur wenn der Sammler sie ausdrücklich freigegeben hat. Sie zeigt Karten,
         # keine Nachrichten — die Vitrine bleibt damit frei von Text zwischen Nutzern.
         tausch = []
