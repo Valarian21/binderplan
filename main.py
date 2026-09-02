@@ -21,7 +21,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 BASE = Path(__file__).parent
 DB = BASE / "app.db"
@@ -212,7 +212,7 @@ def _compute_kinds(category, stage, suffix, rarity, name_en, name_de, local_id="
         kinds.append("pokemon")
     return kinds
 
-app = FastAPI(title="Binderplan", docs_url=None, redoc_url=None)
+app = FastAPI(title="Binderplan", docs_url=None, redoc_url=None, openapi_url=None)
 
 
 def get_db():
@@ -309,6 +309,9 @@ def init_db():
             pass
     con.execute("CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(region)")   # erst nach dem ALTER möglich
     con.execute("CREATE INDEX IF NOT EXISTS idx_cards_illu ON cards(illustrator)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_binders_user ON binders(user_id)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_binders_sichtbar ON binders(sichtbar)")
+    con.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_pokemon_familie ON pokemon(familie)")
     con.commit()
     con.close()
@@ -1742,10 +1745,16 @@ _versuche = {}
 LIMITS = {"register": (5, 3600), "login": (12, 900), "reset": (5, 3600)}
 
 
+def client_ip(request: Request) -> str:
+    """Adresse des Besuchers hinter nginx. nginx setzt X-Real-IP; X-Forwarded-For wird bewusst
+    NICHT gelesen – den Header kann der Client selbst mitschicken und damit jede Drossel umgehen."""
+    return (request.headers.get("x-real-ip", "").strip()
+            or (request.client.host if request.client else "?"))
+
+
 def _drossel(request: Request, was: str):
     grenze, fenster = LIMITS[was]
-    ip = (request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-          or (request.client.host if request.client else "?"))
+    ip = client_ip(request)
     jetzt = time.time()
     schluessel = f"{was}:{ip}"
     treffer = [t for t in _versuche.get(schluessel, []) if jetzt - t < fenster]
@@ -2173,7 +2182,15 @@ async def konto_loeschen(request: Request):
     con.execute("DELETE FROM binders WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM credit_buchungen WHERE user_id = ?", (user["id"],))
-    con.execute("UPDATE bestellungen SET user_id = 0 WHERE user_id = ?", (user["id"],))
+    # Vitrine und Sammlung gehören auch zum Konto: der öffentliche Name wäre sonst weiter
+    # abrufbar, Besitzdaten mit Kaufpreisen blieben liegen, Herzen und Freigaben würden weiterzählen.
+    con.execute("DELETE FROM profile WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM sammlung WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM stimmen WHERE user_id = ?", (user["id"],))
+    con.execute("DELETE FROM artwork_freigaben WHERE user_id = ?", (user["id"],))
+    con.execute("UPDATE meldungen SET melder_id = NULL WHERE melder_id = ?", (user["id"],))
+    con.execute("UPDATE bestellungen SET user_id = 0, variante = CASE WHEN art = 'kuendigung' THEN '' ELSE variante END"
+                " WHERE user_id = ?", (user["id"],))
     con.execute("DELETE FROM users WHERE id = ?", (user["id"],))
     con.commit()
     con.close()
@@ -2197,6 +2214,9 @@ def konto_export(request: Request):
     daten = {
         "konto": {k: v for k, v in user.items() if k not in ("pw_hash", "salt", "reset_token")},
         "binder": liste("SELECT * FROM binders WHERE user_id = ?", user["id"]),
+        "profil": liste("SELECT name, kurztext, avatar_card, created_at FROM profile WHERE user_id = ?", user["id"]),
+        "sammlung": liste("SELECT card_id, variante, anzahl, zustand, kaufpreis, gekauft_am, notiz, created_at FROM sammlung WHERE user_id = ?", user["id"]),
+        "herzen": liste("SELECT binder_id, created_at FROM stimmen WHERE user_id = ?", user["id"]),
         "artworks": liste("SELECT id, binder_id, seite, layout, anker, stil, wunsch, pokemon,"
                           " status, credits, created_at FROM artworks WHERE user_id = ?", user["id"]),
         "credit_buchungen": liste("SELECT delta, grund, ref, saldo_danach, created_at"
@@ -2541,6 +2561,8 @@ def binder_delete(binder_id: str, request: Request):
     _binder_schreibrecht(binder_id, request)
     con = get_db()
     con.execute("DELETE FROM binders WHERE id = ?", (binder_id,))
+    con.execute("DELETE FROM stimmen WHERE binder_id = ?", (binder_id,))      # Herzen ohne Binder zählen nirgends mehr
+    con.execute("DELETE FROM meldungen WHERE ziel_typ = 'binder' AND ziel_id = ?", (binder_id,))
     con.commit()
     con.close()
     return {"ok": True}
@@ -3189,10 +3211,48 @@ except Exception as _e:  # pragma: no cover
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
 
+def _landing_sprache(request: Request) -> str:
+    """Welche Startseite bekommt der Besucher? Reihenfolge: ?lang= (ausdrückliche Wahl) →
+    Cookie `bp_lang` (die App spiegelt ihre Sprachwahl dorthin) → Accept-Language des Browsers.
+    Suchmaschinen schicken in der Regel keinen Accept-Language-Header und landen damit auf der
+    deutschen Seite unter / – die englische ist per hreflang unter /en verlinkt. Bewusst keine
+    JS-Weiche nach navigator.language: die würde den Crawler beim Rendern umleiten."""
+    q = request.query_params.get("lang")
+    if q in ("de", "en"):
+        return q
+    c = request.cookies.get("bp_lang")
+    if c in ("de", "en"):
+        return c
+    erste = (request.headers.get("accept-language") or "").split(",")[0].strip().lower()
+    if not erste:
+        return ""          # kein Signal (Crawler): die aufgerufene Seite bleibt, wie sie ist
+    return "en" if not erste.startswith("de") else "de"
+
+
+def _landing_antwort(request: Request, datei: str, hierher: str, dorthin: str):
+    sprache = _landing_sprache(request)
+    qs = str(request.query_params)
+    if sprache and sprache != hierher:
+        antwort = RedirectResponse(dorthin + ("?" + qs if qs else ""), status_code=302)
+    else:
+        antwort = FileResponse(BASE / datei, media_type="text/html")
+    antwort.headers["Vary"] = "Accept-Language, Cookie"
+    if request.query_params.get("lang") in ("de", "en"):
+        antwort.set_cookie("bp_lang", request.query_params["lang"], max_age=365 * 86400, samesite="lax")
+    return antwort
+
+
 @app.get("/")
-def landing():
-    """Startseite: erklärt das Werkzeug (SEO, Teilen); Rückkehrer leitet sie per JS in die App."""
-    return FileResponse(BASE / "landing.html", media_type="text/html")
+def landing(request: Request):
+    """Startseite: erklärt das Werkzeug (SEO, Teilen); Rückkehrer leitet sie per JS in die App.
+    Englischsprachige Browser bekommen /en (siehe _landing_sprache)."""
+    return _landing_antwort(request, "landing.html", "de", "/en")
+
+
+@app.get("/en")
+def landing_en(request: Request):
+    """Englische Startseite (hreflang-Alternative zu /)."""
+    return _landing_antwort(request, "landing_en.html", "en", "/")
 
 
 @app.get("/app")

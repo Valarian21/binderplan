@@ -583,7 +583,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, card_image_pat
         user = current_user(request)
         if user and ist_pro(user):
             return
-        kennung = (str(user["id"]) if user else (request.client.host if request.client else "?"))
+        kennung = (str(user["id"]) if user else (request.headers.get("x-real-ip", "").strip() or (request.client.host if request.client else "?")))
         schluessel = f"themen:{time.strftime('%Y-%m-%d')}:{kennung}"
         con = get_db()
         row = con.execute("SELECT value FROM kv WHERE key = ?", (schluessel,)).fetchone()

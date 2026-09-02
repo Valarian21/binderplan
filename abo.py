@@ -350,6 +350,21 @@ def _signatur_ok(roh: bytes, sig_header: str, geheim: str) -> bool:
         return False
 
 
+_kuendigungen: dict = {}
+
+
+def _kuendigung_drossel(request: Request, grenze: int = 3, fenster: int = 3600):
+    """Das Kündigungsformular braucht keinen Login (§ 312k BGB) – ohne Bremse könnte jeder mit
+    einer Adressliste fremde Abos kündigen. Drei Versuche je Stunde und Adresse reichen."""
+    ip = request.headers.get("x-real-ip", "").strip() or (request.client.host if request.client else "?")
+    jetzt = time.time()
+    treffer = [t for t in _kuendigungen.get(ip, []) if jetzt - t < fenster]
+    if len(treffer) >= grenze:
+        raise HTTPException(429, "Zu viele Versuche. Bitte warte einen Moment.")
+    treffer.append(jetzt)
+    _kuendigungen[ip] = treffer
+
+
 def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_konfiguriert, basis):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
                 mail_senden=mail_senden, mail_konfiguriert=mail_konfiguriert, basis=basis)
@@ -646,6 +661,15 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
                     con.commit()
             elif typ == "charge.refunded":
                 _erstattung(con, obj)
+        except Exception:
+            # Verarbeitung gescheitert (z. B. Stripe-Timeout): Sperre wieder lösen, damit Stripe das
+            # Ereignis erneut zustellt – sonst bliebe ein bezahltes Abo für immer auf „free“.
+            try:
+                con.execute("DELETE FROM stripe_events WHERE id = ?", (ereignis.get("id"),))
+                con.commit()
+            except Exception:
+                pass
+            raise
         finally:
             con.close()
         return {"ok": True}
@@ -663,6 +687,7 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         """Kündigungsformular ohne Login: identifiziert über die E-Mail, kündigt zum
         Laufzeitende und bestätigt in Textform. Ohne passendes Abo wird trotzdem freundlich
         geantwortet, damit das Formular nicht verrät, welche Konten es gibt."""
+        _kuendigung_drossel(request)
         data = await request.json()
         email = str(data.get("email") or "").strip().lower()[:200]
         notiz = str(data.get("notiz") or "")[:500]

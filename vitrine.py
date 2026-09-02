@@ -11,6 +11,7 @@ Veröffentlichen erst ab 16 (Art. 8 DSGVO, deutsche Grenze) und Abstimmen nur mi
 
 import json
 import re
+import calendar
 import time
 
 import httpx
@@ -86,7 +87,7 @@ def _text_ok(text):
 def _punkte(stimmen, veroeffentlicht_at):
     """Zeitgewichtet, damit die ersten drei Binder nicht für immer oben stehen."""
     try:
-        t0 = time.mktime(time.strptime(veroeffentlicht_at, "%Y-%m-%d %H:%M:%S"))
+        t0 = calendar.timegm(time.strptime(veroeffentlicht_at, "%Y-%m-%d %H:%M:%S"))   # Zeitstempel sind UTC
     except Exception:
         return 0.0
     stunden = max(0.0, (time.time() - t0) / 3600)
@@ -245,12 +246,12 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         row = con.execute("SELECT sichtbar, gesperrt, user_id FROM binders WHERE id = ?", (binder_id,)).fetchone()
         if not row or not row["sichtbar"] or row["gesperrt"]:
             con.close(); raise HTTPException(404, "Dieser Binder steht nicht in der Vitrine")
-        da = con.execute("SELECT 1 FROM stimmen WHERE binder_id=? AND user_id=?", (binder_id, user["id"])).fetchone()
+        # Atomar: erst versuchen einzufügen; kam nichts an, stand das Herz schon da und geht weg
+        neu = con.execute("INSERT OR IGNORE INTO stimmen (binder_id, user_id, created_at) VALUES (?,?,?)",
+                          (binder_id, user["id"], _now())).rowcount
+        da = not neu
         if da:
             con.execute("DELETE FROM stimmen WHERE binder_id=? AND user_id=?", (binder_id, user["id"]))
-        else:
-            con.execute("INSERT INTO stimmen (binder_id, user_id, created_at) VALUES (?,?,?)",
-                        (binder_id, user["id"], _now()))
         con.commit()
         n = con.execute("SELECT COUNT(*) c FROM stimmen WHERE binder_id=?", (binder_id,)).fetchone()["c"]
         con.close()

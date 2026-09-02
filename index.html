@@ -45,7 +45,10 @@
   .bv-kopf { display: flex; align-items: center; gap: 14px; color: #fff; font-size: 14px; font-weight: 700; }
   .bv-kopf .bv-name { opacity: .75; font-weight: 500; }
   .bv-buch { perspective: 2600px; display: flex; align-items: stretch; justify-content: center;
-             gap: 0; max-width: min(1240px, 96vw); width: 100%; }
+             gap: 0; width: 100%;
+             /* Breite aus der Höhe: Kopf + Fuß brauchen ~150 px, der Rest gehört der Doppelseite.
+                --bv-ratio setzt bvZeichne() je Raster (4×3 ist breiter als 3×4). */
+             max-width: min(1240px, 96vw, calc((100vh - 150px) * var(--bv-ratio, 1.43))); }
   .bv-seite { background: var(--bseite); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
               display: grid; gap: clamp(4px, .7vw, 9px); flex: 1 1 0; min-width: 0;
               align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
@@ -684,6 +687,12 @@
   .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent); font-weight: 700; }
   body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap { display: none !important; }
   body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: 13px; }
+  /* Wer aus der Vitrine kommt, bekommt den Weg zurück; die untere Handy-Leiste (Planer, Mehr)
+     gehört zum Bearbeiten und bleibt in der Nur-Ansicht weg. */
+  body.nur-ansicht.von-vitrine .ansicht-zurueck { display: inline-flex !important; margin-left: auto; font-size: 13px; }
+  body.nur-ansicht.von-vitrine .ansicht-cta { margin-left: 0; }
+  body.nur-ansicht .nur-edit, body.nur-ansicht .mnav { display: none !important; }
+  body.nur-ansicht .spalte-binder { padding-bottom: 24px; }
   body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht #sammel-toggle, body.nur-ansicht .bp-hilfe { display: none !important; }
   .st-leer { margin-top: 10px; }
   #f-presets .chip { font-size: 11.5px; padding: 3px 9px; }
@@ -930,9 +939,9 @@
     </div>
     <!-- Binder-Wechsler: aktueller Binder, Name ändern, meine Binder, neu anlegen -->
     <div class="menuwrap bw">
-      <button class="btn sekundaer bw-btn" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen"><span class="bw-name" id="bw-name">Mein Binder</span><span class="bw-caret">▾</span></button>
+      <button class="btn sekundaer bw-btn" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen" data-i18n-title="bw_t"><span class="bw-name" id="bw-name">Mein Binder</span><span class="bw-caret">▾</span></button>
       <div class="menu links hidden" id="menu-bw">
-        <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
+        <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" data-i18n-ph="ph_bindername" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
         <div class="trenn"></div>
         <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
         <div class="bw-liste" id="bw-liste"></div>
@@ -963,21 +972,21 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
+        <button onclick="artworkOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <div class="trenn"></div>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
       </div>
     </div>
     <div class="menuwrap desktop-only">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/></svg></button>
+      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen" data-i18n-title="einst_t"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/></svg></button>
       <div class="menu hidden" id="menu-einst" style="min-width:200px">
         <div class="menu-lbl" data-i18n="pf_sprache_ui">Sprache der Oberfläche</div>
         <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
         <div class="menu-lbl" data-i18n="pf_design">Design</div>
         <button id="theme-btn" onclick="themeWechsel()"></button>
         <div class="trenn"></div>
-        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+        <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
         <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
       </div>
     </div>
@@ -985,6 +994,7 @@
       <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
       <div class="menu hidden" id="menu-konto"></div>
     </div>
+    <a class="btn sekundaer ansicht-zurueck hidden" href="/app#vitrine" data-i18n="ansicht_zurueck">← Zur Vitrine</a>
     <a class="btn ansicht-cta hidden" href="/app" data-i18n="eigener_binder">Eigenen Binder planen</a>
   </div>
 
@@ -996,11 +1006,11 @@
           <button id="reg-intl" class="on" onclick="regionSetzen('intl')" data-i18n="reg_west">Westlich</button>
           <button id="reg-jp" onclick="regionSetzen('jp')" data-i18n="reg_jp">Japan</button>
         </div>
-        <div class="lang-toggle" id="f-lang" title="Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)"><button id="f-lang-de" class="on" onclick="setKartensprache('de')">DE</button><button id="f-lang-en" onclick="setKartensprache('en')">EN</button></div>
+        <div class="lang-toggle" id="f-lang" title="Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)" data-i18n-title="klang_t"><button id="f-lang-de" class="on" onclick="setKartensprache('de')">DE</button><button id="f-lang-en" onclick="setKartensprache('en')">EN</button></div>
       </div>
       <div>
         <div class="f-lbl" data-i18n="f_suche">Suche</div>
-        <input type="search" class="feld" id="f-suche" placeholder="Karte oder Pokémon …">
+        <input type="search" class="feld" id="f-suche" placeholder="Karte oder Pokémon …" data-i18n-ph="ph_suche">
       </div>
       <div class="f-zweispaltig">
         <div><div class="f-lbl" data-i18n="f_aera">Ära</div><select class="feld" id="f-serie"></select></div>
@@ -1008,7 +1018,7 @@
           <div class="menuwrap" style="width:100%">
             <button class="feld setwahl" id="f-set-btn" onclick="setWahlToggle()"><span class="setwahl-inhalt" id="f-set-lbl"></span><span class="bw-caret">▾</span></button>
             <div class="menu links hidden setpop" id="set-popover">
-              <input type="search" class="feld" id="set-popover-suche" placeholder="Set suchen …" oninput="zeichneSetWahl()" onclick="event.stopPropagation()">
+              <input type="search" class="feld" id="set-popover-suche" placeholder="Set suchen …" data-i18n-ph="ph_set" oninput="zeichneSetWahl()" onclick="event.stopPropagation()">
               <div class="setliste" id="set-popover-liste"></div>
             </div>
           </div>
@@ -1017,7 +1027,7 @@
       </div>
       <div>
         <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
-        <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak">
+        <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak" data-i18n-ph="ph_dex">
         <datalist id="dex-namen"></datalist>
       </div>
       <div class="f-zweispaltig" id="f-illu-rar">
@@ -1037,7 +1047,7 @@
         <div class="f-art-hinweis" id="f-art-hinweis"></div>
         <div>
           <div class="f-lbl" data-i18n="f_art_text">Im Bild zu sehen</div>
-          <input class="feld" id="f-art-text" placeholder="z. B. Mond, Wasserfall, Laterne" oninput="artTextGetippt()">
+          <input class="feld" id="f-art-text" placeholder="z. B. Mond, Wasserfall, Laterne" data-i18n-ph="ph_art_text" oninput="artTextGetippt()">
         </div>
         <div>
           <div class="f-lbl" data-i18n="f_art_ort">Wo spielt es</div>
@@ -1072,7 +1082,7 @@
           <div class="f-jahr"><input class="feld" id="f-jahr-von" type="number" min="1996" max="2030" placeholder="1999"><span>–</span><input class="feld" id="f-jahr-bis" type="number" min="1996" max="2030" placeholder="2026"></div>
         </div>
         <div>
-          <div class="f-lbl" title="Turnierlegalität: Buchstabe unten links auf der Karte" data-i18n="f_regmark">Regulation Mark</div>
+          <div class="f-lbl" title="Turnierlegalität: Buchstabe unten links auf der Karte" data-i18n-title="f_regmark_t" data-i18n="f_regmark">Regulation Mark</div>
           <div class="f-chips" id="f-regmark"></div>
         </div>
         <select class="feld hidden" id="f-rarity"></select>
@@ -1083,9 +1093,9 @@
       </div>
       <button class="btn sekundaer" style="font-size:12.5px;padding:8px 13px" onclick="filterReset()" data-i18n="f_reset">Filter zurücksetzen</button>
       <div style="margin-top:auto;font-size:10.5px;color:var(--mut)">
-        <a href="recht#impressum" style="color:var(--mut)">Impressum</a> ·
-        <a href="recht#agb" style="color:var(--mut)">AGB</a> ·
-        <a href="recht#datenschutz" style="color:var(--mut)">Datenschutz</a>
+        <a href="recht#impressum" style="color:var(--mut)" data-i18n="imp_kurz">Impressum</a> ·
+        <a href="recht#agb" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> ·
+        <a href="recht#datenschutz" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a>
       </div>
     </div>
 
@@ -1113,10 +1123,10 @@
       <div class="bp-kopf">
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
-          <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-          <label class="schalter" title="Fach antippen = als „hab ich“ markieren"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammeln</span></label>
+          <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
+          <label class="schalter" title="Fach antippen = als „hab ich“ markieren" data-i18n-title="sammel_t"><input type="checkbox" id="sammel-toggle" onchange="sammelnToggle()"><span data-i18n="sammeln">Sammeln</span></label>
           <div class="menuwrap">
-            <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen">⋯</button>
+            <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen" data-i18n-title="binder_opt_t">⋯</button>
             <div class="menu hidden" id="menu-binder" style="min-width:260px">
               <div class="menu-lbl" data-i18n="raster">Raster</div>
               <select class="feld" id="wb-layout" style="margin:2px 12px 8px;width:calc(100% - 24px)" onchange="layoutWechsel(this.value)"></select>
@@ -1128,8 +1138,8 @@
               <div class="trenn"></div>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
-              <button onclick="fotoOeffnen()" data-i18n="foto_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
-              <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
+              <button onclick="fotoOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
+              <button onclick="artworkOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
               <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
               <button onclick="veroeffentlichenUmschalten()" id="wb-vitrine-knopf" data-i18n="vt_zeigen">In der Vitrine zeigen …</button>
               <div class="trenn"></div>
@@ -1156,23 +1166,23 @@
       </div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="seiten-nav" id="wb-nav">
-        <button onclick="seiteZiehen(-1)" title="Diese Seite nach vorne schieben" aria-label="Seite nach vorne" data-i18n-title="s_seite_hoch" id="wb-seite-vor">
+        <button onclick="seiteZiehen(-1)" class="nur-edit" title="Diese Seite nach vorne schieben" aria-label="Seite nach vorne" data-i18n-title="s_seite_hoch" id="wb-seite-vor">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="3" y="4" width="9" height="12" rx="1.6"/><path d="M16 12.5 16 7.5M13.6 9.9 16 7.4l2.4 2.5"/></svg>
         </button>
-        <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite">‹</button>
+        <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite" data-i18n-aria="s_vorherige">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
-        <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite">›</button>
-        <button onclick="seiteZiehen(1)" title="Diese Seite nach hinten schieben" aria-label="Seite nach hinten" data-i18n-title="s_seite_runter" id="wb-seite-zurueck">
+        <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
+        <button onclick="seiteZiehen(1)" class="nur-edit" title="Diese Seite nach hinten schieben" aria-label="Seite nach hinten" data-i18n-title="s_seite_runter" id="wb-seite-zurueck">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5 4 12.5M1.6 10.1 4 12.6l2.4-2.5"/></svg>
         </button>
-        <button onclick="seiteAnhaengen()" style="margin-left:6px" title="Neue leere Seite anhängen" aria-label="Neue Seite" data-i18n-title="neue_seite">
+        <button onclick="seiteAnhaengen()" class="nur-edit" style="margin-left:6px" title="Neue leere Seite anhängen" aria-label="Neue Seite" data-i18n-title="neue_seite">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/></svg>
         </button>
-        <button onclick="artworkOeffnen()" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg></button>
-        <button onclick="themaOeffnen()" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
+        <button onclick="artworkOeffnen()" class="nur-edit" style="font-size:15px;margin-left:6px" title="Artwork-Seite gestalten" aria-label="Artwork-Seite" data-i18n-title="aw_t"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg></button>
+        <button onclick="themaOeffnen()" class="nur-edit" style="margin-left:2px" title="Seite nach Thema" aria-label="Seite nach Thema" data-i18n-title="th_titel">
           <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
             <circle cx="9" cy="9" r="5.4"/><path d="M13.2 13.2 17 17"/><path d="M6.6 10.4c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/></svg>
         </button>
@@ -1220,18 +1230,18 @@
         <button onclick="exportPdf('karten',0)" data-i18n="ex_alle">Platzhalter-PDF – alle Karten</button>
         <button onclick="exportPdf('karten',1)" data-i18n="ex_fehlend">Platzhalter-PDF – nur fehlende</button>
         <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <button onclick="artworkOeffnen()" data-i18n="aw_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
+        <button onclick="artworkOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg><span data-i18n="aw_menu">Artwork-Seite gestalten …</span></button>
         <button onclick="kaufliste()" data-i18n="ex_kauf">Kaufliste als CSV (Pro)</button>
         <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
         <div class="trenn"></div>
         <button onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
         <button onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
-        <button onclick="fotoOeffnen()" data-i18n="foto_menu"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
+        <button onclick="fotoOeffnen()"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/></svg><span data-i18n="foto_menu">Seiten abfotografieren …</span></button>
         <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
         <div class="trenn"></div>
         <button onclick="setLang(LANG==='de'?'en':'de')"><span data-i18n="pf_sprache">Sprache</span>: <span class="lang-stand"></span></button>
         <button onclick="themeWechsel()"><span data-i18n="pf_design">Design</span>: <span class="theme-stand"></span></button>
-        <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
+        <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
         <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
       </div>
     </div>
@@ -1244,10 +1254,10 @@
 <!-- Modal: Master Set -->
 <div class="overlay hidden" id="modal-master">
   <div class="modal">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_master_t">Master Set anlegen</h2>
     <div class="unter" data-i18n="m_master_u">Jede Karte des Sets einmal, sortiert nach Setnummer.</div>
-    <input type="search" class="feld" id="set-suche" placeholder="Set suchen …" oninput="zeichneSetliste()">
+    <input type="search" class="feld" id="set-suche" placeholder="Set suchen …" data-i18n-ph="ph_set" oninput="zeichneSetliste()">
     <div class="setliste" id="set-liste"></div>
     <div class="f-zweispaltig" style="margin-top:12px">
       <div><div class="f-lbl" data-i18n="f_sort">Sortierung</div>
@@ -1264,7 +1274,7 @@
 <!-- Modal: Pokédex -->
 <div class="overlay hidden" id="modal-dex">
   <div class="modal">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_dex_t">Pokédex-Binder anlegen</h2>
     <div class="unter" data-i18n="m_dex_u">Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.</div>
     <div class="f-chips" id="gen-chips"></div>
@@ -1279,11 +1289,11 @@
 <!-- Modal: Ein Pokémon – alle Karten -->
 <div class="overlay hidden" id="modal-poke">
   <div class="modal" style="width:min(520px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_poke_t">Ein Pokémon – alle Karten</h2>
     <div class="unter" data-i18n="m_poke_u">Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.</div>
     <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
-    <input class="feld" id="poke-name" list="dex-namen" placeholder="z. B. Glurak" oninput="pokeInfo()">
+    <input class="feld" id="poke-name" list="dex-namen" placeholder="z. B. Glurak" data-i18n-ph="ph_dex" oninput="pokeInfo()">
     <div style="font-size:13px;color:var(--mut);margin-top:10px" id="poke-info"></div>
     <div class="f-lbl" style="margin-top:12px" data-i18n="m_poke_umfang">Umfang</div>
     <select class="feld" id="poke-umfang"><option value="einzeln" data-i18n="m_poke_einzeln">Nur dieses Pokémon</option><option value="familie" data-i18n="m_poke_familie">Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)</option></select>
@@ -1298,11 +1308,11 @@
 <!-- Modal: Künstler-Binder -->
 <div class="overlay hidden" id="modal-kuenstler">
   <div class="modal" style="width:min(520px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_illu_t">Künstler-Binder</h2>
     <div class="unter" data-i18n="m_illu_u">Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.</div>
     <div class="f-lbl" data-i18n="f_illu">Künstler</div>
-    <input class="feld" id="illu-name" list="illu-namen" placeholder="z. B. Mitsuhiro Arita" oninput="illuInfo()">
+    <input class="feld" id="illu-name" list="illu-namen" placeholder="z. B. Mitsuhiro Arita" data-i18n-ph="ph_illu" oninput="illuInfo()">
     <div class="f-chips" id="illu-top" style="margin-top:8px"></div>
     <div style="font-size:13px;color:var(--mut);margin-top:10px" id="illu-info"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
@@ -1315,10 +1325,10 @@
 <!-- Modal: Import -->
 <div class="overlay hidden" id="modal-import">
   <div class="modal" style="width:min(720px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_import_t">Liste importieren</h2>
     <div class="unter" data-i18n="m_import_u">Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.</div>
-    <textarea class="feld" id="import-text" rows="7" placeholder="sv1 25&#10;Glurak 4/102&#10;1x Charizard (Base Set) 4" style="resize:vertical;font-family:ui-monospace,monospace;font-size:12.5px"></textarea>
+    <textarea class="feld" id="import-text" rows="7" placeholder="sv1 25&#10;Glurak 4/102&#10;1x Charizard (Base Set) 4" data-i18n-ph="ph_import" style="resize:vertical;font-family:ui-monospace,monospace;font-size:12.5px"></textarea>
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
       <label class="btn sekundaer" style="font-size:12.5px;padding:7px 12px"><span data-i18n="import_datei">Datei wählen (.csv/.txt)</span><input type="file" accept=".csv,.txt,text/plain,text/csv" style="display:none" onchange="importDatei(this)"></label>
       <button class="btn sekundaer" style="font-size:12.5px;padding:7px 12px" onclick="importPruefen()" data-i18n="import_pruefen">Prüfen</button>
@@ -1337,7 +1347,7 @@
   <div class="modal" style="width:min(380px,94vw)">
     <h2 data-i18n="name_t">Wie sollen wir dich nennen?</h2>
     <div class="unter" data-i18n="name_u">Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.</div>
-    <input class="feld" id="name-neu" maxlength="40" placeholder="z. B. Marcel">
+    <input class="feld" id="name-neu" maxlength="40" placeholder="z. B. Marcel" data-i18n-ph="ph_rufname">
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="spaeter">Später</button>
       <button class="btn" onclick="nameNeuSpeichern()" data-i18n="speichern">Speichern</button>
@@ -1348,7 +1358,7 @@
 <!-- Modal: Kartendetail -->
 <div class="overlay hidden" id="modal-detail">
   <div class="modal detail" style="width:min(820px,96vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <div id="detail-inhalt"></div>
   </div>
 </div>
@@ -1356,7 +1366,7 @@
 <!-- Modal: Anmelden / Registrieren -->
 <div class="overlay hidden" id="modal-auth">
   <div class="modal" style="width:min(420px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 id="auth-titel" data-i18n="anmelden_t">Anmelden</h2>
     <div class="unter" id="auth-grund"></div>
     <div class="tab-leiste">
@@ -1381,7 +1391,7 @@
     <div id="auth-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
     <button class="btn" style="width:100%;justify-content:center;margin-top:14px" onclick="authAbsenden()" id="auth-senden" data-i18n="anmelden">Anmelden</button>
     <div style="font-size:11px;color:var(--mut);margin-top:12px;text-align:center">
-      <a href="recht#agb" style="color:var(--mut)">AGB</a> · <a href="recht#datenschutz" style="color:var(--mut)">Datenschutz</a>
+      <a href="recht#agb" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> · <a href="recht#datenschutz" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a>
     </div>
   </div>
 </div>
@@ -1389,7 +1399,7 @@
 <!-- Modal: Tarife & Credits -->
 <div class="overlay hidden" id="modal-upgrade">
   <div class="modal" style="width:min(860px,96vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="up_t">Mehr aus deinem Binder holen</h2>
     <div class="unter" id="up-grund" data-i18n="up_u">Unbegrenzt planen und drucken – und Credits für KI-Artwork-Seiten.</div>
     <div style="text-align:center">
@@ -1409,7 +1419,7 @@
 <!-- Modal: Bestellübersicht (Button-Lösung § 312j BGB) -->
 <div class="overlay hidden" id="modal-bestellung">
   <div class="modal" style="width:min(520px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="best_t">Bestellung prüfen</h2>
     <div class="unter" data-i18n="best_u">Bitte prüfe deine Bestellung. Danach geht es zur Zahlung bei Stripe.</div>
     <div class="bestell-box" id="bestell-box"></div>
@@ -1431,7 +1441,7 @@
 <!-- Modal: Artwork-Seite (KI erweitert das Kartenmotiv über die ganze Binder-Seite) -->
 <div class="overlay hidden" id="modal-artwork">
   <div class="modal" style="width:min(980px,96vw)">
-    <button class="modal-x" onclick="artworkSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="artworkSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2><svg class="ic" width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg> <span data-i18n="aw_t">Artwork-Seite gestalten</span> · <span data-i18n="seite">Seite</span> <span id="aw-seite-nr">1</span></h2>
     <div class="unter" data-i18n="aw_u">Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.</div>
     <div class="aw-wrap" id="aw-editor">
@@ -1448,7 +1458,7 @@
         <div class="aw-poke-chips" id="aw-poke-chips"></div>
         <input class="feld" id="aw-poke" list="dex-namen" autocomplete="off" data-i18n-ph="aw_pokemon_ph" placeholder="Name eingeben, Enter fügt hinzu (max. 3)" onkeydown="artworkPokeTaste(event)" onchange="artworkPokeAdd()">
         <div class="aw-kont" id="aw-kont"></div>
-        <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()" data-i18n="aw_start"><svg class="ic" width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> Seite füllen</button>
+        <button class="btn aw-cta" id="aw-start" style="width:100%;justify-content:center;font-size:14px" onclick="artworkStarten()"><svg class="ic" width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/></svg> <span data-i18n="aw_start">Seite füllen</span></button>
         <div id="aw-fehler" class="aw-fehler"></div>
         <div class="aw-privat" data-i18n="aw_privat">KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.</div>
       </div>
@@ -1522,7 +1532,7 @@
 
     <div class="st-abschnitt">
       <div class="st-titel"><h2 data-i18n="st_deine">Deine Binder</h2>
-        <span class="mehr" onclick="menuToggle('menu-st-neu')" data-i18n="st_neu">Neuer Binder</span></div>
+        <span class="mehr" onclick="event.stopPropagation();menuToggle('menu-st-neu')" data-i18n="st_neu">Neuer Binder</span></div>
       <div class="binder-grid" id="st-grid"></div>
     </div>
 
@@ -1561,7 +1571,7 @@
           <div class="pf-zeile"><span>E-Mail</span><span class="wert" id="pf-email"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_rufname">Dein Name (nur für die Begrüßung)</span>
             <span class="wert" style="display:flex;gap:6px;align-items:center">
-              <input class="feld" id="pf-name" style="width:150px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel">
+              <input class="feld" id="pf-name" style="width:150px;padding:5px 9px;font-size:13px" maxlength="40" placeholder="z. B. Marcel" data-i18n-ph="ph_rufname">
               <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="nameSpeichern()" data-i18n="speichern">Speichern</button></span></div>
           <div class="pf-zeile"><span data-i18n="pf_binderzahl">Binder</span><span class="wert" id="pf-binder"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_exporte">PDF-Exporte diesen Monat übrig</span><span class="wert" id="pf-exporte"></span></div>
@@ -1572,10 +1582,10 @@
           <div class="pf-hinweis" data-i18n="pf_vitrine_u">Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.</div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_name">Öffentlicher Name</span>
             <span class="wert" style="display:flex;gap:6px;align-items:center">
-              <input class="feld" id="pf-vname" style="width:150px;padding:5px 9px;font-size:13px" maxlength="24" placeholder="z. B. Karpador-Kai">
+              <input class="feld" id="pf-vname" style="width:150px;padding:5px 9px;font-size:13px" maxlength="24" placeholder="z. B. Karpador-Kai" data-i18n-ph="ph_vname">
               <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button></span></div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_text">Ein Satz über dich</span>
-            <span class="wert"><input class="feld" id="pf-vtext" style="width:210px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999"></span></div>
+            <span class="wert"><input class="feld" id="pf-vtext" style="width:210px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999" data-i18n-ph="ph_vtext"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
           <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
@@ -1612,10 +1622,10 @@
 
       <div class="pf-block pf-voll">
         <h3 data-i18n="pf_recht">Rechtliches</h3>
-        <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)">Impressum</a> ·
-          <a href="recht#agb" target="_blank" style="color:var(--mut)">AGB</a> ·
-          <a href="recht#widerruf" target="_blank" style="color:var(--mut)">Widerruf</a> ·
-          <a href="recht#datenschutz" target="_blank" style="color:var(--mut)">Datenschutz</a> ·
+        <div style="font-size:13px"><a href="recht#impressum" target="_blank" style="color:var(--mut)" data-i18n="imp_kurz">Impressum</a> ·
+          <a href="recht#agb" target="_blank" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> ·
+          <a href="recht#widerruf" target="_blank" style="color:var(--mut)" data-i18n="wid_kurz">Widerruf</a> ·
+          <a href="recht#datenschutz" target="_blank" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a> ·
           <a href="/kuendigen" target="_blank" style="color:var(--mut)">Verträge kündigen</a></div>
       </div>
 
@@ -1637,17 +1647,17 @@
   </div>
 </div>
 
-<div id="blaettern" class="hidden" role="dialog" aria-modal="true" aria-label="Binder durchblättern">
-  <button class="bv-x" onclick="blaetternSchliessen()" aria-label="Schließen">✕</button>
+<div id="blaettern" class="hidden" role="dialog" aria-modal="true" aria-label="Binder durchblättern" data-i18n-aria="bv_titel">
+  <button class="bv-x" onclick="blaetternSchliessen()" aria-label="Schließen" data-i18n-aria="schliessen_t">✕</button>
   <div class="bv-kopf"><span id="bv-titel"></span><span class="bv-name" id="bv-untertitel"></span></div>
   <div class="bv-buch-wrap">
     <div class="bv-buch" id="bv-buch"></div>
     <div class="bv-lager" id="bv-lager" aria-hidden="true"></div>
   </div>
   <div class="bv-fuss">
-    <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern">‹</button>
+    <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern" data-i18n-aria="bv_zurueck">‹</button>
     <span class="bv-zaehler" id="bv-zaehler"></span>
-    <button id="bv-vor" onclick="blaetternWechsel(1)" aria-label="Weiterblättern">›</button>
+    <button id="bv-vor" onclick="blaetternWechsel(1)" aria-label="Weiterblättern" data-i18n-aria="bv_vor">›</button>
     <button id="bv-teilen" onclick="blaetternBild()" title="Doppelseite als Bild sichern" data-i18n-title="bv_bild" style="margin-left:10px">
       <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <path d="M10 2.6v9M6.8 6.2 10 2.8l3.2 3.4"/><path d="M3.6 12.4v3.2a1.6 1.6 0 0 0 1.6 1.6h9.6a1.6 1.6 0 0 0 1.6-1.6v-3.2"/></svg>
@@ -1658,7 +1668,7 @@
 <!-- Modal: Seite nach Thema -->
 <div class="overlay hidden" id="modal-thema">
   <div class="modal" style="width:min(880px,96vw);max-height:92vh;overflow:auto">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="th_titel">Seite nach Thema</h2>
     <div class="unter" data-i18n="th_unter">Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.</div>
     <div class="th-anker hidden" id="th-anker">
@@ -1669,7 +1679,7 @@
       <button class="btn sekundaer" style="margin-left:auto;padding:4px 10px;font-size:12px" onclick="themaAnkerWeg()" data-i18n="th_anker_weg">Ohne Karte</button>
     </div>
     <div class="f-lbl" data-i18n="th_thema">Thema</div>
-    <input class="feld" id="th-thema" placeholder="z. B. Pokémon unter Wasser" onkeydown="if(event.key==='Enter')themaSuchen()">
+    <input class="feld" id="th-thema" placeholder="z. B. Pokémon unter Wasser" data-i18n-ph="ph_thema" onkeydown="if(event.key==='Enter')themaSuchen()">
     <div class="f-chips" id="th-chips" style="margin-top:8px"></div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:190px"><div class="f-lbl" data-i18n="th_woraus">Woraus wählen</div>
@@ -1703,7 +1713,7 @@
 <!-- Modal: Binder aus Fotos -->
 <div class="overlay hidden" id="modal-foto">
   <div class="modal" style="width:min(860px,96vw);max-height:92vh;overflow:auto">
-    <button class="modal-x" onclick="fotoSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="fotoSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="foto_t">Binder aus Fotos</h2>
     <div class="unter" data-i18n="foto_u">Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.</div>
 
@@ -1753,13 +1763,13 @@
 <!-- Modal: Profil -->
 <div class="overlay hidden" id="modal-profil">
   <div class="modal" style="width:min(520px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="vpf_t">Dein Profil</h2>
     <div class="unter" data-i18n="vpf_u">Nur nötig, wenn du Binder öffentlich zeigen willst. Ohne veröffentlichten Binder sieht das niemand.</div>
     <div class="f-lbl" data-i18n="vpf_name">Anzeigename</div>
-    <input class="feld" id="vpf-name" maxlength="24" placeholder="z. B. Karpador-Kai">
+    <input class="feld" id="vpf-name" maxlength="24" placeholder="z. B. Karpador-Kai" data-i18n-ph="ph_vname">
     <div class="f-lbl" style="margin-top:10px" data-i18n="vpf_text">Ein Satz über dich (freiwillig)</div>
-    <input class="feld" id="vpf-text" maxlength="140" placeholder="Sammle seit 1999, Schwerpunkt alte Sets">
+    <input class="feld" id="vpf-text" maxlength="140" placeholder="Sammle seit 1999, Schwerpunkt alte Sets" data-i18n-ph="ph_vtext2">
     <div style="font-size:11.5px;color:var(--mut);margin-top:10px" data-i18n="vpf_hinweis">Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.</div>
     <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="vpf-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
@@ -1772,7 +1782,7 @@
 <!-- Modal: Geburtsdatum nachtragen -->
 <div class="overlay hidden" id="modal-geb">
   <div class="modal" style="width:min(440px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="gb_t">Kurz noch dein Geburtsdatum</h2>
     <div class="unter" data-i18n="gb_u">Binder öffentlich zu zeigen ist ab 16 erlaubt. Das Datum steht nirgends öffentlich und lässt sich später nicht ändern.</div>
     <input class="feld" id="gb-datum" type="date" min="1900-01-01">
@@ -1787,10 +1797,10 @@
 <!-- Modal: Melden -->
 <div class="overlay hidden" id="modal-melden">
   <div class="modal" style="width:min(460px,94vw)">
-    <button class="modal-x" onclick="modalSchliessen()" title="Schließen">✕</button>
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="md_t">Inhalt melden</h2>
     <div class="unter" data-i18n="md_u">Was stimmt mit diesem Binder nicht? Wir sehen uns das an.</div>
-    <textarea class="feld" id="md-grund" rows="3" maxlength="300" placeholder="Kurz beschreiben"></textarea>
+    <textarea class="feld" id="md-grund" rows="3" maxlength="300" placeholder="Kurz beschreiben" data-i18n-ph="ph_melden"></textarea>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="meldenSenden()" data-i18n="md_senden">Melden</button>
@@ -1822,7 +1832,7 @@
   <div class="sm-leiste">
     <div class="f-chips" id="sm-filter"></div>
     <div style="flex:1"></div>
-    <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" oninput="sammlungSuchen()">
+    <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" data-i18n-ph="sm_ph" oninput="sammlungSuchen()">
     <select class="feld" id="sm-sort" style="width:auto" onchange="sammlungLaden()">
       <option value="neu">Zuletzt hinzugefügt</option>
       <option value="wert">Wert</option>
@@ -1853,7 +1863,7 @@ const T = {
     preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise 1× am Tag aktualisieren',
     kaufliste_csv: 'Kaufliste als CSV', zum_start: 'zum Start', beliebt: 'Beliebt',
     up_recht_kurz: 'Endpreise, keine Umsatzsteuer (§ 19 UStG).',
-    best_agb_html: 'Ich akzeptiere die <a href="recht#agb" target="_blank">AGB</a> und habe die <a href="recht#datenschutz" target="_blank">Datenschutzerklärung</a> sowie die <a href="recht#widerruf" target="_blank">Widerrufsbelehrung</a> gelesen.',
+    best_agb_html: 'Ich akzeptiere die <a href="recht#agb" target="_blank" data-i18n="agb_kurz">AGB</a> und habe die <a href="recht#datenschutz" target="_blank">Datenschutzerklärung</a> sowie die <a href="recht#widerruf" target="_blank">Widerrufsbelehrung</a> gelesen.',
     gate_credits: 'Dafür brauchst du {n} Credits, du hast {s}.', gate_tageslimit: 'Die KI-Werkstatt ist heute ausgelastet – bitte morgen noch einmal versuchen.',
     mtl: 'Monatlich', jaehrl: 'Jährlich', spar: '−17 %', pro_monat: 'im Monat', pro_jahr: 'im Jahr',
     pak_t: 'Credits einzeln kaufen', pak_u: 'Ohne Abo, ohne Verfall – ideal, wenn du nur ab und zu eine Artwork-Seite gestaltest.',
@@ -2060,6 +2070,7 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', sammel_t: 'Fach antippen = als „hab ich“ markieren', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
@@ -2231,6 +2242,7 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', sammel_t: 'Tap a slot to mark it as “got it”', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
@@ -2452,11 +2464,22 @@ function setKartensprache(lang) {
 }
 function setLang(lang) {
   LANG = lang; localStorage.setItem('bp_lang', lang);
+  try { document.cookie = 'bp_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}   // Startseite / vs. /en
   $('lang-de').classList.toggle('on', lang === 'de');
   $('lang-en').classList.toggle('on', lang === 'en');
   if ($('f-lang-de')) { $('f-lang-de').classList.toggle('on', KLANG === 'de'); $('f-lang-en').classList.toggle('on', KLANG === 'en'); }
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+  // Tooltips und Vorlese-Namen: ein Schlüssel für title und aria-label, damit beide nie auseinanderlaufen
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    el.title = t(el.dataset.i18nTitle);
+    if (el.hasAttribute('aria-label')) el.setAttribute('aria-label', t(el.dataset.i18nTitle));
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  document.querySelectorAll('.recht-link').forEach((el) => { el.textContent = t('recht_link'); });
+  if (typeof vitrineKnopf === 'function') vitrineKnopf();
+  document.documentElement.lang = lang;
+  document.title = t('app_titel');
   themeAnwenden();
   baueFilterLeiste(); mehrFilterZahl();
   zeichneErgebnisse();
@@ -2473,7 +2496,7 @@ function setLang(lang) {
 
 // ---------- Start ----------
 async function boot() {
-  try { S.meta = await api('api/meta'); } catch (e) { toast('Server?'); return; }
+  try { S.meta = await api('api/meta'); } catch (e) { toast(t('fehler_server')); return; }
   if (S.token) { try { S.user = (await api('api/auth/me')).user; } catch (e) {} }
   if (!S.user && S.token) setToken('');
   syncBanner();
@@ -2540,6 +2563,7 @@ async function boot() {
     history.replaceState(null, '', location.pathname + location.hash);
     await bestaetigungEinloesen(bestToken);
   }
+  if (['vitrine', 'sammlung', 'planer'].includes(hash)) ansicht(hash);   // z. B. „← Zur Vitrine“ aus der Nur-Ansicht
   bestaetigungAnzeigen();
 }
 
@@ -2552,8 +2576,9 @@ function ansichtAktivieren() {
   // Mobil: direkt die Binder-Ansicht zeigen, Such-/Filter-Knöpfe ausblenden
   document.body.classList.add('binder-an');
   ['mnav-filter', 'mnav-suche', 'mnav-binder'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
-  document.querySelector('.spalte-binder').style.width = 'min(700px, 100%)';
   document.querySelector('.spalte-binder').style.margin = '0 auto';
+  if (sessionStorage.getItem('bp_von_vitrine')) document.body.classList.add('von-vitrine');
+  window.addEventListener('resize', ansichtGroesse);
   const banner = document.createElement('div');
   banner.className = 'ansicht-banner';
   banner.textContent = t('nur_ansicht') + ' – ' + S.binder.name;
@@ -2563,7 +2588,25 @@ function ansichtAktivieren() {
   S.seite = 0;
   zeichneLayouts();
   zeichneBinder();
+  ansichtGroesse();
   ansichtBegleitung();
+}
+
+/**
+ * Nur-Ansicht: die Binderseite soll ohne Scrollen ganz zu sehen sein. Die Spaltenbreite
+ * wird deshalb aus der freien Höhe und dem Seitenverhältnis des Rasters berechnet
+ * (63×88-mm-Fächer plus Fugen), statt fest 700 px zu sein. Handy behält sein gestapeltes Layout.
+ */
+function ansichtGroesse() {
+  if (!S.nurAnsicht || !S.binder) return;
+  const sp = document.querySelector('.spalte-binder');
+  if (window.innerWidth < 900) { sp.style.width = ''; return; }
+  const [cols, rows] = LAYOUTS[S.binder.layout] || [3, 3];
+  const oben = document.querySelector('.rumpf').getBoundingClientRect().top;   // Kopf, Banner, Begleitleiste
+  const frei = window.innerHeight - oben - 150;                               // Statuszeile, Schalter, Seitennavigation
+  const verhaeltnis = (cols * 63 + (cols - 1) * 7 + 20) / (rows * 88 + (rows - 1) * 7 + 20);
+  const breite = Math.round(Math.min(700, window.innerWidth - 40, Math.max(300, frei * verhaeltnis + 28)));
+  sp.style.width = breite + 'px';
 }
 
 // ---------- Konto ----------
@@ -2606,8 +2649,8 @@ function kontoMenue() {
     <div class="trenn"></div>
     <button onclick="upgradeOeffnen('')">${u.plan === 'free' ? t('upgrade') : t('credits_kaufen')}</button>
     ${u.plan !== 'free' && u.plan !== 'lifetime' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
-    <button onclick="window.open('recht','_blank')">Impressum · AGB · Datenschutz</button>
-        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
+    <button onclick="window.open('recht','_blank')">${t('recht_link')}</button>
+    <button onclick="window.open('/kuendigen','_blank')">${t('kuend_link')}</button>
     <button onclick="abmelden()">${t('abmelden')}</button>`;
 }
 
@@ -2617,7 +2660,7 @@ function loginOeffnen(grund) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   $('auth-grund').textContent = grund || '';
   $('modal-auth').classList.remove('hidden');
-  authTab(binderIds().length || grund ? 'reg' : 'login');
+  authTab(grund ? 'reg' : 'login');
 }
 function authTab(modus) {
   authModus = modus;
@@ -2832,14 +2875,14 @@ async function startOeffnen() {
   $('startseite').classList.remove('hidden');
   $('startseite').scrollTop = 0;
   reiterSetzen('seg-start');
-  location.hash = 'start';
+  hashSetzen('start');
   $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
   await startLaden();
 }
 function startSchliessen() {
   $('startseite').classList.add('hidden');
   reiterSetzen('seg-suche');
-  if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
+  if (S.binder && S.binder.id) hashSetzen('binder/' + S.binder.id);
   else neuLeer(true);
 }
 async function startLaden() {
@@ -2882,7 +2925,7 @@ async function startLaden() {
   $('st-tun').innerHTML = [
     ['kamera', t('tpl_foto'), t('tpl_foto_u'), 'startSchliessen();fotoOeffnen()'],
     ['motiv', t('th_titel'), t('st_thema_u'), 'startSchliessen();themaOeffnen()'],
-    ['raster', t('st_neu'), t('st_neu_u'), "menuToggle('menu-st-neu')"],
+    ['raster', t('st_neu'), t('st_neu_u'), "event.stopPropagation();menuToggle('menu-st-neu')"],
     ['vitrine', t('vt_t'), t('st_vitrine_u'), "startSchliessen();ansicht('vitrine')"],
   ].map(([icn, titel, unter, fn]) => `<button onclick="${fn}"><span class="st-ic">${ic(icn, 20)}</span>
       <span><strong>${esc(titel)}</strong><small>${esc(unter)}</small></span></button>`).join('');
@@ -2949,7 +2992,10 @@ async function startNeu(art) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (art === 'leer') { $('startseite').classList.add('hidden'); await neuLeer(); return; }
   $('startseite').classList.add('hidden');
-  if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
+  // Ohne aktiven Binder (frisches Konto, gelöschter Binder) stünde die Werkbank auf null und jeder
+  // Klick würfe einen Fehler – ein lokaler Gast-Binder ist der sichere Boden, bis die Vorlage kommt.
+  if (!S.binder) { S.binder = lokalerBinder(); binderAnzeigen(); }
+  if (S.binder.id) hashSetzen('binder/' + S.binder.id);
   if (art === 'import') return importOeffnen();
   modalOeffnen(art === 'master' ? 'modal-master' : art === 'poke' ? 'modal-poke' : 'modal-dex');
 }
@@ -3014,7 +3060,7 @@ async function journalLaden() {
     const d = await api('api/credits');
     S.user = { ...S.user, ...d.konto };
     box.innerHTML = d.buchungen.length ? d.buchungen.map((b) => `<div>
-        <span>${t('j_' + b.grund) || b.grund}<br><span style="color:var(--mut);font-size:11px">${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
+        <span>${(T[LANG] && T[LANG]['j_' + b.grund]) || b.grund}<br><span style="color:var(--mut);font-size:11px">${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
         <span class="${b.delta > 0 ? 'plus' : 'minus'}">${b.delta > 0 ? '+' : ''}${b.delta}</span></div>`).join('')
       : `<div style="color:var(--mut)">–</div>`;
   } catch (e) { box.innerHTML = ''; }
@@ -3072,13 +3118,19 @@ function syncBanner() {
   } else b.classList.add('hidden');
 }
 
+function vitrineKnopf() {
+  const k = $('wb-vitrine-knopf');
+  if (k && S.binder) k.textContent = S.binder.sichtbar ? t('vt_zurueckziehen') : t('vt_zeigen');
+}
 function binderAnzeigen() {
-  if (S.binder.id) location.hash = 'binder/' + S.binder.id;
+  if (S.binder.id) hashSetzen('binder/' + S.binder.id);
+  vitrineKnopf();
   $('wb-name').value = S.binder.name;
   $('bw-name').textContent = S.binder.name || t('neuer_binder');
   S.seite = 0; S.preise = {};
   zeichneLayouts();
   zeichneBinder();
+  if (S.preiseAn && typeof preiseLaden === 'function') preiseLaden();
 }
 
 // ---------- Menüs & Modale ----------
@@ -3138,10 +3190,8 @@ async function neuLeer(still) {
 let wzSet = null;
 function zeichneSetliste() {
   const q = ($('set-suche').value || '').toLowerCase();
-  const sets = (S.meta.sets || []).filter((s) => {
-    const n = (LANG === 'en' ? s.name_en : s.name) || s.name || '';
-    return !q || n.toLowerCase().includes(q);
-  });
+  // Gesucht wird in beiden Sprachen und im Set-Code: „Jungle“ findet auch „Dschungel“, „sv1“ das Set
+  const sets = (S.meta.sets || []).filter((s) => !q || [s.name, s.name_en, s.id].some((n) => (n || '').toLowerCase().includes(q)));
   let html = ''; let letzte = null;
   for (const s of sets) {
     const serie = (LANG === 'en' ? (s.aera_name_en || s.aera_name) : s.aera_name) || '—';
@@ -3223,7 +3273,7 @@ async function wechslerOeffnen() {
 }
 async function meineOeffnen() { wechslerOeffnen(); }
 async function binderOeffnen(id) {
-  try { S.binder = await api('api/binders/' + id); binderAnzeigen(); zeichneErgebnisse(); } catch (e) { toast('?'); }
+  try { S.binder = await api('api/binders/' + id); binderAnzeigen(); zeichneErgebnisse(); } catch (e) { toast(t('fehler_laden')); }
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
 }
 async function binderLoeschen(id) {
@@ -3429,7 +3479,7 @@ async function sucheLaden() {
     S.ergebnisse = S.ergebnisse.concat(d.karten);
     S.offset += d.karten.length;
     zeichneErgebnisse();
-  } catch (e) { if (meineSeq === _sucheSeq) toast('Suche?'); }
+  } catch (e) { if (meineSeq === _sucheSeq) toast(t('fehler_suche')); }
 }
 
 function anzahlImBinder(id) {
@@ -3485,7 +3535,7 @@ async function alleHinzufuegen(naechsteSeite) {
     if (!await binderAnlegenWennNoetig()) return;
     speichern(); zeichneBinder(); zeichneErgebnisse();
     toastUndo(d.ids.length + ' ' + t('hinzugefuegt'));
-  } catch (e) { toast('?'); }
+  } catch (e) { toast(t('fehler_laden')); }
 }
 
 // ---------- Binder-Panel ----------
@@ -3540,11 +3590,15 @@ function slotExtras(item, idx) {
   if (S.nurAnsicht) {
     let html = '';
     if (item && VMARK[item.variant]) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
+    if (S.preiseAn && item && item.type === 'card') {   // der Preis-Schalter gilt auch in der Nur-Ansicht
+      const p = preisFuer(item);
+      if (p != null) html += `<span class="preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
+    }
     return html;
   }
   let html = `<button class="raus" onclick="event.stopPropagation();slotEntfernen(${idx})" title="${t('s_entfernen')}">✕</button>
     <button class="mehr" onclick="event.stopPropagation();slotMenue(event,${idx})" title="${t('s_frei_davor')} / ${t('s_details')}">⋯</button>`;
-  if (item && item.type !== 'empty' && item.type !== 'art') {
+  if (item && item.type === 'card') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
   if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">${ic('palette', 11)}</span>`;
@@ -3729,6 +3783,8 @@ function bvRueckenEl() {
 }
 
 function bvZeichne() {
+  const [c, r] = LAYOUTS[S.binder.layout] || [3, 3];
+  $('blaettern').style.setProperty('--bv-ratio', ((2 * (c * 63 + (c - 1) * 6 + 24) + 26) / (r * 88 + (r - 1) * 6 + 24)).toFixed(3));
   const links = bvLinks(BV.spread), rechts = bvRechts(BV.spread);
   $('bv-buch').replaceChildren(bvSeiteEl(links, 'links'), bvRueckenEl(), bvSeiteEl(rechts, 'rechts'));
   const gesamt = bvSeitenZahl();
@@ -3866,9 +3922,13 @@ document.addEventListener('keydown', (e) => {
 // serverseitig (Modul themen.py); hier wird nur gefragt und eingesetzt.
 const TH = { anker: null, vorschlag: [], raus: new Set(), titel: '' };
 
-const TH_CHIPS = ['Pokémon unter Wasser', 'Stadt bei Nacht', 'Verschneiter Wald', 'Sonnenuntergang',
-                  'Weltraum & Sterne', 'Vulkan und Lava', 'Herbstlaub', 'Am Strand', 'Regen',
-                  'Kirschblüten', 'Alte Ruinen', 'Gemütlich zu Hause'];
+const TH_CHIPS_DE = ['Pokémon unter Wasser', 'Stadt bei Nacht', 'Verschneiter Wald', 'Sonnenuntergang',
+                     'Weltraum & Sterne', 'Vulkan und Lava', 'Herbstlaub', 'Am Strand', 'Regen',
+                     'Kirschblüten', 'Alte Ruinen', 'Gemütlich zu Hause'];
+const TH_CHIPS_EN = ['Pokémon underwater', 'City at night', 'Snowy forest', 'Sunset',
+                     'Space & stars', 'Volcano and lava', 'Autumn leaves', 'At the beach', 'Rain',
+                     'Cherry blossoms', 'Ancient ruins', 'Cosy at home'];
+function thChips() { return LANG === 'en' ? TH_CHIPS_EN : TH_CHIPS_DE; }
 
 function themaOeffnen(ankerId) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -3878,7 +3938,7 @@ function themaOeffnen(ankerId) {
   $('th-ergebnis').classList.add('hidden');
   $('th-fehler').textContent = '';
   $('th-anzahl').value = Math.max(1, proSeite());
-  $('th-chips').innerHTML = TH_CHIPS.map((c) => `<button class="chip" onclick="$('th-thema').value=${JSON.stringify(c)};themaSuchen()">${esc(c)}</button>`).join('');
+  $('th-chips').innerHTML = thChips().map((c) => `<button class="chip" onclick="$('th-thema').value=${JSON.stringify(c)};themaSuchen()">${esc(c)}</button>`).join('');
   themaScopeFuellen();
   themaAnkerZeichnen();
   modalOeffnen('modal-thema');
@@ -4242,7 +4302,11 @@ function zeichneVitrine() {
     </div>`).join('');
 }
 
-function vitrineOeffnen(id) { location.hash = 'ansicht/' + id; location.reload(); }
+function vitrineOeffnen(id) {
+  // Der Verlaufseintrag, auf den „Zurück“ später springt, soll die Vitrine sein – nicht die Werkbank.
+  try { sessionStorage.setItem('bp_von_vitrine', '1'); history.replaceState(null, '', location.pathname + '#vitrine'); } catch (e) {}
+  location.hash = 'ansicht/' + id; location.reload();
+}
 
 async function vitrineStimme(id) {
   if (!S.user) return loginOeffnen(t('vt_login'));
@@ -4298,6 +4362,7 @@ async function veroeffentlichenUmschalten() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.binder) return;
   if (!S.user) return loginOeffnen(t('vt_login'));
+  if (!S.binder.id) return toast(t('binder_leer'));
   const jetzt = !!S.binder.sichtbar;
   if (!jetzt && !confirm(t('vt_warnung'))) return;
   try {
@@ -4306,6 +4371,7 @@ async function veroeffentlichenUmschalten() {
       body: JSON.stringify({ binder_id: S.binder.id, oeffentlich: !jetzt }),
     });
     S.binder.sichtbar = jetzt ? 0 : 1;
+    vitrineKnopf();
     toast(jetzt ? t('vt_zurueckgezogen') : t('vt_steht_drin'));
   } catch (e) {
     const code = e.detail && e.detail.code;
@@ -4348,11 +4414,13 @@ async function ansichtBegleitung() {
     ${d.oeffentlich ? `<button class="vt-herz ${d.gestimmt ? 'an' : ''}" id="vt-herz-einzel" onclick="ansichtStimme()">
         ${ic('herz', 15, d.gestimmt ? 'voll' : '')}<span>${d.stimmen}</span></button>` : ''}
     <div style="flex:1"></div>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="seiteUebernehmen()" data-i18n="vt_seite_uebernehmen">Diese Seite übernehmen</button>
-    <button class="btn" style="font-size:12.5px" onclick="binderKopieren()" data-i18n="vt_binder_kopieren">Ganzen Binder kopieren</button>
+    <button class="btn sekundaer" style="font-size:12.5px" onclick="seiteUebernehmen()">${t('vt_seite_uebernehmen')}</button>
+    <button class="btn" style="font-size:12.5px" onclick="binderKopieren()">${t('vt_binder_kopieren')}</button>
     ${d.oeffentlich ? `<button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(S.binder.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>` : ''}`;
   const banner = document.querySelector('.ansicht-banner');
   (banner || document.querySelector('.kopf')).after(leiste);
+  if (d.oeffentlich) document.body.classList.add('von-vitrine');   // öffentliche Binder haben immer einen Weg zurück
+  ansichtGroesse();
 }
 
 async function ansichtStimme() {
@@ -4380,6 +4448,18 @@ async function zielBinder() {
   return null;
 }
 
+/** Aus einem fremden Binder kommen nur Karte, Variante und Sprache mit – nicht das
+ *  Häkchen, der Zustand oder ein KI-Artwork des anderen (das ist dessen bezahltes Bild). */
+function fremdesFach(i) {
+  if (!i || i.type === 'art') return { type: 'empty' };
+  const n = { type: i.type };
+  if (i.id) n.id = i.id;
+  if (i.dex) n.dex = i.dex;
+  if (i.variant && i.variant !== 'normal') n.variant = i.variant;
+  if (i.sprache) n.sprache = i.sprache;
+  return n;
+}
+
 async function seiteUebernehmen() {
   if (!S.user) return loginOeffnen(t('vt_login'));
   const pp = proSeite();
@@ -4389,7 +4469,7 @@ async function seiteUebernehmen() {
   if (!ziel) return uebernehmenAlsNeu(teil, t('vt_kopie_name').replace('{n}', S.binder.name));
   if (!confirm(t('vt_seite_frage').replace('{n}', teil.length).replace('{b}', ziel.name))) return;
   while (ziel.items.length % pp) ziel.items.push({ type: 'empty' });
-  ziel.items.push(...teil.map((i) => ({ ...i })));
+  ziel.items.push(...teil.map(fremdesFach));
   try {
     await api('api/binders/' + ziel.id, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ziel),
@@ -4400,7 +4480,7 @@ async function seiteUebernehmen() {
 
 async function binderKopieren() {
   if (!S.user) return loginOeffnen(t('vt_login'));
-  await uebernehmenAlsNeu(S.binder.items.map((i) => ({ ...i })), t('vt_kopie_name').replace('{n}', S.binder.name));
+  await uebernehmenAlsNeu(S.binder.items.map(fremdesFach), t('vt_kopie_name').replace('{n}', S.binder.name));
 }
 
 async function uebernehmenAlsNeu(items, name) {
@@ -4419,6 +4499,7 @@ async function uebernehmenAlsNeu(items, name) {
 // ---------- Öffentliche Profilseite ----------
 async function profilseiteOeffnen(name) {
   POF.name = name;
+  POF.vonVitrine = !$('vitrine').classList.contains('hidden');   // nach dem Schließen dorthin zurück
   vitrineSchliessen(); planerSchliessen();
   $('profil-oeffentlich').classList.remove('hidden');
   ebeneOeffnen(profilseiteSchliessen);
@@ -4448,7 +4529,10 @@ async function profilseiteOeffnen(name) {
     $('po-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
   }
 }
-function profilseiteSchliessen() { $('profil-oeffentlich').classList.add('hidden'); }
+function profilseiteSchliessen() {
+  $('profil-oeffentlich').classList.add('hidden');
+  if (POF.vonVitrine) { POF.vonVitrine = false; $('vitrine').classList.remove('hidden'); reiterSetzen('seg-vitrine'); }
+}
 
 // ---------- Zurück-Taste ----------
 // Auf dem Handy ist die Wischgeste nach rechts der meistbenutzte Knopf überhaupt.
@@ -4457,6 +4541,11 @@ function profilseiteSchliessen() { $('profil-oeffentlich').classList.add('hidden
 // (Dialog, Planer, Vitrine, Durchblättern) legt deshalb einen Eintrag an; Zurück
 // schließt die oberste Ebene, statt zu navigieren.
 const EBENEN = [];
+
+/** Adresszeile nachführen, ohne Verlaufseintrag und ohne popstate (das würde die oberste Ebene schließen). */
+function hashSetzen(h) {
+  try { history.replaceState(history.state, '', location.pathname + '#' + h); } catch (e) { location.hash = h; }
+}
 
 function ebeneOeffnen(schliesser) {
   EBENEN.push(schliesser);
@@ -4467,15 +4556,26 @@ function ebeneOeffnen(schliesser) {
 function ebeneZu(schliesser) {
   const i = EBENEN.lastIndexOf(schliesser);
   if (i === -1) { schliesser(); return; }
+  if (i === EBENEN.length - 1 && history.state && history.state.bpEbene === EBENEN.length) {
+    // Oberste Ebene mit eigenem Verlaufseintrag: nur zurückgehen – popstate nimmt sie vom
+    // Stapel und schließt sie. Vorher wurde hier geschlossen UND popstate schloss danach die
+    // nächste Ebene darunter (Planer ging mit dem Detail-Dialog zu).
+    try { history.back(); return; } catch (e) { /* alte Browser */ }
+  }
   EBENEN.splice(i, 1);
   schliesser();
-  try { history.back(); } catch (e) {}
 }
 
 window.addEventListener('popstate', () => {
-  if (!EBENEN.length) return;          // nichts offen → ganz normal navigieren
-  const schliessen = EBENEN.pop();
-  try { schliessen(); } catch (e) {}
+  if (EBENEN.length) { const schliessen = EBENEN.pop(); try { schliessen(); } catch (e) {} return; }
+  // Nichts offen: dann hat sich die Route geändert – etwa Zurück aus der Nur-Ansicht in die
+  // Vitrine oder zu einem anderen Binder. Die Seite baut sich dafür sauber neu auf; vorher
+  // blieb die alte Ansicht einfach stehen und wirkte, als käme man nie wieder heraus.
+  const h = location.hash.slice(1);
+  const istAnsicht = h.startsWith('ansicht/');
+  const andererBinder = (istAnsicht || h.startsWith('binder/')) && S.binder && h.split('/')[1] !== S.binder.id;
+  if (istAnsicht !== !!S.nurAnsicht || andererBinder) { location.reload(); return; }
+  if (['vitrine', 'sammlung', 'planer'].includes(h)) ansicht(h);
 });
 
 // ---------- Vitrine-Teil des Profils ----------
@@ -4885,9 +4985,11 @@ async function preiseLaden() {
     Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
     if (d.gedrosselt) toast(t('preise_morgen'));
     else if (d.offen > 0) toast(t('preise_offen'));
+    zeichneBinder();
+    if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   } catch (e) {
     if (gate(e)) { S.preiseAn = false; $('preis-toggle').checked = false; $('wb-preise').classList.add('hidden'); return; }
-    toast('Preise?');
+    toast(t('fehler_preise'));
   }
   zeichnePreisSumme();
 }
@@ -4911,6 +5013,7 @@ function zeichnePreisSumme() {
 // ---------- Planer ----------
 function ansicht(w) {
   profilseiteSchliessen();
+  if (w !== 'profil' && !$('profilseite').classList.contains('hidden')) profilSchliessen();   // Reiter über der Profilseite
   if (w === 'start') { startOeffnen(); return; }
   if (typeof startSchliessen === 'function' && !$('startseite').classList.contains('hidden')) startSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
@@ -5112,11 +5215,11 @@ async function exportPdf(variante, nurFehlende) {
     a.href = blobUrl; a.download = (S.binder.name || 'binder').replace(/[^\wäöüÄÖÜß -]/g, '') + (karten ? '' : '-checkliste') + '.pdf';
     document.body.appendChild(a); a.click(); a.remove();
     arbeitToastEnde();
-    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> (${(blob.size / 1e6).toFixed(1)} MB)`;
+    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> ${blob.size > 50000 ? ` (${(blob.size / 1e6).toFixed(1).replace('.', LANG === 'de' ? ',' : '.')} MB)` : ''}`;
     $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
     if (S.user && S.user.exporte_limit != null && karten) S.user.exporte_benutzt += 1;
-  } catch (e) { arbeitToastEnde(); toast('Export fehlgeschlagen'); }
+  } catch (e) { arbeitToastEnde(); toast(t('fehler_export')); }
 }
 // Dauerhafter Arbeits-Hinweis (Spinner) – verschwindet erst mit arbeitToastEnde()
 function arbeitToast(text) {
@@ -5136,19 +5239,19 @@ async function kaufliste() {
       let code = null;
       try { code = ((await r.json()).detail || {}).code; } catch (e) {}
       const err = new Error('Kaufliste'); err.code = code;
-      if (!gate(err)) toast('Kaufliste fehlgeschlagen');
+      if (!gate(err)) toast(t('fehler_kaufliste'));
       return;
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(await r.blob());
     a.download = (S.binder.name || 'binder') + '-kaufliste.csv';
     a.click();
-  } catch (e) { toast('Kaufliste fehlgeschlagen'); }
+  } catch (e) { toast(t('fehler_kaufliste')); }
 }
 
 function teilen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  if (!S.binder) return;
+  if (!S.binder || !S.binder.id) return toast(t('binder_leer'));
   const url = location.origin + location.pathname + '#ansicht/' + S.binder.id;
   (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
     .then(() => toast(t('link_kopiert')))
@@ -5214,8 +5317,14 @@ function rueckgaengig() {
 function lokalerBinder() {
   return { id: null, name: t('neuer_binder'), mode: 'custom', layout: (S.binder && S.binder.layout) || '3x3', options: {}, items: [] };
 }
+let binderAnlage = null;   // laufender POST, damit zwei schnelle Klicks nicht zwei Binder anlegen
 async function binderAnlegenWennNoetig() {
   if (!S.binder || S.binder.id) return true;
+  if (binderAnlage) return binderAnlage;
+  binderAnlage = _binderAnlegen().finally(() => { binderAnlage = null; });
+  return binderAnlage;
+}
+async function _binderAnlegen() {
   let res;
   try {
     res = await api('api/binders', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -5223,7 +5332,8 @@ async function binderAnlegenWennNoetig() {
   } catch (e) { if (!gate(e)) toast(e.message); return false; }
   S.binder.id = res.id;
   merkeBinderId(res.id);
-  location.hash = 'binder/' + res.id;
+  if (undo && undo.binderId === null) undo.binderId = res.id;   // Rückgängig nach der ersten Karte bleibt möglich
+  hashSetzen('binder/' + res.id);
   return true;
 }
 
@@ -5819,7 +5929,7 @@ async function artworkPdf() {
     a.href = blobUrl; a.download = `artwork-${t('seite').toLowerCase()}-${AW.aktuell.seite + 1}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     arbeitToastEnde();
-    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> (${(blob.size / 1e6).toFixed(1)} MB)`;
+    const el = $('toast'); $('toast-text').innerHTML = `${t('pdf_geladen')} <a href="${blobUrl}" target="_blank" rel="noopener">${t('pdf_oeffnen')}</a> ${blob.size > 50000 ? ` (${(blob.size / 1e6).toFixed(1).replace('.', LANG === 'de' ? ',' : '.')} MB)` : ''}`;
     $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
   } catch (e) { arbeitToastEnde(); toast(t('aw_fehler')); }
@@ -5843,6 +5953,7 @@ function artworkUebernehmen() {
 function artworkImBinder(id) { return S.binder ? S.binder.items.some((i) => i.type === 'art' && i.artwork === id) : false; }
 async function artworkLoeschen() {
   if (!AW.aktuell) return;
+  if (!confirm(t('aw_loeschen_frage'))) return;
   try { await api('api/artwork/' + AW.aktuell.id, { method: 'DELETE' }); } catch (e) { return toast(t('aw_fehler')); }
   // Verweise im aktuellen Binder auflösen (Fach wird wieder leer)
   if (S.binder && artworkImBinder(AW.aktuell.id)) {

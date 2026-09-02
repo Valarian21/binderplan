@@ -6,6 +6,9 @@
 <title>Binderplan – Pokémon-Binder planen, Preise sehen, Platzhalter drucken</title>
 <meta name="description" content="Plane deinen Pokémon-Sammelbinder Fach für Fach — oder fotografiere ihn einfach ab: Binderplan erkennt die Karten am Bild. Seiten nach Motiv füllen lassen (Unter Wasser, Stadt bei Nacht), Cardmarket-Preise in Euro, Sammlungswert, Kaufliste und Platzhalter zum Ausdrucken. Kostenlos starten.">
 <link rel="canonical" href="https://binderplan.app/">
+<link rel="alternate" hreflang="de" href="https://binderplan.app/">
+<link rel="alternate" hreflang="en" href="https://binderplan.app/en">
+<link rel="alternate" hreflang="x-default" href="https://binderplan.app/">
 <meta property="og:title" content="Binderplan – Pokémon-Binder planen & drucken">
 <meta property="og:description" content="Master Set, Pokédex oder Lieblings-Pokémon: Binder planen, Cardmarket-Preise in Euro sehen, Platzhalter drucken, Karten abhaken.">
 <meta property="og:url" content="https://binderplan.app/">
@@ -18,100 +21,23 @@
 <meta property="og:image" content="https://binderplan.app/assets/hero.png">
 <meta property="og:site_name" content="Binderplan">
 <meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://binderplan.app/assets/hero.png">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/","inLanguage":"de","description":"Pokémon-Sammelbinder planen: Master Set, Pokédex, Cardmarket-Preise in Euro, Kaufliste und druckbare Platzhalter.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Gratis"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Plus monatlich"},{"@type":"Offer","price":"7.99","priceCurrency":"EUR","name":"Pro monatlich"}]}
 </script>
-<style>
-  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518; } }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Archivo','Trebuchet MS',sans-serif; line-height:1.5; }
-  a { color:var(--akzent); }
-  .wrap { max-width:1060px; margin:0 auto; padding:0 20px; }
-  header { display:flex; align-items:center; gap:14px; padding:14px 0; }
-  header .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:18px; color:var(--ink); text-decoration:none; }
-  header nav { margin-left:auto; display:flex; gap:8px; align-items:center; }
-  .btn { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:999px; background:var(--akzent); color:#fff; font-weight:700; text-decoration:none; font-size:15px; border:none; cursor:pointer; }
-  .btn:hover { background:var(--akzent-dunkel); }
-  .btn.sek { background:var(--card); color:var(--ink); border:1.5px solid var(--line); }
-
-  .neu-drei { border: 2px solid var(--kontur); border-radius: 18px; padding: 26px 26px 30px;
-              margin-top: 34px; box-shadow: 6px 6px 0 var(--gelb); }
-  .neu-drei h2 { margin-top: 0; }
-  .neu-drei em { font-style: normal; font-weight: 700; color: var(--blau); }
-  .hero { display:grid; grid-template-columns: 1.1fr 1fr; gap:40px; align-items:center; padding:40px 0 30px; }
-  .hero h1 { font-size:clamp(30px,4.5vw,46px); line-height:1.12; margin:0 0 14px; }
-  .hero h1 em { color:var(--akzent); font-style:normal; }
-  .hero p.lead { font-size:17px; color:var(--mut); margin:0 0 22px; max-width:52ch; }
-  .hero .cta { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .hero .klein { font-size:12.5px; color:var(--mut); margin-top:10px; }
-  .shot { border:1.5px solid var(--line); border-radius:16px; overflow:hidden; background:var(--card); box-shadow:0 20px 50px rgba(58,50,39,.12); }
-  .shot img { display:block; width:100%; height:auto; }
-  .shot--hoch { max-width:420px; margin:0 auto; }
-  section { padding:34px 0; }
-  h2 { font-size:26px; margin:0 0 6px; }
-  .sub { color:var(--mut); margin:0 0 22px; }
-  .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-  .step { background:var(--card); border:1.5px solid var(--line); border-radius:16px; padding:18px; }
-  .step .n { display:inline-flex; width:30px; height:30px; border-radius:50%; background:var(--akzent); color:#fff; font-weight:700; align-items:center; justify-content:center; margin-bottom:10px; }
-  .step h3 { margin:0 0 6px; font-size:16px; }
-  .step p { margin:0; color:var(--mut); font-size:14px; }
-  .feat { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
-  .feat div { background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px; }
-  .feat h3 { margin:0 0 4px; font-size:15px; }
-  .feat p { margin:0; font-size:13.5px; color:var(--mut); }
-  .tarife { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
-  .tarif { background:var(--card); border:2px solid var(--line); border-radius:16px; padding:20px; }
-  .tarif.top { border-color:var(--akzent); }
-  .tarif .p { font-size:28px; font-weight:700; margin:4px 0; }
-  .tarif ul { padding-left:18px; margin:10px 0 14px; font-size:14px; color:var(--mut); }
-  .faq details { background:var(--card); border:1.5px solid var(--line); border-radius:12px; padding:12px 16px; margin-bottom:8px; }
-  .faq summary { font-weight:700; cursor:pointer; }
-  .faq p { margin:8px 0 0; color:var(--mut); font-size:14px; }
-  footer { padding:26px 0 40px; color:var(--mut); font-size:12.5px; border-top:1.5px solid var(--line); margin-top:20px; }
-  footer a { color:var(--mut); }
-  @media (max-width:800px) { .hero { grid-template-columns:1fr; padding-top:16px; } .steps { grid-template-columns:1fr; } header nav .sek { display:none; } }
-
-  /* ================= Neunundneunzig =================
-     Laut nach außen, ruhig da, wo gearbeitet wird. Der Aufmacher ist ein
-     Aufkleber: Kartenrücken-Blau, harte Kontur, versetzter Schatten. Alles
-     Weitere bleibt weiß, damit die Karten die einzigen bunten Flächen sind. */
-  body { font-family:'Archivo','Trebuchet MS',sans-serif; }
-  h1, h2, .tarif .p, header .logo { font-family:'Bungee','Archivo',sans-serif; font-weight:400; }
-  .wrap { max-width:1080px; }
-  header .logo { font-size:17px; letter-spacing:.005em; gap:10px; }
-  h2 { font-size:23px; letter-spacing:.005em; }
-  a { color:var(--blau); }
-
-  .btn { border-radius:11px; border:2.5px solid var(--kontur); box-shadow:3px 3px 0 var(--kontur);
-         font-weight:800; font-size:14.5px; letter-spacing:.005em; padding:10px 18px; transition:transform .08s, box-shadow .08s; }
-  .btn:hover { background:var(--akzent-dunkel); transform:translate(1.5px,1.5px); box-shadow:1.5px 1.5px 0 var(--kontur); }
-  .btn.sek { background:var(--card); color:var(--ink); }
-  .btn.sek:hover { background:var(--gelb); }
-
-  .hero { background:var(--blau); color:#fff; border:3px solid var(--kontur); border-radius:20px;
-          box-shadow:9px 9px 0 var(--kontur); padding:32px; margin:10px 0 30px; gap:32px; }
-  .hero h1 { font-size:clamp(25px,3.4vw,37px); line-height:1.16; margin-bottom:16px; }
-  .hero h1 em { color:var(--gelb); }
-  .hero p.lead { color:#CBD6F2; }
-  .hero .klein { color:#A9B8E0; }
-  .hero .shot { box-shadow:6px 6px 0 var(--kontur); border-color:var(--kontur); }
-
-  .step, .feat div, .tarif, .faq details, .shot {
-    border:2.5px solid var(--kontur); border-radius:14px; box-shadow:4px 4px 0 var(--kontur); background:var(--card); }
-  .step .n { border-radius:8px; border:2.5px solid var(--kontur); background:var(--gelb); color:var(--kontur); font-family:'Archivo',sans-serif; font-weight:800; }
-  .step h3, .feat h3, .faq summary { font-weight:800; }
-  .tarif.top { box-shadow:6px 6px 0 var(--akzent); }
-  .tarif .p { font-size:25px; }
-  footer { border-top:2.5px solid var(--kontur); }
-  @media (max-width:800px) { .hero { padding:22px; box-shadow:6px 6px 0 var(--kontur); } }
-</style>
+<link rel="stylesheet" href="/assets/landing.css">
 <script>
-  // Rückkehrer (Binder oder Konto im Browser) landen direkt in der App; ?landing=1 zeigt diese Seite trotzdem.
+  // Sprachwahl wie in der App (localStorage bp_lang): eine ausdrückliche Wahl gewinnt und wird als Cookie
+  // gespiegelt, damit der Server sie beim nächsten Aufruf kennt; die Browsersprache wertet der Server aus. Rückkehrer (Binder oder
+  // Konto im Browser) landen direkt in der App; ?landing=1 zeigt diese Seite trotzdem.
   (function(){ try {
     var q = new URLSearchParams(location.search);
+    if (q.get('lang')) localStorage.setItem('bp_lang', q.get('lang') === 'de' ? 'de' : 'en');
+    var pref = localStorage.getItem('bp_lang');
+    if (pref) document.cookie = 'bp_lang=' + pref + '; path=/; max-age=31536000; SameSite=Lax';
+    if (pref === 'en') { location.replace('/en' + location.search + location.hash); return; }
     if (location.hash || (!q.has('landing') && (localStorage.getItem('bp_token') || localStorage.getItem('bp_binder')))) {
       location.replace('/app' + location.search + location.hash);
     }
@@ -123,6 +49,7 @@
   <header>
     <a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg> Binderplan</a>
     <nav>
+      <a class="sprache" href="/en?lang=en" hreflang="en" title="English version">EN</a>
       <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel-Binder</a>
       <a class="btn" href="/app">Binder planen – kostenlos</a>
     </nav>
@@ -199,7 +126,7 @@
     <h2>Preise</h2>
     <p class="sub">Planen ist kostenlos. Pro nimmt die Grenzen weg.</p>
     <div class="tarife">
-      <div class="tarif"><strong>Gratis</strong><div class="p">0 €</div><ul><li>Planen ohne Anmeldung</li><li>3 gespeicherte Binder</li><li>2 Platzhalter-PDFs pro Monat, Checklisten unbegrenzt</li><li>20 Credits zum Ausprobieren (2 Artwork-Seiten)</li></ul><a class="btn sek" href="/app">Loslegen</a></div>
+      <div class="tarif"><strong>Gratis</strong><div class="p">0 €</div><ul><li>Planen ohne Anmeldung</li><li>3 gespeicherte Binder</li><li>2 Platzhalter-PDFs pro Monat, Checklisten unbegrenzt</li><li>12 Credits zum Ausprobieren (eine Artwork-Seite)</li></ul><a class="btn sek" href="/app">Loslegen</a></div>
       <div class="tarif top"><strong>Plus</strong><div class="p">3,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Unbegrenzte Binder &amp; Drucke</li><li>Preise jederzeit aktualisieren, Kaufliste als CSV</li><li><b>80 Credits im Monat</b> = 8 Artwork-Seiten</li><li>Jahr: 39,99 € (2 Monate geschenkt)</li></ul><a class="btn" href="/app?upgrade=1">Plus holen</a></div>
       <div class="tarif"><strong>Pro</strong><div class="p">7,99 € <span style="font-size:14px;color:var(--mut)">/ Monat</span></div><ul><li>Alles aus Plus</li><li><b>200 Credits im Monat</b> = 20 Artwork-Seiten</li><li>Jahr: 79,99 € (2 Monate geschenkt)</li></ul><a class="btn sek" href="/app?upgrade=1">Pro holen</a></div>
     </div>
@@ -218,7 +145,7 @@
   </section>
 
   <footer>
-    Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#widerruf">Widerruf</a> · <a href="recht#datenschutz">Datenschutz</a> · <a href="/kuendigen">Verträge hier kündigen</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
+    Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#widerruf">Widerruf</a> · <a href="recht#datenschutz">Datenschutz</a> · <a href="/kuendigen">Verträge hier kündigen</a> · <a href="/en?lang=en" hreflang="en">English</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
   </footer>
 </div>
 </body>

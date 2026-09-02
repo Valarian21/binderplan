@@ -273,7 +273,7 @@ def register(app, *, get_db, current_user, require_user, env, CACHE, admin_key):
         """Der Import kostet fast nichts, ist aber ein offener Endpunkt — deshalb
         eine Tagesgrenze je Konto bzw. je Adresse."""
         user = current_user(request)
-        kennung = str(user["id"]) if user else (request.client.host if request.client else "?")
+        kennung = str(user["id"]) if user else (request.headers.get("x-real-ip", "").strip() or (request.client.host if request.client else "?"))
         schluessel = f"fotoimport:{time.strftime('%Y-%m-%d')}:{kennung}"
         con = get_db()
         row = con.execute("SELECT value FROM kv WHERE key=?", (schluessel,)).fetchone()

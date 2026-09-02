@@ -117,7 +117,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             return {"karten": [], "gesamt": 0}
 
         # Filter über die vorhandene Kartenabfrage, danach auf den Besitz eingeschränkt
-        sql_where, params, order = card_query(q, set_id, serie, typ, "", "datum", "asc", rarity, 0, "intl",
+        sql_where, params, order = card_query(q, set_id, serie, typ, "", "datum", "asc", rarity, 0, "",   # alle Regionen
                                               illustrator, "", "", "", 0, 0, 0, "", 0,
                                               art_ort, art_zeit, art_wasser, art_merkmal, art_text)
         con = get_db()

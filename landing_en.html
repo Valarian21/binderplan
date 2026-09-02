@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binderplan – Plan your Pokémon binder, see prices, print placeholders</title>
+<meta name="description" content="Plan your Pokémon card binder slot by slot — or just photograph it: Binderplan recognises the cards from the picture. Fill pages by motif (underwater, city at night), Cardmarket prices in euros, collection value, buy list and printable placeholders. Start for free.">
+<link rel="canonical" href="https://binderplan.app/en">
+<link rel="alternate" hreflang="de" href="https://binderplan.app/">
+<link rel="alternate" hreflang="en" href="https://binderplan.app/en">
+<link rel="alternate" hreflang="x-default" href="https://binderplan.app/">
+<meta property="og:title" content="Binderplan – Plan & print your Pokémon binder">
+<meta property="og:description" content="Master set, Pokédex or your favourite Pokémon: plan the binder, see Cardmarket prices in euros, print placeholders, tick off cards.">
+<meta property="og:url" content="https://binderplan.app/en">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="/assets/schrift.css">
+<link rel="stylesheet" href="/assets/landing.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<meta name="theme-color" content="#2A4B9B">
+<meta property="og:image" content="https://binderplan.app/assets/hero.png">
+<meta property="og:site_name" content="Binderplan">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://binderplan.app/assets/hero.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Binderplan","applicationCategory":"UtilitiesApplication","operatingSystem":"Web","url":"https://binderplan.app/en","inLanguage":"en","description":"Plan Pokémon card binders: master set, Pokédex binder, Cardmarket prices in euros, buy list and printable placeholders.","offers":[{"@type":"Offer","price":"0","priceCurrency":"EUR","name":"Free"},{"@type":"Offer","price":"3.99","priceCurrency":"EUR","name":"Plus monthly"},{"@type":"Offer","price":"7.99","priceCurrency":"EUR","name":"Pro monthly"}]}
+</script>
+<script>
+  // Sprachwahl wie in der App (localStorage bp_lang): eine ausdrückliche Wahl gewinnt und wird als Cookie
+  // gespiegelt; die Browsersprache wertet der Server aus. Rückkehrer landen direkt in der App.
+  (function(){ try {
+    var q = new URLSearchParams(location.search);
+    if (q.get('lang')) localStorage.setItem('bp_lang', q.get('lang') === 'de' ? 'de' : 'en');
+    var pref = localStorage.getItem('bp_lang');
+    if (pref) document.cookie = 'bp_lang=' + pref + '; path=/; max-age=31536000; SameSite=Lax';
+    if (pref === 'de') { location.replace('/' + location.search + location.hash); return; }
+    if (location.hash || (!q.has('landing') && (localStorage.getItem('bp_token') || localStorage.getItem('bp_binder')))) {
+      location.replace('/app' + location.search + location.hash);
+    }
+  } catch (e) {} })();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="/en"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg> Binderplan</a>
+    <nav>
+      <a class="sprache" href="/?lang=de" hreflang="de" title="Deutsche Version">DE</a>
+      <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Sample binder</a>
+      <a class="btn" href="/app">Plan a binder – free</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Your Pokémon binder, <em>planned slot by slot</em> – with real prices.</h1>
+      <p class="lead">Master set, Pokédex or every card of your favourite Pokémon: Binderplan lays out the slots, shows Cardmarket prices in euros, builds the buy list and prints black-and-white placeholders labelled “page · slot” – until the real card takes its place.</p>
+      <div class="cta">
+        <a class="btn" href="/app">Plan a binder now</a>
+        <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">See an example</a>
+      </div>
+      <div class="klein">Free, no sign-up needed · 23,000+ cards, every era, English &amp; German · Japanese sets included</div>
+    </div>
+    <div class="shot shot--hoch"><img src="assets/hero.png" alt="Binderplan: a binder page with nine cards and Cardmarket prices" width="600" height="720"></div>
+  </div>
+
+  <section class="neu-drei">
+    <h2>Three things you won’t find anywhere else</h2>
+    <p class="sub">New in Binderplan since September — and all three are free.</p>
+    <div class="feat">
+      <div>
+        <h3>Photo in, binder out</h3>
+        <p>Photograph your binder pages. Binderplan recognises the cards from the <em>picture</em> —
+        not from text — and builds the binder from them, page by page in the order of your photos.
+        In our test 8 of 9 cards were right, and the ninth flagged itself as uncertain.</p>
+      </div>
+      <div>
+        <h3>Pages by motif</h3>
+        <p>“Pokémon underwater”, “city at night”, “snowy forest”. We looked at all 23,461 card
+        artworks once and know <em>what is in the picture</em> — not just the card’s type. A Gyarados
+        on a blue background is simply not an underwater scene.</p>
+      </div>
+      <div>
+        <h3>The Showcase</h3>
+        <p>Show off your binder, give others a heart, take a beautiful page into your own binder
+        with one click. No comment box, no messages — just binders.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">Three steps from an empty folder to a finished plan.</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3>Pick a set or a Pokémon</h3><p>Templates for master sets, Pokédex binders and “every card of one Pokémon” – or search card by card. Filter by era, set, card kind, rarity and type.</p></div>
+      <div class="step"><span class="n">2</span><h3>Arrange the slots</h3><p>Drag, sort, leave pages free. Grids from 2×2 to 5×5, Reverse Holo, 1st Edition and special prints as their own slots.</p></div>
+      <div class="step"><span class="n">3</span><h3>Print &amp; tick off</h3><p>Placeholders at 63 × 88 mm, 9 per A4 sheet, each labelled “page · slot”. Bought the card? Tick it – the buy list only shows what is still missing.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shot"><img src="assets/planer.png" alt="Binderplan planner: eight binder pages side by side, cards with prices" width="1920" height="940" loading="lazy"></div>
+  </section>
+
+  <section>
+    <h2>What Binderplan does</h2>
+    <p class="sub">Everything between “I want that set” and “the binder is full”.</p>
+    <div class="feat">
+      <div><h3>Cardmarket prices in euros</h3><p>Trend price per card, holo prices, total value of the binder and price history – updated daily.</p></div>
+      <div><h3>A buy list that thinks along</h3><p>Only the cards still missing – with price and total, as CSV for Cardmarket wants or your local card shop.</p></div>
+      <div><h3>Printable placeholders</h3><p>Black and white, true to size, with watermark and slot label. Or the checklist without images – page by page for ticking off.</p></div>
+      <div><h3>Templates &amp; import</h3><p>Master set (with reverse holos), Pokédex Gen 1–9, every card of one Pokémon, rainbow sorting. Paste lists from TCG Collector, Collectr or Cardmarket.</p></div>
+      <div><h3>English, German, Japan</h3><p>English catalogue, German names and images, and the Japanese sets with euro prices – as their own set tree.</p></div>
+      <div><h3>AI artwork pages</h3><p>One card in a slot, and the AI continues its artwork across the whole binder page – like the card, as a comic, watercolour or photo-real. As a print sheet at 63 × 88 mm for the empty sleeves.</p></div>
+      <div><h3>Your collection</h3><p>What you actually own – kept apart from the plan. Value by Cardmarket, duplicates as trade material, and the buy list across all binders.</p></div>
+      <div><h3>Flip through like a real album</h3><p>Two pages side by side, rings in the middle, the sheet really turns. Black pages so the cards stand out.</p></div>
+      <div><h3>Share &amp; use on any device</h3><p>Share a binder as a link (view only), keep planning on your phone, light or dark.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pricing</h2>
+    <p class="sub">Planning is free. Pro removes the limits.</p>
+    <div class="tarife">
+      <div class="tarif"><strong>Free</strong><div class="p">€0</div><ul><li>Plan without signing up</li><li>3 saved binders</li><li>2 placeholder PDFs per month, unlimited checklists</li><li>12 credits to try things out (one artwork page)</li></ul><a class="btn sek" href="/app">Get started</a></div>
+      <div class="tarif top"><strong>Plus</strong><div class="p">€3.99 <span style="font-size:14px;color:var(--mut)">/ month</span></div><ul><li>Unlimited binders &amp; prints</li><li>Refresh prices any time, buy list as CSV</li><li><b>80 credits a month</b> = 8 artwork pages</li><li>Yearly: €39.99 (2 months free)</li></ul><a class="btn" href="/app?upgrade=1">Get Plus</a></div>
+      <div class="tarif"><strong>Pro</strong><div class="p">€7.99 <span style="font-size:14px;color:var(--mut)">/ month</span></div><ul><li>Everything in Plus</li><li><b>200 credits a month</b> = 20 artwork pages</li><li>Yearly: €79.99 (2 months free)</li></ul><a class="btn sek" href="/app?upgrade=1">Get Pro</a></div>
+    </div>
+    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:10px">Credits are also available on their own: 100 for €4.99, 250 for €10.99, 600 for €23.99 – no subscription, they never expire. An artwork page costs 10 credits (with more than two cards on the page, 2 more per card, 30 at most).</p>
+    <p class="klein" style="font-size:12px;color:var(--mut);margin-top:6px">Final prices; no VAT is charged under § 19 UStG (German small-business rule). Payment via Stripe (card, PayPal, Apple&nbsp;Pay, Google&nbsp;Pay, Klarna). Subscriptions renew automatically and can be <a href="/kuendigen">cancelled at any time to the end of the term</a>.</p>
+  </section>
+
+  <section class="faq">
+    <h2>Frequently asked questions</h2>
+    <details><summary>May I print the placeholders?</summary><p>Yes – for private use as placeholders in your own binder. The prints are black and white, carry a watermark and must not be sold, traded or passed off as real cards. Binderplan is an unofficial fan tool with no affiliation to The Pokémon Company or Nintendo.</p></details>
+    <details><summary>Where do the prices come from?</summary><p>From the Cardmarket trend (euros) via the TCGdex database. They are a guide, not an offer – some old cards have no Cardmarket entry, then you will see a “?”.</p></details>
+    <details><summary>Can I use German card names and images?</summary><p>Yes. The card language (DE/EN) is switched in the filter column and applies to names, images, set names and the PDF. For the old WotC sets (Base Set, Jungle, Fossil …) there are no German scans in the database; those cards are marked “EN”.</p></details>
+    <details><summary>What are credits?</summary><p>Credits are the unit for the AI artwork pages – only for those, everything else is included in the plan. An artwork page costs 10 credits; with more than two cards on the page, 2 more per card (30 at most). You see the cost of a page before you start. If a generation fails technically, the credits come back automatically. Credits bought on their own never expire.</p></details>
+    <details><summary>How do I cancel?</summary><p>With two clicks at <a href="/kuendigen">binderplan.app/kuendigen</a> – no login required. Your access stays until the end of the paid term, after that your account continues for free. Purchased credits are yours to keep.</p></details>
+    <details><summary>Do I need an account?</summary><p>Not for planning. You need a free account for the card PDF export and to see your binders on several devices.</p></details>
+    <details><summary>Why are the legal pages in German?</summary><p>Binderplan is run from Germany. Legal notice, terms, withdrawal policy and privacy policy are therefore provided in German, as required by German law. The app itself and this page are fully available in English.</p></details>
+  </section>
+
+  <footer>
+    Binderplan · <a href="recht#impressum">Legal notice</a> · <a href="recht#agb">Terms</a> · <a href="recht#widerruf">Withdrawal</a> · <a href="recht#datenschutz">Privacy</a> · <a href="/kuendigen">Cancel contracts here</a> · <a href="/?lang=de" hreflang="de">Deutsch</a> · Unofficial fan tool, not affiliated with The Pokémon Company / Nintendo. Card data: TCGdex, PokéAPI.
+  </footer>
+</div>
+</body>
+</html>
