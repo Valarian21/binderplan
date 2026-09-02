@@ -83,13 +83,14 @@
      pro Seite, die das Umblättern spürbar verzögert haben. */
   /* Das Gitter bleibt im Fluss und gibt der Seite ihre Höhe; das Bild liegt
      absolut dahinter und deckt genau die Fläche der Fächer ab. */
-  .bv-seite.ganzseite { position: relative; display: block; }
+  .bv-seite.ganzseite { position: relative; display: block; --fuge: clamp(4px, .7vw, 9px); }
   .bv-seite.ganzseite > img { position: absolute; left: clamp(8px, 1.2vw, 16px); top: clamp(8px, 1.2vw, 16px);
                               width: calc(100% - 2 * clamp(8px, 1.2vw, 16px)); height: calc(100% - 2 * clamp(8px, 1.2vw, 16px));
                               object-fit: fill; border-radius: 3px; z-index: 0; }
-  .bv-seite.ganzseite .bv-gitter { position: relative; z-index: 1; display: grid; gap: clamp(4px, .7vw, 9px); }
+  .bv-seite.ganzseite .bv-gitter { position: relative; z-index: 1; display: grid; gap: var(--fuge); }
   .bv-seite.ganzseite .bv-gitter > i { aspect-ratio: 63/88; border: 1px solid rgba(255,255,255,.15);
-                                       border-radius: 5px; box-shadow: inset 0 0 14px rgba(0,0,0,.3); }
+                                       border-radius: 5px; box-shadow: inset 0 0 14px rgba(0,0,0,.3);
+                                       outline: calc(var(--fuge) / 2 + .5px) solid var(--bseite); }
   .bv-slot { position: relative; aspect-ratio: 63/88; border-radius: 5px; overflow: hidden;
              background: var(--bfach); border: 1px solid var(--bkante); display: flex; align-items: center; justify-content: center; }
   .bv-slot.frei { background: transparent; border-style: dashed; }
@@ -231,7 +232,7 @@
   .vt-tabs { display: flex; gap: 4px; }
   .vt-tabs button { font-size: 13px; font-weight: 700; padding: 6px 13px; border-radius: 999px; color: var(--mut); }
   .vt-tabs button.on { background: var(--kontur); color: #fff; }
-  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; }
   /* Eine Vitrine-Kachel zeigt, was den Binder ausmacht: eine echte aufgeschlagene Seite auf
      dunklem Grund. Vier Karten in einer Reihe sahen aus wie eine beliebige Trefferliste. */
   .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
@@ -623,7 +624,8 @@
   /* ---------- Werkbank-Rahmen ---------- */
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
-          border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap; }
+          border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap;
+          position: relative; z-index: 45; }
   .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
   .menuwrap { position: relative; }
   .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
@@ -835,9 +837,12 @@
   .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
   .an-rest { display: none; }
+  /* Zielmodus: jedes Fach ist ein möglicher Landeplatz */
+  body.ziel-modus #planer-rumpf .slot { cursor: crosshair; }
+  body.ziel-modus #planer-rumpf .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
   .an-marke { font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
               background: var(--gelb); color: #14161C; text-transform: uppercase; }
-  .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 14px; padding-bottom: 20px; }
+  .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding-bottom: 20px; }
   .bcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; cursor: pointer;
            display: flex; flex-direction: column; gap: 8px; text-align: left; }
   .bcard:hover { border-color: var(--akzent); }
@@ -914,6 +919,8 @@
   .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bw-caret { color: var(--mut); font-size: 11px; }
   #menu-bw { min-width: 320px; }
+  /* Wer viele Binder hat, bekam eine Liste, die unten aus dem Fenster lief. */
+  #bw-liste { max-height: min(58vh, 420px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .bw-edit { display: flex; align-items: center; gap: 6px; padding: 6px 12px 4px; }
   .bw-edit .stift { color: var(--mut); }
   .bw-edit input.bindername { flex: 1; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--eingabe); font-size: 14px; }
@@ -1416,6 +1423,8 @@
           <div class="menuwrap">
             <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen" data-i18n-title="binder_opt_t">⋯</button>
             <div class="menu hidden" id="menu-binder" style="min-width:260px">
+              <button onclick="lueckenSchliessen()" data-i18n="luecken">Lücken schließen</button>
+              <div class="trenn"></div>
               <div class="menu-lbl" data-i18n="raster">Raster</div>
               <select class="feld" id="wb-layout" style="margin:2px 12px 8px;width:calc(100% - 24px)" onchange="layoutWechsel(this.value)"></select>
               <div class="menu-lbl desktop-only" data-i18n="ansicht">Größe der Ansicht</div>
@@ -1812,10 +1821,13 @@
     <strong id="planer-anzahl">0</strong> <span data-i18n="gewaehlt">gewählt</span>
     <select class="feld" id="planer-sortkey" style="width:auto;padding:5px 8px"></select>
     <button class="btn sekundaer pl-akt" onclick="auswahlSortieren()" data-i18n="sortieren">Sortieren</button>
+    <button class="btn sekundaer pl-akt" onclick="zielModusAn()" data-i18n="hierher">Hierher …</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(-1)" title="←">◂</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(1)" title="→">▸</button>
     <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
     <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlZuLeer()" data-i18n="zu_leer">Fächer freimachen</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlEntfernen()" data-i18n="entfernen">Entfernen</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlEntfernen()" data-i18n="entfernen">Löschen</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlHerausnehmen()" data-i18n="herausnehmen">Herausnehmen</button>
     <button class="btn sekundaer pl-akt" onclick="auswahlLeeren()" data-i18n="aufheben">Aufheben</button>
   </div>
 </div>
@@ -2356,7 +2368,12 @@ const T = {
     an_basis: 'Grundlage: {n} von {g} Karten, die die Reihe von Anfang bis Ende tragen – {p} % des heutigen Werts.',
     an_basis_index: 'Bewegung, nicht Wert: erster Tag = 100. Getragen von {n} deiner {g} Karten, das sind {p} % des heutigen Werts. Sobald der tägliche Preislauf länger läuft, steht hier wieder ein Eurobetrag.',
     an_bewegung_kurz: 'Bewegung', an_ohne_angabe: 'ohne Angabe', an_uebrige: 'übrige',
-    an_mehr: 'Weitere {n} zeigen', an_leer_suchen: 'Karten suchen', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
+    an_mehr: 'Weitere {n} zeigen', an_leer_suchen: 'Karten suchen',
+    // Planer: Löschen räumt das Fach, Herausnehmen rückt nach
+    herausnehmen: 'Herausnehmen', s_herausnehmen_t: 'Fach ganz entfernen – alles dahinter rückt auf',
+    hierher: 'Hierher …', ziel_hinweis: 'Jetzt das Fach anklicken, an das die Auswahl soll.',
+    luecken: 'Lücken schließen', keine_luecken: 'Es gibt keine leeren Fächer.',
+    luecken_zu: '{n} leere Fächer entfernt', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
     an_beide_boersen: 'Europa / USA', an_abstand: 'Abstand',
     an_verworfen: '{n} weitere Paare lagen mehr als 70 % auseinander und sind ausgelassen – dort vergleicht die Quelle zwei verschiedene Drucke.',
     an_reihe_kurz: 'Die Messreihe ist noch zu kurz für eine Kurve.',
@@ -2656,7 +2673,11 @@ const T = {
     an_basis: 'Basis: {n} of {g} cards carry the series from start to end – {p} % of today\'s value.',
     an_basis_index: 'Movement, not value: first day = 100. Carried by {n} of your {g} cards, which is {p} % of today\'s value. Once the daily price run has been going longer, a euro figure returns here.',
     an_bewegung_kurz: 'Movement', an_ohne_angabe: 'not stated', an_uebrige: 'others',
-    an_mehr: 'Show {n} more', an_leer_suchen: 'Find cards', an_von_bis: 'Before → now', an_aenderung: 'Change',
+    an_mehr: 'Show {n} more', an_leer_suchen: 'Find cards',
+    herausnehmen: 'Take out', s_herausnehmen_t: 'Remove the slot entirely – everything behind moves up',
+    hierher: 'Move here …', ziel_hinweis: 'Now click the slot the selection should go to.',
+    luecken: 'Close gaps', keine_luecken: 'There are no empty slots.',
+    luecken_zu: '{n} empty slots removed', an_von_bis: 'Before → now', an_aenderung: 'Change',
     an_beide_boersen: 'Europe / US', an_abstand: 'Gap',
     an_verworfen: '{n} further pairs sat more than 70 % apart and were left out – there the source compares two different printings.',
     an_reihe_kurz: 'The series is still too short to draw.',
@@ -5716,6 +5737,16 @@ async function blaetternBild() {
       const x = x0 + RAND + (i % cols) * (KB + LU);
       const y = RAND + Math.floor(i / cols) * (KH + LU);
       if (!ganz) { g.fillStyle = '#1c1f25'; g.fillRect(x, y, KB, KH); }
+      else {
+        // Fugen freistellen: rings um das Fach die halbe Lücke in Seitenfarbe übermalen,
+        // damit die Artwork-Seite aussieht wie im Album und nicht wie ein Poster.
+        const h = LU / 2;
+        g.fillStyle = '#0e1013';
+        g.fillRect(x - h, y - h, KB + LU, h);            // oben
+        g.fillRect(x - h, y + KH, KB + LU, h);           // unten
+        g.fillRect(x - h, y - h, h, KH + LU);            // links
+        g.fillRect(x + KB, y - h, h, KH + LU);           // rechts
+      }
       if (it && it.type === 'card') {
         const im = await laden(imgUrl(it.id));
         if (im) g.drawImage(im, x, y, KB, KH);
@@ -5770,7 +5801,18 @@ function seiteWechsel(d) {
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
   zeichneBinder();
 }
-function slotEntfernen(idx) { if (S.binder.items[idx] && S.binder.items[idx].type === 'art') return fachFreimachen(idx); merken('raus'); S.binder.items.splice(idx, 1); speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); toastUndo(t('entfernen')); }
+function slotEntfernen(idx) { fachFreimachen(idx); }
+
+/** Fach wirklich herausnehmen — alles dahinter rückt auf. Nur noch dort, wo jemand es
+ *  ausdrücklich verlangt: im Fach-Menü und über die Auswahlleiste. */
+function slotHerausnehmen(idx) {
+  if (!S.binder.items[idx]) return;
+  merken('raus');
+  S.binder.items.splice(idx, 1);
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('herausnehmen'));
+}
 function binderLeeren() {
   if (!S.binder.items.length) return;
   merken('leeren');
@@ -6563,6 +6605,7 @@ function zeichnePlaner() {
 let letzterKlick = null;
 function planerKlick(ev, idx) {
   if (ev.target.closest('.raus')) return;
+  if (zielModus) return auswahlZuZiel(idx);
   if (ev.shiftKey && letzterKlick !== null) {
     const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
     for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
@@ -6612,21 +6655,96 @@ function auswahlLeeren() { S.auswahl.clear(); auswahlZeigen(); }
 
 function auswahlVerschieben(wohin) {
   if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  if (typeof wohin === 'number') return auswahlRuecken(wohin);
+  merken('verschieben');
   const idxe = [...S.auswahl].sort((a, b) => a - b);
   const bewegt = idxe.map((i) => S.binder.items[i]);
   const rest = S.binder.items.filter((_, i) => !S.auswahl.has(i));
   S.binder.items = wohin === 'anfang' ? bewegt.concat(rest) : rest.concat(bewegt);
   S.auswahl.clear();
-  speichern(); zeichnePlaner();
+  speichern(); zeichnePlaner(); zeichneBinder();
 }
+
+/** Die Auswahl um `d` Fächer rücken, ohne die Ordnung ringsum zu zerstören: der Block
+ *  tauscht mit dem, was auf der Zielseite steht. Vorher schoben die Pfeiltasten die
+ *  Auswahl unbemerkt ans Binderende — ein Tastendruck, 300 Karten verschoben. */
+function auswahlRuecken(d) {
+  const idxe = [...S.auswahl].sort((a, b) => a - b);
+  const ziel = idxe.map((i) => i + d);
+  if (ziel[0] < 0) return;
+  merken('ruecken');
+  const laenge = Math.max(S.binder.items.length, ziel[ziel.length - 1] + 1);
+  for (let i = S.binder.items.length; i < laenge; i++) S.binder.items[i] = { type: 'empty' };
+  const bewegt = idxe.map((i) => S.binder.items[i]);
+  // Zuerst die Quellfächer räumen, dann füllen — sonst überschreibt ein Block sich selbst.
+  const verdraengt = ziel.map((z) => (idxe.includes(z) ? null : S.binder.items[z]));
+  idxe.forEach((i) => { S.binder.items[i] = { type: 'empty' }; });
+  ziel.forEach((z, k) => { S.binder.items[z] = bewegt[k]; });
+  // Was im Weg stand, wandert auf die frei gewordenen Plätze zurück.
+  verdraengt.forEach((v, k) => {
+    if (!v || v.type === 'empty') return;
+    const frei = idxe.find((i) => S.binder.items[i] && S.binder.items[i].type === 'empty');
+    if (frei != null) S.binder.items[frei] = v;
+  });
+  S.auswahl = new Set(ziel);
+  speichern(); zeichnePlaner(); auswahlZeigen();
+}
+
+/** Auswahl an ein Zielfach setzen: erst markieren, dann „Hierher" und ein Fach anklicken.
+ *  Das ist der Weg für viele Karten auf einmal — Ziehen taugt für eine. */
+let zielModus = false;
+function zielModusAn() {
+  if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  zielModus = true;
+  document.body.classList.add('ziel-modus');
+  toast(t('ziel_hinweis'));
+}
+function zielModusAus() {
+  zielModus = false;
+  document.body.classList.remove('ziel-modus');
+}
+function auswahlZuZiel(idx) {
+  const idxe = [...S.auswahl].sort((a, b) => a - b);
+  zielModusAus();
+  if (idxe.includes(idx)) return;
+  auswahlRuecken(idx - idxe[0]);
+}
+/** Auswahl löschen heißt: die Fächer werden leer, die Ordnung bleibt. */
 function auswahlEntfernen() {
+  if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  merken('auswahl');
+  const n = S.auswahl.size;
+  for (const i of S.auswahl) if (S.binder.items[i]) S.binder.items[i] = { type: 'empty' };
+  S.auswahl.clear();
+  speichern(); zeichnePlaner(); zeichneErgebnisse();
+  toastUndo(n + ' ' + t('entfernen'));
+}
+
+/** Auswahl herausnehmen: alles dahinter rückt auf. Ausdrücklich benannt, weil es
+ *  jede Seitenaufteilung dahinter verschiebt. */
+function auswahlHerausnehmen() {
   if (!S.auswahl.size) return toast(t('erst_waehlen'));
   merken('auswahl');
   const n = S.auswahl.size;
   S.binder.items = S.binder.items.filter((_, i) => !S.auswahl.has(i));
   S.auswahl.clear();
   speichern(); zeichnePlaner(); zeichneErgebnisse();
-  toastUndo(n + ' ' + t('entfernen'));
+  toastUndo(n + ' ' + t('herausnehmen'));
+}
+
+/** Alle leeren Fächer entfernen und alles zusammenschieben. Das Gegenstück zum
+ *  Freimachen: erst räumen, dann in einem Schritt schließen. */
+function lueckenSchliessen() {
+  if (!S.binder) return;
+  const vorher = S.binder.items.length;
+  const rest = S.binder.items.filter((i) => i && i.type !== 'empty');
+  if (rest.length === vorher) return toast(t('keine_luecken'));
+  merken('luecken');
+  S.binder.items = rest;
+  S.auswahl.clear();
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('luecken_zu').replace('{n}', vorher - rest.length));
 }
 /** Neue leere Seite anhängen und gleich dorthin springen. */
 function seiteAnhaengen() {
@@ -6898,9 +7016,9 @@ function slotMenue(ev, idx) {
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
     ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ${ic('wechsel', 15)}</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
-    ${item.type !== 'empty' ? `<button onclick="slotMenueZu();fachFreimachen(${idx})">${t('s_zu_leer')}</button>` : ''}
     <div class="trenn"></div>
-    <button class="gefahr" onclick="slotMenueZu();slotEntfernen(${idx})">${t('s_entfernen')}</button>`;
+    ${item.type !== 'empty' ? `<button class="gefahr" onclick="slotMenueZu();fachFreimachen(${idx})">${t('s_entfernen')}</button>` : ''}
+    <button onclick="slotMenueZu();slotHerausnehmen(${idx})" title="${t('s_herausnehmen_t')}">${t('herausnehmen')}</button>`;
   m.classList.remove('hidden');
   const w = 240; m.style.minWidth = w + 'px';
   m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left - w / 2 + r.width / 2)) + 'px';
@@ -6965,6 +7083,7 @@ function seiteLeeresFach(seite) {
 }
 function auswahlZuLeer() {
   if (!S.auswahl.size) return;
+  /* gleichbedeutend mit auswahlEntfernen(); bleibt für Aufrufe aus dem Fach-Menü */
   merken('auswahl');
   for (const i of S.auswahl) if (S.binder.items[i]) S.binder.items[i] = { type: 'empty' };
   S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneErgebnisse();
