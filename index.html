@@ -549,7 +549,15 @@
   .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
 
   /* ---------- Übersichts- & Profilseite (angemeldete Nutzer) ---------- */
-  .seite-voll { position: fixed; inset: 0; background: var(--bg); z-index: 75; display: flex; flex-direction: column; }
+  /* Vollseiten (Start, Profil) liegen wie Planer und Vitrine UNTER der Kopfleiste:
+     die Reiter bleiben sichtbar und erreichbar, und der Inhalt scrollt. Vorher deckten
+     sie den Kopf ab und der eigene Rumpf war der einzige scrollende Bereich — nach dem
+     Umbau hieß der anders, also scrollte gar nichts mehr. */
+  .seite-voll { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg);
+                z-index: 41; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .seite-voll > .planer-kopf { position: sticky; top: 0; z-index: 2; }
+  .st-rumpf, .pf-rumpf { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  @media (max-width: 860px) { .seite-voll { top: 50px; } }
   .seite-rumpf { flex: 1; overflow-y: auto; padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
                  max-width: 1060px; margin: 0 auto; width: 100%; }
   .seite-rumpf h1 { font-size: 22px; margin: 0 0 4px; }
@@ -1535,7 +1543,7 @@
 </div>
 
 <!-- Profilseite -->
-<div id="profilseite" class="seite-voll hidden" style="z-index:76">
+<div id="profilseite" class="seite-voll hidden">
   <div class="planer-kopf">
     <button class="btn sekundaer" style="font-size:13px" onclick="profilSchliessen()">‹ <span data-i18n="start">Übersicht</span></button>
     <div style="font-size:15px;font-weight:700" data-i18n="profil">Profil &amp; Konto</div>
@@ -2816,7 +2824,9 @@ async function startOeffnen() {
   if (!S.user) return;
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   $('profilseite').classList.add('hidden');
+  $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
+  $('startseite').scrollTop = 0;
   $('seg-start').classList.add('on');
   ['seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine'].forEach((i) => $(i) && $(i).classList.remove('on'));
   location.hash = 'start';
@@ -2946,7 +2956,12 @@ async function startNeu(art) {
 function profilOeffnen() {
   if (!S.user) return loginOeffnen('');
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Beide Vollseiten liegen auf derselben Ebene — sonst stünden sie übereinander
+  $('startseite').classList.add('hidden');
+  $('seg-start').classList.remove('on');
   $('profilseite').classList.remove('hidden');
+  $('profilseite').scrollTop = 0;
+  ebeneOeffnen(() => $('profilseite').classList.add('hidden'));
   profilFuellen();
 }
 function profilSchliessen() {
