@@ -99,6 +99,15 @@ def main() -> int:
     print("Gebraucht wird ein Postfach, das wirklich senden kann. Eine Weiterleitung")
     print(f"({ANTWORT_ADRESSE}) genügt nicht — die kann nur empfangen.\n")
 
+    print("Zwei Wege führen zum Ziel:")
+    print("  1) Ein echtes IONOS-Postfach (Adresse + Postfach-Passwort).")
+    print("  2) Dein Gmail-Konto mit einem App-Passwort. Kostenlos, 500 Mails am Tag.")
+    print("     Google-Konto → Sicherheit → App-Passwörter (setzt Zwei-Faktor voraus).")
+    print("     Damit support@binderplan.app als Absender erlaubt ist, muss die Adresse in")
+    print("     Gmail unter Einstellungen → Konten → „Senden als“ hinterlegt und bestätigt")
+    print("     sein; die Bestätigungsmail kommt über deine Weiterleitung an. Zusätzlich")
+    print("     gehört Google in den SPF-Eintrag der Domain (siehe Hinweis am Ende).\n")
+
     benutzer = input("Postfach zum Senden (volle Adresse): ").strip()
     if not benutzer or "@" not in benutzer:
         print("Das sieht nicht nach einer Adresse aus. Abgebrochen.")
@@ -108,8 +117,10 @@ def main() -> int:
         print("Ohne Passwort geht es nicht. Abgebrochen.")
         return 1
 
-    host = input(f"SMTP-Server [{alt.get('SMTP_HOST') or HOST_STANDARD}]: ").strip() \
-        or alt.get("SMTP_HOST") or HOST_STANDARD
+    # Bei einer Gmail-Adresse ist der Server ein anderer — das muss niemand auswendig wissen.
+    vorschlag = "smtp.gmail.com" if benutzer.lower().endswith(("@gmail.com", "@googlemail.com")) \
+        else (alt.get("SMTP_HOST") or HOST_STANDARD)
+    host = input(f"SMTP-Server [{vorschlag}]: ").strip() or vorschlag
     port = input("Port [587]: ").strip() or "587"
     ziel = input(f"Testnachricht an [{ANTWORT_ADRESSE}]: ").strip() or ANTWORT_ADRESSE
 
@@ -128,7 +139,12 @@ def main() -> int:
         print("\nNichts wurde gespeichert. Häufige Ursachen:")
         print("  * Es ist eine Weiterleitung, kein Postfach — dann gibt es kein Passwort.")
         print("  * Benutzername oder Passwort stimmen nicht.")
-        print("  * Bei IONOS muss der Zugriff über Fremdprogramme im Kundenmenü erlaubt sein.")
+        if "gmail" in host.lower():
+            print("  * Bei Gmail braucht es ein App-Passwort, nicht das normale Kontopasswort.")
+            print("    Es besteht aus 16 Buchstaben und setzt Zwei-Faktor-Anmeldung voraus.")
+            print("  * „Senden als“-Adressen müssen in Gmail vorher bestätigt werden.")
+        else:
+            print("  * Bei IONOS muss der Zugriff über Fremdprogramme im Kundenmenü erlaubt sein.")
         return 1
 
     print(f"  {meldung}. Schau kurz in das Postfach {ziel}.")
@@ -151,6 +167,13 @@ def main() -> int:
     if absender != WUNSCH_ABSENDER:
         print(f"\nHinweis: Als Absender steht {absender}, weil der Server {WUNSCH_ABSENDER}")
         print(f"nicht zugelassen hat. Antworten der Kunden gehen trotzdem an {ANTWORT_ADRESSE}.")
+    if "gmail" in host.lower() and absender.lower().endswith("binderplan.app"):
+        print("\nWichtig für die Zustellung: Der Absender-Eintrag der Domain (SPF) erlaubt")
+        print("derzeit nur IONOS-Server. Wenn Google versendet, gehört Google dazu. Im")
+        print("IONOS-DNS den TXT-Eintrag von binderplan.app ändern auf:")
+        print("    v=spf1 include:_spf-eu.ionos.com include:_spf.google.com ~all")
+        print("Ohne diese Zeile landen die Mails leichter im Spam.")
+
     print("\nAb dem Neustart gilt: neue Konten müssen ihre E-Mail bestätigen, bevor sie das")
     print("Startguthaben bekommen. Kaufbestätigung, Passwort-Reset und die Kündigung per")
     print("Bestätigungslink sind dann ebenfalls aktiv.")
