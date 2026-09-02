@@ -1503,17 +1503,9 @@
 
 <!-- Übersichtsseite (angemeldete Nutzer) -->
 <div id="startseite" class="seite-voll hidden">
-  <div class="planer-kopf">
-    <div class="logo" style="display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700">
-      <svg width="20" height="20" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>
-      Binderplan
-    </div>
-    <div style="flex:1"></div>
-    <button class="btn sekundaer" style="font-size:13px" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button>
-    <button class="btn" style="font-size:13px" onclick="startSchliessen()" data-i18n="zur_werkbank">Zur Werkbank ›</button>
-  </div>
   <div class="st-rumpf">
-    <div class="st-gruss"><h1 id="st-gruss"></h1><span class="plan" id="st-plan"></span></div>
+    <div class="st-gruss"><h1 id="st-gruss"></h1><span class="plan" id="st-plan"></span>
+      <button class="btn sekundaer" style="font-size:12.5px;margin-left:auto" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button></div>
     <div class="st-unter" id="st-unter"></div>
 
     <div class="st-band" id="st-band"></div>
@@ -2262,8 +2254,20 @@ const T = {
     pf_geloescht: 'Your account has been deleted.',
   },
 };
-let LANG = localStorage.getItem('bp_lang') || 'de';            // Sprache der Oberfläche
-let KLANG = localStorage.getItem('bp_klang') || LANG;          // Sprache der Karten (Namen, Bilder, PDF): de | en
+/** Beim allerersten Besuch die Browsersprache übernehmen: wer nicht auf Deutsch
+ *  surft, bekommt Englisch — Oberfläche und Kartennamen. Danach zählt nur noch,
+ *  was der Nutzer selbst eingestellt hat. */
+function spracheVomBrowser() {
+  const wunsch = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'de']);
+  for (const w of wunsch) {
+    const kurz = String(w).toLowerCase().slice(0, 2);
+    if (kurz === 'de') return 'de';
+    if (kurz) return 'en';
+  }
+  return 'de';
+}
+let LANG = localStorage.getItem('bp_lang') || spracheVomBrowser();     // Sprache der Oberfläche
+let KLANG = localStorage.getItem('bp_klang') || LANG;                  // Kartennamen, Bilder, PDF: de | en
 const t = (k) => T[LANG][k] || T.de[k] || k;
 // Bild-/Namenssprache: japanische Karten haben nur einen Scan (liegt in der en-Spalte)
 const kl = () => (filter.region === 'jp' ? 'en' : KLANG);
@@ -2827,16 +2831,14 @@ async function startOeffnen() {
   $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
   $('startseite').scrollTop = 0;
-  $('seg-start').classList.add('on');
-  ['seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine'].forEach((i) => $(i) && $(i).classList.remove('on'));
+  reiterSetzen('seg-start');
   location.hash = 'start';
   $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
   await startLaden();
 }
 function startSchliessen() {
   $('startseite').classList.add('hidden');
-  $('seg-start').classList.remove('on');
-  $('seg-suche').classList.add('on');
+  reiterSetzen('seg-suche');
   if (S.binder && S.binder.id) location.hash = 'binder/' + S.binder.id;
   else neuLeer(true);
 }
@@ -2958,7 +2960,6 @@ function profilOeffnen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   // Beide Vollseiten liegen auf derselben Ebene — sonst stünden sie übereinander
   $('startseite').classList.add('hidden');
-  $('seg-start').classList.remove('on');
   $('profilseite').classList.remove('hidden');
   $('profilseite').scrollTop = 0;
   ebeneOeffnen(() => $('profilseite').classList.add('hidden'));
@@ -4184,16 +4185,14 @@ function ansichtVitrine() {
   planerSchliessen();
   $('vitrine').classList.remove('hidden');
   ebeneOeffnen(vitrineSchliessen);
-  $('seg-vitrine').classList.add('on');
-  $('seg-suche').classList.remove('on'); $('seg-planer').classList.remove('on');
+  reiterSetzen('seg-vitrine');
   zeichneVitrineTabs();
   vitrineLaden();
 }
 function vitrineSchliessen() {
   if ($('vitrine').classList.contains('hidden')) return;
   $('vitrine').classList.add('hidden');
-  $('seg-vitrine').classList.remove('on');
-  $('seg-suche').classList.add('on');
+  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
 
 function zeichneVitrineTabs() {
@@ -4577,16 +4576,14 @@ function ansichtSammlung() {
   planerSchliessen(); vitrineSchliessen(); profilseiteSchliessen();
   $('sammlung').classList.remove('hidden');
   ebeneOeffnen(sammlungSchliessen);
-  $('seg-sammlung').classList.add('on');
-  $('seg-suche').classList.remove('on'); $('seg-planer').classList.remove('on'); $('seg-vitrine').classList.remove('on');
+  reiterSetzen('seg-sammlung');
   zeichneSammlungFilter();
   sammlungLaden();
 }
 function sammlungSchliessen() {
   if ($('sammlung').classList.contains('hidden')) return;
   $('sammlung').classList.add('hidden');
-  $('seg-sammlung').classList.remove('on');
-  $('seg-suche').classList.add('on');
+  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
 
 function zeichneSammlungFilter() {
@@ -4780,6 +4777,15 @@ async function blaetternBild() {
 }
 
 
+/** Genau einen Reiter markieren. Vorher setzte jede Ansicht ihre eigenen Klassen —
+ *  schloss man den Planer, während die Startseite offen war, leuchteten zwei. */
+function reiterSetzen(id) {
+  for (const r of ['seg-start', 'seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine']) {
+    const el = $(r);
+    if (el) el.classList.toggle('on', r === id);
+  }
+}
+
 function seiteWechsel(d) {
   const seiten = Math.max(1, Math.ceil(S.binder.items.length / proSeite()));
   S.seite = Math.min(Math.max(0, S.seite + d), seiten - 1);
@@ -4918,14 +4924,14 @@ function planerOeffnen() {
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
   ebeneOeffnen(planerSchliessen);
-  $('seg-planer').classList.add('on'); $('seg-suche').classList.remove('on');
+  reiterSetzen('seg-planer');
   $('mnav-planer').classList.add('on'); $('mnav-suche').classList.remove('on'); $('mnav-binder').classList.remove('on');
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
   zeichnePlaner();
 }
 function planerSchliessen() {
   $('planer').classList.add('hidden');
-  $('seg-planer').classList.remove('on'); $('seg-suche').classList.add('on');
+  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
   $('mnav-planer').classList.remove('on'); if (!document.body.classList.contains('binder-an')) $('mnav-suche').classList.add('on'); else $('mnav-binder').classList.add('on');
   zeichneBinder();
 }
