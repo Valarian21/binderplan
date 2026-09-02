@@ -393,7 +393,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 "art": binder_art,
                 "veroeffentlicht_at": r["veroeffentlicht_at"],
                 "vorschau": _vorschau(items),
-                "blatt": _seiten_vorschau(items, r["layout"], 2),
+                "blatt": _seiten_vorschau(items, r["layout"], 3),
                 "_punkte": _punkte(r["stimmen"], r["veroeffentlicht_at"] or ""),
             })
         con.close()

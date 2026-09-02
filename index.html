@@ -39,7 +39,7 @@
      sich ein Blatt um den Rücken — Vorderseite ist die alte rechte Seite,
      Rückseite die neue linke. Die Fächer zeichnet dieselbe Funktion wie in der
      Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen. */
-  #blaettern { position: fixed; inset: 0; z-index: 95; background: rgba(8,9,12,.985);
+  #blaettern { position: fixed; inset: 0; z-index: 95; background: rgba(8,9,12,1);
                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
   #blaettern.hidden { display: none !important; }
   .bv-kopf { display: flex; align-items: center; gap: 14px; color: #fff; font-size: 14px; font-weight: 700; }
@@ -141,9 +141,24 @@
           background: rgba(255,255,255,.12); color: #fff; font-size: 20px; }
   .bv-x:hover { background: rgba(255,255,255,.24); }
   @media (max-width: 700px) and (orientation: portrait) {
-    .bv-buch { max-width: 96vw; }
-    .bv-seite { border-radius: 10px !important; }
+    /* Durchblättern am Handy: die Seite bekommt fast den ganzen Bildschirm. Vorher lagen
+       oben 163 und unten 200 Pixel brach, die Karten waren entsprechend klein. */
+    #blaettern { padding: 8px 8px 0; gap: 8px; background: rgba(8,9,12,1); justify-content: flex-start; }
+    .bv-kopf { order: -1; padding-top: 34px; font-size: 13px; gap: 8px; text-align: center;
+               flex-direction: column; }
+    .bv-kopf .bv-name { font-size: 12px; }
+    .bv-buch { max-width: 100vw; }
+    .bv-seite { border-radius: 10px !important; padding: 7px; }
+    .bv-fuss { gap: 10px; padding-bottom: 6px; }
+    .bv-fuss button { width: 52px; height: 52px; font-size: 28px; }
+    .bv-zaehler { min-width: 0; font-size: 15px; font-weight: 700; }
+    .bv-x { top: 8px; right: 8px; width: 44px; height: 44px; }
+    /* Hinweis auf die Wischgeste — ohne ihn probiert sie kaum jemand aus. */
+    .bv-wisch-tipp { font-size: 11.5px; color: rgba(255,255,255,.55); text-align: center;
+                     padding-bottom: 4px; }
   }
+  .bv-wisch-tipp { display: none; }
+  @media (max-width: 700px) { .bv-wisch-tipp { display: block; } }
   @media (max-width: 720px) {
     .bv-ruecken { width: 14px; flex-basis: 14px; }
     .bv-ring { width: 9px; height: 9px; border-width: 2px; }
@@ -219,6 +234,20 @@
   .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
               border-radius: 10px; }
   .vt-blatt.dop { grid-template-columns: 1fr 1fr; gap: 9px; padding: 9px; background: none; }
+  /* Gefächerter Stapel: zweite und dritte Seite schauen oben rechts hervor, wie ein Binder,
+     in dem schon geblättert wurde. Der Platz dafür kommt aus dem Innenabstand — sonst
+     schneidet die Kachel die hinteren Seiten ab. */
+  .vt-blatt.stapel { position: relative; background: none; padding: 14px 14px 0 0; }
+  .vt-blatt.stapel .vt-seite { background: #14161a; border-radius: 8px; padding: 6px;
+                               box-shadow: 0 3px 14px rgba(0,0,0,.45); }
+  .vt-blatt.stapel .hinten2, .vt-blatt.stapel .hinten3 {
+                               position: absolute; left: 0; right: 14px; top: 14px; bottom: 0;
+                               transform-origin: bottom left; }
+  .vt-blatt.stapel .hinten3 { transform: translate(14px, -14px) rotate(2.2deg);
+                              filter: brightness(.62); }
+  .vt-blatt.stapel .hinten2 { transform: translate(7px, -7px) rotate(1.1deg);
+                              filter: brightness(.8); }
+  .vt-blatt.stapel .vorn { position: relative; }
   .vt-blatt .vt-seite { display: grid; background: #14161a; border-radius: 8px; padding: 6px; }
   .vt-fach img { object-fit: contain; }
   .vt-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 3px; display: block; }
@@ -271,6 +300,20 @@
   .stat-bar { height: 9px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
   .stat-bar i { display: block; height: 100%; background: var(--blau); border-radius: 99px; }
   .stat-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+  .m-suchzeile { padding: 0 0 8px; }
+  @media (max-width: 700px) {
+    /* Die Schnellfilter über der Trefferliste brauchten drei Zeilen. Eine wischbare Zeile
+       zeigt genauso viel und lässt die Karten oben im Bild. */
+    .kopfzeile { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 7px; }
+    .kopfzeile::-webkit-scrollbar { display: none; }
+    .kopfzeile > * { flex-shrink: 0; }
+    .kopfzeile #f-presets { flex-wrap: nowrap; }
+    .kopfzeile #erg-anzahl { font-size: 12.5px; }
+    .kopfzeile .btn, #btn-filter-mobil { min-height: 34px; }
+  }
+  .m-suchzeile input { width: 100%; font-size: 16px; padding: 11px 13px; }
+  .bstapel { margin: 2px 0 10px; }
+  .bstapel .vt-blatt.stapel { padding: 0 10px 10px 0; }
 
   /* ---------- Handy-Feinschliff ---------- */
   @media (max-width: 700px) {
@@ -1269,10 +1312,18 @@
 
     <!-- Treffer -->
     <div class="spalte-mitte">
+      <div class="mobil-only m-suchzeile">
+        <input type="search" class="feld" id="f-suche-mobil" placeholder="Karte oder Pokémon …"
+               data-i18n-ph="ph_suche" oninput="sucheMobilSync(this.value)">
+      </div>
       <div class="kopfzeile">
         <span id="erg-anzahl">–</span>
         <div class="f-chips" id="f-presets" style="gap:4px"></div>
         <span class="mobil-only" style="flex:1"></span>
+        <button class="btn sekundaer mobil-only" style="font-size:12px;padding:6px 12px" onclick="mobilFilter()" id="btn-filter-mobil">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 3h12L9.5 8.5V13l-3 1.5V8.5L2 3z"/></svg>
+          <span data-i18n="m_filter">Filter</span><span id="filter-zahl-mobil"></span>
+        </button>
         <div style="flex:1" class="desktop-only"></div>
         <div class="menuwrap">
           <button class="btn sekundaer" style="font-size:12px;padding:6px 12px" onclick="menuToggle('menu-alle')" id="btn-alle" data-i18n="alle">+ Alle Treffer …</button>
@@ -1349,6 +1400,8 @@
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="menuToggle('menu-seite')" class="seite-btn" data-i18n="seite_menue">Seite …</button>
           <div class="menu hidden" id="menu-seite" style="right:0;left:auto;min-width:230px">
+            <button onclick="ansicht('planer')" data-i18n="planer">Planer</button>
+            <div class="trenn"></div>
             <button onclick="seiteAnhaengen()" data-i18n="neue_seite_lbl">Neue leere Seite anhängen</button>
             <button onclick="seiteZiehen(-1)" data-i18n="s_seite_hoch">Seite nach vorn</button>
             <button onclick="seiteZiehen(1)" data-i18n="s_seite_runter">Seite nach hinten</button>
@@ -1378,7 +1431,12 @@
   <!-- Mobile Navigationsleiste -->
   <div class="m-backdrop" id="m-backdrop" onclick="mobilFilter(false)"></div>
   <div class="mnav">
-    <button id="mnav-filter" onclick="mobilFilter()">
+    <button id="mnav-start" onclick="mnavStart()">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M3 9.2 10 3.5l7 5.7"/><path d="M5 8.6V16.5h10V8.6"/></svg>
+      <span id="mnav-start-lbl" data-i18n="start_nav">Start</span>
+    </button>
+    <button id="mnav-filter" class="hidden" onclick="mobilFilter()">
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 3h12L9.5 8.5V13l-3 1.5V8.5L2 3z"></path></svg>
       <span data-i18n="m_filter">Filter</span>
     </button>
@@ -1391,9 +1449,10 @@
       <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       <span data-i18n="m_binder">Binder</span>
     </button>
-    <button id="mnav-planer" onclick="ansicht('planer')">
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="1.5" y="2.5" width="5.5" height="11" rx="1"></rect><rect x="9" y="2.5" width="5.5" height="11" rx="1"></rect></svg>
-      <span data-i18n="planer">Planer</span>
+    <button id="mnav-vitrine" onclick="ansicht('vitrine')">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M2.5 8h15M7.5 8v8.5M12.5 8v8.5"/></svg>
+      <span data-i18n="vitrine">Vitrine</span>
     </button>
     <div class="menuwrap" style="flex:1;display:flex">
       <button id="mnav-mehr" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:700;color:var(--mut);padding:5px 2px;border-radius:10px;min-height:44px" onclick="menuToggle('mobil-mehr')">
@@ -1852,6 +1911,7 @@
     <div class="bv-buch" id="bv-buch"></div>
     <div class="bv-lager" id="bv-lager" aria-hidden="true"></div>
   </div>
+  <div class="bv-wisch-tipp" data-i18n="bv_wischen">Zum Blättern wischen</div>
   <div class="bv-fuss">
     <button id="bv-zurueck" onclick="blaetternWechsel(-1)" aria-label="Zurückblättern" data-i18n-aria="bv_zurueck">‹</button>
     <span class="bv-zaehler" id="bv-zaehler"></span>
@@ -2282,7 +2342,7 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
-    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', bv_wischen: 'Zum Blättern wischen', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
@@ -2454,7 +2514,7 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
-    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', bv_wischen: 'Swipe to turn the page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
@@ -2639,11 +2699,42 @@ function mobilFilter(an) {
   $('m-backdrop').classList.toggle('offen', offen);
   $('mnav-filter').classList.toggle('on', offen);
 }
+/** Der erste Knopf der unteren Leiste führt zur Startseite — die gibt es aber erst mit Konto.
+ *  Gäste bekommen dort stattdessen die Filter, die sie in der Suche am häufigsten brauchen. */
+/** Genau ein Eintrag der unteren Leiste ist markiert. */
+function mnavMarkieren(id) {
+  ['mnav-start', 'mnav-suche', 'mnav-binder', 'mnav-vitrine', 'mnav-mehr'].forEach((k) => {
+    const el = $(k);
+    if (el) el.classList.toggle('on', k === id);
+  });
+}
+
+function mnavStart() {
+  if (S.user) { ansicht('start'); return; }
+  mobilFilter();
+}
+
+function mnavAnpassen() {
+  const start = $('mnav-start'), lbl = $('mnav-start-lbl');
+  if (!start || !lbl) return;
+  lbl.textContent = S.user ? t('start_nav') : t('m_filter');
+  start.title = S.user ? t('start_nav') : t('m_filter');
+  start.querySelector('svg').innerHTML = S.user
+    ? '<path d="M3 9.2 10 3.5l7 5.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 8.6V16.5h10V8.6" fill="none" stroke="currentColor" stroke-width="1.7"/>'
+    : '<path d="M2.5 3.5h15L11 11v5.5l-3 1.5V11z" fill="none" stroke="currentColor" stroke-width="1.7"/>';
+}
+
 function mobilAnsicht(w) {
   if (!$('planer').classList.contains('hidden')) planerSchliessen();
+  // Vitrine, Sammlung, Profil und Startseite liegen über der Werkbank — wer unten auf
+  // „Suche“ oder „Binder“ tippt, will dorthin zurück, nicht dahinter.
+  vitrineSchliessen();
+  sammlungSchliessen();
+  profilseiteSchliessen();
+  if (!$('startseite').classList.contains('hidden')) startSchliessen();
+  if (!$('profilseite').classList.contains('hidden')) profilSchliessen();
   document.body.classList.toggle('binder-an', w === 'binder');
-  $('mnav-suche').classList.toggle('on', w !== 'binder');
-  $('mnav-binder').classList.toggle('on', w === 'binder');
+  mnavMarkieren(w === 'binder' ? 'mnav-binder' : 'mnav-suche');
   mobilFilter(false);
   if (w === 'binder') zeichneBinder();
 }
@@ -2902,6 +2993,7 @@ function setToken(token) {
 }
 
 function kontoAnzeigen() {
+  if (typeof mnavAnpassen === 'function') mnavAnpassen();
   if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
   if (typeof besitzLaden === 'function') besitzLaden().then(() => {
     if (S.binder) zeichneBinder();
@@ -3157,6 +3249,7 @@ async function startOeffnen() {
   $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
   $('startseite').scrollTop = 0;
+  mnavMarkieren('mnav-start');
   reiterSetzen('seg-start');
   hashSetzen('start');
   $('st-gruss').textContent = t('hallo') + ', ' + anzeigeName() + '!';
@@ -3234,10 +3327,14 @@ function zeichneStartBinder(liste) {
   const modeLbl = { master: t('mode_master'), dex: t('mode_dex'), custom: t('mode_custom') };
   $('st-grid').innerHTML = liste.map((b) => {
     const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
+    // Seit die Startseite denselben Stapel zeigt wie die Vitrine, sieht ein Binder überall
+    // gleich aus. Die alten drei Miniaturen bleiben als Rückfall, falls kein Raster kommt.
+    const stapel = b.blatt ? vitrineBlatt(b.blatt, false) : '';
     const thumbs = (b.vorschau || []).map((id) => `<img loading="lazy" src="${imgUrl(id)}" alt="">`).join('')
       + (b.dex_vorschau || []).slice(0, 3 - (b.vorschau || []).length).map((d) => `<img loading="lazy" src="api/img/dex/${d}" alt="" style="object-fit:contain;padding:4px">`).join('');
     return `<div class="bcard" onclick="startBinderOeffnen('${b.id}')">
-      <div class="bthumbs">${thumbs || '<span></span><span></span><span></span>'}</div>
+      ${stapel ? `<div class="bstapel">${stapel}</div>`
+               : `<div class="bthumbs">${thumbs || '<span></span><span></span><span></span>'}</div>`}
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
@@ -3799,7 +3896,10 @@ function filterParams() {
 
 // ---------- Suche ----------
 let _sucheSeq = 0;   // gegen Race Conditions: nur die neueste Antwort zählt
-async function sucheNeu() { S.offset = 0; S.ergebnisse = []; await sucheLaden(); }
+async function sucheNeu() {
+  if ($('f-suche-mobil') && $('f-suche-mobil').value !== $('f-suche').value) {
+    $('f-suche-mobil').value = $('f-suche').value;
+  } S.offset = 0; S.ergebnisse = []; await sucheLaden(); }
 async function sucheLaden() {
   const meineSeq = ++_sucheSeq;
   const p = filterParams(); p.set('limit', '60'); p.set('offset', String(S.offset));
@@ -4595,6 +4695,7 @@ const VT = { sortierung: 'trend', binder: [], laeuft: false, art: '', groesse: '
              doppelseite: localStorage.getItem('bp_vt_dop') === '1', meldung: null };
 
 function ansichtVitrine() {
+  mnavMarkieren('mnav-vitrine');
   planerSchliessen();
   $('vitrine').classList.remove('hidden');
   ebeneOeffnen(vitrineSchliessen);
@@ -4689,11 +4790,16 @@ function vitrineBlatt(blatt, doppelt) {
   // Die Fuge muss zum Ausschnitt passen: 4 Einheiten auf eine Zeile aus <spalten> Karten.
   // In Prozent der Gesamtbreite gerechnet, damit sie bei jeder Kachelgröße stimmt.
   const fuge = (sp) => (4 / (sp * 63 + (sp - 1) * 4) * 100).toFixed(3) + '%';
-  const seite = (nr) => `<div class="vt-seite" style="grid-template-columns:repeat(${blatt.spalten},1fr);gap:${fuge(blatt.spalten)}">
+  const seite = (nr, klasse) => `<div class="vt-seite ${klasse || ''}" style="grid-template-columns:repeat(${blatt.spalten},1fr);gap:${fuge(blatt.spalten)}">
       ${blatt.seiten[nr].map((f) => fach(f, blatt.spalten, blatt.zeilen)).join('')}</div>`;
-  // Zwei Seiten nebeneinander nur, wenn es sie gibt und Platz ist — sonst wirkt die zweite leer
-  const zwei = doppelt && blatt.seiten.length > 1;
-  return `<div class="vt-blatt ${zwei ? 'dop' : ''}">${zwei ? seite(0) + seite(1) : seite(0)}</div>`;
+  if (doppelt && blatt.seiten.length > 1) {
+    return `<div class="vt-blatt dop">${seite(0)}${seite(1)}</div>`;
+  }
+  // Standard: die ersten Seiten leicht versetzt hintereinander — das sieht aus wie ein Binder,
+  // in dem schon geblättert wurde, und zeigt auf einen Blick, dass mehr als eine Seite drin ist.
+  const hinten = blatt.seiten.length > 2 ? seite(2, 'hinten3') : '';
+  const mitte = blatt.seiten.length > 1 ? seite(1, 'hinten2') : '';
+  return `<div class="vt-blatt stapel">${hinten}${mitte}${seite(0, 'vorn')}</div>`;
 }
 
 const VT_ARTEN = { dex: 'vt_a_dex', artwork: 'vt_a_artwork', kuenstler: 'vt_a_kuenstler',
@@ -5672,7 +5778,7 @@ function planerOeffnen() {
   $('planer').classList.remove('hidden');
   ebeneOeffnen(planerSchliessen);
   reiterSetzen('seg-planer');
-  $('mnav-planer').classList.add('on'); $('mnav-suche').classList.remove('on'); $('mnav-binder').classList.remove('on');
+  mnavMarkieren('mnav-binder');
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
   zeichnePlaner();
 }
@@ -5681,7 +5787,7 @@ function planerSchliessen() {
   ebeneAufraeumen(planerSchliessen);
   $('planer').classList.add('hidden');
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
-  $('mnav-planer').classList.remove('on'); if (!document.body.classList.contains('binder-an')) $('mnav-suche').classList.add('on'); else $('mnav-binder').classList.add('on');
+  mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
   zeichneBinder();
 }
 
@@ -5995,6 +6101,14 @@ function teilen() {
 }
 
 // ---------- Ereignisse ----------
+/** Am Handy steht das Suchfeld über der Trefferliste, am Rechner in der Filterspalte.
+ *  Beide schreiben in dasselbe Filterfeld, damit sie nie auseinanderlaufen. */
+function sucheMobilSync(wert) {
+  $('f-suche').value = wert;
+  clearTimeout(suchTimer);
+  suchTimer = setTimeout(sucheNeu, 300);
+}
+
 let suchTimer = null;
 $('f-suche').addEventListener('input', () => { clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
 $('f-dex').addEventListener('focus', ladePokedex);
@@ -6278,6 +6392,10 @@ function mehrFilterToggle(an) {
   $('f-mehr-caret').textContent = mehrFilterOffen ? '▴' : '▾';
 }
 function mehrFilterZahl() {
+  if ($('filter-zahl-mobil')) setTimeout(() => {
+    const n = ($('f-mehr-zahl') && $('f-mehr-zahl').textContent) || '';
+    $('filter-zahl-mobil').textContent = n ? ' ' + n : '';
+  }, 0);
   const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.trainer ? 1 : 0) + filter.regmark.size + (filter.first ? 1 : 0) + (filter.jahrVon || filter.jahrBis ? 1 : 0);
   const el = $('f-mehr-zahl'); if (el) el.textContent = n ? `(${n})` : '';
   const btn = $('f-mehr-btn'); if (btn) btn.style.borderColor = n ? 'var(--akzent)' : '';

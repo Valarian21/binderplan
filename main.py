@@ -2786,6 +2786,40 @@ def binder_delete(binder_id: str, request: Request):
     return {"ok": True}
 
 
+RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4, 4),
+          "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
+
+
+def _blatt_vorschau(items, layout, seiten=3):
+    """Die ersten Seiten eines Binders als Raster aus Fächern, leere Plätze inklusive.
+    Dieselbe Form wie in der Vitrine, damit beide Vorschauen gleich aussehen."""
+    spalten, zeilen = RASTER.get(layout or "3x3", (3, 3))
+    pro_seite = spalten * zeilen
+    aus = []
+    for nr in range(max(1, min(4, seiten))):
+        teil = items[nr * pro_seite:(nr + 1) * pro_seite]
+        if not teil and nr:
+            break
+        faecher = []
+        for i in range(pro_seite):
+            it = teil[i] if i < len(teil) else None
+            if not it:
+                faecher.append({"art": "leer"})
+            elif it.get("type") == "card" and it.get("id"):
+                faecher.append({"art": "card", "id": it["id"]})
+            elif it.get("type") == "art" and it.get("artwork"):
+                faecher.append({"art": "artwork", "id": it["artwork"],
+                                "slot": it.get("slot") or 0, "layout": it.get("layout") or ""})
+            elif it.get("type") == "dex" and it.get("dex"):
+                faecher.append({"art": "dex", "dex": it["dex"]})
+            else:
+                faecher.append({"art": "leer"})
+        if nr and all(f["art"] == "leer" for f in faecher):
+            break
+        aus.append(faecher)
+    return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
+
+
 @app.get("/api/binders")
 def binder_list(request: Request, ids: str = ""):
     """Konto-Binder (falls angemeldet) plus lokal gemerkte anonyme Binder."""
@@ -2831,6 +2865,9 @@ def binder_list(request: Request, ids: str = ""):
             "updated_at": r["updated_at"],
             "vorschau": [i.get("id") for i in items if i.get("type") == "card" and i.get("id")][:3],
             "dex_vorschau": [i.get("dex") for i in items if i.get("type") == "dex"][:3],
+            # Die ersten drei Seiten als Raster — die Startseite zeigt daraus einen Stapel,
+            # der aussieht wie ein Binder, in dem man geblättert hat.
+            "blatt": _blatt_vorschau(items, r["layout"], 3),
         })
     return {"binder": result}
 
