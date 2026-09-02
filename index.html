@@ -213,7 +213,22 @@
   .vt-tabs { display: flex; gap: 4px; }
   .vt-tabs button { font-size: 13px; font-weight: 700; padding: 6px 13px; border-radius: 999px; color: var(--mut); }
   .vt-tabs button.on { background: var(--kontur); color: #fff; }
-  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  /* Eine Vitrine-Kachel zeigt, was den Binder ausmacht: eine echte aufgeschlagene Seite auf
+     dunklem Grund. Vier Karten in einer Reihe sahen aus wie eine beliebige Trefferliste. */
+  .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
+              border-radius: 10px; }
+  .vt-blatt.dop { grid-template-columns: 1fr 1fr; gap: 9px; padding: 9px; background: none; }
+  .vt-blatt .vt-seite { display: grid; gap: 4px; background: #14161a; border-radius: 8px; padding: 6px; }
+  .vt-blatt .vt-seite.nahtlos { gap: 0; }
+  .vt-blatt .vt-seite.nahtlos .vt-fach { border-radius: 0; background: none; }
+  .vt-fach.durch { background: none; }
+  .vt-fach img { object-fit: contain; }
+  .vt-fach { position: relative; aspect-ratio: 63/88; border-radius: 3px; background: rgba(255,255,255,.05);
+             overflow: hidden; }
+  .vt-fach img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vt-fach.leer { border: 1px dashed rgba(255,255,255,.14); background: transparent; }
+  .vt-bild-rand { padding: 8px 8px 0; background: #14161a; }
   .vt-karte { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card);
               display: flex; flex-direction: column; }
   .vt-karte:hover { border-color: var(--kontur); }
@@ -223,6 +238,58 @@
   .vt-name { font-weight: 800; font-size: 15px; line-height: 1.2; }
   .vt-meta { font-size: 11.5px; color: var(--mut); }
   .vt-fuss { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .vt-marke { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+              text-transform: uppercase; padding: 2px 7px; border-radius: 6px; background: var(--panel2);
+              color: var(--mut); }
+  .vt-marke.dex { background: #E8EDF9; color: #2A4B9B; }
+  .vt-marke.artwork { background: #F3E8FB; color: #7B3FA8; }
+  .vt-marke.kuenstler { background: #FFF4D6; color: #8a6d00; }
+  .vt-marke.master { background: #E3F3EA; color: var(--gruen); }
+  .vt-marke.pokemon { background: #FDE7E5; color: var(--akzent); }
+  body.dunkel .vt-marke.dex, :root[data-theme="dark"] .vt-marke.dex { background: #1E2740; color: #9DB4F5; }
+  body.dunkel .vt-marke.artwork, :root[data-theme="dark"] .vt-marke.artwork { background: #2E2140; color: #C79BE8; }
+  body.dunkel .vt-marke.kuenstler, :root[data-theme="dark"] .vt-marke.kuenstler { background: #3A3112; color: var(--gelb); }
+  body.dunkel .vt-marke.master, :root[data-theme="dark"] .vt-marke.master { background: #173124; color: #6BD3A0; }
+  body.dunkel .vt-marke.pokemon, :root[data-theme="dark"] .vt-marke.pokemon { background: #3D1F1D; color: #FF8C82; }
+  /* Filterzeile über dem Gitter */
+  .vt-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 16px; }
+  .vt-filter .chip { font-size: 12px; padding: 4px 11px; }
+  .vt-filter .trenner { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .vt-lbl { font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); }
+  /* Profilkopf */
+  .po-hero { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap;
+             border: 2px solid var(--kontur); border-radius: 16px; padding: 18px 20px;
+             background: var(--card); box-shadow: 4px 4px 0 var(--kontur); margin-bottom: 6px; }
+  .po-zahlen { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
+  .po-zahl b { display: block; font-size: 21px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .po-zahl span { font-size: 11.5px; color: var(--mut); }
+  .stat-kopf { display: flex; gap: 26px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .stat-h { font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--mut); margin: 18px 0 8px; }
+  .stat-zeile { display: grid; grid-template-columns: minmax(90px, 150px) 1fr 34px; gap: 10px;
+                align-items: center; font-size: 13px; margin-bottom: 5px; }
+  .stat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-bar { height: 9px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  .stat-bar i { display: block; height: 100%; background: var(--blau); border-radius: 99px; }
+  .stat-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+  .slot.wird-gezogen { opacity: .3; }
+  .fach-geist { transition: none; }
+  /* Während des Ziehens darf die Seite nicht mitscrollen */
+  body.zieht { overflow: hidden; touch-action: none; }
+  /* Seiten-Galerie: beim Stöbern will man den ganzen Binder sehen, nicht zwölfmal blättern.
+     Die Seiten liegen nebeneinander und umbrechen wie Text. */
+  .gal { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .gal-seite { display: flex; flex-direction: column; gap: 6px; }
+  .gal-nr { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--mut); }
+  .gal-blatt { background: var(--bseite); border-radius: 12px; padding: 9px; display: grid; gap: 6px; }
+  .gal-fach { position: relative; aspect-ratio: 63/88; border-radius: 4px; overflow: hidden;
+              background: var(--bfach); border: 1px solid var(--bkante); }
+  .gal-fach.leer { background: transparent; border-style: dashed; }
+  .gal-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .gal-fach .hat-mark { top: 3px; left: 3px; }
+  .gal-umschalter { display: flex; gap: 6px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
   .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;
              padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
   .vt-herz.an { border-color: var(--akzent); color: var(--akzent); }
@@ -1193,6 +1260,8 @@
           <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
         </div>
       </div>
+      <div class="gal-umschalter hidden" id="gal-umschalter"></div>
+      <div class="gal hidden" id="gal-seiten"></div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="seiten-nav" id="wb-nav">
         <button onclick="seiteZiehen(-1)" class="nur-edit" title="Diese Seite nach vorne schieben" aria-label="Seite nach vorne" data-i18n-title="s_seite_hoch" id="wb-seite-vor">
@@ -1215,6 +1284,8 @@
             <div class="trenn"></div>
             <button onclick="artworkOeffnen()" data-i18n="aw_t">Artwork-Seite gestalten</button>
             <button onclick="themaOeffnen()" data-i18n="th_titel">Seite nach Thema</button>
+            <div class="trenn"></div>
+            <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
           </div>
         </div>
         <button onclick="blaetternOeffnen()" style="margin-left:2px" title="Durchblättern" aria-label="Durchblättern" data-i18n-title="bv_titel">
@@ -1720,6 +1791,15 @@
 </div>
 
 <!-- Modal: Seite nach Thema -->
+<div class="overlay hidden" id="modal-statistik">
+  <div class="modal" style="width:min(620px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="st_t">Was steckt in diesem Binder?</h2>
+    <div class="unter" data-i18n="st_u">Alles aus den Karten, die schon drin sind.</div>
+    <div id="stat-inhalt"></div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="modal-thema">
   <div class="modal" style="width:min(880px,96vw);max-height:92vh;overflow:auto">
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
@@ -1811,6 +1891,7 @@
     <button class="btn sekundaer" style="font-size:12.5px" onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
   </div>
   <div class="unter" data-i18n="vt_u">Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.</div>
+  <div class="vt-filter" id="vt-filter"></div>
   <div class="vt-gitter" id="vt-gitter"></div>
 </div>
 
@@ -1864,17 +1945,18 @@
 
 <div id="profil-oeffentlich" class="hidden">
   <button class="btn sekundaer" style="font-size:12.5px;margin-bottom:14px" onclick="ansicht('vitrine')">‹ <span data-i18n="vitrine">Vitrine</span></button>
-  <div class="po-kopf">
+  <div class="po-hero">
     <img class="po-bild hidden" id="po-bild" alt="">
-    <div>
-      <h2 id="po-name"></h2>
+    <div style="flex:1;min-width:200px">
+      <h2 id="po-name" style="margin:0;font-size:24px"></h2>
       <div class="unter" id="po-text" style="margin:2px 0 0"></div>
+      <div class="unter" id="po-seit" style="margin:2px 0 0;font-size:12px"></div>
+      <div class="po-zahlen" id="po-zahlen"></div>
     </div>
-    <div style="flex:1"></div>
-    <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('profil', POF.name)" title="Melden"><svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17V3.6M5 4.2h8.6l-1.6 3 1.6 3H5"/></svg></button>
+    <button style="font-size:11px;color:var(--mut);align-self:flex-start" onclick="meldenOeffnen('profil', POF.name)" title="Melden"><svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17V3.6M5 4.2h8.6l-1.6 3 1.6 3H5"/></svg></button>
   </div>
-  <div class="unter" id="po-seit"></div>
-  <div class="vt-gitter" id="po-gitter" style="margin-top:14px"></div>
+  <div class="vt-filter" id="po-filter"></div>
+  <div class="vt-gitter" id="po-gitter"></div>
 </div>
 
 <div id="sammlung" class="hidden">
@@ -1957,7 +2039,7 @@ const T = {
     variante: 'Variante / Fach', v_normal: 'Normal', v_reverse: 'Reverse Holo', v_holo: 'Holo', v_first: '1st Edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
     zustand_ph: 'Zustand (z. B. NM, PSA 10)', in_binder: 'In den Binder', im_binder: 'im Binder', andere_drucke: 'Andere Drucke dieses Pokémon',
     preis_trend: 'Cardmarket-Trend', preis_holo: 'Holo-Trend', preis_laden: 'Preis wird geladen …', verlauf: 'Preisverlauf', tage: 'Tage', verlauf_bald: 'Preisverlauf entsteht ab jetzt täglich.',
-    bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite.',
+    bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite. Tastatur: Strg+A alle, Pfeile verschieben, Entf entfernt.',
     pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
     ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
     reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
@@ -2076,7 +2158,7 @@ const T = {
     th_unter: 'Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.',
     th_thema: 'Thema', th_woraus: 'Woraus wählen', th_anzahl: 'Karten', th_los: 'Vorschlag erstellen',
     th_scope_alle: 'Alle Karten', th_scope_set: 'Nur dieses Set', th_scope_binder: 'Nur Karten aus diesem Binder',
-    th_sucht: 'Die Bilder werden durchsucht …', th_andere: 'Andere Vorschläge',
+    th_sucht: 'Die Bilder werden durchsucht — das dauert einige Sekunden …', th_andere: 'Andere Vorschläge',
     th_anhaengen: 'Als neue Seite anhängen', th_seite: 'Auf diese Seite übernehmen',
     th_gefunden: '{n} Karten', th_raus: 'Nicht übernehmen', th_kein_thema: 'Bitte ein Thema eingeben',
     th_nichts: 'Dazu wurde nichts gefunden. Anderes Thema versuchen – oder der Bildindex deckt diesen Bereich noch nicht ab.',
@@ -2124,7 +2206,7 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
-    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
@@ -2200,7 +2282,7 @@ const T = {
     variante: 'Variant / slot', v_normal: 'Normal', v_reverse: 'Reverse holo', v_holo: 'Holo', v_first: '1st edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
     zustand_ph: 'Condition (e.g. NM, PSA 10)', in_binder: 'Add to binder', im_binder: 'in binder', andere_drucke: 'Other prints of this Pokémon',
     preis_trend: 'Cardmarket trend', preis_holo: 'Holo trend', preis_laden: 'loading price …', verlauf: 'Price history', tage: 'days', verlauf_bald: 'Price history builds up daily from now on.',
-    bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page.',
+    bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page. Keyboard: Ctrl+A all, arrows move, Del removes.',
     vpf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
     ex_check: 'Checklist (no images)', neu: '+ New',
     reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
@@ -2255,7 +2337,7 @@ const T = {
 
     f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
 
-    th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
+    th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks — this takes a few seconds …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
  faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
     alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
     leer_slot: 'empty', gesamt: 'Total value', preise_offen: 'Prices loading … toggle again for the rest.',
@@ -2296,7 +2378,7 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
-    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
@@ -2657,6 +2739,9 @@ function ansichtAktivieren() {
   S.seite = 0;
   zeichneLayouts();
   zeichneBinder();
+  // Beim Stöbern ist die Galerie der bessere Einstieg; wer lieber blättert, schaltet um.
+  S.galerie = localStorage.getItem('bp_galerie') !== '';
+  galerieUmschalten(S.galerie);
   ansichtGroesse();
   ansichtBegleitung();
 }
@@ -2666,9 +2751,58 @@ function ansichtAktivieren() {
  * wird deshalb aus der freien Höhe und dem Seitenverhältnis des Rasters berechnet
  * (63×88-mm-Fächer plus Fugen), statt fest 700 px zu sein. Handy behält sein gestapeltes Layout.
  */
+/** Alle Seiten des Binders auf einmal. Beim Stöbern in einem fremden Binder ist das der
+ *  natürliche Blick: man will sehen, was drin ist, nicht zwölfmal auf „weiter“ klicken. */
+function zeichneGalerie() {
+  const box = $('gal-seiten');
+  if (!box || !S.binder) return;
+  const pp = proSeite();
+  const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
+  const seiten = Math.max(1, Math.ceil(S.binder.items.length / pp));
+  let html = '';
+  for (let seite = 0; seite < seiten; seite++) {
+    let faecher = '';
+    for (let i = 0; i < pp; i++) {
+      const item = S.binder.items[seite * pp + i];
+      if (!item || item.type === 'empty') { faecher += '<div class="gal-fach leer"></div>'; continue; }
+      const haken = S.user && item.type === 'card'
+        ? `<span class="hat-mark ${besitzt(item) ? 'ja' : ''}">${besitzt(item) ? '✓' : ''}</span>` : '';
+      faecher += `<div class="gal-fach">${slotInhalt(item)}${haken}</div>`;
+    }
+    html += `<div class="gal-seite">
+      <div class="gal-nr">${t('seite')} ${seite + 1}</div>
+      <div class="gal-blatt" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${faecher}</div>
+    </div>`;
+  }
+  box.innerHTML = html;
+}
+
+/** Zwischen Galerie und einzelner Seite umschalten. Die Wahl bleibt gespeichert. */
+function galerieUmschalten(an) {
+  S.galerie = an;
+  try { localStorage.setItem('bp_galerie', an ? '1' : ''); } catch (e) {}
+  $('gal-seiten').classList.toggle('hidden', !an);
+  $('wb-slots').classList.toggle('hidden', an);
+  $('wb-nav').classList.toggle('hidden', an);
+  zeichneGalerieUmschalter();
+  if (an) zeichneGalerie(); else zeichneBinder();
+}
+
+function zeichneGalerieUmschalter() {
+  const box = $('gal-umschalter');
+  if (!box || !S.nurAnsicht) return;
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <button class="chip ${S.galerie ? 'on' : ''}" onclick="galerieUmschalten(true)">${t('gal_alle')}</button>
+    <button class="chip ${S.galerie ? '' : 'on'}" onclick="galerieUmschalten(false)">${t('gal_einzeln')}</button>
+    <div style="flex:1"></div>
+    <button class="chip" onclick="blaetternOeffnen()">${t('bv_titel')}</button>`;
+}
+
 function ansichtGroesse() {
   if (!S.nurAnsicht || !S.binder) return;
   const sp = document.querySelector('.spalte-binder');
+  if (S.galerie) { sp.style.width = 'min(1200px, 100%)'; return; }   // Galerie darf breit sein
   if (window.innerWidth < 900) { sp.style.width = ''; return; }
   const [cols, rows] = LAYOUTS[S.binder.layout] || [3, 3];
   const oben = document.querySelector('.rumpf').getBoundingClientRect().top;   // Kopf, Banner, Begleitleiste
@@ -2695,6 +2829,7 @@ function kontoAnzeigen() {
   if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
   if (typeof besitzLaden === 'function') besitzLaden().then(() => {
     if (S.binder) zeichneBinder();
+    if (S.galerie && typeof zeichneGalerie === 'function') zeichneGalerie();
     if (typeof habStandZeigen === 'function') habStandZeigen();
   });
   const btn = $('btn-konto');
@@ -3774,7 +3909,8 @@ function zeichneBinder() {
     const item = S.binder.items[idx];
     if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
     const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
-    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})">
+    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})"
+        ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnde()" ontouchcancel="touchEnde()">
       ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
   }
   box.innerHTML = html;
@@ -4368,7 +4504,8 @@ async function fotoUebernehmen(modus) {
 // Bewusst ohne Kommentare und ohne Nachrichten: es gibt nur Herzen. Damit gibt es
 // keine Gespräche zu moderieren, und die drei Textfelder (Anzeigename, Satz zur
 // Person, Bindername) werden serverseitig beim Speichern geprüft.
-const VT = { sortierung: 'trend', binder: [], laeuft: false, meldung: null };
+const VT = { sortierung: 'trend', binder: [], laeuft: false, art: '', groesse: '',
+             doppelseite: localStorage.getItem('bp_vt_dop') === '1', meldung: null };
 
 function ansichtVitrine() {
   planerSchliessen();
@@ -4388,6 +4525,41 @@ function vitrineSchliessen() {
 function zeichneVitrineTabs() {
   $('vt-tabs').innerHTML = [['trend', t('vt_trend')], ['top', t('vt_top')], ['neu', t('vt_neu')]]
     .map(([w, l]) => `<button class="${VT.sortierung === w ? 'on' : ''}" onclick="vitrineSortierung('${w}')">${l}</button>`).join('');
+  zeichneVitrineFilter();
+}
+
+/** Filter über dem Gitter: wonach jemand stöbert, ist entweder eine Art von Binder
+ *  („zeig mir Pokédex-Binder“) oder eine Größe („eine schöne Seite, kein Mammutprojekt“). */
+function zeichneVitrineFilter() {
+  const box = $('vt-filter');
+  if (!box) return;
+  const knopf = (feld, wert, text) => `<button class="chip ${VT[feld] === wert ? 'on' : ''}"
+    onclick="vitrineFilter('${feld}','${wert}')">${esc(text)}</button>`;
+  box.innerHTML = `
+    <span class="vt-lbl">${t('vt_f_art')}</span>
+    ${knopf('art', '', t('vt_f_alle'))}
+    ${['master', 'dex', 'pokemon', 'kuenstler', 'artwork'].map((a) => knopf('art', a, t(VT_ARTEN[a]))).join('')}
+    <span class="trenner"></span>
+    <span class="vt-lbl">${t('vt_f_groesse')}</span>
+    ${knopf('groesse', '', t('vt_f_alle'))}
+    ${knopf('groesse', 'klein', t('vt_f_klein'))}
+    ${knopf('groesse', 'mittel', t('vt_f_mittel'))}
+    ${knopf('groesse', 'gross', t('vt_f_gross'))}
+    <div style="flex:1"></div>
+    <button class="chip ${VT.doppelseite ? 'on' : ''}" onclick="vitrineDoppelseite()" title="${t('vt_f_dop_t')}">${t('vt_f_dop')}</button>`;
+}
+
+function vitrineFilter(feld, wert) {
+  VT[feld] = VT[feld] === wert ? '' : wert;
+  zeichneVitrineFilter();
+  vitrineLaden();
+}
+
+function vitrineDoppelseite() {
+  VT.doppelseite = !VT.doppelseite;
+  try { localStorage.setItem('bp_vt_dop', VT.doppelseite ? '1' : ''); } catch (e) {}
+  zeichneVitrineFilter();
+  zeichneVitrine();
 }
 function vitrineSortierung(w) { VT.sortierung = w; zeichneVitrineTabs(); vitrineLaden(); }
 let vtTimer = null;
@@ -4399,13 +4571,46 @@ async function vitrineLaden() {
   $('vt-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     const q = encodeURIComponent($('vt-suche').value.trim());
-    const d = await api(`api/vitrine?sortierung=${VT.sortierung}&limit=36&q=${q}`);
+    const d = await api(`api/vitrine?sortierung=${VT.sortierung}&limit=36&q=${q}`
+      + `&art=${VT.art || ''}&groesse=${VT.groesse || ''}`);
     VT.binder = d.binder || [];
     zeichneVitrine();
   } catch (e) {
     $('vt-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
   } finally { VT.laeuft = false; }
 }
+
+/** Eine Binderseite als Vorschau zeichnen. `blatt` kommt vom Server und enthält das Raster
+ *  samt leeren Fächern — nur so sieht die Kachel aus wie eine echte aufgeschlagene Seite. */
+function vitrineBlatt(blatt, doppelt) {
+  if (!blatt || !blatt.seiten || !blatt.seiten.length) return '';
+  const fach = (f) => {
+    if (f.art === 'card') return `<div class="vt-fach"><img loading="lazy" src="${imgUrl(f.id)}" alt=""></div>`;
+    if (f.art === 'artwork') return '<div class="vt-fach durch"></div>';
+    if (f.art === 'dex') return `<div class="vt-fach"><img loading="lazy" src="api/img/dex/${f.dex}" alt=""></div>`;
+    return '<div class="vt-fach leer"></div>';
+  };
+  // Eine Artwork-Seite ist EIN Bild, das über die ganze Seite läuft. Es liegt deshalb als
+  // Untergrund hinter dem Raster; die Karten, die darauf liegen, behalten ihre Fächer.
+  const seite = (nr) => {
+    const art = blatt.seiten[nr].find((f) => f.art === 'artwork');
+    const grund = art
+      ? `background-image:url(api/artwork/${encodeURIComponent(art.id)}/bild?v=vorschau);background-size:100% 100%;padding:0;gap:0`
+      : '';
+    // Auf einer Artwork-Seite sind die Ankerkarten bereits ins Bild eingesetzt. Sie ein
+    // zweites Mal darüberzulegen ergäbe Doppelbilder — die Fächer bleiben deshalb leer.
+    const inhalt = art ? blatt.seiten[nr].map(() => '<div class="vt-fach durch"></div>').join('')
+                       : blatt.seiten[nr].map(fach).join('');
+    return `<div class="vt-seite${art ? ' nahtlos' : ''}" style="grid-template-columns:repeat(${blatt.spalten},1fr);${grund}">
+      ${inhalt}</div>`;
+  };
+  // Zwei Seiten nebeneinander nur, wenn es sie gibt und Platz ist — sonst wirkt die zweite leer
+  const zwei = doppelt && blatt.seiten.length > 1;
+  return `<div class="vt-blatt ${zwei ? 'dop' : ''}">${zwei ? seite(0) + seite(1) : seite(0)}</div>`;
+}
+
+const VT_ARTEN = { dex: 'vt_a_dex', artwork: 'vt_a_artwork', kuenstler: 'vt_a_kuenstler',
+                   master: 'vt_a_master', pokemon: 'vt_a_pokemon', frei: '' };
 
 function zeichneVitrine() {
   if (!VT.binder.length) {
@@ -4414,10 +4619,8 @@ function zeichneVitrine() {
   }
   $('vt-gitter').innerHTML = VT.binder.map((b) => `
     <div class="vt-karte">
-      <div class="vt-bilder" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">
-        ${(b.vorschau || []).slice(0, 4).map((v) => v.art === 'artwork'
-          ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(v.id)}/bild?v=vorschau" alt="">`
-          : `<img loading="lazy" src="${imgUrl(v.id)}" alt="">`).join('')}
+      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:8px 8px 0;background:#14161a">
+        ${vitrineBlatt(b.blatt, VT.doppelseite)}
       </div>
       <div class="vt-txt">
         <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
@@ -4425,6 +4628,7 @@ function zeichneVitrine() {
         <div class="vt-fuss">
           <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
             ${ic('herz', 15, b.gestimmt ? 'voll' : '')}<span>${b.stimmen}</span></button>
+          ${VT_ARTEN[b.art] ? `<span class="vt-marke ${b.art}">${t(VT_ARTEN[b.art])}</span>` : ''}
           <div style="flex:1"></div>
           <button style="font-size:11px;color:var(--mut)" onclick="meldenOeffnen('binder','${esc(b.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>
         </div>
@@ -4673,29 +4877,72 @@ async function profilseiteOeffnen(name) {
   $('po-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     const d = await api('api/vitrine/profil/' + encodeURIComponent(name));
+    POF.daten = d;
+    POF.sortierung = POF.sortierung || 'neu';
+    POF.art = POF.art || '';
     $('po-name').textContent = d.profil.name;
     $('po-text').textContent = d.profil.kurztext || '';
     $('po-seit').textContent = d.profil.seit ? t('po_seit').replace('{d}', d.profil.seit) : '';
+    // Ein Profil ohne Zahlen sagt nichts. Drei genügen: wie viel, wie groß, wie gut angekommen.
+    $('po-zahlen').innerHTML = [
+      [d.profil.binder_anzahl, t('po_binder_zahl')],
+      [d.profil.karten, t('po_karten')],
+      [d.profil.herzen, t('po_herzen')],
+    ].map(([n, l]) => `<div class="po-zahl"><b>${n == null ? '–' : n}</b><span>${l}</span></div>`).join('');
     const bild = $('po-bild');
-    bild.classList.toggle('hidden', !d.profil.avatar_card);
-    if (d.profil.avatar_card) bild.src = imgUrl(d.profil.avatar_card);
-    $('po-gitter').innerHTML = (d.binder || []).map((b) => `
-      <div class="vt-karte">
-        <div class="vt-bilder" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">
-          ${(b.vorschau || []).slice(0, 4).map((v) => v.art === 'artwork'
-            ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(v.id)}/bild?v=vorschau" alt="">`
-            : `<img loading="lazy" src="${imgUrl(v.id)}" alt="">`).join('')}
-        </div>
-        <div class="vt-txt">
-          <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
-          <div class="vt-meta">${b.karten} ${t('karten_wort')}</div>
-          <div class="vt-fuss"><span class="vt-herz">${ic('herz', 15, 'voll')}<span>${b.stimmen}</span></span></div>
-        </div>
-      </div>`).join('') || `<div class="vt-leer">${t('po_leer')}</div>`;
+    // Ohne eigenes Bild die erste Karte des neuesten Binders nehmen — besser als eine leere Fläche
+    const ersatz = (d.binder[0]?.vorschau || []).find((v) => v.art === 'card');
+    const bildId = d.profil.avatar_card || (ersatz && ersatz.id);
+    bild.classList.toggle('hidden', !bildId);
+    if (bildId) bild.src = imgUrl(bildId);
+    zeichneProfilBinder();
   } catch (e) {
     $('po-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
   }
 }
+/** Die Binder eines Sammlers: sortierbar und nach Art filterbar. Wer zwölf Binder hat,
+ *  braucht einen Weg, den einen zu finden, den er zeigen wollte. */
+function zeichneProfilBinder() {
+  const d = POF.daten;
+  if (!d) return;
+  let liste = (d.binder || []).slice();
+  if (POF.art) liste = liste.filter((b) => b.art === POF.art);
+  if (POF.sortierung === 'herzen') liste.sort((a, b) => b.stimmen - a.stimmen);
+  else if (POF.sortierung === 'gross') liste.sort((a, b) => b.karten - a.karten);
+  else liste.sort((a, b) => (b.veroeffentlicht_at || '').localeCompare(a.veroeffentlicht_at || ''));
+
+  const arten = [...new Set((d.binder || []).map((b) => b.art))].filter((a) => VT_ARTEN[a]);
+  const knopf = (feld, wert, text) => `<button class="chip ${POF[feld] === wert ? 'on' : ''}"
+    onclick="profilFilter('${feld}','${wert}')">${esc(text)}</button>`;
+  $('po-filter').innerHTML = `
+    <span class="vt-lbl">${t('po_sortierung')}</span>
+    ${knopf('sortierung', 'neu', t('po_s_neu'))}
+    ${knopf('sortierung', 'herzen', t('po_s_herzen'))}
+    ${knopf('sortierung', 'gross', t('po_s_gross'))}
+    ${arten.length > 1 ? `<span class="trenner"></span><span class="vt-lbl">${t('vt_f_art')}</span>
+      ${knopf('art', '', t('vt_f_alle'))}${arten.map((a) => knopf('art', a, t(VT_ARTEN[a]))).join('')}` : ''}`;
+
+  $('po-gitter').innerHTML = liste.map((b) => `
+    <div class="vt-karte">
+      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:8px 8px 0;background:#14161a">
+        ${vitrineBlatt(b.blatt, false)}
+      </div>
+      <div class="vt-txt">
+        <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
+        <div class="vt-meta">${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
+        <div class="vt-fuss">
+          <span class="vt-herz">${ic('herz', 15, 'voll')}<span>${b.stimmen}</span></span>
+          ${VT_ARTEN[b.art] ? `<span class="vt-marke ${b.art}">${t(VT_ARTEN[b.art])}</span>` : ''}
+        </div>
+      </div>
+    </div>`).join('') || `<div class="vt-leer">${t('po_leer')}</div>`;
+}
+
+function profilFilter(feld, wert) {
+  POF[feld] = feld === 'sortierung' ? wert : (POF[feld] === wert ? '' : wert);
+  zeichneProfilBinder();
+}
+
 function profilseiteSchliessen() {
   if ($('profil-oeffentlich').classList.contains('hidden')) return;
   ebeneAufraeumen(profilseiteSchliessen);
@@ -5080,6 +5327,90 @@ function binderLeeren() {
   toastUndo(t('leeren'));
 }
 
+/* ---------- Umsortieren mit dem Finger ----------
+ * HTML-Drag&Drop gibt es auf Touch-Geräten nicht. Bisher ging Umsortieren am Handy nur über
+ * den Umweg „Planer → Auswahl → verschieben“. Ein langer Druck hebt das Fach jetzt an, der
+ * Finger zieht es, Loslassen legt es ab — dieselbe Ablage-Logik wie beim Ziehen mit der Maus.
+ */
+const TOUCH = { idx: null, geist: null, timer: null, aktiv: false, ziel: null, start: null };
+
+function touchStart(ev) {
+  if (S.nurAnsicht || ev.touches.length !== 1) return;
+  const fach = ev.currentTarget;
+  const idx = Number(fach.dataset.idx);
+  if (Number.isNaN(idx) || !S.binder.items[idx]) return;
+  const b = ev.touches[0];
+  TOUCH.start = { x: b.clientX, y: b.clientY };
+  TOUCH.timer = setTimeout(() => {
+    TOUCH.aktiv = true;
+    TOUCH.idx = idx;
+    if (navigator.vibrate) navigator.vibrate(12);      // spürbare Rückmeldung, dass es „hängt“
+    const r = fach.getBoundingClientRect();
+    const geist = fach.cloneNode(true);
+    geist.className = 'fach-geist';
+    geist.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;`
+      + `height:${r.height}px;z-index:200;pointer-events:none;opacity:.85;transform:scale(1.06);`
+      + 'box-shadow:0 12px 30px rgba(0,0,0,.4);border-radius:6px;overflow:hidden';
+    document.body.appendChild(geist);
+    TOUCH.geist = geist;
+    fach.classList.add('wird-gezogen');
+  }, 420);
+}
+
+function touchMove(ev) {
+  if (!TOUCH.aktiv) {
+    // Vor dem langen Druck: wer scrollt, soll scrollen dürfen
+    if (TOUCH.timer && TOUCH.start) {
+      const b = ev.touches[0];
+      if (Math.abs(b.clientX - TOUCH.start.x) > 8 || Math.abs(b.clientY - TOUCH.start.y) > 8) {
+        clearTimeout(TOUCH.timer); TOUCH.timer = null;
+      }
+    }
+    return;
+  }
+  ev.preventDefault();
+  const b = ev.touches[0];
+  if (TOUCH.geist) {
+    TOUCH.geist.style.left = (b.clientX - TOUCH.geist.offsetWidth / 2) + 'px';
+    TOUCH.geist.style.top = (b.clientY - TOUCH.geist.offsetHeight / 2) + 'px';
+  }
+  document.querySelectorAll('.slot.dragover').forEach((el) => el.classList.remove('dragover'));
+  const unter = document.elementFromPoint(b.clientX, b.clientY);
+  const fach = unter && unter.closest('.slot[data-idx]');
+  TOUCH.ziel = fach ? Number(fach.dataset.idx) : null;
+  if (fach) fach.classList.add('dragover');
+}
+
+function touchEnde() {
+  clearTimeout(TOUCH.timer); TOUCH.timer = null;
+  if (!TOUCH.aktiv) { TOUCH.start = null; return; }
+  if (TOUCH.geist) { TOUCH.geist.remove(); TOUCH.geist = null; }
+  document.querySelectorAll('.slot.dragover, .slot.wird-gezogen')
+    .forEach((el) => el.classList.remove('dragover', 'wird-gezogen'));
+  const von = TOUCH.idx, nach = TOUCH.ziel;
+  TOUCH.aktiv = false; TOUCH.idx = null; TOUCH.ziel = null; TOUCH.start = null;
+  if (von === null || nach === null || von === nach) return;
+  fachVerschieben(von, nach);
+}
+
+/** Ein Fach von A nach B — dieselbe Regel wie beim Ziehen mit der Maus. */
+function fachVerschieben(von, nach) {
+  merken('drag');
+  const zielItem = S.binder.items[nach];
+  if (!zielItem || zielItem.type === 'empty') {
+    while (S.binder.items.length <= nach) S.binder.items.push({ type: 'empty' });
+    S.binder.items[nach] = S.binder.items[von];
+    S.binder.items[von] = { type: 'empty' };
+  } else {
+    const [item] = S.binder.items.splice(von, 1);
+    S.binder.items.splice(nach, 0, item);
+  }
+  S.auswahl.clear();
+  speichern(); zeichneBinder();
+  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  toastUndo(t('verschoben'));
+}
+
 let dragIdx = null;
 let dragNeu = null;      // Karte aus der Trefferliste (statt Umsortieren im Binder)
 
@@ -5246,6 +5577,56 @@ function planerSchliessen() {
   zeichneBinder();
 }
 
+/** Verteilung der Karten im Binder: nach Jahrzehnt, Seltenheit und Set. Zahlen, die man
+ *  sonst nirgends sieht, und der schnellste Weg zu „was sammle ich hier eigentlich“. */
+async function statistikOeffnen() {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  if (!S.binder || !S.binder.items.length) return toast(t('binder_leer'));
+  modalOeffnen('modal-statistik');
+  $('stat-inhalt').innerHTML = `<div style="padding:30px;text-align:center">${lader('gross', t('laedt'))}</div>`;
+  const ids = [...new Set(S.binder.items.filter((i) => i.type === 'card' && i.id).map((i) => i.id))];
+  let karten = [];
+  try {
+    const d = await api('api/cards/nach_ids', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }),
+    });
+    karten = Object.values(d.karten || {});
+  } catch (e) { $('stat-inhalt').textContent = t('fehler_laden'); return; }
+
+  const zaehl = (fn) => {
+    const m = new Map();
+    for (const k of karten) {
+      const v = fn(k);
+      if (!v) continue;
+      m.set(v, (m.get(v) || 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  };
+  const jahre = zaehl((k) => (k.release_date || '').slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0]));
+  const setz = zaehl((k) => setNm(k)).slice(0, 8);
+  const selten = zaehl((k) => k.rarity).slice(0, 8);
+  const illus = zaehl((k) => k.illustrator).slice(0, 5);
+
+  const balken = (liste, gesamt) => liste.map(([name, n]) => `
+    <div class="stat-zeile">
+      <span class="stat-name">${esc(name)}</span>
+      <span class="stat-bar"><i style="width:${Math.max(3, n / gesamt * 100).toFixed(1)}%"></i></span>
+      <span class="stat-n">${n}</span>
+    </div>`).join('');
+  const groesste = Math.max(1, ...karten.length ? [Math.max(...jahre.map((j) => j[1]), 1)] : [1]);
+
+  $('stat-inhalt').innerHTML = `
+    <div class="stat-kopf">
+      <div class="po-zahl"><b>${karten.length}</b><span>${t('po_karten')}</span></div>
+      <div class="po-zahl"><b>${setz.length}</b><span>${t('st_sets')}</span></div>
+      <div class="po-zahl"><b>${jahre.length ? jahre[0][0] + '–' + jahre[jahre.length - 1][0] : '–'}</b><span>${t('st_jahre')}</span></div>
+    </div>
+    ${jahre.length > 1 ? `<h3 class="stat-h">${t('st_jahrgang')}</h3>${balken(jahre, groesste)}` : ''}
+    ${setz.length ? `<h3 class="stat-h">${t('st_topsets')}</h3>${balken(setz, setz[0][1])}` : ''}
+    ${selten.length ? `<h3 class="stat-h">${t('st_selten')}</h3>${balken(selten, selten[0][1])}` : ''}
+    ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1])}` : ''}`;
+}
+
 function zeichnePlaner() {
   const pp = proSeite();
   const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
@@ -5259,6 +5640,7 @@ function zeichnePlaner() {
       if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
       slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
         draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
+        ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnde()" ontouchcancel="touchEnde()"
         ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
         ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
     }
@@ -5298,6 +5680,25 @@ function auswahlZeigen() {
   });
   planerAktionen();
 }
+/** Tastatur im Planer. Wer 500 Karten sortiert, will nicht für jeden Schritt zur Maus greifen.
+ *  Entf entfernt die Auswahl, Pfeile verschieben sie, Strg+A wählt alles, Escape hebt auf. */
+document.addEventListener('keydown', (ev) => {
+  if ($('planer').classList.contains('hidden') || S.nurAnsicht) return;
+  const feld = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
+  if (feld) return;
+  if (ev.key === 'Escape' && S.auswahl.size) { ev.preventDefault(); auswahlLeeren(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') {
+    ev.preventDefault();
+    S.binder.items.forEach((_, i) => S.auswahl.add(i));
+    auswahlZeigen();
+    return;
+  }
+  if (!S.auswahl.size) return;
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); auswahlEntfernen(); return; }
+  if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') { ev.preventDefault(); auswahlVerschieben(-1); return; }
+  if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') { ev.preventDefault(); auswahlVerschieben(1); return; }
+});
+
 function seiteWaehlen(seite) {
   const pp = proSeite();
   for (let s = 0; s < pp; s++) {

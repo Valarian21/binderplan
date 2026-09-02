@@ -273,7 +273,42 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
 
     # --- Listen ------------------------------------------------------------
 
+    RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4, 4),
+              "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
+
+    def _fach(it):
+        """Ein Fach so beschreiben, wie es die Vorschau zeichnen kann — leere Plätze inklusive."""
+        if not it:
+            return {"art": "leer"}
+        if it.get("type") == "card" and it.get("id"):
+            return {"art": "card", "id": it["id"], "sprache": it.get("sprache") or ""}
+        if it.get("type") == "art" and it.get("artwork"):
+            # layout mitgeben: die Vorschau muss den richtigen Ausschnitt zeigen, sonst steht
+            # dasselbe Bild neunmal nebeneinander statt einer über die Seite laufenden Malerei
+            return {"art": "artwork", "id": it["artwork"], "slot": it.get("slot") or 0,
+                    "layout": it.get("layout") or ""}
+        if it.get("type") == "dex" and it.get("dex"):
+            return {"art": "dex", "dex": it["dex"]}
+        return {"art": "leer"}
+
+    def _seiten_vorschau(items, layout, seiten=1):
+        """Die ersten Seiten des Binders als Raster. Eine Binderseite ist das, was den Binder
+        ausmacht — vier Karten nebeneinander sahen aus wie eine beliebige Trefferliste."""
+        spalten, zeilen = RASTER.get(layout or "3x3", (3, 3))
+        pro_seite = spalten * zeilen
+        aus = []
+        for nr in range(max(1, min(3, seiten))):
+            teil = items[nr * pro_seite:(nr + 1) * pro_seite]
+            if not teil and nr:
+                break
+            faecher = [_fach(teil[i] if i < len(teil) else None) for i in range(pro_seite)]
+            if nr and all(f["art"] == "leer" for f in faecher):
+                break
+            aus.append(faecher)
+        return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
+
     def _vorschau(items, anzahl=6):
+        """Flache Kartenliste — wird noch für die Bildauswahl im Profil gebraucht."""
         aus = []
         for it in items:
             if it.get("type") == "card" and it.get("id"):
@@ -284,14 +319,30 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 break
         return aus
 
+    def _binder_art(mode, options, items):
+        """Wofür steht dieser Binder? Wird als Merkmal angezeigt und ist filterbar."""
+        opt = options or {}
+        if mode == "dex" or any(i.get("type") == "dex" for i in items[:40]):
+            return "dex"
+        if opt.get("illustrator"):
+            return "kuenstler"
+        if opt.get("dex"):
+            return "pokemon"
+        if any(i.get("type") == "art" for i in items[:60]):
+            return "artwork"
+        if mode == "master" or opt.get("master_set") or opt.get("reverse"):
+            return "master"
+        return "frei"
+
     @app.get("/api/vitrine")
     def vitrine(request: Request, sortierung: str = "trend", limit: int = 24, offset: int = 0,
-                set_id: str = "", art_ort: str = "", art_merkmal: str = "", q: str = ""):
+                set_id: str = "", art_ort: str = "", art_merkmal: str = "", q: str = "",
+                art: str = "", groesse: str = ""):
         limit = max(1, min(48, limit))
         user = current_user(request)
         con = get_db()
         reihen = con.execute(
-            "SELECT b.id, b.name, b.layout, b.items, b.veroeffentlicht_at, b.user_id,"
+            "SELECT b.id, b.name, b.layout, b.mode, b.options, b.items, b.veroeffentlicht_at, b.user_id,"
             " p.name AS besitzer, p.avatar_card,"
             " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id) AS stimmen"
             " FROM binders b LEFT JOIN profile p ON p.user_id = b.user_id"
@@ -309,17 +360,34 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             except Exception:
                 items = []
             karten = [i for i in items if i.get("type") == "card"]
-            if q and q.lower() not in (r["name"] or "").lower():
+            if q and q.lower() not in ((r["name"] or "") + " " + (r["besitzer"] or "")).lower():
                 continue
             if set_id and not any(str(i.get("id", "")).startswith(set_id + "-") for i in karten):
                 continue
+            try:
+                optionen = json.loads(r["options"] or "{}")
+            except Exception:
+                optionen = {}
+            binder_art = _binder_art(r["mode"], optionen, items)
+            if art and binder_art != art:
+                continue
+            # Größe als grobe Stufe: wer eine kleine Themenseite sucht, will keine 500er-Sammlung
+            if groesse == "klein" and len(karten) > 40:
+                continue
+            if groesse == "mittel" and not (40 < len(karten) <= 150):
+                continue
+            if groesse == "gross" and len(karten) <= 150:
+                continue
+            spalten, zeilen = RASTER.get(r["layout"] or "3x3", (3, 3))
             aus.append({
                 "id": r["id"], "name": r["name"], "besitzer": r["besitzer"] or "—",
                 "avatar_card": r["avatar_card"], "stimmen": r["stimmen"],
                 "gestimmt": r["id"] in meine, "karten": len(karten),
-                "seiten": max(1, -(-len(items) // 9)), "layout": r["layout"],
+                "seiten": max(1, -(-len(items) // (spalten * zeilen))), "layout": r["layout"],
+                "art": binder_art,
                 "veroeffentlicht_at": r["veroeffentlicht_at"],
                 "vorschau": _vorschau(items),
+                "blatt": _seiten_vorschau(items, r["layout"], 2),
                 "_punkte": _punkte(r["stimmen"], r["veroeffentlicht_at"] or ""),
             })
         con.close()
@@ -365,22 +433,38 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         if not p or p["gesperrt"]:
             con.close(); raise HTTPException(404, "Profil nicht gefunden")
         reihen = con.execute(
-            "SELECT b.id, b.name, b.items, b.veroeffentlicht_at,"
+            "SELECT b.id, b.name, b.layout, b.mode, b.options, b.items, b.veroeffentlicht_at,"
             " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id=b.id) AS stimmen"
             " FROM binders b WHERE b.user_id = ? AND b.sichtbar = 1 AND COALESCE(b.gesperrt,0)=0"
             " ORDER BY b.veroeffentlicht_at DESC", (p["user_id"],)).fetchall()
         binder = []
+        karten_gesamt = herzen_gesamt = 0
         for r in reihen:
             try:
                 items = json.loads(r["items"] or "[]")
             except Exception:
                 items = []
+            try:
+                optionen = json.loads(r["options"] or "{}")
+            except Exception:
+                optionen = {}
+            anzahl = sum(1 for i in items if i.get("type") == "card")
+            karten_gesamt += anzahl
+            herzen_gesamt += r["stimmen"]
+            spalten, zeilen = RASTER.get(r["layout"] or "3x3", (3, 3))
             binder.append({"id": r["id"], "name": r["name"], "stimmen": r["stimmen"],
-                           "karten": sum(1 for i in items if i.get("type") == "card"),
-                           "vorschau": _vorschau(items, 4)})
+                           "karten": anzahl, "layout": r["layout"],
+                           "seiten": max(1, -(-len(items) // (spalten * zeilen))),
+                           "art": _binder_art(r["mode"], optionen, items),
+                           "veroeffentlicht_at": r["veroeffentlicht_at"],
+                           "vorschau": _vorschau(items, 4),
+                           "blatt": _seiten_vorschau(items, r["layout"], 1)})
         con.close()
         return {"profil": {"name": p["name"], "kurztext": p["kurztext"], "avatar_card": p["avatar_card"],
-                           "seit": (p["created_at"] or "")[:10]}, "binder": binder}
+                           "seit": (p["created_at"] or "")[:10],
+                           "binder_anzahl": len(binder), "karten": karten_gesamt,
+                           "herzen": herzen_gesamt},
+                "binder": binder}
 
     # --- Melden & Moderation ----------------------------------------------
 

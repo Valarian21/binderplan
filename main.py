@@ -2998,6 +2998,46 @@ def _pdf_titelseite(c, binder, lang, stats):
     c.showPage()
 
 
+def _pdf_register(c, binder, lang, namen, per_page):
+    """Register: welche Seite enthält was. Wer einen Binder mit zwanzig Seiten füllt, sucht
+    sonst blätternd — mit „Seite 3: Arkani bis Dragoran“ findet er die Stelle sofort."""
+    seiten = max(1, -(-len(binder["items"]) // per_page))
+    if seiten < 3:
+        return                      # bei zwei Seiten ist ein Register nur Papierverschwendung
+    page_w, page_h = A4
+    zeilen = []
+    for nr in range(seiten):
+        teil = binder["items"][nr * per_page:(nr + 1) * per_page]
+        karten = [namen.get(i.get("id")) for i in teil if i.get("type") == "card" and namen.get(i.get("id"))]
+        if not karten:
+            zeilen.append((nr + 1, "—"))
+            continue
+        von, bis = karten[0], karten[-1]
+        zeilen.append((nr + 1, von if von == bis else f"{von} – {bis}"))
+
+    c.setFillGray(0.1)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(22 * mm, page_h - 25 * mm, "Register" if lang == "de" else "Index")
+    c.setFont("Helvetica", 9)
+    c.setFillGray(0.45)
+    c.drawString(22 * mm, page_h - 31 * mm,
+                 "Welche Karten auf welcher Binderseite liegen" if lang == "de"
+                 else "Which cards are on which binder page")
+
+    spalten, pro_spalte = 2, 34
+    breite = (page_w - 44 * mm) / spalten
+    c.setFont("Helvetica", 9.5)
+    for i, (nr, text) in enumerate(zeilen[:spalten * pro_spalte]):
+        sp, ze = i // pro_spalte, i % pro_spalte
+        x = 22 * mm + sp * breite
+        y = page_h - 42 * mm - ze * 6.6 * mm
+        c.setFillGray(0.35)
+        c.drawString(x, y, ("Seite " if lang == "de" else "Page ") + str(nr))
+        c.setFillGray(0.15)
+        c.drawString(x + 17 * mm, y, text[:44])
+    c.showPage()
+
+
 def _pdf_wasserzeichen(c, x, y, lang):
     c.saveState()
     try:
@@ -3139,6 +3179,10 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
             f"Grid {binder['layout'].replace('x', ' × ')} · {max(1, -(-len(binder['items']) // per_page))} binder pages",
         ]
     _pdf_titelseite(c, binder, lang, stats)
+    # Für das Register die Kartennamen in der Sprache des Drucks
+    register_namen = {cid: ((r["name_en"] if lang == "en" else r["name_de"]) or r["name_de"] or r["name_en"] or "")
+                      for cid, r in card_rows.items()}
+    _pdf_register(c, binder, lang, register_namen, per_page)
 
     cell = 0
     for idx, item in printable:
