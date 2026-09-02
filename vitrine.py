@@ -119,6 +119,11 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 admin_key=admin_key, load_binder=load_binder, abo=abo, drossel=drossel)
 
     con = get_db()
+    for befehl in ("ALTER TABLE profile ADD COLUMN tauschliste INTEGER DEFAULT 0",):
+        try:
+            con.execute(befehl)
+        except Exception:
+            pass
     con.executescript("""
         CREATE TABLE IF NOT EXISTS profile (
             user_id INTEGER PRIMARY KEY, name TEXT UNIQUE, kurztext TEXT, avatar_card TEXT,
@@ -170,6 +175,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         data = await request.json()
         name = re.sub(r"\s+", " ", str(data.get("name") or "")).strip()
         kurztext = re.sub(r"\s+", " ", str(data.get("kurztext") or "")).strip()[:TEXT_MAX]
+        tausch = 1 if data.get("tauschliste") else 0
         avatar = str(data.get("avatar_card") or "").strip()[:40]
         if not re.fullmatch(r"[A-Za-zÄÖÜäöüß0-9 ._-]{%d,%d}" % (NAME_MIN, NAME_MAX), name):
             raise HTTPException(400, f"Der Anzeigename braucht {NAME_MIN}–{NAME_MAX} Zeichen "
@@ -183,11 +189,11 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         if schon:
             con.close()
             raise HTTPException(400, "Diesen Anzeigenamen gibt es schon.")
-        con.execute("INSERT INTO profile (user_id, name, kurztext, avatar_card, created_at, updated_at)"
-                    " VALUES (?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET"
+        con.execute("INSERT INTO profile (user_id, name, kurztext, avatar_card, tauschliste,"
+                    " created_at, updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET"
                     " name=excluded.name, kurztext=excluded.kurztext, avatar_card=excluded.avatar_card,"
-                    " updated_at=excluded.updated_at",
-                    (user["id"], name, kurztext, avatar, _now(), _now()))
+                    " tauschliste=excluded.tauschliste, updated_at=excluded.updated_at",
+                    (user["id"], name, kurztext, avatar, tausch, _now(), _now()))
         con.commit()
         p = _profil_von(con, user["id"])
         con.close()
@@ -459,12 +465,27 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                            "veroeffentlicht_at": r["veroeffentlicht_at"],
                            "vorschau": _vorschau(items, 4),
                            "blatt": _seiten_vorschau(items, r["layout"], 1)})
+        # Tauschliste: nur wenn der Sammler sie ausdrücklich freigegeben hat. Sie zeigt Karten,
+        # keine Nachrichten — die Vitrine bleibt damit frei von Text zwischen Nutzern.
+        tausch = []
+        spalten = {r[1] for r in con.execute("PRAGMA table_info(profile)")}
+        zeigt_tausch = bool(p["tauschliste"]) if "tauschliste" in spalten else False
+        if zeigt_tausch:
+            reihen = con.execute(
+                "SELECT s.card_id, SUM(s.anzahl) - 1 AS ueber, c.name_de, c.name_en, c.local_id,"
+                " (SELECT name FROM sets WHERE sets.id = c.set_id) AS setn"
+                " FROM sammlung s JOIN cards c ON c.id = s.card_id"
+                " WHERE s.user_id = ? GROUP BY s.card_id HAVING SUM(s.anzahl) > 1"
+                " ORDER BY ueber DESC, c.name_de LIMIT 60", (p["user_id"],)).fetchall()
+            tausch = [{"id": r["card_id"], "name": r["name_de"] or r["name_en"],
+                       "set": r["setn"] or "", "nr": r["local_id"], "ueber": r["ueber"]}
+                      for r in reihen]
         con.close()
         return {"profil": {"name": p["name"], "kurztext": p["kurztext"], "avatar_card": p["avatar_card"],
                            "seit": (p["created_at"] or "")[:10],
                            "binder_anzahl": len(binder), "karten": karten_gesamt,
-                           "herzen": herzen_gesamt},
-                "binder": binder}
+                           "herzen": herzen_gesamt, "tauschliste": zeigt_tausch},
+                "binder": binder, "tausch": tausch}
 
     # --- Melden & Moderation ----------------------------------------------
 

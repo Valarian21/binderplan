@@ -272,6 +272,12 @@
   .stat-bar { height: 9px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
   .stat-bar i { display: block; height: 100%; background: var(--blau); border-radius: 99px; }
   .stat-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+  .tausch-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+  .tausch-karte { position: relative; aspect-ratio: 63/88; border-radius: 6px; overflow: hidden;
+                  border: 1.5px solid var(--line); background: var(--panel2); }
+  .tausch-karte img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tausch-n { position: absolute; right: 3px; bottom: 3px; background: var(--gruen); color: #fff;
+              font-size: 10.5px; font-weight: 800; padding: 1px 5px; border-radius: 999px; }
   .slot.wird-gezogen { opacity: .3; }
   .fach-geist { transition: none; }
   /* Während des Ziehens darf die Seite nicht mitscrollen */
@@ -1693,6 +1699,8 @@
               <button class="btn sekundaer" style="font-size:12px;padding:5px 10px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button></span></div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_text">Ein Satz über dich</span>
             <span class="wert"><input class="feld" id="pf-vtext" style="width:210px;padding:5px 9px;font-size:13px" maxlength="140" placeholder="Sammle seit 1999" data-i18n-ph="ph_vtext"></span></div>
+          <div class="pf-zeile"><span data-i18n="vpf_tausch">Doppelte Karten öffentlich zeigen</span>
+            <span class="wert"><label class="schalter"><input type="checkbox" id="pf-vtausch" onchange="vitrineProfilSpeichern()"></label></span></div>
           <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
           <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
@@ -1905,6 +1913,8 @@
     <input class="feld" id="vpf-name" maxlength="24" placeholder="z. B. Karpador-Kai" data-i18n-ph="ph_vname">
     <div class="f-lbl" style="margin-top:10px" data-i18n="vpf_text">Ein Satz über dich (freiwillig)</div>
     <input class="feld" id="vpf-text" maxlength="140" placeholder="Sammle seit 1999, Schwerpunkt alte Sets" data-i18n-ph="ph_vtext2">
+    <label class="schalter" style="margin-top:12px"><input type="checkbox" id="vpf-tausch"><span data-i18n="vpf_tausch">Doppelte Karten öffentlich zeigen</span></label>
+    <div class="unter" style="font-size:11.5px;margin-top:2px" data-i18n="vpf_tausch_u">Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.</div>
     <div style="font-size:11.5px;color:var(--mut);margin-top:10px" data-i18n="vpf_hinweis">Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.</div>
     <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="vpf-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
@@ -1957,6 +1967,7 @@
   </div>
   <div class="vt-filter" id="po-filter"></div>
   <div class="vt-gitter" id="po-gitter"></div>
+  <div id="po-tausch" class="hidden"></div>
 </div>
 
 <div id="sammlung" class="hidden">
@@ -2206,7 +2217,7 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
-    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
@@ -2378,7 +2389,7 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
-    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
@@ -4663,6 +4674,7 @@ async function vitrineProfilDialog() {
     const d = await api('api/profil');
     $('vpf-name').value = (d.profil && d.profil.name) || '';
     $('vpf-text').value = (d.profil && d.profil.kurztext) || '';
+    if ($('vpf-tausch')) $('vpf-tausch').checked = !!(d.profil && d.profil.tauschliste);
   } catch (e) {}
   modalOeffnen('modal-profil');
 }
@@ -4671,7 +4683,8 @@ async function profilSpeichern() {
   try {
     await api('api/profil', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('vpf-name').value, kurztext: $('vpf-text').value }),
+      body: JSON.stringify({ name: $('vpf-name').value, kurztext: $('vpf-text').value,
+                             tauschliste: $('vpf-tausch') && $('vpf-tausch').checked }),
     });
     modalSchliessen(); toast(t('gespeichert'));
   } catch (e) { $('vpf-fehler').textContent = e.message; }
@@ -4896,6 +4909,7 @@ async function profilseiteOeffnen(name) {
     bild.classList.toggle('hidden', !bildId);
     if (bildId) bild.src = imgUrl(bildId);
     zeichneProfilBinder();
+    zeichneTauschliste(d.tausch || []);
   } catch (e) {
     $('po-gitter').innerHTML = `<div class="vt-leer">${esc(e.message || '')}</div>`;
   }
@@ -4936,6 +4950,22 @@ function zeichneProfilBinder() {
         </div>
       </div>
     </div>`).join('') || `<div class="vt-leer">${t('po_leer')}</div>`;
+}
+
+/** Doppelte Karten des Sammlers. Bewusst nur eine Liste: keine Nachrichten, keine Preise,
+ *  kein Kontaktfeld — die Vitrine bleibt frei von Text zwischen Nutzern. */
+function zeichneTauschliste(liste) {
+  const box = $('po-tausch');
+  if (!box) return;
+  box.classList.toggle('hidden', !liste.length);
+  if (!liste.length) return;
+  box.innerHTML = `<h3 class="stat-h" style="margin-top:26px">${t('po_tausch')}</h3>
+    <div class="tausch-gitter">${liste.map((k) => `
+      <div class="tausch-karte" title="${esc(k.name)} · ${esc(k.set)}">
+        <img loading="lazy" src="${imgUrl(k.id)}" alt="${esc(k.name)}">
+        <span class="tausch-n">${k.ueber}×</span>
+      </div>`).join('')}</div>
+    <div class="unter" style="font-size:11.5px;margin-top:8px">${t('po_tausch_u')}</div>`;
 }
 
 function profilFilter(feld, wert) {
@@ -5016,6 +5046,7 @@ async function vitrineProfilLaden() {
   try { d = await api('api/profil'); } catch (e) { return; }
   const name = (d.profil && d.profil.name) || '';
   $('pf-vname').value = name;
+  if ($('pf-vtausch')) $('pf-vtausch').checked = !!(d.profil && d.profil.tauschliste);
   $('pf-vtext').value = (d.profil && d.profil.kurztext) || '';
   const jahre = d.alter;
   $('pf-alter').innerHTML = jahre == null
@@ -5038,7 +5069,8 @@ async function vitrineProfilSpeichern() {
   try {
     await api('api/profil', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('pf-vname').value, kurztext: $('pf-vtext').value }),
+      body: JSON.stringify({ name: $('pf-vname').value, kurztext: $('pf-vtext').value,
+                             tauschliste: $('pf-vtausch') && $('pf-vtausch').checked }),
     });
     toast(t('gespeichert'));
     vitrineProfilLaden();
@@ -5602,7 +5634,7 @@ async function statistikOeffnen() {
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
-  const jahre = zaehl((k) => (k.release_date || '').slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0]));
+  const jahre = zaehl((k) => (k.datum || '').slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0]));
   const setz = zaehl((k) => setNm(k)).slice(0, 8);
   const selten = zaehl((k) => k.rarity).slice(0, 8);
   const illus = zaehl((k) => k.illustrator).slice(0, 5);
@@ -5618,7 +5650,7 @@ async function statistikOeffnen() {
   $('stat-inhalt').innerHTML = `
     <div class="stat-kopf">
       <div class="po-zahl"><b>${karten.length}</b><span>${t('po_karten')}</span></div>
-      <div class="po-zahl"><b>${setz.length}</b><span>${t('st_sets')}</span></div>
+      <div class="po-zahl"><b>${new Set(karten.map((k) => k.set_id)).size}</b><span>${t('st_sets')}</span></div>
       <div class="po-zahl"><b>${jahre.length ? jahre[0][0] + '–' + jahre[jahre.length - 1][0] : '–'}</b><span>${t('st_jahre')}</span></div>
     </div>
     ${jahre.length > 1 ? `<h3 class="stat-h">${t('st_jahrgang')}</h3>${balken(jahre, groesste)}` : ''}
