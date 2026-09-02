@@ -408,6 +408,156 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None):
                     sets=sets, verteilung=verteilung, teuerste=teuerste)
         return kopf
 
+    # ------------------------------------------------------- Markt: Bereiche
+    # Der Überblick war eine einzige lange Bahn, in der der Börsenvergleich ganz oben
+    # stand — eine Randnotiz an der prominentesten Stelle. Die Zahlen liegen jetzt in
+    # vier Bereichen, die einzeln geladen werden; das hält auch die Antwortzeit klein.
+
+    @app.get("/api/analytics/markt/struktur")
+    def markt_struktur(request: Request):
+        """Woraus der Katalog besteht und wo sein Wert sitzt."""
+        user = require_user(request)
+        if not ist_markt_erlaubt(user):
+            return {"pro": False}
+        con = get_db()
+
+        def gruppe(spalte, grenze=12, bed="", extra=()):
+            wo = "p.eur IS NOT NULL AND COALESCE(c.region,'intl')='intl'"
+            if bed:
+                wo += " AND " + bed
+            return [{"name": r["k"], "anzahl": r["n"], "summe": r["s"], "schnitt": r["d"]}
+                    for r in con.execute(
+                        f"SELECT {spalte} k, COUNT(*) n, ROUND(SUM(p.eur),2) s, ROUND(AVG(p.eur),2) d"
+                        f" FROM card_prices p JOIN cards c ON c.id = p.card_id"
+                        f" WHERE {wo} AND {spalte} IS NOT NULL AND {spalte} <> ''"
+                        f" GROUP BY k ORDER BY s DESC LIMIT ?", (*extra, grenze))]
+
+        verteilung = []
+        for i, (untere, name) in enumerate(KLASSEN):
+            obere = KLASSEN[i + 1][0] if i + 1 < len(KLASSEN) else None
+            if obere is not None:
+                bed, args = "eur >= ? AND eur < ?", (untere, obere)
+            else:
+                bed, args = "eur >= ?", (untere,)
+            r = con.execute("SELECT COUNT(*) n, ROUND(SUM(eur),2) s FROM card_prices"
+                            f" WHERE {bed}", args).fetchone()
+            verteilung.append({"name": name, "anzahl": r["n"] or 0, "summe": r["s"] or 0})
+
+        # Wert je Pokémon über alle seine Karten hinweg
+        pokemon = [{"name": r["nm"], "anzahl": r["n"], "summe": r["s"], "schnitt": r["d"]}
+                   for r in con.execute(
+                       "SELECT pk.name_de nm, COUNT(*) n, ROUND(SUM(p.eur),2) s, ROUND(AVG(p.eur),2) d"
+                       " FROM card_prices p JOIN cards c ON c.id = p.card_id"
+                       " JOIN pokemon pk ON pk.dex_id = c.first_dex"
+                       " WHERE p.eur IS NOT NULL AND COALESCE(c.region,'intl')='intl'"
+                       " GROUP BY pk.dex_id ORDER BY s DESC LIMIT 15")]
+
+        jahre = [{"name": r["j"], "anzahl": r["n"], "summe": r["s"], "schnitt": r["d"]}
+                 for r in con.execute(
+                     "SELECT substr(c.release_date,1,4) j, COUNT(*) n, ROUND(SUM(p.eur),2) s,"
+                     " ROUND(AVG(p.eur),2) d FROM card_prices p JOIN cards c ON c.id = p.card_id"
+                     " WHERE p.eur IS NOT NULL AND c.release_date IS NOT NULL"
+                     " AND COALESCE(c.region,'intl')='intl'"
+                     " GROUP BY j ORDER BY j")]
+
+        gesamt = con.execute("SELECT ROUND(SUM(eur),2) s, COUNT(*) n FROM card_prices"
+                             " WHERE eur IS NOT NULL").fetchone()
+        # Erst rechnen, dann schließen: im Rückgabe-Dict ausgewertet, liefe `gruppe()`
+        # gegen eine bereits geschlossene Verbindung.
+        aus = {"pro": True,
+               "gesamt": {"summe": gesamt["s"] or 0, "karten": gesamt["n"] or 0},
+               "verteilung": verteilung,
+               "seltenheit": gruppe("c.rarity"),
+               "art": gruppe("c.category", 5),
+               "illustrator": gruppe("c.illustrator", 15),
+               "pokemon": pokemon,
+               "jahre": jahre}
+        con.close()
+        return aus
+
+    @app.get("/api/analytics/markt/sets")
+    def markt_sets(request: Request, sortier: str = "schnitt", limit: int = 40):
+        """Alle Sets mit ihren Kennzahlen — die Liste, in der man selbst sucht."""
+        user = require_user(request)
+        if not ist_markt_erlaubt(user):
+            return {"pro": False}
+        spalten = {"schnitt": "schnitt DESC", "summe": "summe DESC", "teuerste": "teuerste DESC",
+                   "jahr": "s.release_date DESC", "karten": "n DESC", "name": "s.name"}
+        ordnung = spalten.get(sortier, spalten["schnitt"])
+        con = get_db()
+        sets = [dict(r) for r in con.execute(
+            "SELECT c.set_id, s.name AS set_name, s.serie_name, s.release_date, s.total,"
+            " COUNT(*) n, ROUND(AVG(p.eur), 2) schnitt, ROUND(SUM(p.eur), 2) summe,"
+            " ROUND(MAX(p.eur), 2) teuerste,"
+            " (SELECT c2.id FROM card_prices p2 JOIN cards c2 ON c2.id = p2.card_id"
+            "  WHERE c2.set_id = c.set_id ORDER BY p2.eur DESC LIMIT 1) top_id"
+            " FROM card_prices p JOIN cards c ON c.id = p.card_id"
+            " LEFT JOIN sets s ON s.id = c.set_id"
+            " WHERE p.eur IS NOT NULL AND COALESCE(c.region,'intl')='intl'"
+            f" GROUP BY c.set_id HAVING n >= 10 ORDER BY {ordnung} LIMIT ?", (max(5, min(200, limit)),))]
+        # Vollständigkeit: wie viel des Sets überhaupt bepreist ist
+        for z in sets:
+            if z.get("total"):
+                z["abdeckung"] = round(z["n"] / z["total"] * 100)
+        con.close()
+        return {"pro": True, "sets": sets, "sortier": sortier}
+
+    @app.get("/api/analytics/markt/regionen")
+    def markt_regionen(request: Request):
+        """Europa gegen USA und Japan gegen den Westen — zwei Preisgefälle."""
+        user = require_user(request)
+        if not ist_markt_erlaubt(user):
+            return {"pro": False}
+        con = get_db()
+
+        paare = [(r["eur"], r["usd"], r["card_id"], r["name_de"] or r["name_en"],
+                  r["set_name"], r["local_id"])
+                 for r in con.execute(
+                     "SELECT p.card_id, p.eur, p.usd, c.name_de, c.name_en, c.local_id,"
+                     " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
+                     " FROM card_prices p JOIN cards c ON c.id = p.card_id"
+                     " WHERE p.eur >= 5 AND p.usd >= 5")]
+        vergleich = {"paare": len(paare), "kurs": None, "guenstiger_eu": [], "guenstiger_us": []}
+        if len(paare) >= 50:
+            quotienten = sorted(e / u for e, u, *_ in paare)
+            kurs = quotienten[len(quotienten) // 2]
+            vergleich["kurs"] = round(kurs, 4)
+            bewertet = []
+            for eur, usd, cid, name, setn, nr in paare:
+                erwartet = usd * kurs
+                if erwartet <= 0:
+                    continue
+                bewertet.append({"id": cid, "name": name, "set": setn, "nr": nr,
+                                 "eur": eur, "usd": usd,
+                                 "abstand": round((eur - erwartet) / erwartet * 100, 1),
+                                 "differenz": round(eur - erwartet, 2)})
+            brauchbar = [z for z in bewertet if abs(z["abstand"]) <= MAX_ABSTAND]
+            vergleich["verworfen"] = len(bewertet) - len(brauchbar)
+            vergleich["geprueft"] = len(brauchbar)
+            brauchbar.sort(key=lambda z: z["differenz"])
+            vergleich["guenstiger_eu"] = brauchbar[:12]
+            vergleich["guenstiger_us"] = list(reversed(brauchbar[-12:]))
+
+        # Japan gegen Westen: seit der Katalog auch japanische Preise trägt, lässt sich
+        # zeigen, wie groß der Abstand zwischen den Märkten wirklich ist.
+        jp = con.execute(
+            "SELECT COUNT(*) n, ROUND(AVG(p.eur),2) schnitt, ROUND(SUM(p.eur),2) summe,"
+            " ROUND(MAX(p.eur),2) hoechst FROM card_prices p JOIN cards c ON c.id = p.card_id"
+            " WHERE p.eur IS NOT NULL AND c.region = 'jp'").fetchone()
+        west = con.execute(
+            "SELECT COUNT(*) n, ROUND(AVG(p.eur),2) schnitt, ROUND(SUM(p.eur),2) summe,"
+            " ROUND(MAX(p.eur),2) hoechst FROM card_prices p JOIN cards c ON c.id = p.card_id"
+            " WHERE p.eur IS NOT NULL AND COALESCE(c.region,'intl') = 'intl'").fetchone()
+        jp_top = [{"id": r["id"], "name": r["name_ja"] or r["name_de"], "eur": r["eur"],
+                   "set": r["set_name"]} for r in con.execute(
+            "SELECT c.id, c.name_ja, c.name_de, p.eur,"
+            " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
+            " FROM card_prices p JOIN cards c ON c.id = p.card_id"
+            " WHERE c.region = 'jp' AND p.eur IS NOT NULL ORDER BY p.eur DESC LIMIT 12")]
+        con.close()
+        return {"pro": True, "vergleich": vergleich,
+                "jp": dict(jp), "west": dict(west), "jp_top": jp_top}
+
     @app.get("/api/analytics/karte/{card_id}")
     def karte_analyse(request: Request, card_id: str, tage: int = 180):
         """Preisverlauf einer einzelnen Karte, europäisch und amerikanisch."""

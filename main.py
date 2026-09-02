@@ -928,8 +928,8 @@ def _symbole_job():
 # die Auswertungen überhaupt etwas aussagen: Index und Bewegungsliste vergleichen dieselbe
 # Karte an zwei Tagen. Bei rotierender Auffrischung hätte jede Karte nur alle acht Tage
 # einen Messpunkt, und keine zwei Karten dieselben zwei Tage.
-PREIS_TAGESLAUF = 25000      # obere Schranke; deckt den ganzen bepreisten Katalog ab
-PREIS_STAPEL = 2500          # Erstbefüllung: so viele noch unbepreiste Karten je Lauf
+PREIS_TAGESLAUF = 40000      # obere Schranke; deckt den ganzen bepreisten Katalog ab
+PREIS_STAPEL = 6000          # Erstbefüllung: so viele noch unbepreiste Karten je Lauf
 
 
 def _preis_schreiben(con, reihen):
@@ -992,19 +992,19 @@ def _preishistorie_job():
     Jetzt holt jeder Lauf zuerst Karten ohne Preis dazu (der Katalog ist nach etwa zehn
     Läufen vollständig) und frischt danach die ältesten Einträge auf."""
     con = get_db()
-    # Westliche Karten mit Bild zuerst: japanische Sets haben bei Cardmarket meist keinen Preis
+    # Auch japanische Karten: die Annahme, Cardmarket führe sie nicht, war falsch — es gibt
+    # dort für praktisch jede japanische Karte ein Produkt mit Trendpreis (nur keine
+    # TCGplayer-Preise, das ist ein rein amerikanischer Markt).
     neue = [r["id"] for r in con.execute(
         "SELECT c.id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
-        " WHERE p.card_id IS NULL AND COALESCE(c.region,'intl') = 'intl'"
-        " AND (c.image_de IS NOT NULL OR c.image_en IS NOT NULL)"
+        " WHERE p.card_id IS NULL"
         " ORDER BY c.release_date DESC LIMIT ?", (PREIS_STAPEL,))]
     # Solange noch erfasst wird, hat das Vorrang — sonst der ganze bepreiste Katalog.
     alt = [] if neue else [r["card_id"] for r in con.execute(
         "SELECT card_id FROM card_prices ORDER BY updated_at LIMIT ?", (PREIS_TAGESLAUF,))]
     offen = con.execute(
         "SELECT COUNT(*) c FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
-        " WHERE p.card_id IS NULL AND COALESCE(c.region,'intl') = 'intl'"
-        " AND (c.image_de IS NOT NULL OR c.image_en IS NOT NULL)").fetchone()["c"]
+        " WHERE p.card_id IS NULL").fetchone()["c"]
     con.close()
 
     ids = neue + alt
@@ -2565,6 +2565,11 @@ def _fetch_price_voll(client, card_id):
     lang = "ja" if card_id[:1].isupper() else "en"
     try:
         r = client.get(f"{TCGDEX}/{lang}/cards/{card_id}")
+        if r.status_code == 404:
+            # Die Karte kennt die Quelle nicht — das ist ein Ergebnis, kein Ausfall. Als
+            # Ausfall gezählt würden solche Karten jeden Lauf neu versucht und könnten
+            # die Abbruchschwelle allein tragen.
+            return card_id, True, None, None, None, None, None, None
         if r.status_code != 200:
             return card_id, False, None, None, None, None, None, None
         d = r.json()
@@ -3874,8 +3879,19 @@ def landing_en(request: Request):
     return _landing_antwort(request, "landing_en.html", "en", "/")
 
 
+# Jede Ansicht hat eine eigene Adresse: /app/vitrine, /app/planer, /app/binder/<id> …
+# Alle liefern dieselbe Datei aus, die Aufteilung macht das Frontend. Vorher hing der
+# Zustand am Hash und wurde nur für zwei Fälle gesetzt — wer die Seite in der Vitrine
+# neu lud, landete wieder in der Suche.
+APP_ROUTEN = {"", "start", "suche", "planer", "sammlung", "vitrine", "markt", "auswertung"}
+
+
 @app.get("/app")
-def index():
+@app.get("/app/{rest:path}")
+def index(rest: str = ""):
+    erster = (rest or "").strip("/").split("/")[0]
+    if erster and erster not in APP_ROUTEN and erster not in ("binder", "ansicht"):
+        return RedirectResponse("/app", status_code=307)
     return FileResponse(BASE / "index.html", media_type="text/html")
 
 

@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Seit jede Ansicht eine eigene Adresse hat (/app/vitrine, /app/binder/<id>), löst der
+     Browser relative Pfade wie „api/…" gegen das Verzeichnis auf — daraus würde
+     /app/api/…. Die Basis stellt das gerade: alles relative zielt auf die Wurzel. -->
+<base href="/">
 <title>Binderplan – Werkbank</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="/assets/schrift.css">
@@ -821,6 +825,9 @@
   .an-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 11px; }
   .an-karte { text-align: left; }
   .an-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; border-radius: 6px; background: var(--panel2); display: block; }
+  .an-karte .kein-scan { width: 100%; aspect-ratio: 63/88; border-radius: 6px; background: var(--panel2);
+                         border: 1.5px dashed var(--line); display: flex; align-items: center; justify-content: center;
+                         padding: 8px; font-size: 11px; color: var(--mut); text-align: center; line-height: 1.3; }
   .an-karte .p { font-size: 12.5px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
   .an-karte .n { font-size: 11px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Pro-Schranke */
@@ -2255,6 +2262,7 @@
     <button class="btn sekundaer" style="font-size:13px" onclick="marktSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
     <div style="font-size:15px;font-weight:700" data-i18n="markt">Markt</div>
     <span class="an-marke">Pro</span>
+    <div class="f-chips" id="mk-reiter" style="margin-left:8px"></div>
     <div style="flex:1"></div>
     <select class="feld" id="mk-zeit" style="width:auto" onchange="marktLaden()">
       <option value="30" data-i18n="an_30">30 Tage</option>
@@ -2455,6 +2463,26 @@ const T = {
     an_sets: 'Sets im Vergleich', an_sets_u: 'Ab 15 bepreisten Karten, nach Schnitt sortiert.',
     an_set: 'Set', an_karten: 'Karten', an_schnitt: 'Schnitt', an_summe: 'Summe', an_teuerste_karte: 'Teuerste',
     an_teuerste: 'Teuerste Karten', an_teuerste_u: 'Was der Katalog gerade oben führt.',
+    // Marktseite: vier Bereiche
+    mk_ueberblick: 'Überblick', mk_struktur: 'Struktur', mk_sets: 'Sets', mk_regionen: 'Regionen',
+    mk_struktur_u: 'Woraus der Katalog besteht und wo sein Wert sitzt. Alle Zahlen über den bepreisten westlichen Katalog.',
+    mk_katalogwert: 'Katalogwert', mk_ueber: 'über {n} bepreiste Karten',
+    mk_schnitt_karte: 'Schnitt je Karte', mk_schnitt_u: 'Cardmarket-Trend, alle Karten',
+    mk_jahre: 'Wert nach Erscheinungsjahr',
+    mk_jahre_u: 'Was die Karten eines Jahrgangs heute zusammen wert sind.',
+    mk_jahre_hin: 'Nicht die Wertentwicklung über die Zeit, sondern der heutige Wert je Jahrgang — alte Jahrgänge sind klein, weil damals weniger Karten erschienen.',
+    mk_nach_wert: 'Nach Wert, nicht nach Anzahl.',
+    mk_pokemon: 'Wertvollste Pokémon', mk_pokemon_u: 'Alle Karten eines Pokémon zusammengerechnet.',
+    mk_illu: 'Wertvollste Illustratoren', mk_illu_u: 'Wessen Karten zusammen am meisten wert sind.',
+    mk_sets_u: 'Jedes Set mit mindestens zehn bepreisten Karten. Sortierung anklickbar.',
+    mk_jahr: 'Jahr', mk_name: 'Name', mk_abdeckung: 'erfasst',
+    mk_abdeckung_hin: '„Erfasst" heißt: für so viel Prozent der Setgröße liegt ein Preis vor. Fehlende sind Karten, deren Cardmarket-Produkt mehreren Karten gehört.',
+    mk_regionen_u: 'Dieselbe Karte kostet nicht überall gleich. Zwei Gefälle, beide gemessen statt geschätzt.',
+    mk_jp: 'Japan gegen Westen',
+    mk_jp_u: 'Beide Kataloge im Schnitt, nicht dieselbe Karte zweimal: Japan und der Westen führen verschiedene Karten. Der Vergleich zeigt die Höhe der Märkte, nicht den Aufschlag auf ein einzelnes Stück.',
+    mk_jp_karten: 'Japanische Karten', mk_west_karten: 'Westliche Karten',
+    mk_jp_schnitt: 'Schnitt {p}', mk_faktor: 'Verhältnis der Schnitte', mk_faktor_u: 'Westlicher Schnitt geteilt durch japanischen',
+    mk_jp_top: 'Teuerste japanische Karten',
     sammlung: 'Sammlung', sm_t: 'Meine Sammlung',
     sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
     sm_login: 'Für die Sammlung brauchst du ein Konto.',
@@ -2773,6 +2801,25 @@ const T = {
     an_sets: 'Sets compared', an_sets_u: 'From 15 priced cards up, sorted by average.',
     an_set: 'Set', an_karten: 'Cards', an_schnitt: 'Average', an_summe: 'Total', an_teuerste_karte: 'Top card',
     an_teuerste: 'Most expensive cards', an_teuerste_u: 'What the catalogue currently carries at the top.',
+    mk_ueberblick: 'Overview', mk_struktur: 'Structure', mk_sets: 'Sets', mk_regionen: 'Regions',
+    mk_struktur_u: 'What the catalogue is made of and where its value sits. All figures across the priced western catalogue.',
+    mk_katalogwert: 'Catalogue value', mk_ueber: 'across {n} priced cards',
+    mk_schnitt_karte: 'Average per card', mk_schnitt_u: 'Cardmarket trend, all cards',
+    mk_jahre: 'Value by release year',
+    mk_jahre_u: 'What the cards of each year are worth together today.',
+    mk_jahre_hin: 'Not value over time, but today\'s value per year of release — older years are small because fewer cards came out then.',
+    mk_nach_wert: 'By value, not by count.',
+    mk_pokemon: 'Most valuable Pokémon', mk_pokemon_u: 'All cards of one Pokémon added up.',
+    mk_illu: 'Most valuable illustrators', mk_illu_u: 'Whose cards are worth the most together.',
+    mk_sets_u: 'Every set with at least ten priced cards. Sorting is clickable.',
+    mk_jahr: 'Year', mk_name: 'Name', mk_abdeckung: 'covered',
+    mk_abdeckung_hin: '"Covered" means: a price exists for that share of the set. The missing ones are cards whose Cardmarket product belongs to several cards.',
+    mk_regionen_u: 'The same card does not cost the same everywhere. Two gaps, both measured rather than guessed.',
+    mk_jp: 'Japan against the West',
+    mk_jp_u: 'Both catalogues on average, not the same card twice: Japan and the West carry different cards. The comparison shows the level of the two markets, not the premium on any single card.',
+    mk_jp_karten: 'Japanese cards', mk_west_karten: 'Western cards',
+    mk_jp_schnitt: 'average {p}', mk_faktor: 'Ratio of averages', mk_faktor_u: 'Western average divided by Japanese',
+    mk_jp_top: 'Most expensive Japanese cards',
     sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
 
     best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
@@ -3162,7 +3209,7 @@ async function boot() {
     }, 2500);
   }
 
-  const hash = location.hash.slice(1);
+  const hash = routeLesen();
   if (hash.startsWith('ansicht/')) {
     try {
       S.binder = await api('api/binders/' + hash.split('/')[1]);
@@ -3200,7 +3247,9 @@ async function boot() {
     history.replaceState(null, '', location.pathname + location.hash);
     await bestaetigungEinloesen(bestToken);
   }
-  if (['vitrine', 'sammlung', 'planer'].includes(hash)) ansicht(hash);   // z. B. „← Zur Vitrine“ aus der Nur-Ansicht
+  // Die Ansicht wiederherstellen, in der zuletzt gearbeitet wurde. „suche" ist der
+  // Grundzustand und braucht kein eigenes Öffnen.
+  if (ROUTEN.includes(hash) && hash !== 'suche' && !(hash === 'start' && zeigeStart)) ansicht(hash);
   bestaetigungAnzeigen();
 }
 
@@ -5080,6 +5129,7 @@ const VT = { sortierung: 'trend', binder: [], laeuft: false, art: '', groesse: '
              doppelseite: localStorage.getItem('bp_vt_dop') === '1', meldung: null };
 
 function ansichtVitrine() {
+  hashSetzen('vitrine');
   mnavMarkieren('mnav-vitrine');
   planerSchliessen();
   $('vitrine').classList.remove('hidden');
@@ -5228,7 +5278,7 @@ function zeichneVitrine() {
 function vitrineOeffnen(id) {
   // Der Verlaufseintrag, auf den „Zurück“ später springt, soll die Vitrine sein – nicht die Werkbank.
   try { sessionStorage.setItem('bp_von_vitrine', '1'); history.replaceState(null, '', location.pathname + '#vitrine'); } catch (e) {}
-  location.hash = 'ansicht/' + id; location.reload();
+  location.assign(APP_BASIS + '/ansicht/' + id);
 }
 
 async function vitrineStimme(id) {
@@ -5450,7 +5500,7 @@ async function uebernehmenAlsNeu(items, name) {
     });
     merkeBinderId(res.id);
     toast(t('vt_kopiert'));
-    setTimeout(() => { location.hash = 'binder/' + res.id; location.reload(); }, 700);
+    setTimeout(() => { location.assign(APP_BASIS + '/binder/' + res.id); }, 700);
   } catch (e) { if (!gate(e)) toast(e.message); }
 }
 
@@ -5565,10 +5615,43 @@ function profilseiteSchliessen() {
 // schließt die oberste Ebene, statt zu navigieren.
 const EBENEN = [];
 
-/** Adresszeile nachführen, ohne Verlaufseintrag und ohne popstate (das würde die oberste Ebene schließen). */
+/* ---------- Adressen ----------
+   Jede Ansicht hat eine eigene Adresse unter /app: /app/vitrine, /app/planer,
+   /app/binder/<id> und so fort. Vorher hing der Zustand am Hash und wurde nur für
+   „start" und „binder/<id>" überhaupt gesetzt — wer in der Vitrine neu lud, landete
+   in der Suche. Alte Hash-Adressen (#ansicht/<id> in geteilten Links) werden beim
+   Start weiterhin gelesen und einmalig auf die neue Form umgeschrieben. */
+
+const APP_BASIS = '/app';
+
+/** Adresszeile nachführen, ohne Verlaufseintrag und ohne popstate (das würde die
+ *  oberste Ebene schließen). Der Name bleibt, die Adresse ist jetzt ein Pfad. */
 function hashSetzen(h) {
-  try { history.replaceState(history.state, '', location.pathname + '#' + h); } catch (e) { location.hash = h; }
+  const ziel = APP_BASIS + (h ? '/' + h : '');
+  if (location.pathname === ziel && !location.hash) return;
+  try { history.replaceState(history.state, '', ziel); } catch (e) { /* egal */ }
 }
+
+/** Die aktuelle Route als „vitrine", „binder/xy" … — egal ob als Pfad oder als
+ *  alter Hash notiert. */
+/** Nach dem Schließen einer Vollbildansicht: zurück auf den offenen Binder, sonst
+ *  auf die nackte App-Adresse. */
+function routeZurueck() {
+  if (S.nurAnsicht) return;
+  hashSetzen(S.binder && S.binder.id ? 'binder/' + S.binder.id : '');
+}
+
+function routeLesen() {
+  const h = location.hash.slice(1);
+  if (h) return h;
+  const p = location.pathname;
+  if (p === APP_BASIS || p === APP_BASIS + '/') return '';
+  if (p.startsWith(APP_BASIS + '/')) return p.slice(APP_BASIS.length + 1).replace(/\/+$/, '');
+  return '';
+}
+
+// Ansichten, die eine eigene Adresse führen
+const ROUTEN = ['start', 'suche', 'planer', 'sammlung', 'vitrine', 'markt', 'auswertung'];
 
 function ebeneOeffnen(schliesser) {
   EBENEN.push(schliesser);
@@ -5605,11 +5688,12 @@ window.addEventListener('popstate', () => {
   // Nichts offen: dann hat sich die Route geändert – etwa Zurück aus der Nur-Ansicht in die
   // Vitrine oder zu einem anderen Binder. Die Seite baut sich dafür sauber neu auf; vorher
   // blieb die alte Ansicht einfach stehen und wirkte, als käme man nie wieder heraus.
-  const h = location.hash.slice(1);
+  const h = routeLesen();
   const istAnsicht = h.startsWith('ansicht/');
   const andererBinder = (istAnsicht || h.startsWith('binder/')) && S.binder && h.split('/')[1] !== S.binder.id;
   if (istAnsicht !== !!S.nurAnsicht || andererBinder) { location.reload(); return; }
-  if (['vitrine', 'sammlung', 'planer'].includes(h)) ansicht(h);
+  if (ROUTEN.includes(h)) ansicht(h);
+  else if (!h || h.startsWith('binder/')) ansicht('suche');
 });
 
 // ---------- Vitrine-Teil des Profils ----------
@@ -5709,6 +5793,7 @@ function besitzt(item) {
 
 function ansichtSammlung() {
   if (!S.user) return loginOeffnen(t('sm_login'));
+  hashSetzen('sammlung');
   planerSchliessen(); vitrineSchliessen(); profilseiteSchliessen();
   $('sammlung').classList.remove('hidden');
   ebeneOeffnen(sammlungSchliessen);
@@ -5720,6 +5805,7 @@ function sammlungSchliessen() {
   if ($('sammlung').classList.contains('hidden')) return;
   ebeneAufraeumen(sammlungSchliessen);
   $('sammlung').classList.add('hidden');
+  routeZurueck();
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
 
@@ -6194,6 +6280,7 @@ function ansicht(w) {
   if (w === 'planer') planerOeffnen(); else planerSchliessen();
 }
 function planerOeffnen() {
+  hashSetzen('planer');
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
@@ -6207,6 +6294,7 @@ function planerSchliessen() {
   if ($('planer').classList.contains('hidden')) return;
   ebeneAufraeumen(planerSchliessen);
   $('planer').classList.add('hidden');
+  routeZurueck();
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
   mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
   zeichneBinder();
@@ -6285,7 +6373,9 @@ function anLinie(reihen, opt) {
   const alle = reihen.flatMap((r) => r.punkte.map((p) => p.wert));
   let min = Math.min(...alle), max = Math.max(...alle);
   if (min === max) { min -= 1; max += 1; }
+  const alleNichtNegativ = alle.every((v) => v >= 0);
   const luft = (max - min) * 0.12; min -= luft; max += luft;
+  if (alleNichtNegativ && min < 0) min = 0;                        // keine erfundenen Minuswerte
   if (!opt.index && min > 0 && min < (max - min) * 0.6) min = 0;   // Nulllinie, wo sie ehrlich ist
   const tage = reihen[0].punkte.map((p) => p.datum);
   const x = (i) => L + (tage.length < 2 ? 0 : i / (tage.length - 1) * (W - L - R));
@@ -6362,6 +6452,7 @@ function anSperre(punkte, titel, stufe) {
 
 function auswertungOeffnen() {
   if (!S.user) return loginOeffnen(t('sm_login'));
+  hashSetzen('auswertung');
   planerSchliessen(); vitrineSchliessen(); marktSchliessen(); profilseiteSchliessen();
   $('auswertungseite').classList.remove('hidden');
   ebeneOeffnen(auswertungSchliessen);
@@ -6373,6 +6464,7 @@ function auswertungSchliessen() {
   if (!$('auswertungseite') || $('auswertungseite').classList.contains('hidden')) return;
   ebeneAufraeumen(auswertungSchliessen);
   $('auswertungseite').classList.add('hidden');
+  routeZurueck();
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
 }
 
@@ -6512,6 +6604,7 @@ function anPostenTabelle(liste) {
 
 function marktOeffnen() {
   if (!S.user) return loginOeffnen(t('an_markt_login'));
+  hashSetzen('markt');
   planerSchliessen(); vitrineSchliessen(); sammlungSchliessen(); auswertungSchliessen(); profilseiteSchliessen();
   $('marktseite').classList.remove('hidden');
   ebeneOeffnen(marktSchliessen);
@@ -6523,18 +6616,145 @@ function marktSchliessen() {
   if (!$('marktseite') || $('marktseite').classList.contains('hidden')) return;
   ebeneAufraeumen(marktSchliessen);
   $('marktseite').classList.add('hidden');
+  routeZurueck();
   if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
+}
+
+const MK_BEREICHE = ['ueberblick', 'struktur', 'sets', 'regionen'];
+
+function marktReiterZeichnen() {
+  $('mk-reiter').innerHTML = MK_BEREICHE.map((b) =>
+    `<button class="chip ${AN.bereich === b ? 'on' : ''}" onclick="marktBereich('${b}')">${t('mk_' + b)}</button>`).join('');
+  // Der Zeitraum betrifft nur die Kurven im Überblick.
+  $('mk-zeit').classList.toggle('hidden', AN.bereich !== 'ueberblick');
+}
+function marktBereich(b) {
+  AN.bereich = b;
+  try { localStorage.setItem('bp_markt', b); } catch (e) {}
+  marktReiterZeichnen();
+  marktLaden();
 }
 
 async function marktLaden() {
   const r = $('mk-rumpf');
+  AN.bereich = AN.bereich || (() => { try { return localStorage.getItem('bp_markt') || 'ueberblick'; } catch (e) { return 'ueberblick'; } })();
+  marktReiterZeichnen();
   r.innerHTML = `<div style="padding:40px;text-align:center">${lader('gross', t('laedt'))}</div>`;
-  try {
-    AN.markt = await api('api/analytics/markt?tage=' + $('mk-zeit').value);
-  } catch (e) {
-    r.innerHTML = anDuenn(t('an_fehler')); return;
-  }
-  zeichneMarkt();
+  const pfade = { ueberblick: 'api/analytics/markt?tage=' + $('mk-zeit').value,
+                  struktur: 'api/analytics/markt/struktur',
+                  sets: 'api/analytics/markt/sets?sortier=' + (AN.setSort || 'schnitt'),
+                  regionen: 'api/analytics/markt/regionen' };
+  let d;
+  try { d = await api(pfade[AN.bereich]); } catch (e) { r.innerHTML = anDuenn(t('an_fehler')); return; }
+  if (!d.pro) { r.innerHTML = anSperre([t('an_mpro_1'), t('an_mpro_2'), t('an_mpro_3'), t('an_mpro_4')], t('an_mpro_t')); return; }
+  if (AN.bereich === 'ueberblick') { AN.markt = d; zeichneMarkt(); }
+  else if (AN.bereich === 'struktur') zeichneMarktStruktur(d);
+  else if (AN.bereich === 'sets') zeichneMarktSets(d);
+  else zeichneMarktRegionen(d);
+}
+
+/** Bereich „Struktur": woraus der Katalog besteht und wo sein Wert sitzt. */
+function zeichneMarktStruktur(d) {
+  const balken = (liste, farbe, roh) => anBalken(
+    liste.map((x) => ({ name: x.name, wert: roh ? x.anzahl : x.summe, anzahl: roh ? null : x.anzahl })),
+    { farbe, roh });
+  const jahre = (d.jahre || []).filter((j) => j.name >= '1996');
+  $('mk-rumpf').innerHTML = `<h1>${t('mk_struktur')}</h1>
+    <div class="unter">${t('mk_struktur_u')}</div>
+    <div class="an-band">
+      ${anKachel(t('mk_katalogwert'), anEur(d.gesamt.summe, 0), t('mk_ueber').replace('{n}', anZahl(d.gesamt.karten)))}
+      ${anKachel(t('mk_schnitt_karte'), anEur(d.gesamt.karten ? d.gesamt.summe / d.gesamt.karten : 0), t('mk_schnitt_u'))}
+    </div>
+
+    <div class="an-tafel"><h3>${t('an_verteilung')}</h3>
+      <div class="unter">${t('an_verteilung_u')}</div>
+      <div class="an-zwei">
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viele')}</div>
+          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.anzahl })), { roh: true })}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viel_wert')}</div>
+          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.summe })), { farbe: 'var(--d3)' })}</div>
+      </div></div>
+
+    <div class="an-tafel"><h3>${t('mk_jahre')}</h3>
+      <div class="unter">${t('mk_jahre_u')}</div>
+      ${anBalken(jahre.map((j) => ({ name: j.name, wert: j.summe, anzahl: j.anzahl })),
+                 { farbe: 'var(--d1)' })}
+      <div class="unter" style="margin:10px 0 0;font-size:11.5px">${t('mk_jahre_hin')}</div>
+    </div>
+
+    <div class="an-zwei">
+      <div class="an-tafel"><h3>${t('an_g_seltenheit')}</h3>
+        <div class="unter">${t('mk_nach_wert')}</div>${balken(d.seltenheit, 'var(--d2)')}</div>
+      <div class="an-tafel"><h3>${t('an_g_art')}</h3>
+        <div class="unter">${t('mk_nach_wert')}</div>${balken(d.art, 'var(--d3)')}</div>
+    </div>
+
+    <div class="an-zwei">
+      <div class="an-tafel"><h3>${t('mk_pokemon')}</h3>
+        <div class="unter">${t('mk_pokemon_u')}</div>${balken(d.pokemon, 'var(--d1)')}</div>
+      <div class="an-tafel"><h3>${t('mk_illu')}</h3>
+        <div class="unter">${t('mk_illu_u')}</div>${balken(d.illustrator, 'var(--d2)')}</div>
+    </div>`;
+}
+
+/** Bereich „Sets": die Liste, in der man selbst sucht. */
+function zeichneMarktSets(d) {
+  const sorten = [['schnitt', t('an_schnitt')], ['summe', t('an_summe')], ['teuerste', t('an_teuerste_karte')],
+                  ['jahr', t('mk_jahr')], ['karten', t('an_karten')], ['name', t('mk_name')]];
+  $('mk-rumpf').innerHTML = `<h1>${t('an_sets')}</h1>
+    <div class="unter">${t('mk_sets_u')}</div>
+    <div class="an-chips">${sorten.map(([k, l]) =>
+      `<button class="chip ${(AN.setSort || 'schnitt') === k ? 'on' : ''}" onclick="marktSetSort('${k}')">${esc(l)}</button>`).join('')}</div>
+    <div class="an-tafel" style="padding-top:14px">
+    <div class="an-tab-rahmen"><table class="an-tab">
+      <thead><tr><th>${t('an_set')}</th><th class="r">${t('an_karten')}</th><th class="r">${t('mk_abdeckung')}</th>
+        <th class="r">${t('an_schnitt')}</th><th class="r">${t('an_summe')}</th><th class="r">${t('an_teuerste_karte')}</th></tr></thead>
+      <tbody>${(d.sets || []).map((k) => `<tr>
+        <td>${k.top_id ? `<img loading="lazy" src="${imgUrl(k.top_id)}" alt="" onerror="this.style.visibility='hidden'">` : ''}</td>
+        <td><div class="nm">${esc(k.set_name || k.set_id)}</div>
+          <div class="set">${esc(k.serie_name || '')}${k.release_date ? ' · ' + k.release_date.slice(0, 4) : ''}</div></td>
+        <td class="r">${anZahl(k.n)}</td>
+        <td class="r">${k.abdeckung != null ? k.abdeckung + ' %' : '—'}</td>
+        <td class="r"><strong>${anEur(k.schnitt)}</strong></td>
+        <td class="r">${anEur(k.summe, 0)}</td>
+        <td class="r">${anEur(k.teuerste, 0)}</td>
+      </tr>`).join('')}</tbody></table></div>
+    <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('mk_abdeckung_hin')}</div></div>`;
+}
+function marktSetSort(k) { AN.setSort = k; marktLaden(); }
+
+/** Bereich „Regionen": zwei Preisgefälle nebeneinander. */
+function zeichneMarktRegionen(d) {
+  const vg = d.vergleich || {};
+  const vgTafel = vg.kurs
+    ? `<div class="an-zwei">
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_hier_guenstiger')}</div>${anVgTabelle(vg.guenstiger_eu, 'mk-eu')}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_dort_guenstiger')}</div>${anVgTabelle(vg.guenstiger_us, 'mk-us')}</div>
+       </div>
+       <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('an_kurs_hin')
+          .replace('{k}', vg.kurs.toFixed(3)).replace('{n}', anZahl(vg.geprueft || vg.paare))}
+          ${vg.verworfen ? ' ' + t('an_verworfen').replace('{n}', anZahl(vg.verworfen)) : ''}</div>`
+    : anDuenn(t('an_vg_kurz'));
+  const jp = d.jp || {}, west = d.west || {};
+  $('mk-rumpf').innerHTML = `<h1>${t('mk_regionen')}</h1>
+    <div class="unter">${t('mk_regionen_u')}</div>
+
+    <div class="an-tafel"><h3>${t('mk_jp')}</h3>
+      <div class="unter">${t('mk_jp_u')}</div>
+      <div class="an-band" style="margin-bottom:16px">
+        ${anKachel(t('mk_jp_karten'), anZahl(jp.n || 0), t('mk_jp_schnitt').replace('{p}', anEur(jp.schnitt || 0)))}
+        ${anKachel(t('mk_west_karten'), anZahl(west.n || 0), t('mk_jp_schnitt').replace('{p}', anEur(west.schnitt || 0)))}
+        ${anKachel(t('mk_faktor'), (west.schnitt && jp.schnitt ? (west.schnitt / jp.schnitt).toFixed(1) : '—') + '×', t('mk_faktor_u'))}
+      </div>
+      <div class="unter" style="margin-bottom:8px;font-weight:700">${t('mk_jp_top')}</div>
+      <div class="an-karten">${(d.jp_top || []).map((k) => `<button class="an-karte" onclick="detailOeffnen('${esc(k.id)}')">
+        <img loading="lazy" src="${imgUrl(k.id)}" alt="" data-n="${esc(k.name || k.id)}"
+             onerror="this.outerHTML='<div class=kein-scan>'+this.dataset.n+'</div>'">
+        <div class="p">${anEur(k.eur, 0)}</div><div class="n" title="${esc(k.name || '')}">${esc(k.name || '')}</div></button>`).join('')}</div>
+    </div>
+
+    <div class="an-tafel"><h3>${t('an_eu_us')}</h3>
+      <div class="unter">${t('an_eu_us_u')}</div>${vgTafel}</div>`;
 }
 
 function zeichneMarkt() {
@@ -6575,38 +6795,12 @@ function zeichneMarkt() {
           .replace('{n}', anZahl(bw.basis || 0)).replace('{v}', bw.von ? anTag(bw.von) : '?').replace('{b}', bw.bis ? anTag(bw.bis) : '?')}</div>`
     : anDuenn(t('an_beweg_kurz'));
 
-  const vg = d.vergleich || {};
-  const vgTafel = vg.kurs
-    ? `<div class="an-zwei">
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_hier_guenstiger')}</div>${anVgTabelle(vg.guenstiger_eu, 'mk-eu')}</div>
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_dort_guenstiger')}</div>${anVgTabelle(vg.guenstiger_us, 'mk-us')}</div>
-       </div>
-       <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('an_kurs_hin')
-          .replace('{k}', vg.kurs.toFixed(3)).replace('{n}', anZahl(vg.geprueft || vg.paare))}
-          ${vg.verworfen ? ' ' + t('an_verworfen').replace('{n}', anZahl(vg.verworfen)) : ''}</div>`
-    : anDuenn(t('an_vg_kurz'));
-
   r.innerHTML = kopf + `
     <div class="an-tafel"><h3>${t('an_indizes')}</h3>
       <div class="unter">${t('an_indizes_u')}</div>${indexTafel}</div>
 
-    <div class="an-tafel"><h3>${t('an_eu_us')}</h3>
-      <div class="unter">${t('an_eu_us_u')}</div>${vgTafel}</div>
-
     <div class="an-tafel"><h3>${t('an_bewegung')}</h3>
       <div class="unter">${t('an_bewegung_u')}</div>${bewegTafel}</div>
-
-    <div class="an-tafel"><h3>${t('an_verteilung')}</h3>
-      <div class="unter">${t('an_verteilung_u')}</div>
-      <div class="an-zwei">
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viele')}</div>
-          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.anzahl })), { roh: true, farbe: 'var(--d2)' })}</div>
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_wie_viel_wert')}</div>
-          ${anBalken((d.verteilung || []).map((k) => ({ name: k.name, wert: k.summe })), { farbe: 'var(--d3)' })}</div>
-      </div></div>
-
-    <div class="an-tafel"><h3>${t('an_sets')}</h3>
-      <div class="unter">${t('an_sets_u')}</div>${anSetTabelle(d.sets)}</div>
 
     <div class="an-tafel"><h3>${t('an_teuerste')}</h3>
       <div class="unter">${t('an_teuerste_u')}</div>
