@@ -219,11 +219,10 @@
   .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
               border-radius: 10px; }
   .vt-blatt.dop { grid-template-columns: 1fr 1fr; gap: 9px; padding: 9px; background: none; }
-  .vt-blatt .vt-seite { display: grid; gap: 4px; background: #14161a; border-radius: 8px; padding: 6px; }
-  .vt-blatt .vt-seite.nahtlos { gap: 0; }
-  .vt-blatt .vt-seite.nahtlos .vt-fach { border-radius: 0; background: none; }
-  .vt-fach.durch { background: none; }
+  .vt-blatt .vt-seite { display: grid; background: #14161a; border-radius: 8px; padding: 6px; }
   .vt-fach img { object-fit: contain; }
+  .vt-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 3px; display: block; }
+  .vt-fach .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
   .vt-fach { position: relative; aspect-ratio: 63/88; border-radius: 3px; background: rgba(255,255,255,.05);
              overflow: hidden; }
   .vt-fach img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -272,6 +271,72 @@
   .stat-bar { height: 9px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
   .stat-bar i { display: block; height: 100%; background: var(--blau); border-radius: 99px; }
   .stat-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+
+  /* ---------- Handy-Feinschliff ---------- */
+  @media (max-width: 700px) {
+    /* Filterzeilen brachen auf fünf Zeilen um und schoben die Binder aus dem Bild.
+       Am Handy laufen sie stattdessen in einer Zeile, die man zur Seite wischt. */
+    .vt-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+                 -webkit-overflow-scrolling: touch; padding-bottom: 4px; margin-bottom: 12px; }
+    .vt-filter::-webkit-scrollbar { display: none; }
+    .vt-filter > * { flex-shrink: 0; }
+    .vt-filter .chip { min-height: 34px; display: inline-flex; align-items: center; }
+    .vt-filter > div[style*="flex:1"] { display: none; }
+
+    /* Der Erklärsatz über der Vitrine kostet am Handy vier Zeilen. Die Kacheln erklären
+       sich selbst, sobald man eine sieht. */
+    #vitrine .vt-u { display: none; }
+    #vitrine h2, #vitrine .vt-kopf h2 { font-size: 20px; }
+
+    /* Begleitleiste eines geteilten Binders: die zwei Knöpfe nebeneinander statt untereinander */
+    .vt-ansichtleiste { gap: 7px; padding: 8px 10px; }
+    .vt-ansichtleiste .btn { flex: 1; min-width: 0; font-size: 12px !important; padding: 8px 10px;
+                             justify-content: center; }
+    .vt-ansichtleiste .vt-wer { flex-basis: 100%; font-size: 12px; }
+    .vt-ansichtleiste .vt-hab { flex-basis: 100%; }
+
+    /* Umschalter der Galerie: eine Zeile, wischbar */
+    .gal-umschalter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .gal-umschalter::-webkit-scrollbar { display: none; }
+    .gal-umschalter > * { flex-shrink: 0; }
+    .gal-umschalter .chip { min-height: 34px; display: inline-flex; align-items: center; }
+
+    /* Galerie: eine Seite je Zeile, aber ohne den Riesenabstand */
+    .gal { gap: 14px; }
+    .gal-blatt { padding: 7px; gap: 5px; }
+
+    /* Tippziele auf Fingergröße. Die Schalter „Preise“ und „absteigend“ waren 15 px klein. */
+    .schalter input[type=checkbox], .f-sort input[type=checkbox] { width: 22px; height: 22px; }
+    .schalter { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; }
+    .fuss-links a, .bp-fuss a { display: inline-block; padding: 6px 4px; }
+    .kopf .btn { min-height: 36px; }
+
+    /* Profilkopf: Bild und Text nebeneinander, Zahlen darunter */
+    .po-hero { padding: 14px 15px; gap: 12px; }
+    .po-zahlen { gap: 16px; }
+    .po-zahl b { font-size: 18px; }
+
+    /* Statistik-Balken brauchen weniger Namensspalte */
+    .stat-zeile { grid-template-columns: minmax(70px, 110px) 1fr 30px; gap: 8px; }
+
+    /* Geteilter Binder: bis zur ersten Karte lagen acht Zeilen Kopf. Statuszeile und
+       Preis-Schalter teilen sich jetzt eine Zeile, der Banner ist schmaler. */
+    body.nur-ansicht .ansicht-banner { padding: 6px 10px; font-size: 12px; }
+    body.nur-ansicht .bp-kopf { display: flex; flex-wrap: wrap; align-items: center;
+                                gap: 10px; row-gap: 4px; }
+    body.nur-ansicht .bp-stats { font-size: 12px; flex: 1 1 100%; }
+    body.nur-ansicht .bp-tools { margin: 0; }
+    body.nur-ansicht .spalte-binder { gap: 8px; padding-top: 10px; }
+
+    /* Kleine Ziele, die der Finger sonst verfehlt: Sortier-Reiter der Vitrine, Rechtslinks
+       im Fuß, Sammlername und Melde-Fahne. Alle auf mindestens 34 px Höhe. */
+    .vt-tabs button { min-height: 34px; padding: 6px 13px; }
+    .rechtlink, .bp-recht a { display: inline-block; padding: 11px 6px; font-size: 11px; }
+    .vt-meta a, .vt-wer a { display: inline-block; padding: 9px 3px; }
+    .vt-fuss button, .vt-ansichtleiste button:not(.btn), .po-hero button,
+    .bp-tools .menuwrap > button { min-height: 34px; min-width: 34px;
+      display: inline-flex; align-items: center; justify-content: center; }
+  }
   .tausch-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
   .tausch-karte { position: relative; aspect-ratio: 63/88; border-radius: 6px; overflow: hidden;
                   border: 1.5px solid var(--line); background: var(--panel2); }
@@ -567,8 +632,8 @@
   .slot.voll { border: 1.5px solid var(--bkante); background: var(--bfach); cursor: grab; }
   .slot.leer-item { border-style: dotted; background: var(--bleer); cursor: grab; color: var(--btext); font-size: 10px; }
   .slot img { width: 100%; height: 100%; object-fit: contain; }
-  .slot .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
-  .slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .slot .artfach, .gal-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+  .slot .artfach img, .gal-fach .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
   .slot.art { border-style: solid; border-color: #9b6fd6; }
   .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
   .slot .dexzelle img { width: 52%; height: auto; }
@@ -763,7 +828,7 @@
   .slot:hover .mehr { opacity: 1; }
   .slot .preis { bottom: 21px; }
   .slot.leer-item .mehr { opacity: .6; }
-  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: 13px; line-height: 23px; } .slot .mehr { opacity: .85; width: 28px; height: 22px; line-height: 20px; } .slot .preis { bottom: 26px; } }
+  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: 13px; line-height: 23px; } .slot .mehr { opacity: .85; width: 30px; height: 30px; line-height: 20px; } .slot .preis { bottom: 26px; } }
   /* Planer als zweite Ansicht unter der Kopfzeile */
   #planer { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg); z-index: 40; display: flex; flex-direction: column; }
   .planer-kopf { justify-content: flex-start; }
@@ -1196,9 +1261,9 @@
       </div>
       <button class="btn sekundaer" style="font-size:12.5px;padding:8px 13px" onclick="filterReset()" data-i18n="f_reset">Filter zurücksetzen</button>
       <div style="margin-top:auto;font-size:10.5px;color:var(--mut)">
-        <a href="recht#impressum" style="color:var(--mut)" data-i18n="imp_kurz">Impressum</a> ·
-        <a href="recht#agb" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> ·
-        <a href="recht#datenschutz" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a>
+        <a href="recht#impressum" class="rechtlink" style="color:var(--mut)" data-i18n="imp_kurz">Impressum</a> ·
+        <a class="rechtlink" href="recht#agb" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> ·
+        <a class="rechtlink" href="recht#datenschutz" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a>
       </div>
     </div>
 
@@ -1898,7 +1963,7 @@
     <input class="feld" id="vt-suche" style="width:190px" placeholder="Binder suchen …" data-i18n-ph="vt_suche" oninput="vitrineSuchen()">
     <button class="btn sekundaer" style="font-size:12.5px" onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
   </div>
-  <div class="unter" data-i18n="vt_u">Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.</div>
+  <div class="unter vt-u" data-i18n="vt_u">Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.</div>
   <div class="vt-filter" id="vt-filter"></div>
   <div class="vt-gitter" id="vt-gitter"></div>
 </div>
@@ -3376,7 +3441,18 @@ function menuToggle(id) {
   $(id).classList.toggle('hidden');
 }
 document.addEventListener('click', (ev) => {
-  if (!ev.target.closest('.menuwrap')) document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Klick daneben schließt alle Menüs
+  if (!ev.target.closest('.menuwrap')) {
+    document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+    return;
+  }
+  // Klick auf einen Eintrag IM Menü schließt es ebenfalls. Vorher blieb es offen und
+  // verdeckte die Ansicht, in die man gerade gewechselt war. Ausgenommen sind Felder,
+  // Schalter und Beschriftungen — dort arbeitet man im Menü weiter.
+  const eintrag = ev.target.closest('.menu button, .menu a');
+  if (!eintrag || ev.target.closest('input, select, textarea, label, .bw-edit, .binder-groesse')) return;
+  const menu = eintrag.closest('.menu');
+  if (menu) menu.classList.add('hidden');
 });
 // Escape schließt Modale und offene Menüs — daneben tippen schließt bewusst nichts mehr
 document.addEventListener('keydown', (ev) => {
@@ -4595,26 +4671,26 @@ async function vitrineLaden() {
  *  samt leeren Fächern — nur so sieht die Kachel aus wie eine echte aufgeschlagene Seite. */
 function vitrineBlatt(blatt, doppelt) {
   if (!blatt || !blatt.seiten || !blatt.seiten.length) return '';
-  const fach = (f) => {
+  const fach = (f, spalten, zeilen) => {
     if (f.art === 'card') return `<div class="vt-fach"><img loading="lazy" src="${imgUrl(f.id)}" alt=""></div>`;
-    if (f.art === 'artwork') return '<div class="vt-fach durch"></div>';
+    if (f.art === 'artwork') {
+      // Auch in der Vorschau bleibt es eine Binderseite: jedes Fach zeigt seinen Ausschnitt
+      // des Artworks, die Fugen dazwischen sind sichtbar. Gerechnet wie im Binder selbst,
+      // mit 4 Einheiten Fuge auf 63 × 88 Kartenmaß.
+      const [c2, r2] = LAYOUTS[f.layout] || [spalten, zeilen];
+      const pw = c2 * 63 + (c2 - 1) * 4, ph = r2 * 88 + (r2 - 1) * 4;
+      const sp = f.slot % c2, ze = Math.floor(f.slot / c2);
+      return `<div class="vt-fach"><span class="artfach"><img loading="lazy" src="api/artwork/${encodeURIComponent(f.id)}/bild?v=vorschau" alt=""
+        style="width:${(pw / 63 * 100).toFixed(2)}%;height:${(ph / 88 * 100).toFixed(2)}%;left:-${(sp * 67 / 63 * 100).toFixed(2)}%;top:-${(ze * 92 / 88 * 100).toFixed(2)}%"></span></div>`;
+    }
     if (f.art === 'dex') return `<div class="vt-fach"><img loading="lazy" src="api/img/dex/${f.dex}" alt=""></div>`;
     return '<div class="vt-fach leer"></div>';
   };
-  // Eine Artwork-Seite ist EIN Bild, das über die ganze Seite läuft. Es liegt deshalb als
-  // Untergrund hinter dem Raster; die Karten, die darauf liegen, behalten ihre Fächer.
-  const seite = (nr) => {
-    const art = blatt.seiten[nr].find((f) => f.art === 'artwork');
-    const grund = art
-      ? `background-image:url(api/artwork/${encodeURIComponent(art.id)}/bild?v=vorschau);background-size:100% 100%;padding:0;gap:0`
-      : '';
-    // Auf einer Artwork-Seite sind die Ankerkarten bereits ins Bild eingesetzt. Sie ein
-    // zweites Mal darüberzulegen ergäbe Doppelbilder — die Fächer bleiben deshalb leer.
-    const inhalt = art ? blatt.seiten[nr].map(() => '<div class="vt-fach durch"></div>').join('')
-                       : blatt.seiten[nr].map(fach).join('');
-    return `<div class="vt-seite${art ? ' nahtlos' : ''}" style="grid-template-columns:repeat(${blatt.spalten},1fr);${grund}">
-      ${inhalt}</div>`;
-  };
+  // Die Fuge muss zum Ausschnitt passen: 4 Einheiten auf eine Zeile aus <spalten> Karten.
+  // In Prozent der Gesamtbreite gerechnet, damit sie bei jeder Kachelgröße stimmt.
+  const fuge = (sp) => (4 / (sp * 63 + (sp - 1) * 4) * 100).toFixed(3) + '%';
+  const seite = (nr) => `<div class="vt-seite" style="grid-template-columns:repeat(${blatt.spalten},1fr);gap:${fuge(blatt.spalten)}">
+      ${blatt.seiten[nr].map((f) => fach(f, blatt.spalten, blatt.zeilen)).join('')}</div>`;
   // Zwei Seiten nebeneinander nur, wenn es sie gibt und Platz ist — sonst wirkt die zweite leer
   const zwei = doppelt && blatt.seiten.length > 1;
   return `<div class="vt-blatt ${zwei ? 'dop' : ''}">${zwei ? seite(0) + seite(1) : seite(0)}</div>`;
