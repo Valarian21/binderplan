@@ -475,6 +475,10 @@ def init_db():
                    # und woher die Produktnummer stammt (tcgdex, katalog, hand).
                    "ALTER TABLE card_prices ADD COLUMN cm_import_am TEXT",
                    "ALTER TABLE card_prices ADD COLUMN cm_quelle TEXT",
+                   # Cardmarket liefert im Preisverzeichnis drei Durchschnitte: über einen,
+                   # sieben und dreißig Tage. Der 7-Tage-Wert neben dem 30-Tage-Wert ist
+                   # eine echte Bewegung, ohne dass wir dafür eine eigene Reihe brauchen.
+                   "ALTER TABLE card_prices ADD COLUMN eur_avg7 REAL",
                    "ALTER TABLE price_history ADD COLUMN usd REAL"):
         try:
             con.execute(befehl)
@@ -1794,6 +1798,7 @@ def _ptcgio_job(nur_set=None):
 CM_PREIS_FELDER = {
     "eur":       ("trend", "trendprice", "avg", "avgsellprice"),
     "eur_low":   ("low", "lowprice"),
+    "eur_avg7":  ("avg7", "avg7days"),
     "eur_avg30": ("avg30", "avg30days"),
     "eur_holo":  ("trendholo", "reverseholotrend", "foiltrend", "trendfoil",
                   "avgholo", "reverseholosell", "foilsell"),
@@ -2057,14 +2062,15 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
             hat_trend = werte.get("eur") is not None
             con.execute(
                 "UPDATE card_prices SET eur = COALESCE(?, eur),"
-                " eur_low = COALESCE(?, eur_low), eur_avg30 = COALESCE(?, eur_avg30),"
+                " eur_low = COALESCE(?, eur_low), eur_avg7 = COALESCE(?, eur_avg7),"
+                " eur_avg30 = COALESCE(?, eur_avg30),"
                 " eur_holo = CASE WHEN ? THEN ? ELSE eur_holo END,"
                 " status = CASE WHEN ? THEN NULL ELSE status END,"
                 " eur_geschaetzt = CASE WHEN ? THEN NULL ELSE eur_geschaetzt END,"
                 " cm_import_am = CASE WHEN ? THEN datetime('now') ELSE cm_import_am END,"
                 " updated_at = datetime('now') WHERE card_id = ?",
-                (werte.get("eur"), werte.get("eur_low"), werte.get("eur_avg30"),
-                 hat_trend, werte.get("eur_holo"),
+                (werte.get("eur"), werte.get("eur_low"), werte.get("eur_avg7"),
+                 werte.get("eur_avg30"), hat_trend, werte.get("eur_holo"),
                  hat_trend, hat_trend, hat_trend, cid))
             if hat_trend:
                 con.execute("INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
@@ -3297,9 +3303,9 @@ def card_detail(card_id: str):
     k["set"] = dict(sr) if sr else None
     if k["set"]:
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
-    pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg30,"
-                     " usd, usd_low, usd_mid, usd_high, preise_json, status, kurs,"
-                     " eur_geschaetzt, cm_url, ptc_id FROM card_prices"
+    pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg7,"
+                     " eur_avg30, usd, usd_low, usd_mid, usd_high, preise_json, status,"
+                     " kurs, eur_geschaetzt, cm_url, ptc_id, cm_import_am FROM card_prices"
                      " WHERE card_id = ?", (card_id,)).fetchone()
     # Im Detail gilt dieselbe Regel wie überall sonst: fehlt der Cardmarket-Trend, tritt die
     # Zahl der Zweitquelle an seine Stelle — mit dem Vermerk, woher sie kommt.
@@ -3343,7 +3349,8 @@ def card_detail(card_id: str):
     # führen dort 9.999 $. Gezeigt wird deshalb nur noch Tief bis Mitte.
     k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"],
                   "geteilt": geteilt if geteilt > 1 else 0, "ohne_quelle": ohne_quelle,
-                  "eur_low": pr["eur_low"], "eur_avg30": pr["eur_avg30"],
+                  "eur_low": pr["eur_low"], "eur_avg7": pr["eur_avg7"],
+                  "eur_avg30": pr["eur_avg30"], "direkt": bool(pr["cm_import_am"]),
                   "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
                   "varianten": var_preise, "status": pr["status"], "kurs": pr["kurs"],
                   "eur_geschaetzt": pr["eur_geschaetzt"]} if pr else None
