@@ -185,6 +185,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             kurz["varianten"] = kurz["posten"]      # alter Name, solange die Oberfläche ihn nutzt
             pr = preise.get(r["id"])
             kurz["eur"] = pr["eur"] if pr else None
+            # Woher die Zahl kommt, gehört an die Zahl. „geschaetzt" heißt aus dem
+            # US-Preis umgerechnet, „zweitquelle" heißt von pokemontcg.io statt TCGdex.
+            kurz["preis_quelle"] = pr.get("quelle") if pr else None
             # Jeder Posten wird mit seinem eigenen Zustand bewertet. Vorher galt für alle
             # derselbe Trend — eine Poor-Karte zählte so viel wie eine Near-Mint-Karte.
             summe = 0
