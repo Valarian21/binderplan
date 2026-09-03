@@ -3154,6 +3154,10 @@ const S = {
   ergebnisse: [], gesamt: 0, offset: 0, seite: 0, speicherTimer: null,
   auswahl: new Set(),
   token: localStorage.getItem('bp_token') || '', user: null, nurAnsicht: false,
+  // Muss gesetzt sein, nicht undefined: `classList.toggle(name, undefined)` schaltet um,
+  // statt zu setzen. In der Werkbank blieb das Feld leer, und jeder zweite Seitenwechsel
+  // blendete das Fächerraster aus — die Seite war „auf einmal weg".
+  galerie: false,
 };
 const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
@@ -3535,7 +3539,8 @@ function zeichneGalerie() {
 
 /** Zwischen Galerie und einzelner Seite umschalten. Die Wahl bleibt gespeichert. */
 function galerieUmschalten(an) {
-  S.galerie = an;
+  S.galerie = !!an;
+  an = S.galerie;
   try { localStorage.setItem('bp_galerie', an ? '1' : ''); } catch (e) {}
   $('gal-seiten').classList.toggle('hidden', !an);
   $('wb-slots').classList.toggle('hidden', an);
@@ -4869,8 +4874,8 @@ function zeichneBinder() {
   // Leerer Binder: Einstieg erklären und die Vorlagen zeigen – das Raster erst ab der ersten Karte
   const leer = !S.nurAnsicht && S.binder.items.length === 0;
   $('wb-onb').classList.toggle('hidden', !leer);
-  $('wb-slots').classList.toggle('hidden', leer || S.galerie);
-  $('wb-nav').classList.toggle('hidden', leer || S.galerie);
+  $('wb-slots').classList.toggle('hidden', !!(leer || S.galerie));
+  $('wb-nav').classList.toggle('hidden', !!(leer || S.galerie));
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
   const gesammelt = S.binder.items.filter((i) => besitzt(i)).length;
