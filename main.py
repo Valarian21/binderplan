@@ -1787,12 +1787,19 @@ def _ptcgio_job(nur_set=None):
 # selbst und ordnet die Spalten über ihre Namen zu, damit eine Umbenennung auf der
 # Gegenseite nicht gleich alles anhält.
 
+# Die Feldnamen der echten Dateien (geprüft an price_guide_6.json vom 03.09.2026):
+# idProduct, idCategory, avg, low, trend, avg1, avg7, avg30 und dieselben mit „-holo".
+# Die CSV-Fassung schreibt sie aus („Trend Price", „Low Price“) — beide Schreibweisen
+# stehen hier, damit es egal ist, welche Fassung geladen wurde.
 CM_PREIS_FELDER = {
-    "eur":       ("trendprice", "trend", "avgsellprice", "avg"),
-    "eur_low":   ("lowprice", "low"),
+    "eur":       ("trend", "trendprice", "avg", "avgsellprice"),
+    "eur_low":   ("low", "lowprice"),
     "eur_avg30": ("avg30", "avg30days"),
-    "eur_holo":  ("reverseholotrend", "foiltrend", "trend-foil", "reverseholosell", "foilsell"),
+    "eur_holo":  ("trendholo", "reverseholotrend", "foiltrend", "trendfoil",
+                  "avgholo", "reverseholosell", "foilsell"),
 }
+# Nur Einzelkarten. Das Preisverzeichnis enthält auch Displays und Zubehör.
+CM_KATEGORIE_SINGLE = 51
 
 
 def _cm_zahl(wert):
@@ -1851,7 +1858,12 @@ def cm_preisverzeichnis_lesen(roh: bytes):
 
 
 def cm_katalog_lesen(roh: bytes):
-    """→ [{id, name, expansion, nummer}] aus dem Produktkatalog."""
+    """→ [{id, name, expansion, nummer}] aus dem Produktkatalog.
+
+    Der Katalog führt keine Kartennummer: die Karten heißen dort „Weedle [Multiply]“ oder
+    „Kakuna [Bug Bite | Primal Clash]“ — Basisname plus Attacken in eckigen Klammern. Die
+    Zuordnung läuft deshalb über die Erweiterung und den Basisnamen, nicht über die Nummer.
+    Eine Nummer wird nur mitgenommen, wenn sie ausnahmsweise in runden Klammern steht."""
     aus = []
     for zeile in _cm_zeilen(roh):
         felder = {_cm_schluessel(k): v for k, v in zeile.items()}
@@ -1860,23 +1872,34 @@ def cm_katalog_lesen(roh: bytes):
             pid = int(str(pid).strip())
         except (TypeError, ValueError):
             continue
+        kategorie = felder.get("idcategory")
+        if kategorie is not None and str(kategorie).strip().isdigit() \
+                and int(str(kategorie).strip()) != CM_KATEGORIE_SINGLE:
+            continue
         roh_name = str(felder.get("name") or felder.get("enname") or "").strip()
         nummer = str(felder.get("number") or felder.get("collectornumber") or "").strip()
         if not nummer:
-            # Cardmarket hängt die Kartennummer als Klammerzusatz an den Namen:
-            # „Charizard G LV.X (DP45)“. Der letzte Klammerinhalt mit einer Ziffer ist sie —
-            # reine Buchstabenzusätze wie „(V1)“ meinen die Ausgabe, nicht die Nummer.
             for teil in re.findall(r"\(([^)]*)\)", roh_name):
                 if re.search(r"\d", teil) and len(teil) <= 12:
                     nummer = teil.strip()
         aus.append({
             "id": pid,
             "name": roh_name,
-            "expansion": str(felder.get("expansion") or felder.get("expansionname")
-                             or felder.get("idexpansion") or "").strip(),
+            "expansion": str(felder.get("idexpansion") or felder.get("expansion")
+                             or felder.get("expansionname") or "").strip(),
             "nummer": nummer,
         })
     return aus
+
+
+def _cm_basisname(name):
+    """„Kakuna [Bug Bite | Primal Clash]“ → „kakuna“. Die eckige Klammer trägt die
+    Attacken, nicht die Ausgabe — sie unterscheidet Karten gleichen Namens innerhalb
+    einer Erweiterung, taugt aber nicht zum Abgleich mit unserem Katalog."""
+    n = re.sub(r"\[.*?\]", " ", str(name or ""))
+    n = re.sub(r"\(.*?\)", " ", n)
+    n = n.replace("&", "and").replace("é", "e").replace("♀", "f").replace("♂", "m")
+    return re.sub(r"[^a-z0-9]", "", n.lower())
 
 
 def _cm_name_norm(name):
@@ -1902,52 +1925,64 @@ def cm_import(preise_roh=None, katalog_roh=None):
     con = get_db()
 
     # --- Produktkatalog: fehlende Zuordnungen herstellen ---------------------
+    #
+    # Der Katalog nennt keine Kartennummer, nur `idExpansion` als Zahl. Welche unserer
+    # Sets zu welcher Erweiterung gehört, wird deshalb aus den Zuordnungen gelernt, die
+    # schon stehen: für jedes Set gewinnt die Erweiterung, die bei seinen bereits
+    # bekannten Produktnummern am häufigsten vorkommt. Innerhalb der Erweiterung wird über
+    # den Basisnamen verglichen, und nur eindeutige Treffer werden übernommen.
     if katalog_roh:
         eintraege = cm_katalog_lesen(katalog_roh)
         bericht["katalog"] = len(eintraege)
-        # Nur Karten ohne Produktnummer sind Kandidaten — vorhandene Zuordnungen aus
-        # TCGdex bleiben, sie sind an dieser Stelle nicht schlechter.
-        # Zwei Register: mit Nummer (sicher) und nur über Name plus Erweiterung (Rückfall).
-        mit_nummer, mit_set = {}, {}
-        for r in con.execute(
-                "SELECT c.id, c.name_en, c.name_de, c.name_ja, c.local_id, c.stage, c.suffix,"
-                " s.name_en setn, s.name setn_de FROM cards c JOIN sets s ON s.id = c.set_id"
-                " LEFT JOIN card_prices p ON p.card_id = c.id"
-                " WHERE p.cm_produkt IS NULL"):
-            nr = _cm_nummer(r["local_id"])
-            # Cardmarket schreibt den Zusatz in den Namen („Charizard G LV.X“), TCGdex führt
-            # ihn getrennt in `stage`/`suffix`. Beide Schreibweisen werden eingetragen,
-            # sonst geht jede Lv.X-Karte verloren.
-            zusatz = []
-            if (r["stage"] or "") == "LEVEL-UP":
-                zusatz.append("LV.X")
-            if r["suffix"]:
-                zusatz.append(r["suffix"])
-            for name in (r["name_en"], r["name_de"], r["name_ja"]):
-                if not name:
-                    continue
-                for voll in {name, *(f"{name} {z}" for z in zusatz)}:
-                    nn = _cm_name_norm(voll)
-                    mit_nummer.setdefault((nn, nr), set()).add(r["id"])
-                    for setn in (r["setn"], r["setn_de"]):
-                        if setn:
-                            mit_set.setdefault((nn, _cm_name_norm(setn)), set()).add(r["id"])
-        genutzt = set()
+        exp_je_produkt = {}
         for e in eintraege:
-            nn = _cm_name_norm(e["name"])
-            treffer = mit_nummer.get((nn, _cm_nummer(e["nummer"]))) if e["nummer"] else None
-            if not treffer:
-                treffer = mit_set.get((nn, _cm_name_norm(e["expansion"])))
-            # Nur eindeutige Treffer übernehmen. Zwei Karten auf ein Produkt zu legen ist
-            # genau der Fehler, den wir TCGdex vorwerfen.
-            if treffer and len(treffer) == 1 and e["id"] not in genutzt:
-                cid = next(iter(treffer))
+            try:
+                exp_je_produkt[e["id"]] = int(e["expansion"])
+            except (TypeError, ValueError):
+                pass
+        gelernt = {}
+        for r in con.execute("SELECT c.set_id, p.cm_produkt FROM card_prices p"
+                             " JOIN cards c ON c.id = p.card_id"
+                             " WHERE p.cm_produkt IS NOT NULL"):
+            e = exp_je_produkt.get(r["cm_produkt"])
+            if e is not None:
+                gelernt.setdefault(r["set_id"], {}).setdefault(e, 0)
+                gelernt[r["set_id"]][e] += 1
+        set_exp = {sid: max(zaehler, key=zaehler.get) for sid, zaehler in gelernt.items()}
+        bericht["erweiterungen"] = len(set_exp)
+
+        vergeben = {r["cm_produkt"] for r in con.execute(
+            "SELECT cm_produkt FROM card_prices WHERE cm_produkt IS NOT NULL")}
+        frei = {}
+        for e in eintraege:
+            if e["id"] in vergeben:
+                continue
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            frei.setdefault(ex, {}).setdefault(_cm_basisname(e["name"]), []).append(e["id"])
+
+        for r in con.execute(
+                "SELECT c.id, c.set_id, c.name_en, c.name_de, c.name_ja FROM cards c"
+                " LEFT JOIN card_prices p ON p.card_id = c.id WHERE p.cm_produkt IS NULL"):
+            ex = set_exp.get(r["set_id"])
+            if ex is None:
+                continue
+            kandidaten = set()
+            for name in (r["name_en"], r["name_de"], r["name_ja"]):
+                if name:
+                    kandidaten.update(frei.get(ex, {}).get(_cm_basisname(name), []))
+            # Nur eindeutige Treffer. Zwei Karten auf ein Produkt zu legen ist genau der
+            # Fehler, den wir TCGdex vorwerfen.
+            if len(kandidaten) == 1:
+                pid = kandidaten.pop()
                 con.execute("INSERT INTO card_prices (card_id, cm_produkt, cm_quelle)"
                             " VALUES (?,?,'katalog')"
                             " ON CONFLICT(card_id) DO UPDATE SET cm_produkt = excluded.cm_produkt,"
                             " cm_quelle = 'katalog' WHERE card_prices.cm_produkt IS NULL",
-                            (cid, e["id"]))
-                genutzt.add(e["id"])
+                            (r["id"], pid))
+                vergeben.add(pid)
                 bericht["zuordnungen"] += 1
         con.commit()
 
@@ -1970,18 +2005,27 @@ def cm_import(preise_roh=None, katalog_roh=None):
             if len(karten) > 1:
                 continue
             cid = karten[0]
+            # Nur überschreiben, wo die Datei etwas hergibt. Der erste Entwurf setzte
+            # `eur` auch dann, wenn die Zeile nur einen Tiefstpreis trug, und löschte
+            # dabei Status und Schätzung mit — 428 Karten standen danach ohne jede Zahl da,
+            # die vorher eine hatten.
+            hat_trend = werte.get("eur") is not None
             con.execute(
-                "UPDATE card_prices SET eur = ?, eur_low = COALESCE(?, eur_low),"
-                " eur_avg30 = COALESCE(?, eur_avg30), eur_holo = ?,"
-                " status = NULL, eur_geschaetzt = NULL, cm_import_am = datetime('now'),"
+                "UPDATE card_prices SET eur = COALESCE(?, eur),"
+                " eur_low = COALESCE(?, eur_low), eur_avg30 = COALESCE(?, eur_avg30),"
+                " eur_holo = CASE WHEN ? THEN ? ELSE eur_holo END,"
+                " status = CASE WHEN ? THEN NULL ELSE status END,"
+                " eur_geschaetzt = CASE WHEN ? THEN NULL ELSE eur_geschaetzt END,"
+                " cm_import_am = CASE WHEN ? THEN datetime('now') ELSE cm_import_am END,"
                 " updated_at = datetime('now') WHERE card_id = ?",
                 (werte.get("eur"), werte.get("eur_low"), werte.get("eur_avg30"),
-                 werte.get("eur_holo"), cid))
-            if werte.get("eur") is not None:
+                 hat_trend, werte.get("eur_holo"),
+                 hat_trend, hat_trend, hat_trend, cid))
+            if hat_trend:
                 con.execute("INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
                             " ON CONFLICT(card_id, datum) DO UPDATE SET eur = excluded.eur",
                             (cid, heute, werte["eur"]))
-            bericht["karten"] += 1
+                bericht["karten"] += 1
         con.commit()
         # Der Holo-Wert gehört wieder nur an Karten mit zweiter Ausgabe.
         con.execute("UPDATE card_prices SET eur_holo = NULL WHERE card_id IN"
@@ -1991,6 +2035,14 @@ def cm_import(preise_roh=None, katalog_roh=None):
         con.execute("INSERT OR REPLACE INTO kv (key,value)"
                     " VALUES ('cm_import_lauf', datetime('now'))")
         con.commit()
+        # Die Urteile des Börsenvergleichs gehören zu den neuen Zahlen, nicht zu den alten.
+        try:
+            kurs, urteile = _kurs_pruefen(con)
+            con.commit()
+            bericht["kurs"] = kurs
+            bericht["urteile"] = urteile
+        except Exception as exc:
+            print("Börsenvergleich nach dem Import fehlgeschlagen:", exc)
     con.close()
     return bericht
 
@@ -2003,6 +2055,49 @@ def _cm_nummer(text):
     ziffern = re.sub(r"^0+", "", re.sub(r"[^0-9]", "", t))
     buchstaben = re.sub(r"[0-9]", "", t)
     return buchstaben + ziffern
+
+
+def _cm_dateien():
+    """→ (Preisverzeichnis, Produktkatalog) aus dem Ordner `cardmarket/`, als Bytes."""
+    ordner = BASE / "cardmarket"
+    preise = katalog = None
+    if ordner.exists():
+        for datei in sorted(ordner.glob("*")):
+            if not datei.is_file():
+                continue
+            name = datei.name.lower()
+            if "price" in name or "preis" in name:
+                preise = datei.read_bytes()
+            elif "product" in name or "katalog" in name or "catalog" in name:
+                katalog = datei.read_bytes()
+    return preise, katalog
+
+
+def _cm_import_job():
+    """Nachts: die abgelegten Cardmarket-Dateien einlesen, falls es sie gibt.
+
+    Der Server kann sie nicht selbst holen — Cardmarket beantwortet jeden Serverabruf mit
+    403, auch den der Download-Seite. Steht in der .env ein `CM_PREISE_URL`, wird es
+    trotzdem versucht (falls Cardmarket später eine direkte Dateiadresse anbietet);
+    sonst zählt, was im Ordner liegt."""
+    url = _env().get("CM_PREISE_URL")
+    if url:
+        try:
+            with httpx.Client(timeout=120, headers=UA, follow_redirects=True) as client:
+                r = client.get(url)
+            if r.status_code == 200 and r.content:
+                ziel = BASE / "cardmarket"
+                ziel.mkdir(exist_ok=True)
+                (ziel / "price_guide.json").write_bytes(r.content)
+                print("Cardmarket-Preisverzeichnis geladen:", len(r.content), "Bytes")
+        except Exception as exc:
+            print("Cardmarket-Preisverzeichnis nicht ladbar:", exc)
+    preise, katalog = _cm_dateien()
+    if not preise and not katalog:
+        return None
+    bericht = cm_import(preise, katalog)
+    print("Cardmarket-Import:", bericht)
+    return bericht
 
 
 @app.post("/api/admin/cm_import")
@@ -2022,13 +2117,7 @@ async def admin_cm_import(request: Request, key: str = ""):
         if form.get("katalog") is not None and hasattr(form["katalog"], "read"):
             katalog_roh = await form["katalog"].read()
     else:
-        ordner = BASE / "cardmarket"
-        for datei in sorted(ordner.glob("*")) if ordner.exists() else []:
-            name = datei.name.lower()
-            if "price" in name or "preis" in name:
-                preise_roh = datei.read_bytes()
-            elif "product" in name or "katalog" in name or "catalog" in name:
-                katalog_roh = datei.read_bytes()
+        preise_roh, katalog_roh = _cm_dateien()
     if not preise_roh and not katalog_roh:
         raise HTTPException(400, "Weder Preisverzeichnis noch Produktkatalog gefunden. "
                                  "Dateien hochladen oder in den Ordner cardmarket/ legen.")
@@ -2392,9 +2481,15 @@ def _hintergrund_takt():
             # genügt einmal am Tag, weil Cardmarket ohnehin nur täglich neu rechnet.
             abstand = 0.75 if offen > 0 else 23
             if not letzter or letzter["value"] < datetime_str_vor(abstand):
+                # Die Reihenfolge ist die Rangfolge der Quellen, von der schwächsten zur
+                # stärksten: TCGdex legt die Grundlage und berichtigt die Ausprägungen,
+                # das Cardmarket-Preisverzeichnis überschreibt sie mit den echten Zahlen,
+                # und die Zweitquelle füllt nur noch, was danach leer geblieben ist.
                 _preishistorie_job()
-                # Direkt danach die Zweitquelle: sie arbeitet genau die Lücken ab, die der
-                # Hauptlauf gerade hinterlassen hat.
+                try:
+                    _cm_import_job()
+                except Exception as exc:
+                    print("Cardmarket-Import fehlgeschlagen:", exc)
                 try:
                     _ptcgio_job()
                 except Exception as exc:
