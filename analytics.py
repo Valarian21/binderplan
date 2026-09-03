@@ -53,13 +53,35 @@ def _tage_zurueck(n):
 
 
 def _messtage(con, ab=None):
-    """Tage der Historie, die genug Karten tragen, um als Messpunkt zu gelten."""
+    """Tage, an denen gemessen wurde — und zwar über genug Karten, um zu zählen.
+
+    Gezählt wird nicht mehr in `price_history`: die führt seit dem 03.09.2026 nur noch
+    Bewegungen, ein ruhiger Tag hätte dort kaum Zeilen und fiele als Messpunkt heraus.
+    `price_tage` hält deshalb je Lauf fest, über wie viele Karten er ging."""
     bed, args = "", ()
     if ab:
         bed, args = " WHERE datum >= ?", (ab,)
     return [r["datum"] for r in con.execute(
-        f"SELECT datum FROM price_history{bed} GROUP BY datum HAVING COUNT(*) >= ?"
+        f"SELECT datum FROM price_tage{bed} GROUP BY datum HAVING MAX(karten) >= ?"
         f" ORDER BY datum", (*args, MIN_ZEILEN_TAG))]
+
+
+def _stand(con, bis, ids=None):
+    """Der zuletzt gemeldete Preis je Karte bis einschließlich `bis` → {id: eur}.
+
+    Das Gegenstück zur Bewegungs-Historie: was am Tag X galt, ist der letzte Eintrag bis
+    zu diesem Tag, nicht der Eintrag *an* diesem Tag."""
+    bed, args = "", (bis,)
+    if ids is not None:
+        if not ids:
+            return {}
+        marken = ",".join("?" * len(ids))
+        bed = f" AND card_id IN ({marken})"
+        args = (bis, *ids)
+    return {r["card_id"]: r["eur"] for r in con.execute(
+        "SELECT card_id, eur FROM (SELECT card_id, eur, ROW_NUMBER() OVER"
+        " (PARTITION BY card_id ORDER BY datum DESC) rn FROM price_history"
+        f" WHERE datum <= ? AND eur IS NOT NULL{bed}) WHERE rn = 1", args)}
 
 
 def _reihe(con, ids, tage=90, gewicht=None):
@@ -78,32 +100,38 @@ def _reihe(con, ids, tage=90, gewicht=None):
         return {"punkte": [], "basis": 0, "zu_kurz": True, "tage": len(gueltig)}
     roh = []
     ids = list(dict.fromkeys(ids))
+    # Der Stand am Anfang des Fensters. Ohne ihn hinge die Basis daran, ob eine Karte
+    # zufällig am ersten Tag eine Bewegung hatte — ruhige Karten fielen heraus.
+    start_stand = {}
     for start in range(0, len(ids), 400):
         teil = ids[start:start + 400]
         marken = ",".join("?" * len(teil))
         roh += [(r["datum"], r["card_id"], r["eur"]) for r in con.execute(
             f"SELECT datum, card_id, eur FROM price_history"
             f" WHERE card_id IN ({marken}) AND datum >= ? AND eur IS NOT NULL", (*teil, von))]
-    if not roh:
-        return {"punkte": [], "basis": 0}
+        start_stand.update(_stand(con, von, teil))
 
     nach_tag = {}
     for datum, cid, eur in roh:
         if datum in gueltig:
             nach_tag.setdefault(datum, {})[cid] = eur
-    if not nach_tag:
-        return {"punkte": [], "basis": 0}
-    tage_sortiert = sorted(nach_tag)
+    tage_sortiert = sorted(gueltig)
     if len(tage_sortiert) < MIN_TAGE:
         return {"punkte": [], "basis": 0, "zu_kurz": True, "tage": len(tage_sortiert)}
 
-    basis = set(nach_tag[tage_sortiert[0]]) & set(nach_tag[tage_sortiert[-1]])
+    anfang = dict(start_stand)
+    anfang.update(nach_tag.get(tage_sortiert[0], {}))
+    ende = dict(anfang)
+    for datum in tage_sortiert:
+        ende.update(nach_tag.get(datum, {}))
+    basis = set(anfang) & set(ende)
     if len(basis) < 3:
         return {"punkte": [], "basis": len(basis), "zu_kurz": True, "tage": len(tage_sortiert)}
 
-    letzte, punkte = {}, []
+    letzte = {k: v for k, v in anfang.items() if k in basis}
+    punkte = []
     for datum in tage_sortiert:
-        letzte.update({k: v for k, v in nach_tag[datum].items() if k in basis})
+        letzte.update({k: v for k, v in nach_tag.get(datum, {}).items() if k in basis})
         if len(letzte) < len(basis):
             continue          # noch nicht jede Karte der Basis hat einen Wert
         summe = sum(v * (gewicht.get(k, 1) if gewicht else 1) for k, v in letzte.items())
@@ -353,12 +381,23 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
         if len(tage_liste) >= 2:
             frueh, spaet = tage_liste[0], tage_liste[-1]
             bewegung.update(tage=len(tage_liste), von=frueh, bis=spaet)
-            roh = [dict(r) for r in con.execute(
-                "SELECT a.card_id, a.eur AS alt, b.eur AS neu, c.name_de, c.name_en, c.local_id,"
-                " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
-                " FROM price_history a JOIN price_history b ON b.card_id = a.card_id AND b.datum = ?"
-                " JOIN cards c ON c.id = a.card_id"
-                " WHERE a.datum = ? AND a.eur >= 2 AND b.eur IS NOT NULL", (spaet, frueh))]
+            # Was an einem Tag galt, ist der zuletzt gemeldete Preis bis zu diesem Tag —
+            # die Historie führt nur Bewegungen, ein Vergleich „Zeile von A gegen Zeile
+            # von B" fände nur noch Karten, die an beiden Tagen zufällig gesprungen sind.
+            alt_stand = _stand(con, frueh)
+            neu_stand = _stand(con, spaet)
+            namen = {r["id"]: r for r in con.execute(
+                "SELECT c.id, c.name_de, c.name_en, c.local_id,"
+                " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name FROM cards c")}
+            roh = []
+            for cid, a in alt_stand.items():
+                b = neu_stand.get(cid)
+                k = namen.get(cid)
+                if b is None or a is None or a < 2 or not k:
+                    continue
+                roh.append({"card_id": cid, "alt": a, "neu": b, "name_de": k["name_de"],
+                            "name_en": k["name_en"], "local_id": k["local_id"],
+                            "set_name": k["set_name"]})
             for z in roh:
                 z["prozent"] = round((z["neu"] - z["alt"]) / z["alt"] * 100, 1)
             roh.sort(key=lambda z: -z["prozent"])
@@ -572,6 +611,14 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
         punkte = [{"datum": r["datum"], "eur": r["eur"], "usd": r["usd"]} for r in con.execute(
             "SELECT datum, eur, usd FROM price_history WHERE card_id = ? AND datum >= ?"
             " ORDER BY datum", (card_id, von))]
+        # Der Stand zu Beginn des Fensters als erster Punkt: eine Karte, die sich seit
+        # Monaten nicht bewegt hat, hat darin sonst gar keine Zeile und keine Kurve.
+        if not punkte or punkte[0]["datum"] > von:
+            anfang = con.execute(
+                "SELECT eur, usd FROM price_history WHERE card_id = ? AND datum <= ?"
+                " ORDER BY datum DESC LIMIT 1", (card_id, von)).fetchone()
+            if anfang and (anfang["eur"] is not None or anfang["usd"] is not None):
+                punkte.insert(0, {"datum": von, "eur": anfang["eur"], "usd": anfang["usd"]})
         jetzt = con.execute("SELECT eur, eur_holo, usd, usd_holo, updated_at FROM card_prices"
                             " WHERE card_id = ?", (card_id,)).fetchone()
         con.close()

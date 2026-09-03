@@ -1396,8 +1396,12 @@
     </div>
     <div class="segment desktop-only" role="tablist">
       <button id="seg-start" onclick="ansicht('start')" data-i18n="start_nav">Start</button>
-      <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="m_suche">Suche</button>
-      <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer">Planer</button>
+      <!-- Ein Reiter für Suchen und Planen. Es waren zwei, und sie waren nie zwei
+           Aufgaben: gesucht wird, um einzusortieren, und einsortiert wird, was die Suche
+           bringt. Seit der Planer seine eigene Suchschublade hat, war der zweite Reiter
+           nur noch ein Ansichtswechsel mitten in derselben Arbeit. Zwischen „eine Seite“
+           und „alle Seiten“ schaltet jetzt ein Knopf in der Werkbank. -->
+      <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="planen">Planen</button>
       <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
       <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
       <button id="seg-markt" onclick="ansicht('markt')" data-i18n="markt">Markt</button>
@@ -1646,6 +1650,8 @@
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite" data-i18n-aria="s_vorherige">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
+        <button onclick="ansicht('planer')" class="seite-btn" style="margin-left:6px;white-space:nowrap" data-i18n="pl_alle"
+                title="Alle Seiten des Binders nebeneinander" data-i18n-title="pl_alle_t">Alle Seiten</button>
         <button onclick="seiteZiehen(1)" class="nur-edit" title="Diese Seite nach hinten schieben" aria-label="Seite nach hinten" data-i18n-title="s_seite_runter" id="wb-seite-zurueck">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5 4 12.5M1.6 10.1 4 12.6l2.4-2.5"/></svg>
@@ -1653,7 +1659,7 @@
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="menuToggle('menu-seite')" class="seite-btn" data-i18n="seite_menue">Seite …</button>
           <div class="menu hidden" id="menu-seite" style="right:0;left:auto;min-width:230px">
-            <button onclick="ansicht('planer')" data-i18n="planer">Planer</button>
+            <button onclick="ansicht('planer')" data-i18n="pl_alle">Alle Seiten</button>
             <div class="trenn"></div>
             <button onclick="seiteAnhaengen()" data-i18n="neue_seite_lbl">Neue leere Seite anhängen</button>
             <button onclick="seiteZiehen(-1)" data-i18n="s_seite_hoch">Seite nach vorn</button>
@@ -2053,7 +2059,7 @@
 <!-- Planer (zweite Ansicht neben der Suche; Kopfzeile bleibt) -->
 <div id="planer" class="hidden">
   <div class="planer-kopf">
-    <button class="btn sekundaer mobil-only" style="font-size:13px" onclick="ansicht('suche')">‹ <span data-i18n="m_suche">Suche</span></button>
+    <button class="btn sekundaer" style="font-size:13px" onclick="ansicht('suche')" data-i18n="pl_zurueck">‹ Eine Seite</button>
     <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
     <div style="flex:1"></div>
     <div class="binder-groesse desktop-only" style="width:150px" title="${''}">
@@ -2599,7 +2605,9 @@ const T = {
     erg_leer: 'Keine Karten gefunden.', ex_alle: 'Platzhalter-PDF – alle Karten', ex_fehlend: 'Platzhalter-PDF – nur fehlende',
     verlauf_bald: 'Preisverlauf: ab morgen, täglich neu.', zustand_ph: 'Zustand, z. B. NM',
     m_leer: 'Leerer Binder',
-    meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', pdf: 'Drucken',
+    meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', planen: 'Planen',
+    pl_alle: 'Alle Seiten', pl_alle_t: 'Alle Seiten des Binders nebeneinander',
+    pl_zurueck: '‹ Eine Seite', pdf: 'Drucken',
     f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
     f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
     alle: '+ Alle Treffer …', alle_ende: '… ans Ende anhängen', alle_seite: '… ab nächster freier Seite',
@@ -2962,7 +2970,9 @@ const T = {
     erg_leer: 'No cards found.', ex_alle: 'Placeholder PDF – all cards', ex_fehlend: 'Placeholder PDF – missing only',
     verlauf_bald: 'Price history: from tomorrow, updated daily.', zustand_ph: 'Condition, e.g. NM',
     m_leer: 'Empty binder',
-    meine: 'My binders', preise: 'Prices', planer: 'Planner', pdf: 'Print',
+    meine: 'My binders', preise: 'Prices', planer: 'Planner', planen: 'Plan',
+    pl_alle: 'All pages', pl_alle_t: 'Every page of the binder side by side',
+    pl_zurueck: '‹ One page', pdf: 'Print',
     f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
     f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
     alle: '+ All results …', alle_ende: '… append at the end', alle_seite: '… start on next free page',
@@ -6803,7 +6813,7 @@ async function blaetternBild() {
 /** Genau einen Reiter markieren. Vorher setzte jede Ansicht ihre eigenen Klassen —
  *  schloss man den Planer, während die Startseite offen war, leuchteten zwei. */
 function reiterSetzen(id) {
-  for (const r of ['seg-start', 'seg-suche', 'seg-planer', 'seg-sammlung', 'seg-vitrine', 'seg-markt']) {
+  for (const r of ['seg-start', 'seg-suche', 'seg-sammlung', 'seg-vitrine', 'seg-markt']) {
     const el = $(r);
     if (el) el.classList.toggle('on', r === id);
   }
@@ -6819,8 +6829,7 @@ function reiterNachAnsicht() {
   if (offen('auswertungseite')) return reiterSetzen('seg-sammlung');
   if (offen('vitrine')) return reiterSetzen('seg-vitrine');
   if (offen('sammlung')) return reiterSetzen('seg-sammlung');
-  if (offen('planer')) return reiterSetzen('seg-planer');
-  reiterSetzen('seg-suche');
+  reiterSetzen('seg-suche');   // der Planer gehört zu diesem Reiter, er ist kein eigener
 }
 
 function seiteWechsel(d) {
@@ -7110,7 +7119,7 @@ function planerOeffnen() {
   S.auswahl.clear();
   $('planer').classList.remove('hidden');
   ebeneOeffnen(planerSchliessen);
-  reiterSetzen('seg-planer');
+  reiterSetzen('seg-suche');
   mnavMarkieren('mnav-binder');
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
   zeichnePlaner();
@@ -8690,12 +8699,19 @@ function cardmarketAdresse(k) {
     if (z) teile.push('minCondition=' + z);
     return 'https://www.cardmarket.com/' + loc + k.cm_url + (teile.length ? '?' + teile.join('&') : '');
   }
-  // Rückfall: Suche mit Suffix statt Sammelnummer — „Empoleon LV.X“ findet Cardmarket,
-  // „Empoleon DP11“ nicht.
-  let name = ((k && (k.name_en || k.name)) || '').replace(/ · .*/, '');
-  if (k && k.stage === 'LEVEL-UP' && !/lv/i.test(name)) name += ' LV.X';
-  return 'https://www.cardmarket.com/' + loc + '/Pokemon/Products/Search?searchString='
-    + encodeURIComponent(name.trim());
+  // Rückfall: die Suche — aber mit Cardmarkets eigenen Angaben. `cm_such` ist der Name,
+  // unter dem die Karte dort steht („Arceus LV.X“ statt unserem „Arceus“), `cm_exp` ihre
+  // Erweiterung. Ohne die beiden lief der Link auf eine Namenssuche über zwanzig
+  // Jahrgänge — genau das Bild, wenn man auf „Rayquaza C LV.X“ klickte.
+  // Eckige Klammern fallen für die Suche weg („Rayquaza [C] LV.X“ → „Rayquaza C LV.X“).
+  let name = ((k && k.cm_such) || '').replace(/[[\]]/g, ' ').replace(/\s+/g, ' ');
+  if (!name) {
+    name = ((k && (k.name_en || k.name)) || '').replace(/ · .*/, '');
+    if (k && k.stage === 'LEVEL-UP' && !/lv/i.test(name)) name += ' LV.X';
+  }
+  const suche = ['searchString=' + encodeURIComponent(name.trim()), 'idCategory=51'];
+  if (k && k.cm_exp) suche.push('idExpansion=' + k.cm_exp);
+  return 'https://www.cardmarket.com/' + loc + '/Pokemon/Products/Search?' + suche.join('&');
 }
 
 function cardmarketLinkAuffrischen() {
@@ -8710,8 +8726,10 @@ async function cardmarketNachtragen(id) {
     const z = (($('detail-zustand') || {}).value || '').trim();
     const d = await api(`api/cards/${encodeURIComponent(id)}/cardmarket`
       + `?sprache=${detailSprache || ''}&ui=${LANG}&zustand=${encodeURIComponent(z)}`);
+    // Auch die *ungenaue* Adresse übernehmen: sie ist die Suche mit Erweiterung und
+    // Kategorie und damit immer besser als die, die die Oberfläche selbst bauen kann.
     const a = $('detail-cm');
-    if (a && d.url && d.genau && detailKarte && detailKarte.id === id) a.href = d.url;
+    if (a && d.url && detailKarte && detailKarte.id === id) a.href = d.url;
   } catch (e) { /* Rückfall bleibt die Namenssuche */ }
 }
 

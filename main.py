@@ -488,11 +488,29 @@ def init_db():
                    # sieben und dreißig Tage. Der 7-Tage-Wert neben dem 30-Tage-Wert ist
                    # eine echte Bewegung, ohne dass wir dafür eine eigene Reihe brauchen.
                    "ALTER TABLE card_prices ADD COLUMN eur_avg7 REAL",
-                   "ALTER TABLE price_history ADD COLUMN usd REAL"):
+                   "ALTER TABLE price_history ADD COLUMN usd REAL",
+                   # Der Name, unter dem Cardmarket diese Karte selbst führt, und ob er
+                   # in seiner Erweiterung eindeutig ist. Beides kommt aus dem offiziellen
+                   # Produktkatalog und macht den Rückfall-Link brauchbar: mit dem eigenen
+                   # Namen plus Erweiterung springt die Suche auf die Produktseite, statt
+                   # zwanzig Jahre Palkia aufzulisten.
+                   "ALTER TABLE card_prices ADD COLUMN cm_name TEXT",
+                   "ALTER TABLE card_prices ADD COLUMN cm_eindeutig INTEGER"):
         try:
             con.execute(befehl)
         except Exception:
             pass
+    # Ein Tag der Preisreihe, samt Zahl der erfassten Karten. Seit die Historie nur noch
+    # Änderungen speichert, lässt sich aus ihr allein nicht mehr ablesen, ob ein Tag
+    # gemessen wurde oder ob nur nichts passiert ist — ein ausgefallener Lauf sähe aus wie
+    # ein ruhiger Markt. Diese Tabelle hält das auseinander; sie kostet eine Zeile am Tag.
+    con.execute("CREATE TABLE IF NOT EXISTS price_tage ("
+                "datum TEXT PRIMARY KEY, karten INTEGER, quelle TEXT)")
+    # Die Tage, die schon in der Historie stehen, einmalig nachtragen: sie waren alle
+    # vollständig erfasst und sollen weiter als Messpunkt gelten.
+    if not con.execute("SELECT 1 FROM price_tage LIMIT 1").fetchone():
+        con.execute("INSERT OR REPLACE INTO price_tage (datum, karten, quelle)"
+                    " SELECT datum, COUNT(*), 'historie' FROM price_history GROUP BY datum")
     con.execute("CREATE INDEX IF NOT EXISTS idx_ph_datum ON price_history(datum)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_pokemon_familie ON pokemon(familie)")
     con.commit()
@@ -1319,27 +1337,167 @@ PREIS_TAGESLAUF = 40000      # obere Schranke; deckt den ganzen bepreisten Katal
 PREIS_STAPEL = 6000          # Erstbefüllung: so viele noch unbepreiste Karten je Lauf
 
 
+# --- Preisverlauf: nur Bewegungen speichern ---------------------------------
+#
+# Eine Zeile je Karte und Tag klingt harmlos und ist es nicht: 30.600 Karten mal 365 Tage
+# sind 11 Millionen Zeilen, rund 840 MB — und jedes nächtliche Backup trägt sie mit.
+# Gemessen am 02. gegen den 03.09.2026: von 27.995 Preisen waren 16.631 Cent für Cent
+# dieselben, nur 10.315 hatten sich um mehr als ein Prozent bewegt. Gespeichert wird
+# deshalb nur, was sich bewegt hat; ein Preis gilt fort, bis der nächste Eintrag kommt.
+# Jeder Leser der Reihe muss ihn deshalb fortschreiben (siehe `_historie_stand`).
+HIST_SCHWELLE = 0.01        # kleinste Bewegung in Euro, die eine Zeile wert ist
+HIST_ANTEIL = 0.01          # … oder ein Prozent vom alten Preis, je nachdem was größer ist
+HIST_ANKER_TAGE = 30        # spätestens so oft bekommt jede Karte wieder einen Punkt
+HIST_TAEGLICH = 60          # bis hierher bleibt jeder Punkt stehen
+HIST_WOECHENTLICH = 180     # danach einer je Woche, dahinter einer je Monat
+
+
+def _tag_minus(tage, ab=None):
+    d = datetime.date.fromisoformat(ab or _heute()) - datetime.timedelta(days=tage)
+    return d.isoformat()
+
+
+def _spuerbar(alt, neu):
+    """Ist die Bewegung von `alt` nach `neu` eine Zeile wert?"""
+    if neu is None:
+        return False                      # ein fehlender Wert löscht keinen vorhandenen
+    if alt is None:
+        return True                       # von „kein Preis" zu „Preis" ist immer eine
+    return abs(neu - alt) >= max(HIST_SCHWELLE, abs(alt) * HIST_ANTEIL)
+
+
+def _historie_stand(con, bis, ids=None):
+    """Der letzte gespeicherte Preis je Karte bis einschließlich `bis`.
+
+    → {card_id: (eur, usd, datum)}. Das ist der Ersatz für „nimm die Zeile von Tag X":
+    seit die Historie nur Bewegungen führt, hat nicht jede Karte an jedem Tag eine Zeile,
+    und der zuletzt gemeldete Preis ist der, der an diesem Tag galt."""
+    bed, args = "", (bis,)
+    if ids is not None:
+        marken = ",".join("?" * len(ids))
+        bed = f" AND card_id IN ({marken})"
+        args = (bis, *ids)
+    return {r["card_id"]: (r["eur"], r["usd"], r["datum"]) for r in con.execute(
+        "SELECT card_id, eur, usd, datum FROM (SELECT card_id, eur, usd, datum,"
+        " ROW_NUMBER() OVER (PARTITION BY card_id ORDER BY datum DESC) rn"
+        f" FROM price_history WHERE datum <= ?{bed}) WHERE rn = 1", args)}
+
+
+def _historie_eintragen(con, werte, quelle="", messtag=True, ids=None):
+    """Den heutigen Punkt setzen, wo er etwas Neues sagt.
+
+    `werte` ist eine Liste (card_id, eur, usd). Sagt der Preis dasselbe wie zuletzt, wird
+    keine Zeile geschrieben — und eine, die ein früherer Lauf desselben Tages aus einer
+    schwächeren Quelle gesetzt hat, wieder weggeräumt. So steht je Tag höchstens ein
+    Punkt je Karte, und der stammt von der besten Quelle des Tages."""
+    heute = _heute()
+    stand = _historie_stand(con, _tag_minus(1, heute), ids)
+    anker = _tag_minus(HIST_ANKER_TAGE, heute)
+    heute_hat = {r["card_id"] for r in con.execute(
+        "SELECT card_id FROM price_history WHERE datum = ?", (heute,))}
+    n = 0
+    for cid, eur, usd in werte:
+        if eur is None and usd is None:
+            continue
+        alt = stand.get(cid)
+        if alt and alt[2] > anker and not _spuerbar(alt[0], eur) and not _spuerbar(alt[1], usd):
+            if cid in heute_hat:
+                con.execute("DELETE FROM price_history WHERE card_id = ? AND datum = ?",
+                            (cid, heute))
+            continue
+        con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
+                    " ON CONFLICT(card_id, datum) DO UPDATE SET"
+                    " eur=COALESCE(excluded.eur, price_history.eur),"
+                    " usd=COALESCE(excluded.usd, price_history.usd)",
+                    (cid, heute, eur, usd))
+        n += 1
+    if messtag:
+        _messtag_merken(con, len(werte), quelle)
+    return n
+
+
+def _messtag_merken(con, karten, quelle=""):
+    """Festhalten, dass heute gemessen wurde und über wie viele Karten.
+
+    Ohne diese Zeile wäre ein ausgefallener Lauf von einem ruhigen Markt nicht zu
+    unterscheiden — beide hinterlassen keine Bewegung."""
+    con.execute("INSERT INTO price_tage (datum, karten, quelle) VALUES (?,?,?)"
+                " ON CONFLICT(datum) DO UPDATE SET karten = MAX(price_tage.karten, excluded.karten),"
+                " quelle = excluded.quelle",
+                (_heute(), int(karten or 0), quelle or None))
+
+
+def _historie_verdichten(con):
+    """Alte Punkte ausdünnen.
+
+    Für den Verlauf einer Karte braucht das vergangene Jahr keine Tagesauflösung. Älter
+    als 60 Tage bleibt je Woche der letzte Punkt stehen, älter als 180 Tage je Monat
+    einer. Die Kurve behält ihre Form, die Tabelle bleibt klein — und weil jeder Leser
+    ohnehin fortschreibt, ändert das an keiner Auswertung etwas.
+
+    Damit läuft die Tabelle auf gut 1,5 Millionen Zeilen zu (rund 120 MB) und wächst
+    danach nur noch um etwa 30 MB im Jahr, statt um 840 MB — und jedes nächtliche
+    Backup wird um denselben Betrag kleiner."""
+    g_tag = _tag_minus(HIST_TAEGLICH)
+    g_woche = _tag_minus(HIST_WOECHENTLICH)
+    weg = con.execute(
+        "DELETE FROM price_history WHERE datum < ? AND datum >= ? AND datum NOT IN"
+        " (SELECT MAX(p2.datum) FROM price_history p2 WHERE p2.card_id = price_history.card_id"
+        "  AND strftime('%Y-%W', p2.datum) = strftime('%Y-%W', price_history.datum))",
+        (g_tag, g_woche)).rowcount
+    weg += con.execute(
+        "DELETE FROM price_history WHERE datum < ? AND datum NOT IN"
+        " (SELECT MAX(p2.datum) FROM price_history p2 WHERE p2.card_id = price_history.card_id"
+        "  AND strftime('%Y-%m', p2.datum) = strftime('%Y-%m', price_history.datum))",
+        (g_woche,)).rowcount
+    con.commit()
+    if weg:
+        print(f"Preisverlauf verdichtet: {weg} Punkte zusammengefasst")
+    return weg
+
+
 def _preis_schreiben(con, reihen):
     """Ergebnisse eines Laufs ablegen. Fehlgeschlagene Abrufe werden übergangen —
-    der alte Preis bleibt lieber stehen, als durch einen Ausfall gelöscht zu werden."""
+    der alte Preis bleibt lieber stehen, als durch einen Ausfall gelöscht zu werden.
+
+    **Der Euro-Preis dieser Quelle gilt nur, wo das offizielle Preisverzeichnis nichts
+    sagt.** TCGdex reicht Cardmarket-Trends aus zweiter Hand weiter und hängt dabei
+    gleichnamige Karten an dasselbe Produkt; seit die Datei von Cardmarket selbst kommt,
+    wäre es ein Rückschritt, sie jede Nacht mit der schwächeren Quelle zu überschreiben
+    und erst im nächsten Schritt wieder zu berichtigen. Fällt der Import einmal aus,
+    friert der Preis lieber ein (`cm_import_am` zeigt, wie alt er ist), als still auf die
+    zweite Wahl zurückzufallen. Nach einer Woche ohne Datei übernimmt TCGdex wieder.
+    Der amerikanische Preis kommt weiterhin nur von hier — Cardmarket führt keinen."""
     heute = _heute()
+    aus_datei = {r["card_id"] for r in con.execute(
+        "SELECT card_id FROM card_prices WHERE cm_import_am >= ?", (_tag_minus(7, heute),))}
     geschrieben = 0
+    verlauf = []
     for e in reihen:
         if not e["ok"]:
             continue
         geschrieben += 1
         sp = e.get("spanne") or {}
+        eigene_zahl = e["id"] not in aus_datei
         con.execute(
             "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id,"
             " cm_produkt, eur_low, eur_avg30, usd_low, usd_mid, usd_high, preise_json,"
             " tp_keys, updated_at)"
             " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))"
-            " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur, eur_holo=excluded.eur_holo,"
+            " ON CONFLICT(card_id) DO UPDATE SET"
+            " eur=CASE WHEN ? THEN excluded.eur ELSE card_prices.eur END,"
+            " eur_holo=CASE WHEN ? THEN excluded.eur_holo ELSE card_prices.eur_holo END,"
+            " eur_low=CASE WHEN ? THEN excluded.eur_low ELSE card_prices.eur_low END,"
+            " eur_avg30=CASE WHEN ? THEN excluded.eur_avg30 ELSE card_prices.eur_avg30 END,"
             " usd=COALESCE(excluded.usd, card_prices.usd),"
             " usd_holo=COALESCE(excluded.usd_holo, card_prices.usd_holo),"
             " tcgplayer_id=COALESCE(excluded.tcgplayer_id, card_prices.tcgplayer_id),"
-            " cm_produkt=excluded.cm_produkt, eur_low=excluded.eur_low,"
-            " eur_avg30=excluded.eur_avg30, usd_low=excluded.usd_low,"
+            # Eine von Hand oder über den Katalog berichtigte Produktnummer bleibt stehen.
+            # Vorher setzte jeder Nachtlauf die Zuordnung von TCGdex zurück, und der
+            # Import musste dieselbe Arbeit jede Nacht neu machen.
+            " cm_produkt=CASE WHEN card_prices.cm_quelle IS NULL THEN excluded.cm_produkt"
+            "  ELSE card_prices.cm_produkt END,"
+            " usd_low=excluded.usd_low,"
             " usd_mid=excluded.usd_mid, usd_high=excluded.usd_high,"
             " preise_json=excluded.preise_json, tp_keys=excluded.tp_keys,"
             " updated_at=excluded.updated_at",
@@ -1347,13 +1505,10 @@ def _preis_schreiben(con, reihen):
              e["cm_produkt"], sp.get("eur_low"), sp.get("eur_avg30"), sp.get("usd_low"),
              sp.get("usd_mid"), sp.get("usd_high"),
              json.dumps(e.get("varianten") or {}) if e.get("varianten") else None,
-             ",".join(e.get("tp_keys") or []) or None))
-        if e["eur"] is not None or e["usd"] is not None:
-            con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
-                        " ON CONFLICT(card_id, datum) DO UPDATE SET"
-                        " eur=COALESCE(excluded.eur, price_history.eur),"
-                        " usd=COALESCE(excluded.usd, price_history.usd)",
-                        (e["id"], heute, e["eur"], e["usd"]))
+             ",".join(e.get("tp_keys") or []) or None,
+             eigene_zahl, eigene_zahl, eigene_zahl, eigene_zahl))
+        verlauf.append((e["id"], e["eur"] if eigene_zahl else None, e["usd"]))
+    _historie_eintragen(con, verlauf, "tcgdex")
     return geschrieben
 
 
@@ -2000,6 +2155,18 @@ def _cm_basisname(name):
     return re.sub(r"[^a-z0-9]", "", n.lower())
 
 
+def _cm_suchname(name):
+    """„Arceus LV.X [Multitype | Ominiscient]" → „Arceus LV.X".
+
+    Der Name, unter dem Cardmarket die Karte selbst führt, ohne die Attackenklammer.
+    Genau der gehört in die Suche: zusammen mit der Erweiterung bleibt meistens ein
+    einziger Treffer übrig, und darauf springt Cardmarket direkt auf die Produktseite.
+    Abgeschnitten wird nur die **letzte** Klammer — Zusätze stehen davor
+    („Dialga [G] Lv.79 [Deafen | Second Strike]")."""
+    n = re.sub(r"\s*\[[^\]]*\]\s*$", " ", str(name or ""))
+    return re.sub(r"\s+", " ", n).strip()
+
+
 def _cm_name_norm(name):
     """Namen vergleichbar machen.
 
@@ -2270,6 +2437,89 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                 bericht["berichtigt"] = bericht.get("berichtigt", 0) + 1
         con.commit()
 
+        # --- Ausschlussverfahren: was übrig bleibt, gehört zusammen -----------
+        #
+        # Arceus DP53 stand als einzige Karte der eigenen Sammlung ohne Preis da. TCGdex
+        # führt für sie nur die Fähigkeit „Multitype" und keine Attacke; damit passte sie
+        # gleich gut auf zwei Produkte („Multitype | Ominiscient" und „Multitype |
+        # Meteor Blast"), und bei Gleichstand ordnet die Kette nichts zu — zu Recht.
+        # Die Entscheidung liefert erst der Blick auf den Rest: die andere Karte (DP56)
+        # hat ihr Produkt längst, übrig bleibt genau eines, dessen Kette unsere enthält.
+        # Zugeordnet wird nur bei genau einem übrigen Kandidaten.
+        vergeben = {r["cm_produkt"] for r in con.execute(
+            "SELECT cm_produkt FROM card_prices WHERE cm_produkt IS NOT NULL")}
+        # Verglichen wird über die Kette, nicht über den Basisnamen: Cardmarket schreibt
+        # den Zusatz in den Namen („Arceus LV.X"), wir führen ihn in `stage` — die
+        # Basisnamen laufen genau bei den Karten auseinander, um die es hier geht.
+        uebrig = {}
+        for e in eintraege:
+            if e["id"] in vergeben:
+                continue
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            uebrig.setdefault(ex, []).append((e["id"], e["name"]))
+        for r in con.execute(
+                "SELECT c.id, c.set_id, c.name_en, c.name_de, c.name_ja, c.merkmale FROM cards c"
+                " LEFT JOIN card_prices p ON p.card_id = c.id WHERE p.cm_produkt IS NULL"
+                " AND c.merkmale IS NOT NULL AND c.merkmale <> ''"):
+            ex = set_exp.get(r["set_id"])
+            meine = _cm_merkmale(r["merkmale"])
+            if ex is None or not meine:
+                continue
+            namen = (r["name_en"], r["name_de"], r["name_ja"])
+            passend = [pid for pid, pname in uebrig.get(ex, ())
+                       if pid not in vergeben
+                       and meine < _cm_merkmale(pname, aus_klammer=True)
+                       and _namensbezug(pname, namen)]
+            if len(passend) == 1:
+                con.execute("INSERT INTO card_prices (card_id, cm_produkt, cm_quelle)"
+                            " VALUES (?,?,'ausschluss')"
+                            " ON CONFLICT(card_id) DO UPDATE SET cm_produkt = excluded.cm_produkt,"
+                            " cm_quelle = 'ausschluss' WHERE card_prices.cm_produkt IS NULL",
+                            (r["id"], passend[0]))
+                vergeben.add(passend[0])
+                bericht["ausschluss"] = bericht.get("ausschluss", 0) + 1
+        con.commit()
+
+        # --- Der Name, unter dem Cardmarket die Karte führt -------------------
+        #
+        # Er ist der Rückfall, wenn die Produktseite unbekannt ist: „Arceus LV.X" in
+        # Erweiterung 1609 gesucht schlägt jede Suche nach unserem eigenen Kartennamen,
+        # und ob dabei genau ein Treffer übrig bleibt, lässt sich hier ausrechnen statt
+        # raten — dann springt Cardmarket direkt auf die Karte. Gezählt wird über die
+        # Namen *vor* der Attackenklammer: die Suche findet auch „Arceus LV.X [Multitype
+        # | Meteor Blast]", wenn man nur „Arceus LV.X" eingibt.
+        import bisect
+        namen_je_exp = {}
+        for e in eintraege:
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            namen_je_exp.setdefault(ex, []).append(_cm_suchname(e["name"]).lower())
+        for liste in namen_je_exp.values():
+            liste.sort()
+        aendern = []
+        for r in con.execute("SELECT card_id, cm_produkt FROM card_prices"
+                             " WHERE cm_produkt IS NOT NULL"):
+            pname = name_je_produkt.get(r["cm_produkt"])
+            if not pname:
+                continue
+            such = _cm_suchname(pname)
+            ex = exp_je_produkt.get(r["cm_produkt"])
+            liste = namen_je_exp.get(ex) or []
+            k = such.lower()
+            gleiche = (bisect.bisect_right(liste, k + "\uffff")
+                       - bisect.bisect_left(liste, k)) if liste else 0
+            aendern.append((such, 1 if gleiche == 1 else 0, r["card_id"]))
+        con.executemany("UPDATE card_prices SET cm_name = ?, cm_eindeutig = ?"
+                        " WHERE card_id = ?", aendern)
+        bericht["namen"] = len(aendern)
+        bericht["eindeutig"] = sum(1 for a in aendern if a[1])
+        con.commit()
+
         # Die Erweiterung des zugeordneten Produkts festhalten. Ohne sie findet die
         # Suche 75 Palkia aus zwanzig Jahren; mit ihr bleibt die eine übrig.
         con.executemany("UPDATE card_prices SET cm_expansion = ? WHERE card_id = ?",
@@ -2295,7 +2545,7 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
         for r in con.execute("SELECT card_id, cm_produkt FROM card_prices"
                              " WHERE cm_produkt IS NOT NULL"):
             nach_produkt.setdefault(r["cm_produkt"], []).append(r["card_id"])
-        heute = _heute()
+        verlauf = []
         for pid, werte in preise.items():
             karten = nach_produkt.get(pid)
             if not karten:
@@ -2324,10 +2574,10 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                  werte.get("eur_avg30"), hat_trend, werte.get("eur_holo"),
                  hat_trend, hat_trend, hat_trend, cid))
             if hat_trend:
-                con.execute("INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
-                            " ON CONFLICT(card_id, datum) DO UPDATE SET eur = excluded.eur",
-                            (cid, heute, werte["eur"]))
+                verlauf.append((cid, werte["eur"], None))
                 bericht["karten"] += 1
+        # Der Verlauf bekommt nur, was sich bewegt hat — siehe `_historie_eintragen`.
+        bericht["verlauf"] = _historie_eintragen(con, verlauf, "cardmarket")
         con.commit()
         # Der Holo-Wert gehört wieder nur an Karten mit zweiter Ausgabe.
         con.execute("UPDATE card_prices SET eur_holo = NULL WHERE card_id IN"
@@ -2682,8 +2932,8 @@ def cm_adresse(card_id, sprache="", ui="de", zustand="", con=None, aufloesen=Tru
     eigene = con is None
     con = con or get_db()
     try:
-        row = con.execute("SELECT cm_url, ptc_id, cm_expansion FROM card_prices WHERE card_id = ?",
-                          (card_id,)).fetchone()
+        row = con.execute("SELECT cm_url, ptc_id, cm_expansion, cm_name, cm_eindeutig"
+                          " FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
         karte = con.execute("SELECT name_en, name_de, local_id, set_id, stage, suffix"
                             " FROM cards WHERE id = ?", (card_id,)).fetchone()
         if not karte:
@@ -2721,24 +2971,36 @@ def cm_adresse(card_id, sprache="", ui="de", zustand="", con=None, aufloesen=Tru
     if zn:
         filter_.append(f"minCondition={zn}")
     if not url:
-        # Rückfall: die Suche. Mit Suffix statt Sammelnummer — „Empoleon LV.X" findet
-        # Cardmarket, „Empoleon DP11" nicht —, und mit der Erweiterung, sobald wir sie
-        # kennen: „Palkia" allein trifft 75 Produkte aus zwanzig Jahren, „Palkia" in den
-        # DP-Black-Star-Promos genau eines. Cardmarket springt bei einem einzigen
-        # Treffer direkt auf die Produktseite.
-        name = karte["name_en"] or karte["name_de"] or ""
-        if (karte["stage"] or "") == "LEVEL-UP" and "lv" not in name.lower():
-            name += " LV.X"
-        elif karte["suffix"] and karte["suffix"].lower() not in name.lower():
-            name += " " + karte["suffix"]
+        # Rückfall: die Suche — aber mit Cardmarkets eigenen Angaben, nicht mit unseren.
+        #
+        # Drei Dinge machen den Unterschied zwischen „führt zur Karte" und „führt in eine
+        # Liste": der Name, unter dem Cardmarket die Karte selbst führt (`cm_name` aus dem
+        # Produktkatalog, „Arceus LV.X" statt unserem „Arceus"), die Erweiterung
+        # („Palkia" allein trifft 75 Produkte aus zwanzig Jahren, „Palkia" in den
+        # DP-Black-Star-Promos genau eines) und die Kategorie. Bleibt genau ein Treffer,
+        # springt Cardmarket direkt auf die Produktseite — und ob das so ist, steht als
+        # `cm_eindeutig` schon fest, gezählt beim Import gegen den Katalog.
+        # Die eckigen Klammern fallen für die Suche weg: Cardmarket *schreibt*
+        # „Rayquaza [C] LV.X", gesucht wird aber nach Wörtern, und „[C]" als Wort findet
+        # nichts. Der Rest des Namens bleibt, wie er dort steht.
+        name = re.sub(r"\s+", " ", ((row["cm_name"] if row and "cm_name" in row.keys()
+                                     else None) or "").replace("[", " ").replace("]", " ")).strip()
+        if not name:
+            name = karte["name_en"] or karte["name_de"] or ""
+            if (karte["stage"] or "") == "LEVEL-UP" and "lv" not in name.lower():
+                name += " LV.X"
+            elif karte["suffix"] and karte["suffix"].lower() not in name.lower():
+                name += " " + karte["suffix"]
         suche = ["searchString=" + quote(name.strip()), "idCategory=51"]
         exp = row["cm_expansion"] if row and "cm_expansion" in row.keys() else None
         if exp:
             suche.append(f"idExpansion={exp}")
+        direkt = bool(row["cm_eindeutig"]) if row and "cm_eindeutig" in row.keys() else False
         return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?"
-                       + "&".join(suche), "genau": False}
+                       + "&".join(suche), "genau": False, "direkt": direkt}
     voll = url if url.startswith("http") else f"https://www.cardmarket.com/{loc}{url}"
-    return {"url": voll + ("?" + "&".join(filter_) if filter_ else ""), "genau": genau}
+    return {"url": voll + ("?" + "&".join(filter_) if filter_ else ""), "genau": genau,
+            "direkt": True}
 
 
 @app.get("/api/cards/{card_id}/cardmarket")
@@ -2896,6 +3158,12 @@ def _hintergrund_takt():
                     _cm_urls_job(3000)      # neue Karten bekommen ihre Produktseite
                 except Exception as exc:
                     print("Cardmarket-Adressen fehlgeschlagen:", exc)
+                try:
+                    con = get_db()
+                    _historie_verdichten(con)
+                    con.close()
+                except Exception as exc:
+                    print("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
         except Exception:
             pass
         _time.sleep(3600)
@@ -3569,7 +3837,8 @@ def card_detail(card_id: str):
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
     pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg7,"
                      " eur_avg30, usd, usd_low, usd_mid, usd_high, preise_json, status,"
-                     " kurs, eur_geschaetzt, cm_url, ptc_id, cm_import_am FROM card_prices"
+                     " kurs, eur_geschaetzt, cm_url, ptc_id, cm_import_am, cm_name,"
+                     " cm_eindeutig, cm_expansion FROM card_prices"
                      " WHERE card_id = ?", (card_id,)).fetchone()
     # Im Detail gilt dieselbe Regel wie überall sonst: fehlt der Cardmarket-Trend, tritt die
     # Zahl der Zweitquelle an seine Stelle — mit dem Vermerk, woher sie kommt.
@@ -3633,6 +3902,15 @@ def card_detail(card_id: str):
             pfad = _cm_pfad_bauen(muster[0], muster[1], r["name_en"] or r["name_de"],
                                   r["stage"], r["suffix"], r["local_id"], muster[2])
         k["cm_url"] = pfad
+        # Für den Rückfall: Cardmarkets eigener Kartenname, seine Erweiterung und ob die
+        # Suche damit auf genau einen Treffer läuft. Ohne diese drei landete der Link auf
+        # einer Namenssuche über zwanzig Jahrgänge — der häufigste Grund, warum ein
+        # Cardmarket-Link „nicht klappt".
+        if pr:
+            k["cm_such"] = pr["cm_name"] if "cm_name" in pr.keys() else None
+            k["cm_exp"] = pr["cm_expansion"] if "cm_expansion" in pr.keys() else None
+            k["cm_direkt"] = bool(pfad) or bool(
+                pr["cm_eindeutig"] if "cm_eindeutig" in pr.keys() else 0)
     except Exception:
         pass
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
@@ -4560,6 +4838,7 @@ async def preise(request: Request):
         nachgeladen = fehlt[:max(0, min(120, budget))]
     else:
         nachgeladen = [] if frei_gedrosselt else fehlt[:400]
+    nachgetragen = []
     if nachgeladen:
         # Die Abrufe laufen im Threadpool; im Event-Loop stand der ganze Dienst 5 bis 15 Sekunden.
         for e in await run_in_threadpool(_preise_holen, nachgeladen):
@@ -4583,24 +4862,32 @@ async def preise(request: Request):
                 eur_holo = None
             result[cid] = eur; holo[cid] = eur_holo
             # INSERT OR REPLACE würde usd, tcgplayer_id und cm_produkt mitlöschen.
+            # Wo das offizielle Preisverzeichnis diese Woche eine Zahl geliefert hat,
+            # bleibt sie stehen — dieselbe Rangfolge wie im Nachtlauf.
             con.execute(
                 "INSERT INTO card_prices (card_id, eur, eur_holo, cm_produkt, preise_json,"
                 " tp_keys, updated_at)"
                 " VALUES (?,?,?,?,?,?,datetime('now'))"
-                " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur,"
-                " eur_holo=excluded.eur_holo,"
+                " ON CONFLICT(card_id) DO UPDATE SET"
+                " eur=CASE WHEN COALESCE(card_prices.cm_import_am,'') >= ? THEN card_prices.eur"
+                "  ELSE excluded.eur END,"
+                " eur_holo=CASE WHEN COALESCE(card_prices.cm_import_am,'') >= ?"
+                "  THEN card_prices.eur_holo ELSE excluded.eur_holo END,"
                 " cm_produkt=COALESCE(excluded.cm_produkt, card_prices.cm_produkt),"
                 " preise_json=COALESCE(excluded.preise_json, card_prices.preise_json),"
                 " tp_keys=COALESCE(excluded.tp_keys, card_prices.tp_keys),"
                 " updated_at=excluded.updated_at",
                 (cid, eur, eur_holo, pid,
                  json.dumps(e.get("varianten") or {}) if e.get("varianten") else None,
-                 ",".join(e.get("tp_keys") or []) or None))
+                 ",".join(e.get("tp_keys") or []) or None,
+                 _tag_minus(7), _tag_minus(7)))
             if eur is not None:
-                con.execute(
-                    "INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
-                    " ON CONFLICT(card_id, datum) DO UPDATE SET eur=excluded.eur",
-                    (cid, _heute(), eur))
+                nachgetragen.append((cid, eur, None))
+        # Ein einzeln nachgeladener Preis ist kein Messtag der Reihe — er trägt nur die
+        # Karten, die gerade jemand ansieht.
+        if nachgetragen:
+            _historie_eintragen(con, nachgetragen, "nachladen", messtag=False,
+                                ids=[c for c, _e, _u in nachgetragen])
         if user:
             con.execute("UPDATE users SET preise_tag = ? WHERE id = ?", (_heute(), user["id"]))
         else:
@@ -4879,30 +5166,45 @@ def binder_wert(binder_id: str, request: Request, tage: int = 30):
     von = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=tage)).strftime("%Y-%m-%d")
     con = get_db()
     reihen = []
+    # Der Stand am Fenstergrund: die Historie führt nur noch Bewegungen, ein seit Wochen
+    # unveränderter Preis hat am ersten Tag des Fensters keine Zeile. Ohne diesen
+    # Startwert fielen genau die ruhigen Karten aus der Basis — und übrig blieben die
+    # schwankenden, die Kurve wäre nervöser als der Binder.
+    start_stand = {}
+    messtage = {r["datum"] for r in con.execute(
+        "SELECT datum FROM price_tage WHERE datum >= ? AND karten >= 50", (von,))}
     for start in range(0, len(ids), 400):
         teil = ids[start:start + 400]
         marken = ",".join("?" * len(teil))
         reihen += [dict(r) for r in con.execute(
             f"SELECT datum, card_id, eur FROM price_history"
             f" WHERE card_id IN ({marken}) AND datum >= ? AND eur IS NOT NULL", (*teil, von))]
+        start_stand.update({c: w[0] for c, w in _historie_stand(con, von, teil).items()
+                            if w[0] is not None})
     con.close()
 
-    # Vergleichbar wird die Linie nur mit einer festen Basis: den Karten, für die es am
-    # ersten und am letzten Tag einen Preis gibt. Sonst stiege der Wert allein dadurch, dass
+    # Vergleichbar wird die Linie nur mit einer festen Basis: den Karten, die am ersten
+    # *und* am letzten Tag einen Preis haben. Sonst stiege der Wert allein dadurch, dass
     # mit der Zeit mehr Karten einen Preis bekommen — das sähe wie Wertzuwachs aus.
     nach_tag = {}
     for r in reihen:
         nach_tag.setdefault(r["datum"], {})[r["card_id"]] = r["eur"]
-    tage = sorted(nach_tag)
+    tage = sorted(messtage | set(nach_tag))
     if len(tage) < 2:
         return {"punkte": [], "karten": len(ids), "aktuell": None, "veraenderung": None, "basis": 0}
-    basis = set(nach_tag[tage[0]]) & set(nach_tag[tage[-1]])
+    letzte = dict(start_stand)
+    letzte.update(nach_tag.get(tage[0], {}))
+    ende = dict(letzte)
+    for datum in tage:
+        ende.update(nach_tag.get(datum, {}))
+    basis = set(letzte) & set(ende)
     if len(basis) < 3:
         return {"punkte": [], "karten": len(ids), "aktuell": None, "veraenderung": None, "basis": len(basis)}
-    letzte, punkte = {}, []
+    letzte = {k: v for k, v in letzte.items() if k in basis}
+    punkte = []
     for datum in tage:
         # Preise fortschreiben: ein Tag ohne frischen Wert ist kein Wertverlust
-        letzte.update({k: v for k, v in nach_tag[datum].items() if k in basis})
+        letzte.update({k: v for k, v in nach_tag.get(datum, {}).items() if k in basis})
         if len(letzte) < len(basis):
             continue
         punkte.append({"datum": datum, "eur": round(sum(letzte.values()), 2)})
