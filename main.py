@@ -410,6 +410,10 @@ def init_db():
         # einer Erweiterung auseinanderhält: „Ampharos [Acceleration Bolt | Thunder]"
         # gegen „Ampharos [Conductivity | Lightning Crush | Prime]".
         "ALTER TABLE cards ADD COLUMN merkmale TEXT",
+        # Cardmarket-Erweiterung des zugeordneten Produkts. Sie macht die Suche als
+        # Rückfall brauchbar: mit `idExpansion` bleibt genau eine Karte übrig, statt
+        # 75 Palkia aus zwanzig Jahren.
+        "ALTER TABLE card_prices ADD COLUMN cm_expansion INTEGER",
     ):
         try:
             con.execute(alter)
@@ -1941,9 +1945,23 @@ def _cm_merkmale(text, aus_klammer=False):
     setzt die Klammer genau aus diesen Feldern zusammen."""
     text = str(text or "")
     if aus_klammer:
+        # Die LETZTE Klammer. Cardmarket schreibt Zusätze davor — „Dialga [G] Lv.79
+        # [Deafen | Second Strike]" —, und wer die erste nimmt, hält „G" für eine
+        # Attacke und findet die Karte nie.
         treffer = re.findall(r"\[(.*?)\]", text)
-        text = treffer[0] if treffer else ""
+        text = treffer[-1] if treffer else ""
     teile = (re.sub(r"[^a-z0-9]", "", t.lower()) for t in text.split("|"))
+    return {t for t in teile if t}
+
+
+def _cm_worte(text, ohne_klammer=False):
+    """Namen als Wortmenge. `ohne_klammer` wirft die Attackenliste am Ende weg."""
+    text = str(text or "")
+    if ohne_klammer:
+        text = re.sub(r"\s*\[[^\]]*\]\s*$", "", text)
+    text = (text.replace("&female;", " f ").replace("&male;", " m ")
+                .replace("&", " and ").replace("é", "e").replace("♀", " f ").replace("♂", " m "))
+    teile = (re.sub(r"[^a-z0-9]", "", t.lower()) for t in re.split(r"[\s\[\]().]+", text))
     return {t for t in teile if t}
 
 
@@ -2053,6 +2071,47 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                             set_exp[r["id"]] = treffer[0]
                             bericht["sets_ueber_namen"] = bericht.get("sets_ueber_namen", 0) + 1
                         break
+        # Dritte Brücke: die Karten selbst abstimmen lassen. Promo-Erweiterungen haben
+        # keine Booster und stehen deshalb in keinem Erweiterungsnamen — die
+        # DP-Black-Star-Promos etwa, aus denen fünf Karten der eigenen Sammlung ohne
+        # Preis dastanden. Für jedes Set wird gezählt, in welcher Erweiterung seine
+        # Karten (Name + Attackenkette) am häufigsten wiederzufinden sind.
+        weltweit = {}
+        for e in eintraege:
+            m = _cm_merkmale(e["name"], aus_klammer=True)
+            if not m:
+                continue
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            weltweit.setdefault(frozenset(m), []).append((ex, e["name"]))
+        stimmen = {}
+        for r in con.execute("SELECT set_id, name_en, name_de, name_ja, merkmale FROM cards"
+                             " WHERE merkmale IS NOT NULL AND merkmale <> ''"):
+            m = _cm_merkmale(r["merkmale"])
+            treffer = weltweit.get(frozenset(m)) if m else None
+            if not treffer:
+                continue
+            z = stimmen.setdefault(r["set_id"], [{}, 0])
+            z[1] += 1
+            namen = (r["name_en"], r["name_de"], r["name_ja"])
+            for ex, pname in treffer:
+                pw = _cm_worte(pname, ohne_klammer=True)
+                if any(_cm_worte(n) and _cm_worte(n) <= pw for n in namen if n):
+                    z[0][ex] = z[0].get(ex, 0) + 1
+        for sid, (zaehler, karten) in stimmen.items():
+            if not zaehler:
+                continue
+            rang = sorted(zaehler.items(), key=lambda x: -x[1])
+            # Die Hälfte der Karten muss die Erweiterung tragen, und sie muss allein
+            # vorn liegen. Als *zusätzlicher* Kandidat, nicht als Ersatz — entschieden
+            # wird ohnehin über die Attackenkette.
+            if rang[0][1] >= max(3, karten * 0.5) and (len(rang) == 1 or rang[0][1] > rang[1][1]):
+                set_exp_alt.setdefault(sid, set()).add(rang[0][0])
+                set_exp.setdefault(sid, rang[0][0])
+                bericht["sets_ueber_karten"] = bericht.get("sets_ueber_karten", 0) + 1
+
         bericht["erweiterungen"] = len(set_exp)
 
         # Attackenkette → Produkt. Zwei verschiedene Karten einer Erweiterung mit exakt
@@ -2075,13 +2134,17 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
 
             Die Attackenkette allein reicht nicht: „Karrablast [Peck]" und
             „Prinplup [Peck]" haben dieselbe, und ohne diese Prüfung wanderte der Preis
-            der einen Karte auf die andere. Verlangt wird nur ein Präfix, damit
-            „Shaymin" auch „Shaymin LV.X" findet — genau der Fall, für den der
-            Merkmalsweg gebaut ist."""
-            p = _cm_basisname(produktname)
+            der einen Karte auf die andere.
+
+            Verglichen wird wortweise: jedes Wort unseres Namens muss im Produktnamen
+            vorkommen. Ein Präfixvergleich reichte nicht, weil Cardmarket Zusätze
+            mitten hinein setzt — „Charizard G" steht dort als „Charizard [G] LV.X",
+            und „charizardlvx" beginnt nicht mit „charizardg". Umgekehrt findet die
+            Wortregel weiterhin „Shaymin" in „Shaymin LV.X"."""
+            pw = _cm_worte(produktname, ohne_klammer=True)
             for n in namen:
-                k = _cm_basisname(n or "")
-                if k and (p.startswith(k) or k.startswith(p)):
+                k = _cm_worte(n)
+                if k and k <= pw:
                     return True
             return False
 
@@ -2097,7 +2160,15 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
             if nur_freie is not None:
                 treffer = {t for t in treffer if t not in nur_freie}
             treffer = {t for t in treffer if _namensbezug(name_je_produkt.get(t), namen)}
-            return treffer.pop() if len(treffer) == 1 else None
+            if len(treffer) == 1:
+                return treffer.pop()
+            # Cardmarket führt manche Promos doppelt: „Dialga LV.X [Time Skip | Metal
+            # Flash]" steht in den DP-Black-Star-Promos zweimal, mit verschiedenen
+            # Produktnummern. Tragen alle Kandidaten denselben Namen, ist es dieselbe
+            # Karte und damit derselbe Preis — dann gewinnt die kleinere Nummer.
+            if treffer and len({name_je_produkt.get(t) for t in treffer}) == 1:
+                return min(treffer)
+            return None
 
         vergeben = {r["cm_produkt"] for r in con.execute(
             "SELECT cm_produkt FROM card_prices WHERE cm_produkt IS NOT NULL")}
@@ -2197,6 +2268,23 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                 con.execute("UPDATE card_prices SET cm_produkt = ?, cm_quelle = 'merkmale'"
                             " WHERE card_id = ?", (pid, r["card_id"]))
                 bericht["berichtigt"] = bericht.get("berichtigt", 0) + 1
+        con.commit()
+
+        # Die Erweiterung des zugeordneten Produkts festhalten. Ohne sie findet die
+        # Suche 75 Palkia aus zwanzig Jahren; mit ihr bleibt die eine übrig.
+        con.executemany("UPDATE card_prices SET cm_expansion = ? WHERE card_id = ?",
+                        [(exp_je_produkt[r["cm_produkt"]], r["card_id"])
+                         for r in con.execute("SELECT card_id, cm_produkt FROM card_prices"
+                                              " WHERE cm_produkt IS NOT NULL")
+                         if r["cm_produkt"] in exp_je_produkt])
+        # Auch Karten ohne eigenes Produkt: die Erweiterung ihres Sets grenzt die Suche
+        # trotzdem auf ein Set ein, und mehr braucht der Rückfall nicht.
+        con.executemany(
+            "INSERT INTO card_prices (card_id, cm_expansion) VALUES (?,?)"
+            " ON CONFLICT(card_id) DO UPDATE SET cm_expansion = excluded.cm_expansion",
+            [(r["id"], set_exp[r["set_id"]]) for r in con.execute(
+                "SELECT c.id, c.set_id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+                " WHERE p.cm_expansion IS NULL") if r["set_id"] in set_exp])
         con.commit()
 
     # --- Preisverzeichnis: Zahlen eintragen ---------------------------------
@@ -2458,7 +2546,12 @@ CM_MUSTER_HAND = {}
 # Ab dieser Trefferquote gegen die bereits aufgelösten Adressen darf ein Muster benutzt
 # werden. Darunter ist Raten schlechter als die Suche: ein falscher Direktlink führt auf
 # eine Fehlerseite, die Suche wenigstens in die Nähe.
-CM_MUSTER_SCHWELLE = 0.9
+# Ein gebautes Muster darf nur greifen, wo es im ganzen Set ausnahmslos stimmt. Bei
+# 0.9 war jeder zehnte Link falsch — und ein falscher Direktlink („ungültiges Produkt")
+# ist schlechter als die Suche, die immer trifft. Über alle 14.546 bekannten Adressen
+# gemessen folgen nur 68,6 % der Bauregel; regelrein sind 10 von 145 Sets.
+CM_MUSTER_SCHWELLE = 1.0
+CM_MUSTER_BELEGE = 8
 
 
 def _cm_nummer_slug(local_id):
@@ -2535,7 +2628,7 @@ def cm_muster_lernen():
         treffer = sum(1 for _s, _l, r in liste
                       if _cm_pfad_bauen(slug, code, r["name_en"], r["stage"], r["suffix"],
                                         r["local_id"], gold).lower() == r["cm_url"].lower())
-        if treffer / len(liste) >= CM_MUSTER_SCHWELLE:
+        if treffer / len(liste) >= CM_MUSTER_SCHWELLE and len(liste) >= CM_MUSTER_BELEGE:
             muster[sid] = (slug, code, gold, round(treffer / len(liste), 3), len(liste))
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_muster', ?)",
                 (json.dumps({k: v[:3] for k, v in muster.items()}),))
@@ -2589,7 +2682,7 @@ def cm_adresse(card_id, sprache="", ui="de", zustand="", con=None, aufloesen=Tru
     eigene = con is None
     con = con or get_db()
     try:
-        row = con.execute("SELECT cm_url, ptc_id FROM card_prices WHERE card_id = ?",
+        row = con.execute("SELECT cm_url, ptc_id, cm_expansion FROM card_prices WHERE card_id = ?",
                           (card_id,)).fetchone()
         karte = con.execute("SELECT name_en, name_de, local_id, set_id, stage, suffix"
                             " FROM cards WHERE id = ?", (card_id,)).fetchone()
@@ -2628,15 +2721,22 @@ def cm_adresse(card_id, sprache="", ui="de", zustand="", con=None, aufloesen=Tru
     if zn:
         filter_.append(f"minCondition={zn}")
     if not url:
-        # Rückfall: die Suche. Mit Suffix statt Sammelnummer — „Empoleon LV.X“ findet
-        # Cardmarket, „Empoleon DP11“ nicht.
+        # Rückfall: die Suche. Mit Suffix statt Sammelnummer — „Empoleon LV.X" findet
+        # Cardmarket, „Empoleon DP11" nicht —, und mit der Erweiterung, sobald wir sie
+        # kennen: „Palkia" allein trifft 75 Produkte aus zwanzig Jahren, „Palkia" in den
+        # DP-Black-Star-Promos genau eines. Cardmarket springt bei einem einzigen
+        # Treffer direkt auf die Produktseite.
         name = karte["name_en"] or karte["name_de"] or ""
         if (karte["stage"] or "") == "LEVEL-UP" and "lv" not in name.lower():
             name += " LV.X"
         elif karte["suffix"] and karte["suffix"].lower() not in name.lower():
             name += " " + karte["suffix"]
-        return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?searchString="
-                       + quote(name.strip()), "genau": False}
+        suche = ["searchString=" + quote(name.strip()), "idCategory=51"]
+        exp = row["cm_expansion"] if row and "cm_expansion" in row.keys() else None
+        if exp:
+            suche.append(f"idExpansion={exp}")
+        return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?"
+                       + "&".join(suche), "genau": False}
     voll = url if url.startswith("http") else f"https://www.cardmarket.com/{loc}{url}"
     return {"url": voll + ("?" + "&".join(filter_) if filter_ else ""), "genau": genau}
 
