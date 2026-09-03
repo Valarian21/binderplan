@@ -405,6 +405,11 @@ def init_db():
         "ALTER TABLE pokemon ADD COLUMN familie INTEGER",     # PokéAPI-Entwicklungskette
         "ALTER TABLE pokemon ADD COLUMN evo_stufe INTEGER",
         "ALTER TABLE sets ADD COLUMN symbol_alt TEXT",      # pokemontcg.io-Symbol, wenn TCGdex keins hat
+        # Fähigkeiten und Attacken, mit „|" verbunden. Das ist kein Spielwissen, sondern
+        # das Merkmal, mit dem der Cardmarket-Katalog Karten gleichen Namens innerhalb
+        # einer Erweiterung auseinanderhält: „Ampharos [Acceleration Bolt | Thunder]"
+        # gegen „Ampharos [Conductivity | Lightning Crush | Prime]".
+        "ALTER TABLE cards ADD COLUMN merkmale TEXT",
     ):
         try:
             con.execute(alter)
@@ -1582,6 +1587,9 @@ def _preishistorie_job():
     # Holo-Preis noch einen Lauf weiter.
     con = get_db()
     var_neu = _varianten_schreiben(con, ergebnisse)
+    for e in ergebnisse:
+        if e.get("merkmale"):
+            con.execute("UPDATE cards SET merkmale = ? WHERE id = ?", (e["merkmale"], e["id"]))
     con.commit()
 
     # Cardmarket führt neben dem Trend eine zweite Reihe für die Reverse-/Holo-Ausgabe.
@@ -1924,6 +1932,46 @@ def cm_erweiterungsnamen(roh: bytes):
     return {ex: max(namen, key=namen.get) for ex, namen in zaehler.items()}
 
 
+def _cm_merkmale(text, aus_klammer=False):
+    """Fähigkeits- und Attackennamen als vergleichbare Menge.
+
+    Aus dem Katalog kommt „Ampharos [Conductivity | Lightning Crush | Prime]", von
+    TCGdex „Conductivity | Lightning Crush | Prime" — beide Male dieselben Namen, in
+    derselben Reihenfolge, mit denselben Schreibweisen. Das ist kein Zufall: Cardmarket
+    setzt die Klammer genau aus diesen Feldern zusammen."""
+    text = str(text or "")
+    if aus_klammer:
+        treffer = re.findall(r"\[(.*?)\]", text)
+        text = treffer[0] if treffer else ""
+    teile = (re.sub(r"[^a-z0-9]", "", t.lower()) for t in text.split("|"))
+    return {t for t in teile if t}
+
+
+def _cm_produkt_waehlen(kandidaten, merkmale):
+    """Aus mehreren Produkten desselben Namens das passende wählen.
+
+    `kandidaten` ist eine Liste (idProduct, Katalogname), `merkmale` unsere Kette aus
+    `cards.merkmale`. Gewinner ist, wer die meisten Namen teilt — und zwar allein: bei
+    Gleichstand wird nichts zugeordnet. Ein einzelner Kandidat gewinnt kampflos, sonst
+    hinge auch die heutige Katalog-Zuordnung plötzlich an den Merkmalen.
+
+    Das ersetzt den Versuch, aus der Cardmarket-Adresse zu schließen. Der scheiterte
+    daran, dass der Adressteil den Unterschied gar nicht trägt (`Ampharos-HS105` gegen
+    `Ampharos-HS14`), und die Reihenfolge der Produktnummern taugt auch nicht: in
+    HeartGold SoulSilver steht Ampharos Prime *hinter* der Normalkarte, Meganium Prime
+    davor."""
+    if len(kandidaten) == 1:
+        return kandidaten[0][0]
+    meine = _cm_merkmale(merkmale)
+    if not meine or not kandidaten:
+        return None
+    punkte = sorted(((len(meine & _cm_merkmale(name, aus_klammer=True)), pid)
+                     for pid, name in kandidaten), reverse=True)
+    if punkte[0][0] >= 1 and (len(punkte) == 1 or punkte[0][0] > punkte[1][0]):
+        return punkte[0][1]
+    return None
+
+
 def _cm_basisname(name):
     """„Kakuna [Bug Bite | Primal Clash]“ → „kakuna“. Die eckige Klammer trägt die
     Attacken, nicht die Ausgabe — sie unterscheidet Karten gleichen Namens innerhalb
@@ -1981,6 +2029,7 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                 gelernt.setdefault(r["set_id"], {}).setdefault(e, 0)
                 gelernt[r["set_id"]][e] += 1
         set_exp = {sid: max(zaehler, key=zaehler.get) for sid, zaehler in gelernt.items()}
+        set_exp_alt = {sid: {e} for sid, e in set_exp.items()}
         # Zweite Brücke: Sets, für die keine einzige Zuordnung steht, lassen sich über den
         # Namen der Erweiterung finden — den verraten die Nicht-Einzelkarten („Base Set
         # Booster" gehört zu Erweiterung 1523, also heißt sie „Base Set").
@@ -1991,15 +2040,64 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
             for ex, nm in namen.items():
                 nach_name.setdefault(_cm_basisname(nm), []).append(ex)
             for r in con.execute("SELECT id, name, name_en FROM sets"):
-                if r["id"] in set_exp:
-                    continue
                 for feld in (r["name_en"], r["name"]):
                     treffer = nach_name.get(_cm_basisname(feld or ""))
                     if treffer and len(treffer) == 1:
-                        set_exp[r["id"]] = treffer[0]
-                        bericht["sets_ueber_namen"] = bericht.get("sets_ueber_namen", 0) + 1
+                        # Auch für Sets, die schon eine gelernte Erweiterung haben: die
+                        # kann falsch sein. Base Set 2 hat bei Cardmarket eine eigene
+                        # Erweiterung, TCGdex hängt seine Karten aber an die Jungle- und
+                        # Promo-Nachdrucke — gelernt wird dann die falsche. Beide bleiben
+                        # als Kandidat stehen, entschieden wird über die Attacken.
+                        set_exp_alt.setdefault(r["id"], set()).add(treffer[0])
+                        if r["id"] not in set_exp:
+                            set_exp[r["id"]] = treffer[0]
+                            bericht["sets_ueber_namen"] = bericht.get("sets_ueber_namen", 0) + 1
                         break
         bericht["erweiterungen"] = len(set_exp)
+
+        # Attackenkette → Produkt. Zwei verschiedene Karten einer Erweiterung mit exakt
+        # derselben Kombination aus Fähigkeiten und Attacken gibt es praktisch nicht; wo
+        # doch, wird nichts zugeordnet. Das trägt die Fälle, in denen schon der Name
+        # auseinanderläuft: wir führen „Shaymin", Cardmarket „Shaymin LV.X".
+        nach_exp_merk = {}
+        name_je_produkt = {e["id"]: e["name"] for e in eintraege}
+        for e in eintraege:
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            m = _cm_merkmale(e["name"], aus_klammer=True)
+            if m:
+                nach_exp_merk.setdefault(ex, {}).setdefault(frozenset(m), []).append(e["id"])
+
+        def _namensbezug(produktname, namen):
+            """Trägt das Produkt einen unserer Kartennamen?
+
+            Die Attackenkette allein reicht nicht: „Karrablast [Peck]" und
+            „Prinplup [Peck]" haben dieselbe, und ohne diese Prüfung wanderte der Preis
+            der einen Karte auf die andere. Verlangt wird nur ein Präfix, damit
+            „Shaymin" auch „Shaymin LV.X" findet — genau der Fall, für den der
+            Merkmalsweg gebaut ist."""
+            p = _cm_basisname(produktname)
+            for n in namen:
+                k = _cm_basisname(n or "")
+                if k and (p.startswith(k) or k.startswith(p)):
+                    return True
+            return False
+
+        def ueber_merkmale(exs, merkmale, namen, nur_freie=None):
+            """→ idProduct, wenn genau ein Produkt der Erweiterungen diese Kette trägt
+            und dabei einen unserer Kartennamen führt."""
+            m = _cm_merkmale(merkmale)
+            if not m:
+                return None
+            treffer = set()
+            for ex in exs:
+                treffer.update(nach_exp_merk.get(ex, {}).get(frozenset(m), ()))
+            if nur_freie is not None:
+                treffer = {t for t in treffer if t not in nur_freie}
+            treffer = {t for t in treffer if _namensbezug(name_je_produkt.get(t), namen)}
+            return treffer.pop() if len(treffer) == 1 else None
 
         vergeben = {r["cm_produkt"] for r in con.execute(
             "SELECT cm_produkt FROM card_prices WHERE cm_produkt IS NOT NULL")}
@@ -2011,22 +2109,26 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                 ex = int(e["expansion"])
             except (TypeError, ValueError):
                 continue
-            frei.setdefault(ex, {}).setdefault(_cm_basisname(e["name"]), []).append(e["id"])
+            frei.setdefault(ex, {}).setdefault(_cm_basisname(e["name"]), []).append(
+                (e["id"], e["name"]))
 
         for r in con.execute(
-                "SELECT c.id, c.set_id, c.name_en, c.name_de, c.name_ja FROM cards c"
+                "SELECT c.id, c.set_id, c.name_en, c.name_de, c.name_ja, c.merkmale FROM cards c"
                 " LEFT JOIN card_prices p ON p.card_id = c.id WHERE p.cm_produkt IS NULL"):
             ex = set_exp.get(r["set_id"])
             if ex is None:
                 continue
-            kandidaten = set()
+            kandidaten = {}
             for name in (r["name_en"], r["name_de"], r["name_ja"]):
                 if name:
                     kandidaten.update(frei.get(ex, {}).get(_cm_basisname(name), []))
-            # Nur eindeutige Treffer. Zwei Karten auf ein Produkt zu legen ist genau der
-            # Fehler, den wir TCGdex vorwerfen.
-            if len(kandidaten) == 1:
-                pid = kandidaten.pop()
+            # Mehrere Produkte gleichen Namens werden über die Attacken entschieden. Blind
+            # eines zu nehmen wäre genau der Fehler, den wir TCGdex vorwerfen.
+            pid = _cm_produkt_waehlen(list(kandidaten.items()), r["merkmale"])
+            if pid is None:
+                pid = ueber_merkmale(set_exp_alt.get(r["set_id"], {ex}), r["merkmale"],
+                                     (r["name_en"], r["name_de"], r["name_ja"]), vergeben)
+            if pid is not None:
                 con.execute("INSERT INTO card_prices (card_id, cm_produkt, cm_quelle)"
                             " VALUES (?,?,'katalog')"
                             " ON CONFLICT(card_id) DO UPDATE SET cm_produkt = excluded.cm_produkt,"
@@ -2034,6 +2136,67 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
                             (r["id"], pid))
                 vergeben.add(pid)
                 bericht["zuordnungen"] += 1
+        con.commit()
+
+    # --- Falsch zugeordnete Karten berichtigen ------------------------------
+    #
+    # 1.813 Karten hängen bei TCGdex an einer mehrfach vergebenen Produktnummer und
+    # bekommen deshalb gar keinen Preis. In 509 der 856 Fälle sind es schlicht zwei
+    # verschiedene Karten gleichen Namens in derselben Erweiterung — die Prime-Karten aus
+    # HeartGold SoulSilver etwa, oder die beiden Shaymin LV.X aus Platin. Cardmarket führt
+    # sie längst getrennt und schreibt den Unterschied in den Produktnamen; TCGdex hat
+    # beiden dieselbe Nummer gegeben.
+    if katalog_roh:
+        nach_exp_name = {}
+        for e in eintraege:
+            try:
+                ex = int(e["expansion"])
+            except (TypeError, ValueError):
+                continue
+            nach_exp_name.setdefault(ex, {}).setdefault(
+                _cm_basisname(e["name"]), []).append((e["id"], e["name"]))
+        doppelt = {r["cm_produkt"] for r in con.execute(
+            "SELECT cm_produkt FROM card_prices WHERE cm_produkt IS NOT NULL"
+            " GROUP BY cm_produkt HAVING COUNT(*) > 1")}
+        zu_pruefen = list(con.execute(
+            "SELECT p.card_id, p.cm_produkt, c.set_id, c.name_en, c.name_de, c.name_ja,"
+            " c.merkmale FROM card_prices p JOIN cards c ON c.id = p.card_id"
+            " WHERE p.cm_produkt IS NOT NULL AND c.merkmale IS NOT NULL AND c.merkmale <> ''"))
+        for r in zu_pruefen:
+            # Wo die Attackenkette der Karte schon zum zugeordneten Produkt passt, ist
+            # nichts zu tun — das sind 13.735 der Zuordnungen. Geprüft wird nur der Rest.
+            if _cm_merkmale(r["merkmale"]) == _cm_merkmale(
+                    name_je_produkt.get(r["cm_produkt"]), aus_klammer=True):
+                continue
+            # Die Erweiterung steht am zugeordneten Produkt selbst; sie ist auch dann
+            # richtig, wenn die Karte innerhalb der Erweiterung falsch sitzt.
+            ex = exp_je_produkt.get(r["cm_produkt"], set_exp.get(r["set_id"]))
+            if ex is None:
+                continue
+            # Zwei Strengegrade, und der Unterschied ist der Ausgangszustand:
+            #
+            # Karten an einer mehrfach vergebenen Nummer haben nachweislich keine
+            # brauchbare Zuordnung — sie bekommen ja gerade deshalb keinen Preis. Dort
+            # genügt die beste Übereinstimmung unter den namensgleichen Produkten.
+            #
+            # Alle übrigen haben eine Zuordnung, die stimmen kann; sie umzuhängen, weil
+            # die Klammer nicht wörtlich passt, würde mehr kaputtmachen als heilen. Hier
+            # zählt nur die vollständige Übereinstimmung der Attackenkette.
+            pid = None
+            if r["cm_produkt"] in doppelt:
+                kandidaten = {}
+                for name in (r["name_en"], r["name_de"], r["name_ja"]):
+                    if name:
+                        kandidaten.update(nach_exp_name.get(ex, {}).get(_cm_basisname(name), []))
+                pid = _cm_produkt_waehlen(list(kandidaten.items()), r["merkmale"])
+            if pid is None:
+                # Auch die Erweiterung kann falsch sein — dann zählt die des Set-Namens.
+                pid = ueber_merkmale({ex} | set_exp_alt.get(r["set_id"], set()), r["merkmale"],
+                                     (r["name_en"], r["name_de"], r["name_ja"]))
+            if pid is not None and pid != r["cm_produkt"]:
+                con.execute("UPDATE card_prices SET cm_produkt = ?, cm_quelle = 'merkmale'"
+                            " WHERE card_id = ?", (pid, r["card_id"]))
+                bericht["berichtigt"] = bericht.get("berichtigt", 0) + 1
         con.commit()
 
     # --- Preisverzeichnis: Zahlen eintragen ---------------------------------
@@ -2285,12 +2448,13 @@ CM_SPRACHE = {"de": 3, "en": 1, "fr": 2, "es": 4, "it": 5, "jp": 7, "ja": 7, "kr
 # Near-Mint-Angebote sehen — und umgekehrt.
 CM_ZUSTAND = {"M": 1, "NM": 2, "EX": 3, "GD": 4, "LP": 5, "PL": 6, "PO": 7}
 
-# Sets, deren Adressmuster von Hand bekannt ist. Nötig für Sets, die pokemontcg.io nicht
-# führt und für die deshalb keine einzige Adresse aufgelöst werden kann — die
-# DP-Black-Star-Promos etwa. Form: Set-Kennung → (Pfadname, Kürzel vor der Nummer).
-CM_MUSTER_HAND = {
-    "dpp": ("DP-Black-Star-Promos", "DPPR"),
-}
+# Von Hand hinterlegte Adressmuster. Absichtlich leer: Cardmarket schreibt die Nummer im
+# Adressteil selbst uneinheitlich — im Set „XY Promokarten" steht bei XY35 die volle
+# Nummer (`XYPRXY35`), bei XY98 nur die Ziffern (`XYPR98`). Ein geratener Direktlink
+# führte damit auf „ungültiges Produkt", und das ist schlechter als die Suche. Ein
+# Eintrag hier ist nur vertretbar, wenn die Adresse für dieses Set nachweislich einer
+# Regel folgt.
+CM_MUSTER_HAND = {}
 # Ab dieser Trefferquote gegen die bereits aufgelösten Adressen darf ein Muster benutzt
 # werden. Darunter ist Raten schlechter als die Suche: ein falscher Direktlink führt auf
 # eine Fehlerseite, die Suche wenigstens in die Nähe.
@@ -4156,7 +4320,7 @@ def _fetch_price_voll(client, card_id, region="intl"):
     Ausfall der Quelle hätte beim nächsten Lauf sämtliche Preise auf NULL gesetzt."""
     leer = {"id": card_id, "ok": False, "eur": None, "eur_holo": None, "usd": None,
             "usd_holo": None, "tcgplayer_id": None, "cm_produkt": None, "spanne": {},
-            "varianten": {}, "tp_keys": []}
+            "varianten": {}, "tp_keys": [], "merkmale": None}
     # Die Sprache kommt aus der Region, nicht aus der Schreibweise der Kennung: die alte
     # Heuristik („beginnt mit einem Großbuchstaben") hielt jedes japanische Set mit kleiner
     # Kennung (sv1a, neo1 …) für ein internationales und fragte den falschen Katalog.
@@ -4238,8 +4402,17 @@ def _fetch_price_voll(client, card_id, region="intl"):
             if varianten.get(art):
                 holo = varianten[art]["eur"]; break
 
+    # Fähigkeiten und Attacken derselben Antwort: sie kosten keinen Abruf und sind das
+    # einzige Merkmal, mit dem sich zwei gleichnamige Karten einer Erweiterung sicher
+    # unterscheiden lassen (siehe `cm_zuordnung_merkmale`).
+    merkmale = [a.get("name") for a in (d.get("abilities") or []) if a.get("name")]
+    merkmale += [a.get("name") for a in (d.get("attacks") or []) if a.get("name")]
+    if d.get("suffix"):
+        merkmale.append(str(d["suffix"]))
+
     return {"id": card_id, "ok": True, "eur": eur, "eur_holo": holo, "usd": usd,
             "usd_holo": usd_holo, "tcgplayer_id": tid, "cm_produkt": cm.get("idProduct"),
+            "merkmale": " | ".join(merkmale) or None,
             "spanne": {"eur_low": cm.get("low") or None, "eur_avg30": cm.get("avg30") or None,
                        "usd_low": u_low, "usd_mid": u_mid, "usd_high": u_high},
             "varianten": varianten, "tp_keys": tp_keys}
