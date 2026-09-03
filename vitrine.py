@@ -548,8 +548,51 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
 
     _dep["vitrine_pruefen"] = vitrine_pruefen
 
-    def _kunst_zeile(r, meine):
-        return {
+    def _kunst_karten(reihen):
+        """Zu jeder Kunstseite die Karten, um die herum sie gemalt wurde.
+
+        Danach lässt sich nach dem suchen, was man tatsächlich im Kopf hat — „Glurak",
+        „Karpador" — und nach dem Jahrgang der Karten filtern. Bei mehreren Karten zählt
+        jeweils die äußerste: das älteste und das neueste Erscheinungsjahr."""
+        anker = {}
+        for r in reihen:
+            try:
+                anker[r["id"]] = list(dict.fromkeys(
+                    (json.loads(r["anker"] or "{}") or {}).values()))
+            except Exception:
+                anker[r["id"]] = []
+        alle = sorted({c for liste in anker.values() for c in liste if c})
+        info = {}
+        if alle:
+            con = get_db()
+            for teil in [alle[i:i + 400] for i in range(0, len(alle), 400)]:
+                marken = ",".join("?" * len(teil))
+                for k in con.execute(
+                        f"SELECT c.id, c.name_de, c.name_en, c.name_ja, c.release_date,"
+                        f" p.name_de AS dex_de, p.name_en AS dex_en"
+                        f" FROM cards c LEFT JOIN pokemon p ON p.dex_id = c.first_dex"
+                        f" WHERE c.id IN ({marken})", teil):
+                    info[k["id"]] = {
+                        "name": k["name_de"] or k["name_en"] or k["name_ja"] or k["id"],
+                        "jahr": int((k["release_date"] or "0")[:4] or 0),
+                        "sucht": " ".join(x for x in (k["name_de"], k["name_en"], k["name_ja"],
+                                                      k["dex_de"], k["dex_en"]) if x).lower(),
+                    }
+            con.close()
+        aus = {}
+        for aid, liste in anker.items():
+            karten = [info[c] for c in liste if c in info]
+            jahre = [k["jahr"] for k in karten if k["jahr"]]
+            aus[aid] = {
+                "karten": [{"id": c, "name": info[c]["name"]} for c in liste if c in info],
+                "jahr_alt": min(jahre) if jahre else None,
+                "jahr_neu": max(jahre) if jahre else None,
+                "sucht": " ".join(k["sucht"] for k in karten),
+            }
+        return aus
+
+    def _kunst_zeile(r, meine, karten=None):
+        z = {
             "id": r["id"], "titel": r["titel"] or "Kunstseite",
             "stil": r["stil"], "layout": r["layout"],
             "besitzer": r["besitzer"] or "—", "mein": r["user_id"] in meine,
@@ -558,10 +601,15 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             "breite": r["breite"], "hoehe": r["hoehe"],
             "vorschau": f"api/artwork/{r['id']}/bild?v=vorschau",
         }
+        if karten:
+            z.update(karten=karten.get("karten", []), jahr_alt=karten.get("jahr_alt"),
+                     jahr_neu=karten.get("jahr_neu"))
+        return z
 
     @app.get("/api/vitrine/artwork")
     def vitrine_artwork(request: Request, sortierung: str = "neu", q: str = "", stil: str = "",
-                        layout: str = "", limit: int = 24, offset: int = 0):
+                        layout: str = "", jahr_von: int = 0, jahr_bis: int = 0,
+                        limit: int = 24, offset: int = 0):
         """Der Kunstseiten-Bereich der Vitrine."""
         limit = max(1, min(48, limit))
         user = current_user(request)
@@ -569,7 +617,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         con = get_db()
         reihen = con.execute(
             "SELECT a.id, a.titel, a.stil, a.layout, a.user_id, a.downloads, a.breite, a.hoehe,"
-            " a.veroeffentlicht_at, p.name AS besitzer"
+            " a.veroeffentlicht_at, a.anker, p.name AS besitzer"
             " FROM artworks a LEFT JOIN profile p ON p.user_id = a.user_id"
             " WHERE COALESCE(a.oeffentlich,0) = 1 AND a.status = 'fertig'"
             " AND COALESCE(p.gesperrt,0) = 0").fetchall()
@@ -578,24 +626,41 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             habe = {x["artwork_id"] for x in con.execute(
                 "SELECT artwork_id FROM artwork_freigaben WHERE user_id = ?", (user["id"],))}
         con.close()
+        karten = _kunst_karten(reihen)
         aus = []
         for r in reihen:
-            if q and q.lower() not in ((r["titel"] or "") + " " + (r["besitzer"] or "") + " " + (r["stil"] or "")).lower():
+            k = karten.get(r["id"], {})
+            if q and q.lower() not in ((r["titel"] or "") + " " + (r["besitzer"] or "") + " "
+                                       + (r["stil"] or "") + " " + k.get("sucht", "")).lower():
                 continue
             if stil and r["stil"] != stil:
                 continue
             if layout and r["layout"] != layout:
                 continue
-            z = _kunst_zeile(r, {user["id"]} if user else set())
+            # Jahrgang: bei mehreren Karten zählt die äußerste. Gesucht wird über den
+            # ganzen Bereich einer Seite — wer „bis 2003" filtert, will auch die Seite
+            # sehen, auf der ein Base-Set-Glurak neben einer neueren Karte liegt.
+            alt, neu = k.get("jahr_alt"), k.get("jahr_neu")
+            if jahr_von and (neu or 9999) < jahr_von:
+                continue
+            if jahr_bis and (alt or 0) > jahr_bis:
+                continue
+            z = _kunst_zeile(r, {user["id"]} if user else set(), k)
             z["habe"] = r["id"] in habe or z["mein"]
             aus.append(z)
         if sortierung == "top":
             aus.sort(key=lambda a: (-a["downloads"], a["veroeffentlicht_at"] or ""))
+        elif sortierung == "alt":
+            aus.sort(key=lambda a: (a.get("jahr_alt") or 9999, a["veroeffentlicht_at"] or ""))
+        elif sortierung == "jung":
+            aus.sort(key=lambda a: (-(a.get("jahr_neu") or 0), a["veroeffentlicht_at"] or ""))
         else:
             aus.sort(key=lambda a: (a["veroeffentlicht_at"] or ""), reverse=True)
+        jahre = [j for k in karten.values() for j in (k.get("jahr_alt"), k.get("jahr_neu")) if j]
         return {"artworks": aus[offset:offset + limit], "gesamt": len(aus),
                 "preis": abo.ARTWORK_FREMD, "anteil": abo.ARTWORK_ANTEIL,
-                "stile": sorted({r["stil"] for r in reihen if r["stil"]})}
+                "stile": sorted({r["stil"] for r in reihen if r["stil"]}),
+                "jahr_min": min(jahre) if jahre else None, "jahr_max": max(jahre) if jahre else None}
 
     def _uebernehmen(user, artwork_id):
         """Eine fremde Kunstseite kaufen. Idempotent: wer sie schon hat, zahlt nicht noch mal."""
