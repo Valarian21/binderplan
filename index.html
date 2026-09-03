@@ -8449,11 +8449,13 @@ async function detailOeffnen(idOrIdx) {
     return `<button class="chip ${detailVariante === v ? 'on' : ''}" onclick="detailVarianteSetzen('${v}')">${t('v_' + v)}</button>`;
   };
   const andere = (k.andere || []).map((a) => `<button onclick="detailOeffnen('${a.id}')" title="${esc(nm(a))} · ${esc(setNm(a))}"><img loading="lazy" src="${imgUrl(a.id)}" alt=""><span>${esc(setNm(a))} · ${esc(a.local_id || '')}</span></button>`).join('');
-  // Der Link führt jetzt auf die Produktseite genau dieser Karte statt auf eine
-  // Namenssuche — bei „Guardevoir“ standen dort 60 Treffer, von denen keiner die
-  // gemeinte Karte war. Aufgelöst wird beim Klick und danach gespeichert.
-  const cm = 'https://www.cardmarket.com/' + (LANG === 'en' ? 'en' : 'de')
-    + '/Pokemon/Products/Search?searchString=' + encodeURIComponent((k.name_en || k.name).replace(/ · .*/, ''));
+  // Der Link führt auf die Produktseite genau dieser Karte statt auf eine Namenssuche —
+  // bei „Guardevoir“ standen dort 60 Treffer, von denen keiner die gemeinte Karte war.
+  // Kennt der Server die Adresse schon, steht sie sofort im href; sonst wird sie im
+  // Hintergrund geholt und nachgetragen. Ein `window.open` erst beim Klick ging nicht:
+  // nach dem await gilt es dem Browser nicht mehr als Klick, und der Popup-Blocker
+  // schluckte jedes zweite Fenster.
+  const cm = cardmarketAdresse(k);
   $('detail-inhalt').innerHTML = `
     <div class="d-grid">
       <div>${k.img ? `<img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}" onerror="this.outerHTML='<div class=d-kein-bild>${esc(nm(k))}<small>${t('kein_scan')}</small></div>'">`
@@ -8467,7 +8469,7 @@ async function detailOeffnen(idOrIdx) {
         <div class="d-preise">
           <div class="d-preis"><div class="z" id="detail-preis-zahl">${fmt(detailPreis(k, detailVariante))}</div><div class="l" id="detail-preis-lbl">${t('preis_trend')}</div></div>
           ${preis.eur_holo && (k.normal !== false || k.reverse) ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
-          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" id="detail-cm" target="_blank" rel="noopener" style="font-size:12px" onclick="return cardmarketOeffnen(event,'${esc(k.id)}')">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div>
+          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" id="detail-cm" target="_blank" rel="noopener noreferrer" style="font-size:12px">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div>
           <div class="l" id="detail-spanne" style="margin-top:4px;line-height:1.5"></div></div>
           <div id="detail-zustaende" class="zst"></div>
         </div>
@@ -8475,7 +8477,7 @@ async function detailOeffnen(idOrIdx) {
         <div class="f-lbl">${t('variante')}</div>
         <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
         <div class="f-lbl">${t('kartensprache')}</div>
-        <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSprache='${sp}';document.querySelectorAll('#detail-sprache .chip').forEach((c)=>c.classList.toggle('on',c.textContent===('${sp}'.toUpperCase())))">${sp.toUpperCase()}</button>`).join('')}</div>
+        <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSpracheSetzen('${sp}')">${sp.toUpperCase()}</button>`).join('')}</div>
         <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
@@ -8484,6 +8486,7 @@ async function detailOeffnen(idOrIdx) {
         ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
       </div>
     </div>`;
+  if (!k.cm_url) cardmarketNachtragen(k.id);
   // Die Spanne unter den Trendpreis: Preise je Zustand führt keine der beiden Börsen,
   // aber Tiefstpreis, 30-Tage-Schnitt und die US-Spanne zeigen den Handelsraum einer Karte.
   // Preise je Zustand veröffentlicht keine der beiden Börsen. Was sich vertreten lässt:
@@ -8558,22 +8561,41 @@ function detailPreis(k, variante) {
   return p.eur_geschaetzt != null ? p.eur_geschaetzt : null;
 }
 
-/** Öffnet die Cardmarket-Produktseite dieser Karte. Der erste Klick löst die Adresse
- *  auf (ein Aufruf), danach steht sie in der Datenbank. Fällt das aus, bleibt der Link
- *  auf der Namenssuche — schlecht, aber nie tot. */
-async function cardmarketOeffnen(ev, id) {
-  ev.preventDefault();
-  const a = ev.currentTarget;
-  const alt = a.textContent;
-  a.textContent = 'Cardmarket …';
+const CM_SPRACHE_NR = { de: 3, en: 1, fr: 2, es: 4, it: 5, jp: 7 };
+
+/** Die Adresse für den Cardmarket-Link. Kennt der Server die Produktseite, steht sie
+ *  sofort da; sonst zunächst die Namenssuche als Rückfall. */
+function cardmarketAdresse(k) {
+  const loc = LANG === 'en' ? 'en' : 'de';
+  if (k && k.cm_url) {
+    const nr = CM_SPRACHE_NR[detailSprache || ''];
+    return 'https://www.cardmarket.com/' + loc + k.cm_url + (nr ? '?language=' + nr : '');
+  }
+  const name = ((k && (k.name_en || k.name)) || '').replace(/ · .*/, '');
+  return 'https://www.cardmarket.com/' + loc + '/Pokemon/Products/Search?searchString='
+    + encodeURIComponent(name);
+}
+
+/** Ist die Produktseite noch nicht bekannt, im Hintergrund auflösen und den Link
+ *  austauschen — der Nutzer merkt davon nichts, außer dass der Link stimmt. */
+async function cardmarketNachtragen(id) {
   try {
     const d = await api(`api/cards/${encodeURIComponent(id)}/cardmarket?sprache=${detailSprache || ''}&ui=${LANG}`);
-    window.open(d.url, '_blank', 'noopener');
-  } catch (e) {
-    window.open(a.href, '_blank', 'noopener');
-  }
-  a.textContent = alt;
-  return false;
+    const a = $('detail-cm');
+    if (a && d.url && detailKarte && detailKarte.id === id) {
+      a.href = d.url;
+      detailKarte.cm_url = detailKarte.cm_url || true;
+    }
+  } catch (e) { /* Rückfall bleibt die Namenssuche */ }
+}
+
+/** Die Kartensprache hängt als Filter an der Cardmarket-Adresse. */
+function detailSpracheSetzen(sp) {
+  detailSprache = sp;
+  document.querySelectorAll('#detail-sprache .chip').forEach((c) =>
+    c.classList.toggle('on', c.textContent.trim() === sp.toUpperCase()));
+  const a = $('detail-cm');
+  if (a && detailKarte) a.href = cardmarketAdresse(detailKarte);
 }
 
 function detailVarianteSetzen(v) {

@@ -1420,6 +1420,60 @@ KURS_UNSICHER = 5.0          # Zahl zeigen, Abstand danebenschreiben
 KURS_GESPERRT = 10.0         # gar keine Zahl mehr
 
 
+# Ein einziger Wechselkurs für den ganzen Katalog trägt nicht. Gemessen an 7.743
+# Kartenpaaren liegt der Median bei 1,32 USD/EUR — aber nach Jahrzehnt und Preisklasse
+# aufgeschlüsselt reicht die Spanne von 0,97 bis 2,67: alte Karten im mittleren Preisband
+# gehen in den USA regelmäßig zum Zweieinhalbfachen weg, moderne fast zum Gleichstand.
+# Wer einen fehlenden Europreis aus dem US-Preis rechnet, muss den passenden Kurs nehmen.
+USD_KLASSEN = ((3, "<3"), (15, "3-15"), (60, "15-60"), (250, "60-250"), (10 ** 9, ">250"))
+KURS_MIN_PAARE = 25          # darunter ist der Median Zufall
+
+
+def _usd_klasse(usd):
+    for grenze, name in USD_KLASSEN:
+        if (usd or 0) < grenze:
+            return name
+    return ">250"
+
+
+def _jahrzehnt(datum):
+    try:
+        return (int(str(datum)[:4]) // 10) * 10
+    except Exception:
+        return 2020
+
+
+def _kurstabelle(con):
+    """→ {(Jahrzehnt, US-Klasse): Median-Kurs}. Wird bei jedem Preislauf neu gemessen."""
+    eimer = {}
+    for r in con.execute("SELECT c.release_date, p.eur, p.usd FROM card_prices p"
+                         " JOIN cards c ON c.id = p.card_id"
+                         " WHERE p.eur > 0.5 AND p.usd > 0.5"
+                         " AND COALESCE(p.status,'') <> 'gesperrt'"):
+        eimer.setdefault((_jahrzehnt(r["release_date"]), _usd_klasse(r["usd"])), []).append(
+            r["usd"] / r["eur"])
+    aus = {}
+    for schluessel, werte in eimer.items():
+        if len(werte) >= KURS_MIN_PAARE:
+            werte.sort()
+            aus[schluessel] = round(werte[len(werte) // 2], 3)
+    return aus
+
+
+def kurs_fuer(tabelle, datum, usd, standard):
+    """Der passende Kurs, mit Rückfall auf das Jahrzehnt und zuletzt auf den Gesamtmedian."""
+    if not tabelle:
+        return standard
+    jz, kl = _jahrzehnt(datum), _usd_klasse(usd)
+    if (jz, kl) in tabelle:
+        return tabelle[(jz, kl)]
+    nachbarn = [v for (j, _k), v in tabelle.items() if j == jz]
+    if nachbarn:
+        nachbarn.sort()
+        return nachbarn[len(nachbarn) // 2]
+    return standard
+
+
 def _kurs_pruefen(con):
     """Beide Börsen gegeneinander stellen und je Karte ein Urteil ablegen.
 
@@ -1457,11 +1511,18 @@ def _kurs_pruefen(con):
             setze(cid, "unsicher", round(kurs, 2))
 
     # Karten ohne Europreis, aber mit amerikanischem: umgerechnet ist besser als leer,
-    # solange danebensteht, dass es eine Umrechnung ist.
-    for r in con.execute("SELECT card_id, usd FROM card_prices"
-                         " WHERE eur IS NULL AND usd > 0"
-                         " AND COALESCE(status,'') <> 'zweitquelle'").fetchall():
-        setze(r["card_id"], "geschaetzt", round(median, 2), round(r["usd"] / median, 2))
+    # solange danebensteht, dass es eine Umrechnung ist. Gerechnet wird mit dem Kurs, der
+    # zu Alter und Preisklasse der Karte passt — der Gesamtmedian lag bei alten Karten um
+    # den Faktor zwei daneben.
+    tabelle = _kurstabelle(con)
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preis_kurstabelle', ?)",
+                (json.dumps({f"{j}|{k}": v for (j, k), v in tabelle.items()}),))
+    for r in con.execute("SELECT p.card_id, p.usd, c.release_date FROM card_prices p"
+                         " JOIN cards c ON c.id = p.card_id"
+                         " WHERE p.eur IS NULL AND p.usd > 0"
+                         " AND COALESCE(p.status,'') <> 'zweitquelle'").fetchall():
+        k = kurs_fuer(tabelle, r["release_date"], r["usd"], median)
+        setze(r["card_id"], "geschaetzt", round(k, 2), round(r["usd"] / k, 2))
     return round(median, 4), zaehler
 
 
@@ -1617,6 +1678,14 @@ def _ptcgio_job(nur_set=None):
         kurs = float(merker["value"]) if merker else None
     except Exception:
         kurs = None
+    tab = con.execute("SELECT value FROM kv WHERE key='preis_kurstabelle'").fetchone()
+    try:
+        kurstabelle = {tuple([int(x.split("|")[0]), x.split("|")[1]]): v
+                       for x, v in json.loads(tab["value"]).items()} if tab else {}
+    except Exception:
+        kurstabelle = {}
+    datum_je_karte = {r["id"]: r["release_date"] for r in con.execute(
+        "SELECT id, release_date FROM cards WHERE COALESCE(region,'intl') = 'intl'")}
     offen = {}
     # Karten ohne Europreis brauchen die Zweitquelle; Karten ohne `ptc_id` brauchen sie für
     # den Cardmarket-Direktlink. Beides kommt aus derselben Antwort, also in einem Durchgang.
@@ -1668,7 +1737,8 @@ def _ptcgio_job(nur_set=None):
                     us = [v.get("market") for v in tp.values()
                           if isinstance(v, dict) and v.get("market")]
                     if us:
-                        wert = round(min(us) / kurs, 2)
+                        k = kurs_fuer(kurstabelle, datum_je_karte.get(cid), min(us), kurs)
+                        wert = round(min(us) / k, 2)
                         quelle = "geschaetzt"
                 keys = ",".join(sorted(tp.keys())) or None
                 con.execute(
@@ -1777,6 +1847,50 @@ def admin_sets_nachladen(key: str = "", ids: str = ""):
     return {"ok": True, "sets": liste}
 
 
+def _cm_urls_job(grenze=40000):
+    """Die Cardmarket-Produktseiten vorab auflösen.
+
+    Ein Aufruf je Karte an die Weiterleitung von pokemontcg.io, danach steht die Adresse
+    in der Datenbank und der Link im Kartendetail ist von Anfang an der richtige. Läuft
+    nur über Karten, die noch keine haben — beim zweiten Mal ist er in Sekunden durch."""
+    con = get_db()
+    offen = [(r["card_id"], r["ptc_id"]) for r in con.execute(
+        "SELECT p.card_id, p.ptc_id FROM card_prices p JOIN cards c ON c.id = p.card_id"
+        " WHERE p.cm_url IS NULL AND COALESCE(c.region,'intl') = 'intl'"
+        " LIMIT ?", (grenze,))]
+    con.close()
+    if not offen:
+        return 0
+    # In Blöcken schreiben, nicht erst am Ende: der Lauf dauert für den ganzen Katalog
+    # rund zwanzig Minuten, und ein Neustart hätte sonst alles verworfen.
+    n = 0
+    with httpx.Client(timeout=15, headers=UA, follow_redirects=False) as client:
+        for start in range(0, len(offen), 400):
+            block = offen[start:start + 400]
+            with ThreadPoolExecutor(6) as pool:
+                paare = list(pool.map(lambda x: (x[0], _cm_url_aufloesen(client, x[0], x[1])), block))
+            con = get_db()
+            for cid, url in paare:
+                if url:
+                    con.execute("INSERT INTO card_prices (card_id, cm_url) VALUES (?,?)"
+                                " ON CONFLICT(card_id) DO UPDATE SET cm_url = excluded.cm_url",
+                                (cid, url))
+                    n += 1
+            con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_urls_lauf', datetime('now'))")
+            con.commit()
+            con.close()
+    print(f"Cardmarket-Adressen: {n} von {len(offen)} aufgelöst")
+    return n
+
+
+@app.post("/api/admin/cm_urls")
+def admin_cm_urls(key: str = "", grenze: int = 40000):
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    threading.Thread(target=lambda: _cm_urls_job(grenze), daemon=True).start()
+    return {"ok": True}
+
+
 @app.post("/api/admin/zweitquelle")
 def admin_zweitquelle(key: str = "", set_id: str = ""):
     if not admin_ok(key):
@@ -1854,6 +1968,10 @@ def _hintergrund_takt():
                     _ptcgio_job()
                 except Exception as exc:
                     print("Zweitquelle fehlgeschlagen:", exc)
+                try:
+                    _cm_urls_job(3000)      # neue Karten bekommen ihre Produktseite
+                except Exception as exc:
+                    print("Cardmarket-Adressen fehlgeschlagen:", exc)
         except Exception:
             pass
         _time.sleep(3600)
@@ -2527,7 +2645,8 @@ def card_detail(card_id: str):
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
     pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg30,"
                      " usd, usd_low, usd_mid, usd_high, preise_json, status, kurs,"
-                     " eur_geschaetzt FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
+                     " eur_geschaetzt, cm_url, ptc_id FROM card_prices"
+                     " WHERE card_id = ?", (card_id,)).fetchone()
     # Im Detail gilt dieselbe Regel wie überall sonst: fehlt der Cardmarket-Trend, tritt die
     # Zahl der Zweitquelle an seine Stelle — mit dem Vermerk, woher sie kommt.
     if pr and pr["eur"] is None and pr["eur_geschaetzt"] is not None:
@@ -2574,6 +2693,11 @@ def card_detail(card_id: str):
                   "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
                   "varianten": var_preise, "status": pr["status"], "kurs": pr["kurs"],
                   "eur_geschaetzt": pr["eur_geschaetzt"]} if pr else None
+    # Die fertige Cardmarket-Adresse gleich mitgeben, damit der Link im Dialog ein echter
+    # Link sein kann. Wird er erst beim Klick aufgelöst, blockt der Browser das neue Fenster —
+    # es entsteht nach einem await und gilt dann nicht mehr als Klick des Nutzers.
+    k["cm_url"] = (pr["cm_url"] if pr and "cm_url" in pr.keys() else None)
+    k["cm_offen"] = bool(k["cm_url"]) is False
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
         "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
     andere = []
