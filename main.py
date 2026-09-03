@@ -471,6 +471,10 @@ def init_db():
                    # Sets ab (sv03.5-1 gegen sv3pt5-1) und ist der Schlüssel zur
                    # Cardmarket-Weiterleitung.
                    "ALTER TABLE card_prices ADD COLUMN ptc_id TEXT",
+                   # Aus dem offiziellen Cardmarket-Preisverzeichnis übernommen: Zeitpunkt
+                   # und woher die Produktnummer stammt (tcgdex, katalog, hand).
+                   "ALTER TABLE card_prices ADD COLUMN cm_import_am TEXT",
+                   "ALTER TABLE card_prices ADD COLUMN cm_quelle TEXT",
                    "ALTER TABLE price_history ADD COLUMN usd REAL"):
         try:
             con.execute(befehl)
@@ -1767,6 +1771,289 @@ def _ptcgio_job(nur_set=None):
     con.close()
     print(f"Zweitquelle: {gefuellt} Preise ergänzt, {var} Varianten berichtigt")
     return gefuellt
+
+
+# --- Cardmarket: offizielles Preisverzeichnis und Produktkatalog -------------
+#
+# Cardmarket stellt beide Dateien seit einiger Zeit allen Nutzern zum Herunterladen
+# bereit (cardmarket.com → Data → Download); vorher gab es sie nur über die API. Das
+# Preisverzeichnis wird täglich erneuert, der Produktkatalog bei jeder Neuveröffentlichung.
+#
+# Damit braucht es keinen Datenkratzer: die Zahlen kommen aus der Quelle selbst, in der
+# Fassung, die Cardmarket dafür vorgesehen hat. Der Weg ist ein Handgriff — Datei laden,
+# hier hochladen — und ersetzt jede Zuordnung, die wir uns bisher zusammengesucht haben.
+#
+# Beide Dateien kommen je nach Auswahl als CSV oder JSON. Der Leser erkennt das Format
+# selbst und ordnet die Spalten über ihre Namen zu, damit eine Umbenennung auf der
+# Gegenseite nicht gleich alles anhält.
+
+CM_PREIS_FELDER = {
+    "eur":       ("trendprice", "trend", "avgsellprice", "avg"),
+    "eur_low":   ("lowprice", "low"),
+    "eur_avg30": ("avg30", "avg30days"),
+    "eur_holo":  ("reverseholotrend", "foiltrend", "trend-foil", "reverseholosell", "foilsell"),
+}
+
+
+def _cm_zahl(wert):
+    """Cardmarket schreibt fehlende Preise als 0 oder leer — beides heißt „unbekannt“."""
+    if wert in (None, "", "0", "0.0", "0.00"):
+        return None
+    try:
+        z = float(str(wert).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    return round(z, 2) if z > 0 else None
+
+
+def _cm_schluessel(name):
+    return re.sub(r"[^a-z0-9]", "", str(name or "").lower())
+
+
+def _cm_zeilen(roh: bytes):
+    """→ Liste von Wörterbüchern, egal ob CSV (auch mit Semikolon) oder JSON."""
+    text = roh.decode("utf-8-sig", errors="replace").lstrip()
+    if text[:1] in "[{":
+        daten = json.loads(text)
+        if isinstance(daten, dict):
+            for schluessel in ("priceGuides", "products", "data", "priceguide", "productlist"):
+                if isinstance(daten.get(schluessel), list):
+                    daten = daten[schluessel]; break
+            else:
+                daten = [daten]
+        return [d for d in daten if isinstance(d, dict)]
+    import csv as _csv
+    kopf = text.split("\n", 1)[0]
+    trenner = ";" if kopf.count(";") > kopf.count(",") else ","
+    return list(_csv.DictReader(io.StringIO(text), delimiter=trenner))
+
+
+def cm_preisverzeichnis_lesen(roh: bytes):
+    """→ {idProduct: {eur, eur_low, eur_avg30, eur_holo}}"""
+    aus = {}
+    for zeile in _cm_zeilen(roh):
+        felder = {_cm_schluessel(k): v for k, v in zeile.items()}
+        pid = felder.get("idproduct") or felder.get("id") or felder.get("productid")
+        try:
+            pid = int(str(pid).strip())
+        except (TypeError, ValueError):
+            continue
+        werte = {}
+        for ziel, kandidaten in CM_PREIS_FELDER.items():
+            for k in kandidaten:
+                z = _cm_zahl(felder.get(_cm_schluessel(k)))
+                if z is not None:
+                    werte[ziel] = z
+                    break
+        if werte:
+            aus[pid] = werte
+    return aus
+
+
+def cm_katalog_lesen(roh: bytes):
+    """→ [{id, name, expansion, nummer}] aus dem Produktkatalog."""
+    aus = []
+    for zeile in _cm_zeilen(roh):
+        felder = {_cm_schluessel(k): v for k, v in zeile.items()}
+        pid = felder.get("idproduct") or felder.get("id") or felder.get("productid")
+        try:
+            pid = int(str(pid).strip())
+        except (TypeError, ValueError):
+            continue
+        roh_name = str(felder.get("name") or felder.get("enname") or "").strip()
+        nummer = str(felder.get("number") or felder.get("collectornumber") or "").strip()
+        if not nummer:
+            # Cardmarket hängt die Kartennummer als Klammerzusatz an den Namen:
+            # „Charizard G LV.X (DP45)“. Der letzte Klammerinhalt mit einer Ziffer ist sie —
+            # reine Buchstabenzusätze wie „(V1)“ meinen die Ausgabe, nicht die Nummer.
+            for teil in re.findall(r"\(([^)]*)\)", roh_name):
+                if re.search(r"\d", teil) and len(teil) <= 12:
+                    nummer = teil.strip()
+        aus.append({
+            "id": pid,
+            "name": roh_name,
+            "expansion": str(felder.get("expansion") or felder.get("expansionname")
+                             or felder.get("idexpansion") or "").strip(),
+            "nummer": nummer,
+        })
+    return aus
+
+
+def _cm_name_norm(name):
+    """Namen vergleichbar machen.
+
+    Klammerzusätze fliegen raus (sie tragen Nummer oder Ausgabe), Satzzeichen ebenfalls.
+    Was bleibt, sind auch die Suffixe: „Gardevoir LV.X“ ist eine andere Karte als
+    „Gardevoir“, und wer das wegkürzt, legt zwei Karten auf ein Produkt — genau der
+    Fehler, den wir gerade erst aufgeräumt haben."""
+    n = str(name or "").lower()
+    n = re.sub(r"\(.*?\)", " ", n)
+    n = n.replace("&", "and").replace("é", "e").replace("♀", "f").replace("♂", "m")
+    return re.sub(r"[^a-z0-9]", "", n)
+
+
+def cm_import(preise_roh=None, katalog_roh=None):
+    """Preisverzeichnis und Produktkatalog übernehmen.
+
+    Reihenfolge ist wichtig: erst der Katalog (er stellt fehlende Zuordnungen her), dann
+    das Preisverzeichnis (es trägt die Zahlen ein). Wer beides in einem Aufruf schickt,
+    bekommt genau das."""
+    bericht = {"katalog": 0, "zuordnungen": 0, "preise": 0, "karten": 0, "unbekannt": 0}
+    con = get_db()
+
+    # --- Produktkatalog: fehlende Zuordnungen herstellen ---------------------
+    if katalog_roh:
+        eintraege = cm_katalog_lesen(katalog_roh)
+        bericht["katalog"] = len(eintraege)
+        # Nur Karten ohne Produktnummer sind Kandidaten — vorhandene Zuordnungen aus
+        # TCGdex bleiben, sie sind an dieser Stelle nicht schlechter.
+        # Zwei Register: mit Nummer (sicher) und nur über Name plus Erweiterung (Rückfall).
+        mit_nummer, mit_set = {}, {}
+        for r in con.execute(
+                "SELECT c.id, c.name_en, c.name_de, c.name_ja, c.local_id, c.stage, c.suffix,"
+                " s.name_en setn, s.name setn_de FROM cards c JOIN sets s ON s.id = c.set_id"
+                " LEFT JOIN card_prices p ON p.card_id = c.id"
+                " WHERE p.cm_produkt IS NULL"):
+            nr = _cm_nummer(r["local_id"])
+            # Cardmarket schreibt den Zusatz in den Namen („Charizard G LV.X“), TCGdex führt
+            # ihn getrennt in `stage`/`suffix`. Beide Schreibweisen werden eingetragen,
+            # sonst geht jede Lv.X-Karte verloren.
+            zusatz = []
+            if (r["stage"] or "") == "LEVEL-UP":
+                zusatz.append("LV.X")
+            if r["suffix"]:
+                zusatz.append(r["suffix"])
+            for name in (r["name_en"], r["name_de"], r["name_ja"]):
+                if not name:
+                    continue
+                for voll in {name, *(f"{name} {z}" for z in zusatz)}:
+                    nn = _cm_name_norm(voll)
+                    mit_nummer.setdefault((nn, nr), set()).add(r["id"])
+                    for setn in (r["setn"], r["setn_de"]):
+                        if setn:
+                            mit_set.setdefault((nn, _cm_name_norm(setn)), set()).add(r["id"])
+        genutzt = set()
+        for e in eintraege:
+            nn = _cm_name_norm(e["name"])
+            treffer = mit_nummer.get((nn, _cm_nummer(e["nummer"]))) if e["nummer"] else None
+            if not treffer:
+                treffer = mit_set.get((nn, _cm_name_norm(e["expansion"])))
+            # Nur eindeutige Treffer übernehmen. Zwei Karten auf ein Produkt zu legen ist
+            # genau der Fehler, den wir TCGdex vorwerfen.
+            if treffer and len(treffer) == 1 and e["id"] not in genutzt:
+                cid = next(iter(treffer))
+                con.execute("INSERT INTO card_prices (card_id, cm_produkt, cm_quelle)"
+                            " VALUES (?,?,'katalog')"
+                            " ON CONFLICT(card_id) DO UPDATE SET cm_produkt = excluded.cm_produkt,"
+                            " cm_quelle = 'katalog' WHERE card_prices.cm_produkt IS NULL",
+                            (cid, e["id"]))
+                genutzt.add(e["id"])
+                bericht["zuordnungen"] += 1
+        con.commit()
+
+    # --- Preisverzeichnis: Zahlen eintragen ---------------------------------
+    if preise_roh:
+        preise = cm_preisverzeichnis_lesen(preise_roh)
+        bericht["preise"] = len(preise)
+        nach_produkt = {}
+        for r in con.execute("SELECT card_id, cm_produkt FROM card_prices"
+                             " WHERE cm_produkt IS NOT NULL"):
+            nach_produkt.setdefault(r["cm_produkt"], []).append(r["card_id"])
+        heute = _heute()
+        for pid, werte in preise.items():
+            karten = nach_produkt.get(pid)
+            if not karten:
+                bericht["unbekannt"] += 1
+                continue
+            # Mehrere Karten an einem Produkt bleiben gesperrt — daran ändert die Datei
+            # nichts, sie kennt die Zuordnung ja nicht besser als wir.
+            if len(karten) > 1:
+                continue
+            cid = karten[0]
+            con.execute(
+                "UPDATE card_prices SET eur = ?, eur_low = COALESCE(?, eur_low),"
+                " eur_avg30 = COALESCE(?, eur_avg30), eur_holo = ?,"
+                " status = NULL, eur_geschaetzt = NULL, cm_import_am = datetime('now'),"
+                " updated_at = datetime('now') WHERE card_id = ?",
+                (werte.get("eur"), werte.get("eur_low"), werte.get("eur_avg30"),
+                 werte.get("eur_holo"), cid))
+            if werte.get("eur") is not None:
+                con.execute("INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
+                            " ON CONFLICT(card_id, datum) DO UPDATE SET eur = excluded.eur",
+                            (cid, heute, werte["eur"]))
+            bericht["karten"] += 1
+        con.commit()
+        # Der Holo-Wert gehört wieder nur an Karten mit zweiter Ausgabe.
+        con.execute("UPDATE card_prices SET eur_holo = NULL WHERE card_id IN"
+                    " (SELECT id FROM cards WHERE NOT (COALESCE(has_normal,0) = 1"
+                    " AND (COALESCE(has_reverse,0) = 1 OR COALESCE(has_holo,0) = 1)))"
+                    " AND eur_holo IS NOT NULL")
+        con.execute("INSERT OR REPLACE INTO kv (key,value)"
+                    " VALUES ('cm_import_lauf', datetime('now'))")
+        con.commit()
+    con.close()
+    return bericht
+
+
+def _cm_nummer(text):
+    """„4/102“, „DP45“, „005“ → vergleichbare Form."""
+    t = str(text or "").strip().upper()
+    t = t.split("/")[0]
+    t = re.sub(r"[^A-Z0-9]", "", t)
+    ziffern = re.sub(r"^0+", "", re.sub(r"[^0-9]", "", t))
+    buchstaben = re.sub(r"[0-9]", "", t)
+    return buchstaben + ziffern
+
+
+@app.post("/api/admin/cm_import")
+async def admin_cm_import(request: Request, key: str = ""):
+    """Preisverzeichnis und/oder Produktkatalog von Cardmarket übernehmen.
+
+    Zwei Wege: als Datei-Upload (Felder `preise` und `katalog`) oder als Verweis auf
+    Dateien im Ordner `cardmarket/` neben der Datenbank."""
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    preise_roh = katalog_roh = None
+    art = (request.headers.get("content-type") or "")
+    if art.startswith("multipart/form-data"):
+        form = await request.form()
+        if form.get("preise") is not None and hasattr(form["preise"], "read"):
+            preise_roh = await form["preise"].read()
+        if form.get("katalog") is not None and hasattr(form["katalog"], "read"):
+            katalog_roh = await form["katalog"].read()
+    else:
+        ordner = BASE / "cardmarket"
+        for datei in sorted(ordner.glob("*")) if ordner.exists() else []:
+            name = datei.name.lower()
+            if "price" in name or "preis" in name:
+                preise_roh = datei.read_bytes()
+            elif "product" in name or "katalog" in name or "catalog" in name:
+                katalog_roh = datei.read_bytes()
+    if not preise_roh and not katalog_roh:
+        raise HTTPException(400, "Weder Preisverzeichnis noch Produktkatalog gefunden. "
+                                 "Dateien hochladen oder in den Ordner cardmarket/ legen.")
+    bericht = await run_in_threadpool(cm_import, preise_roh, katalog_roh)
+    return {"ok": True, **bericht}
+
+
+@app.get("/api/admin/cm_stand")
+def admin_cm_stand(key: str = ""):
+    """Wie weit trägt der Import? Für die Entscheidung, ob eine neue Datei nötig ist."""
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    con = get_db()
+    o = lambda sql: con.execute(sql).fetchone()[0]      # noqa: E731
+    aus = {
+        "karten": o("SELECT COUNT(*) FROM cards"),
+        "mit_produkt": o("SELECT COUNT(*) FROM card_prices WHERE cm_produkt IS NOT NULL"),
+        "produkt_aus_katalog": o("SELECT COUNT(*) FROM card_prices WHERE cm_quelle = 'katalog'"),
+        "aus_datei": o("SELECT COUNT(*) FROM card_prices WHERE cm_import_am IS NOT NULL"),
+        "letzter_import": (o("SELECT value FROM kv WHERE key='cm_import_lauf'")
+                           if o("SELECT COUNT(*) FROM kv WHERE key='cm_import_lauf'") else None),
+        "ohne_zahl": o("SELECT COUNT(*) FROM card_prices WHERE eur IS NULL AND eur_geschaetzt IS NULL"),
+    }
+    con.close()
+    return aus
 
 
 # --- Cardmarket-Produktseite ------------------------------------------------
