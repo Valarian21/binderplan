@@ -1991,10 +1991,12 @@
         <div class="aw-privat" data-i18n="aw_privat">KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.</div>
       </div>
     </div>
+    <!-- Eine Anzeige genügt: das Fächerraster, das sich füllt. Daneben standen vorher
+         noch ein Ladekreis und eine Punktereihe, dazu eine Erklärung der Zwischenschritte,
+         die niemand braucht. -->
     <div class="aw-lauf hidden" id="aw-lauf">
       <div class="aw-mini-vorschau" id="aw-lauf-grid"></div>
-      <div class="aw-spin"></div>
-      <span class="lader" style="margin-right:12px"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 30–60 Sekunden.</span>
+      <span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 60 Sekunden.</span>
     </div>
     <div class="aw-ergebnis hidden" id="aw-ergebnis">
       <div class="aw-vorschau">
@@ -2484,7 +2486,7 @@ const T = {
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
     aw_kosten_hin: 'für diese Seite · du hast {s}', aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
     aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
-    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt in mehreren Schritten (Ring um die Karte → Kontrolle → ganze Seite → Pokémon) … das dauert 1–2 Minuten.', aw_im_binder: 'im Binder',
+    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt … das dauert etwa 60 Sekunden.', aw_im_binder: 'im Binder',
     pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
     pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
     preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise vom Vortag (1× täglich neu)',
@@ -2847,7 +2849,7 @@ const T = {
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
     aw_kosten_hin: 'for this page · you have {s}', aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
     aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
-    s_artwork: 'Open artwork page', aw_laeuft: 'The AI paints in several steps (ring around the card → review → whole page → Pokémon) … this takes 1–2 minutes.', aw_im_binder: 'in binder',
+    s_artwork: 'Open artwork page', aw_laeuft: 'The AI is painting … this takes about 60 seconds.', aw_im_binder: 'in binder',
     pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
     pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
     preise_live: 'Refresh prices any time', preise_tag: 'Prices from the previous day (refreshed once daily)',
@@ -8479,7 +8481,7 @@ async function detailOeffnen(idOrIdx) {
         <div class="f-lbl">${t('kartensprache')}</div>
         <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSpracheSetzen('${sp}')">${sp.toUpperCase()}</button>`).join('')}</div>
         <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16">
+          <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
           <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
         </div>
@@ -8562,30 +8564,44 @@ function detailPreis(k, variante) {
 }
 
 const CM_SPRACHE_NR = { de: 3, en: 1, fr: 2, es: 4, it: 5, jp: 7 };
+// Cardmarkets Mindestzustand. Wer einen Posten in GD führt, will keine Near-Mint-Angebote.
+const CM_ZUSTAND_NR = { M: 1, NM: 2, EX: 3, GD: 4, LP: 5, PL: 6, PO: 7 };
 
 /** Die Adresse für den Cardmarket-Link. Kennt der Server die Produktseite, steht sie
  *  sofort da; sonst zunächst die Namenssuche als Rückfall. */
 function cardmarketAdresse(k) {
   const loc = LANG === 'en' ? 'en' : 'de';
   if (k && k.cm_url) {
-    const nr = CM_SPRACHE_NR[detailSprache || ''];
-    return 'https://www.cardmarket.com/' + loc + k.cm_url + (nr ? '?language=' + nr : '');
+    const teile = [];
+    const sp = CM_SPRACHE_NR[detailSprache || ''];
+    if (sp) teile.push('language=' + sp);
+    // Der Zustand aus dem Feld im Dialog — leer lassen heißt: alle Angebote.
+    const z = CM_ZUSTAND_NR[(($('detail-zustand') || {}).value || '').trim().toUpperCase().slice(0, 2)];
+    if (z) teile.push('minCondition=' + z);
+    return 'https://www.cardmarket.com/' + loc + k.cm_url + (teile.length ? '?' + teile.join('&') : '');
   }
-  const name = ((k && (k.name_en || k.name)) || '').replace(/ · .*/, '');
+  // Rückfall: Suche mit Suffix statt Sammelnummer — „Empoleon LV.X“ findet Cardmarket,
+  // „Empoleon DP11“ nicht.
+  let name = ((k && (k.name_en || k.name)) || '').replace(/ · .*/, '');
+  if (k && k.stage === 'LEVEL-UP' && !/lv/i.test(name)) name += ' LV.X';
   return 'https://www.cardmarket.com/' + loc + '/Pokemon/Products/Search?searchString='
-    + encodeURIComponent(name);
+    + encodeURIComponent(name.trim());
+}
+
+function cardmarketLinkAuffrischen() {
+  const a = $('detail-cm');
+  if (a && detailKarte) a.href = cardmarketAdresse(detailKarte);
 }
 
 /** Ist die Produktseite noch nicht bekannt, im Hintergrund auflösen und den Link
  *  austauschen — der Nutzer merkt davon nichts, außer dass der Link stimmt. */
 async function cardmarketNachtragen(id) {
   try {
-    const d = await api(`api/cards/${encodeURIComponent(id)}/cardmarket?sprache=${detailSprache || ''}&ui=${LANG}`);
+    const z = (($('detail-zustand') || {}).value || '').trim();
+    const d = await api(`api/cards/${encodeURIComponent(id)}/cardmarket`
+      + `?sprache=${detailSprache || ''}&ui=${LANG}&zustand=${encodeURIComponent(z)}`);
     const a = $('detail-cm');
-    if (a && d.url && detailKarte && detailKarte.id === id) {
-      a.href = d.url;
-      detailKarte.cm_url = detailKarte.cm_url || true;
-    }
+    if (a && d.url && d.genau && detailKarte && detailKarte.id === id) a.href = d.url;
   } catch (e) { /* Rückfall bleibt die Namenssuche */ }
 }
 
@@ -8594,8 +8610,7 @@ function detailSpracheSetzen(sp) {
   detailSprache = sp;
   document.querySelectorAll('#detail-sprache .chip').forEach((c) =>
     c.classList.toggle('on', c.textContent.trim() === sp.toUpperCase()));
-  const a = $('detail-cm');
-  if (a && detailKarte) a.href = cardmarketAdresse(detailKarte);
+  cardmarketLinkAuffrischen();
 }
 
 function detailVarianteSetzen(v) {

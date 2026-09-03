@@ -2062,6 +2062,120 @@ def admin_cm_stand(key: str = ""):
 # `card_prices.cm_url`. Dasselbe Verfahren nutzt das Empire-Dashboard für den TCG-Bereich.
 CM_REDIRECT = "https://prices.pokemontcg.io/cardmarket/{cid}"
 CM_SPRACHE = {"de": 3, "en": 1, "fr": 2, "es": 4, "it": 5, "jp": 7, "ja": 7, "kr": 10}
+# Cardmarkets Mindestzustand als Filter. Wer einen Posten in GD führt, will keine
+# Near-Mint-Angebote sehen — und umgekehrt.
+CM_ZUSTAND = {"M": 1, "NM": 2, "EX": 3, "GD": 4, "LP": 5, "PL": 6, "PO": 7}
+
+# Sets, deren Adressmuster von Hand bekannt ist. Nötig für Sets, die pokemontcg.io nicht
+# führt und für die deshalb keine einzige Adresse aufgelöst werden kann — die
+# DP-Black-Star-Promos etwa. Form: Set-Kennung → (Pfadname, Kürzel vor der Nummer).
+CM_MUSTER_HAND = {
+    "dpp": ("DP-Black-Star-Promos", "DPPR"),
+}
+# Ab dieser Trefferquote gegen die bereits aufgelösten Adressen darf ein Muster benutzt
+# werden. Darunter ist Raten schlechter als die Suche: ein falscher Direktlink führt auf
+# eine Fehlerseite, die Suche wenigstens in die Nähe.
+CM_MUSTER_SCHWELLE = 0.9
+
+
+def _cm_nummer_slug(local_id):
+    return re.sub(r"[^A-Za-z0-9]", "", str(local_id or "").split("/")[0]).upper()
+
+
+def _cm_name_slug(name, stage, suffix, gold=False):
+    """Den Namensteil der Cardmarket-Adresse bauen.
+
+    Cardmarket schreibt Sonderzeichen aus („Mudkip ☆" wird mal `Mudkip`, mal
+    `Mudkip-Star`), deshalb liefert `_cm_muster_treffer` beide Schreibweisen und je Set
+    wird gemessen, welche stimmt."""
+    n = str(name or "")
+    for zeichen, ersatz in (("☆", " Star"), ("★", " Star"), ("δ", " Delta Species")):
+        n = n.replace(zeichen, ersatz)
+    if suffix and suffix.lower() not in n.lower():
+        n += " " + suffix
+    n = (n.replace("&", "and").replace("é", "e").replace("'", "")
+          .replace(":", "").replace("LV.X", "LVX").replace("Lv.X", "LVX"))
+    n = re.sub(r"[^A-Za-z0-9 -]", " ", n)
+    n = re.sub(r"\s+", " ", n).strip()
+    if gold:
+        n = re.sub(r"\bStar\b", "Gold Star", n)
+    teile = [t for t in re.split(r"[ -]+", n) if t]
+    if (stage or "") == "LEVEL-UP" and "LVX" not in teile:
+        teile.append("LVX")
+    return "-".join(teile)
+
+
+def _cm_pfad_bauen(slug, code, name, stage, suffix, local_id, gold=False):
+    return (f"/Pokemon/Products/Singles/{slug}/"
+            f"{_cm_name_slug(name, stage, suffix, gold)}-{code}{_cm_nummer_slug(local_id)}")
+
+
+def cm_muster_lernen():
+    """Aus den bereits aufgelösten Adressen je Set Pfadname und Kürzel ableiten — und
+    nur die Sets freigeben, bei denen das Ergebnis nachweislich stimmt.
+
+    Gegen 15.057 bekannte Adressen getestet: über alle Sets hinweg trifft das Verfahren
+    nur zwei Drittel, je Set aber entweder fast immer oder fast nie. Deshalb wird je Set
+    gemessen und nur bei mindestens 90 Prozent gebaut."""
+    con = get_db()
+    reihen = list(con.execute(
+        "SELECT c.set_id, c.name_en, c.local_id, c.stage, c.suffix, p.cm_url"
+        " FROM card_prices p JOIN cards c ON c.id = p.card_id WHERE p.cm_url IS NOT NULL"))
+    nach_set = {}
+    for r in reihen:
+        teile = r["cm_url"].strip("/").split("/")
+        if len(teile) < 5:
+            continue
+        nach_set.setdefault(r["set_id"], []).append((teile[-2], teile[-1], r))
+    muster = {}
+    for sid, liste in nach_set.items():
+        pfade = {}
+        for slug, _letzter, _r in liste:
+            pfade[slug] = pfade.get(slug, 0) + 1
+        slug = max(pfade, key=pfade.get)
+        # Kürzel aus dem Rest hinter dem Namen und vor der Nummer
+        kuerzel = {}
+        for _slug, letzter, r in liste:
+            nr = _cm_nummer_slug(r["local_id"])
+            if not nr or not letzter.upper().endswith(nr):
+                continue
+            rest = letzter[:len(letzter) - len(nr)]
+            for gold in (False, True):
+                ns = _cm_name_slug(r["name_en"], r["stage"], r["suffix"], gold)
+                if rest.lower().startswith(ns.lower() + "-"):
+                    k = (rest[len(ns) + 1:].rstrip("-"), gold)
+                    kuerzel[k] = kuerzel.get(k, 0) + 1
+                    break
+        if not kuerzel:
+            continue
+        code, gold = max(kuerzel, key=kuerzel.get)
+        treffer = sum(1 for _s, _l, r in liste
+                      if _cm_pfad_bauen(slug, code, r["name_en"], r["stage"], r["suffix"],
+                                        r["local_id"], gold).lower() == r["cm_url"].lower())
+        if treffer / len(liste) >= CM_MUSTER_SCHWELLE:
+            muster[sid] = (slug, code, gold, round(treffer / len(liste), 3), len(liste))
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_muster', ?)",
+                (json.dumps({k: v[:3] for k, v in muster.items()}),))
+    con.commit()
+    con.close()
+    return muster
+
+
+def _cm_muster_laden(con):
+    row = con.execute("SELECT value FROM kv WHERE key='cm_muster'").fetchone()
+    aus = {sid: (v[0], v[1], v[2]) for sid, v in json.loads(row["value"]).items()} if row else {}
+    for sid, (slug, code) in CM_MUSTER_HAND.items():
+        aus.setdefault(sid, (slug, code, False))
+    return aus
+
+
+@app.post("/api/admin/cm_muster")
+def admin_cm_muster(key: str = ""):
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    m = cm_muster_lernen()
+    return {"ok": True, "sets": len(m),
+            "beispiele": {k: v for k, v in list(m.items())[:8]}}
 
 
 def _cm_url_aufloesen(client, card_id, ptc_id=None):
@@ -2082,41 +2196,71 @@ def _cm_url_aufloesen(client, card_id, ptc_id=None):
     return None
 
 
-@app.get("/api/cards/{card_id}/cardmarket")
-def card_cardmarket(card_id: str, sprache: str = "", ui: str = "de"):
-    """Die Cardmarket-Seite genau dieser Karte — aufgelöst und danach gespeichert.
+def cm_adresse(card_id, sprache="", ui="de", zustand="", con=None, aufloesen=True):
+    """Die Cardmarket-Seite genau dieser Karte.
 
-    Ohne Treffer bleibt die Namenssuche als Rückfall; sie ist schlecht, aber besser als
-    ein toter Link."""
-    con = get_db()
-    row = con.execute("SELECT cm_url, ptc_id FROM card_prices WHERE card_id = ?",
-                      (card_id,)).fetchone()
-    karte = con.execute("SELECT name_en, name_de, local_id FROM cards WHERE id = ?",
-                        (card_id,)).fetchone()
-    con.close()
-    if not karte:
-        raise HTTPException(404, "Karte unbekannt")
-    url = row["cm_url"] if row and "cm_url" in row.keys() else None
-    if not url:
-        ptc = row["ptc_id"] if row and "ptc_id" in row.keys() else None
-        with httpx.Client(timeout=12, headers=UA) as client:
-            url = _cm_url_aufloesen(client, card_id, ptc)
-        if url:
-            con = get_db()
-            con.execute("INSERT INTO card_prices (card_id, cm_url) VALUES (?,?)"
-                        " ON CONFLICT(card_id) DO UPDATE SET cm_url = excluded.cm_url",
-                        (card_id, url))
-            con.commit()
+    Drei Stufen, in dieser Reihenfolge: die aufgelöste Adresse aus der Datenbank, dann
+    das gemessene Adressmuster des Sets, zuletzt die Suche. Sprache und Mindestzustand
+    hängen als Filter dran, wenn sie bekannt sind — wer einen Posten in GD führt, will
+    keine Near-Mint-Angebote sehen."""
+    eigene = con is None
+    con = con or get_db()
+    try:
+        row = con.execute("SELECT cm_url, ptc_id FROM card_prices WHERE card_id = ?",
+                          (card_id,)).fetchone()
+        karte = con.execute("SELECT name_en, name_de, local_id, set_id, stage, suffix"
+                            " FROM cards WHERE id = ?", (card_id,)).fetchone()
+        if not karte:
+            raise HTTPException(404, "Karte unbekannt")
+        url = row["cm_url"] if row and "cm_url" in row.keys() else None
+        genau = bool(url)
+        if not url and aufloesen:
+            ptc = row["ptc_id"] if row and "ptc_id" in row.keys() else None
+            with httpx.Client(timeout=12, headers=UA) as client:
+                url = _cm_url_aufloesen(client, card_id, ptc)
+            if url:
+                genau = True
+                con.execute("INSERT INTO card_prices (card_id, cm_url) VALUES (?,?)"
+                            " ON CONFLICT(card_id) DO UPDATE SET cm_url = excluded.cm_url",
+                            (card_id, url))
+                con.commit()
+        if not url:
+            # Zweite Stufe: das Muster des Sets, aber nur wenn es gemessen wurde.
+            muster = _cm_muster_laden(con).get(karte["set_id"])
+            if muster:
+                slug, code, gold = muster
+                url = _cm_pfad_bauen(slug, code, karte["name_en"] or karte["name_de"],
+                                     karte["stage"], karte["suffix"], karte["local_id"], gold)
+                genau = True
+    finally:
+        if eigene:
             con.close()
+
     loc = "en" if (ui or "").lower() == "en" else "de"
-    if not url:
-        name = karte["name_en"] or karte["name_de"] or ""
-        return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?searchString="
-                       + quote(f"{name} {karte['local_id'] or ''}".strip()), "genau": False}
-    voll = url if url.startswith("http") else f"https://www.cardmarket.com/{loc}{url}"
-    # Sprachfilter anhängen: Binderplan weiß, in welcher Sprache die Karte gesucht wird.
+    filter_ = []
     nr = CM_SPRACHE.get((sprache or "").lower())
-    return {"url": voll + (f"?language={nr}" if nr else ""), "genau": True}
+    if nr:
+        filter_.append(f"language={nr}")
+    zn = CM_ZUSTAND.get(str(zustand or "").strip().upper()[:2])
+    if zn:
+        filter_.append(f"minCondition={zn}")
+    if not url:
+        # Rückfall: die Suche. Mit Suffix statt Sammelnummer — „Empoleon LV.X“ findet
+        # Cardmarket, „Empoleon DP11“ nicht.
+        name = karte["name_en"] or karte["name_de"] or ""
+        if (karte["stage"] or "") == "LEVEL-UP" and "lv" not in name.lower():
+            name += " LV.X"
+        elif karte["suffix"] and karte["suffix"].lower() not in name.lower():
+            name += " " + karte["suffix"]
+        return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?searchString="
+                       + quote(name.strip()), "genau": False}
+    voll = url if url.startswith("http") else f"https://www.cardmarket.com/{loc}{url}"
+    return {"url": voll + ("?" + "&".join(filter_) if filter_ else ""), "genau": genau}
+
+
+@app.get("/api/cards/{card_id}/cardmarket")
+def card_cardmarket(card_id: str, sprache: str = "", ui: str = "de", zustand: str = ""):
+    return cm_adresse(card_id, sprache, ui, zustand)
 
 
 @app.post("/api/admin/sets_nachladen")
@@ -2983,8 +3127,20 @@ def card_detail(card_id: str):
     # Die fertige Cardmarket-Adresse gleich mitgeben, damit der Link im Dialog ein echter
     # Link sein kann. Wird er erst beim Klick aufgelöst, blockt der Browser das neue Fenster —
     # es entsteht nach einem await und gilt dann nicht mehr als Klick des Nutzers.
-    k["cm_url"] = (pr["cm_url"] if pr and "cm_url" in pr.keys() else None)
-    k["cm_offen"] = bool(k["cm_url"]) is False
+    # Die fertige Adresse gleich mitgeben — auch die aus dem Muster gebaute, damit der
+    # Link im Dialog von Anfang an der richtige ist und nicht erst nachgetragen wird.
+    # Geliefert wird der Pfad ab „/Pokemon/", nicht die volle Adresse: die Oberfläche
+    # setzt Sprachraum, Kartensprache und Mindestzustand selbst davor und dahinter.
+    k["cm_url"] = None
+    try:
+        muster = _cm_muster_laden(con).get(r["set_id"])
+        pfad = pr["cm_url"] if pr and "cm_url" in pr.keys() else None
+        if not pfad and muster:
+            pfad = _cm_pfad_bauen(muster[0], muster[1], r["name_en"] or r["name_de"],
+                                  r["stage"], r["suffix"], r["local_id"], muster[2])
+        k["cm_url"] = pfad
+    except Exception:
+        pass
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
         "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
     andere = []
