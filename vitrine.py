@@ -640,11 +640,19 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         return {"ok": True, "bezahlt": bezahlt, "artwork": artwork_id, "layout": r["layout"],
                 "anker": json.loads(r["anker"] or "{}"), "titel": r["titel"] or "", "stil": r["stil"]}
 
+    def _konto_frisch(user_id):
+        """Nach dem Abbuchen den Stand neu lesen — der Request-Schnappschuss ist veraltet
+        und die Oberfläche zeigte sonst noch das Guthaben von vor dem Kauf."""
+        con = get_db()
+        row = con.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        con.close()
+        return _dep["abo"].konto_info(dict(row)) if row else None
+
     @app.post("/api/vitrine/artwork/{artwork_id}/uebernehmen")
     def vitrine_artwork_uebernehmen(artwork_id: str, request: Request):
         user = require_user(request)
         out = _uebernehmen(user, artwork_id)
-        out["konto"] = _dep["abo"].konto_info(user)
+        out["konto"] = _konto_frisch(user["id"])
         return out
 
     @app.get("/api/vitrine/binder/{binder_id}/kosten")
@@ -704,7 +712,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             gekauft.append(aid)
             bezahlt += out["bezahlt"]
         return {"ok": True, "seiten": gekauft, "bezahlt": bezahlt,
-                "konto": _dep["abo"].konto_info(user)}
+                "konto": _konto_frisch(user["id"])}
 
     @app.post("/api/vitrine/meldung")
     async def meldung(request: Request):

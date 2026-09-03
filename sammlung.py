@@ -76,13 +76,25 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.close()
         return {r["card_id"]: r["n"] for r in reihen if r["n"] > 0}
 
-    def _geplant(user_id):
-        """→ {card_id: wie oft in Bindern geplant}. Grundlage für „fehlt mir noch"."""
+    def _geplant(user_id, nur_wants=True):
+        """→ {card_id: wie oft in Bindern geplant}. Grundlage für „fehlt mir noch".
+
+        Nicht jeder Binder ist eine Einkaufsliste. Man legt einen an, um etwas
+        auszuprobieren, oder baut Kunstseiten für andere — solche Karten sollen nicht als
+        „fehlt mir noch" auftauchen. Jeder Binder trägt deshalb `options.wants`; ohne
+        Angabe zählt er wie bisher mit."""
         con = get_db()
-        reihen = con.execute("SELECT items FROM binders WHERE user_id = ?", (user_id,)).fetchall()
+        reihen = con.execute("SELECT items, options FROM binders WHERE user_id = ?",
+                             (user_id,)).fetchall()
         con.close()
         aus = {}
         for r in reihen:
+            if nur_wants:
+                try:
+                    if json.loads(r["options"] or "{}").get("wants") is False:
+                        continue
+                except Exception:
+                    pass
             try:
                 items = json.loads(r["items"] or "[]")
             except Exception:
@@ -101,11 +113,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         ids = list(card_ids)
         for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
             marken = ",".join("?" * len(teil))
-            for r in con.execute("SELECT card_id, eur, eur_holo, eur_low FROM card_prices"
+            for r in con.execute("SELECT card_id, COALESCE(eur, eur_geschaetzt) eur,"
+                                 " eur_holo, eur_low, status FROM card_prices"
                                  f" WHERE card_id IN ({marken})", teil):
                 if r["eur"]:
                     aus[r["card_id"]] = {"eur": r["eur"], "eur_holo": r["eur_holo"],
-                                         "eur_low": r["eur_low"]}
+                                         "eur_low": r["eur_low"], "quelle": r["status"]}
         con.close()
         return aus
 
@@ -131,7 +144,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         if not besitz:
             return {"karten": [], "gesamt": 0}
 
-        geplant = _geplant(user["id"]) if nur in ("ohne_binder", "") else {}
+        # „In keinem Binder" fragt nach dem Plan überhaupt, nicht nach der Kaufliste.
+        geplant = _geplant(user["id"], nur_wants=(nur != "ohne_binder")) if nur in ("ohne_binder", "") else {}
         ids = set(besitz)
         if nur == "doppelt":
             ids = {c for c in ids if besitz[c] >= 2}
@@ -362,6 +376,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                 # _preise liefert seit der Zustandsbewertung ein Objekt je Karte.
                 pr = preise.get(r["id"])
                 k["eur"] = pr["eur"] if pr else None
+                k["eur_low"] = pr.get("eur_low") if pr else None
                 aus.append(k)
         con.close()
         aus.sort(key=lambda k: -(k["eur"] or 0))

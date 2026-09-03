@@ -19,6 +19,7 @@ import sqlite3
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
 from pathlib import Path
 
 import httpx
@@ -161,6 +162,13 @@ SHINY_RARITIES = {
 # 3. Poké-Ball- und Master-Ball-Muster gehören zu genau zwei Sets. Sie wurden vorher bei
 #    jeder der 33.732 Karten zur Wahl gestellt, auch beim Grundset-Glurak von 1999.
 REVERSE_AB = "2002-05-24"          # Legendary Collection, das erste Set mit Reverse Holos
+# Promo-Reihen laufen über Jahre; ihr Erscheinungsdatum ist das der ersten Karte. Die
+# Wizards Black Star Promos etwa stehen mit 1999 in der Datenbank, ihre Nummern 33 bis 53
+# kamen 2002 und 2003. Für solche Sets darf die Datumsregel nicht greifen — sonst nimmt sie
+# echten Karten eine Ausprägung weg.
+PROMO_SETS = {"basep", "np", "bwp", "dpp", "hgssp", "xyp", "smp", "swshp", "svp", "sv-p",
+              "colp", "ecardp", "miscp", "bog", "si1", "pop1", "pop2", "pop3", "pop4",
+              "pop5", "pop6", "pop7", "pop8", "pop9"}
 
 # Sets mit Sondermuster statt eigener Karten-IDs. Kommt ein neues dazu, gehört es hierhin
 # — und nur hierhin: Kartendetail, Sammlung und Trefferkachel lesen dieselbe Liste.
@@ -169,22 +177,37 @@ MUSTER_SETS = {
     "sv08.5": ["pokeball", "masterball"],      # Prismatische Entwicklungen
 }
 
-# TCGplayer-Schlüssel → unsere Variante
+# TCGplayer-Schlüssel → unsere Variante. Beide Schreibweisen: TCGdex trennt mit
+# Bindestrich, pokemontcg.io schreibt zusammen. Das hat einmal 11.000 Reverse Holos
+# gekostet — die Zweitquelle schrieb `reverseHolofoil`, die Tabelle kannte nur
+# `reverse-holofoil`, und die Variante galt als nicht gehandelt.
 TP_VARIANTE = {
-    "normal": "normal", "unlimited": "normal", "unlimited-holofoil": "holo",
-    "holofoil": "holo", "reverse-holofoil": "reverse",
-    "1st-edition": "first", "1st-edition-normal": "first", "1st-edition-holofoil": "first",
+    "normal": "normal", "unlimited": "normal",
+    "holofoil": "holo", "unlimited-holofoil": "holo", "unlimitedholofoil": "holo",
+    "reverse-holofoil": "reverse", "reverseholofoil": "reverse",
+    "1st-edition": "first", "1stedition": "first",
+    "1st-edition-normal": "first", "1steditionnormal": "first",
+    "1st-edition-holofoil": "first", "1steditionholofoil": "first",
 }
 
 
 def varianten_aus_tp(keys):
-    """→ {normal, reverse, holo, first} aus den gehandelten TCGplayer-Varianten."""
+    """→ ({normal, reverse, holo, first}, alles_bekannt).
+
+    Das zweite Ergebnis ist die Sicherung: taucht ein Schlüssel auf, den diese Tabelle
+    nicht kennt, wird die Karte nicht angefasst. Sonst löscht eine neue Schreibweise der
+    Quelle stillschweigend Ausprägungen — genau das ist am 03.09. passiert."""
     out = {"normal": False, "reverse": False, "holo": False, "first": False}
+    bekannt = True
     for k in keys or []:
-        v = TP_VARIANTE.get(k)
+        if not k:
+            continue
+        v = TP_VARIANTE.get(k.strip().lower())
         if v:
             out[v] = True
-    return out
+        else:
+            bekannt = False
+    return out, bekannt
 
 
 def muster_fuer_set(set_id):
@@ -440,6 +463,14 @@ def init_db():
                    "ALTER TABLE card_prices ADD COLUMN status TEXT",
                    "ALTER TABLE card_prices ADD COLUMN kurs REAL",
                    "ALTER TABLE card_prices ADD COLUMN eur_geschaetzt REAL",
+                   # Die aufgelöste Cardmarket-Produktseite. Vorher führte der Link im
+                   # Kartendetail auf eine Namenssuche — bei „Guardevoir" 60 Treffer,
+                   # von denen keiner die gemeinte Karte war.
+                   "ALTER TABLE card_prices ADD COLUMN cm_url TEXT",
+                   # Die Kennung derselben Karte bei pokemontcg.io. Sie weicht bei einigen
+                   # Sets ab (sv03.5-1 gegen sv3pt5-1) und ist der Schlüssel zur
+                   # Cardmarket-Weiterleitung.
+                   "ALTER TABLE card_prices ADD COLUMN ptc_id TEXT",
                    "ALTER TABLE price_history ADD COLUMN usd REAL"):
         try:
             con.execute(befehl)
@@ -1335,29 +1366,39 @@ def _mehrdeutige_produkte(reihen):
 def _varianten_schreiben(con, reihen):
     """Die gehandelten TCGplayer-Varianten in `cards` übernehmen.
 
-    Vereinigung, keine Ersetzung: eine Ausprägung gilt, wenn der Katalog *oder* die Börse
-    sie kennt. Die Börse kennt fast immer mehr (628 fehlende Reverse Holos in einer
-    Stichprobe von 1.544 Karten), der Katalog gelegentlich Sonderdrucke ohne US-Handel.
-    Gestrichen wird nur, was unmöglich ist: Reverse Holos vor Legendary Collection.
+    **Ersetzen, nicht vereinigen.** Die erste Fassung hat vereinigt — eine Ausprägung galt,
+    wenn der Katalog *oder* die Börse sie kannte. Das konnte nur hinzufügen und nie
+    berichtigen, und genau die falschen Behauptungen des Katalogs blieben stehen: Guardevoir
+    LV.X aus Rätselhafte Wunder stand mit `normal=1` da, obwohl es die Karte nur als Lv.X
+    gibt, und trug deshalb neben ihrem Preis von 42,50 € noch einen „Holo-Trend" von
+    10,09 €, der zu nichts gehörte.
 
-    Sammlungseinträge werden dabei nie angefasst — wer eine Ausprägung erfasst hat, behält
-    sie, sie wird nur nicht mehr neu angeboten."""
+    Wo TCGplayer eine Antwort hat, gilt sie: was dort gehandelt wird, gibt es. Der Katalog
+    darf nur noch ergänzen, was die Börse gar nicht führen kann — die Erstauflage. Karten
+    ohne TCGplayer-Schlüssel (japanische, sehr alte) bleiben unangetastet.
+
+    Sammlungseinträge werden nie angefasst — wer eine Ausprägung erfasst hat, behält sie,
+    sie wird nur nicht mehr neu angeboten."""
     geaendert = 0
     for e in reihen:
         if not e["ok"] or not e.get("tp_keys"):
             continue
-        row = con.execute("SELECT has_normal, has_reverse, has_holo, has_first, release_date"
-                          " FROM cards WHERE id = ?", (e["id"],)).fetchone()
+        row = con.execute("SELECT has_normal, has_reverse, has_holo, has_first, release_date,"
+                          " set_id FROM cards WHERE id = ?", (e["id"],)).fetchone()
         if not row:
             continue
-        tp = varianten_aus_tp(e["tp_keys"])
+        tp, bekannt = varianten_aus_tp(e["tp_keys"])
+        if not bekannt or not any(tp.values()):
+            continue          # unbekannte oder leere Schlüssel: lieber gar nichts ändern
         neu = {
-            "normal": 1 if (row["has_normal"] or tp["normal"]) else 0,
-            "reverse": 1 if (row["has_reverse"] or tp["reverse"]) else 0,
-            "holo": 1 if (row["has_holo"] or tp["holo"]) else 0,
+            "normal": 1 if tp["normal"] else 0,
+            "reverse": 1 if tp["reverse"] else 0,
+            "holo": 1 if tp["holo"] else 0,
+            # Die Erstauflage ist der einzige Fall, in dem der Katalog mehr weiß: TCGplayer
+            # führt sie nur, wenn gerade jemand eine anbietet.
             "first": 1 if (row["has_first"] or tp["first"]) else 0,
         }
-        if (row["release_date"] or "9999") < REVERSE_AB:
+        if (row["release_date"] or "9999") < REVERSE_AB and row["set_id"] not in PROMO_SETS:
             neu["reverse"] = 0
         if (neu["normal"], neu["reverse"], neu["holo"], neu["first"]) == (
                 row["has_normal"], row["has_reverse"], row["has_holo"], row["has_first"]):
@@ -1369,8 +1410,13 @@ def _varianten_schreiben(con, reihen):
     return geaendert
 
 
-# Ab diesem Abstand vom Median-Wechselkurs stimmt mindestens eine der beiden Börsen nicht.
-KURS_UNSICHER = 3.0          # Zahl weiter zeigen, aber mit Warnung
+# Abstand vom Median-Wechselkurs. Ein großer Abstand hat zwei mögliche Ursachen, und von
+# außen sind sie nicht zu trennen: ein echter Marktunterschied (alte Karten gehen in den USA
+# regelmäßig zum Mehrfachen weg — Guardevoir LV.X steht bei 42,50 € und 207,91 $) oder eine
+# falsche Produktzuordnung. Die Schwelle lag zuerst bei 3 und traf damit vor allem den
+# ersten Fall; die Oberfläche nennt den Abstand deshalb nur noch als Zahl, statt den Preis
+# in Frage zu stellen. Erst ab dem Zehnfachen ist ein Marktunterschied nicht mehr plausibel.
+KURS_UNSICHER = 5.0          # Zahl zeigen, Abstand danebenschreiben
 KURS_GESPERRT = 10.0         # gar keine Zahl mehr
 
 
@@ -1390,7 +1436,12 @@ def _kurs_pruefen(con):
     werte = sorted(v for _, v in paare)
     median = werte[len(werte) // 2]
 
-    con.execute("UPDATE card_prices SET status = NULL, kurs = NULL, eur_geschaetzt = NULL")
+    # Nur die eigenen Urteile zurücknehmen. Der erste Entwurf löschte auch die Zahlen der
+    # Zweitquelle mit — die stammen aus einem anderen Lauf und gehören dieser Prüfung nicht.
+    con.execute("UPDATE card_prices SET status = NULL, kurs = NULL"
+                " WHERE status IS NULL OR status <> 'zweitquelle'")
+    con.execute("UPDATE card_prices SET eur_geschaetzt = NULL"
+                " WHERE eur_geschaetzt IS NOT NULL AND COALESCE(status,'') <> 'zweitquelle'")
     zaehler = {}
 
     def setze(cid, status, kurs=None, geschaetzt=None):
@@ -1408,7 +1459,8 @@ def _kurs_pruefen(con):
     # Karten ohne Europreis, aber mit amerikanischem: umgerechnet ist besser als leer,
     # solange danebensteht, dass es eine Umrechnung ist.
     for r in con.execute("SELECT card_id, usd FROM card_prices"
-                         " WHERE eur IS NULL AND usd > 0").fetchall():
+                         " WHERE eur IS NULL AND usd > 0"
+                         " AND COALESCE(status,'') <> 'zweitquelle'").fetchall():
         setze(r["card_id"], "geschaetzt", round(median, 2), round(r["usd"] / median, 2))
     return round(median, 4), zaehler
 
@@ -1456,16 +1508,20 @@ def _preishistorie_job():
         print(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
         return
 
+    # Erst die Ausprägungen berichtigen, dann entscheiden, ob es überhaupt eine zweite
+    # Ausgabe gibt. Die frühere Reihenfolge las den alten Stand und schob den falschen
+    # Holo-Preis noch einen Lauf weiter.
+    con = get_db()
+    var_neu = _varianten_schreiben(con, ergebnisse)
+    con.commit()
+
     # Cardmarket führt neben dem Trend eine zweite Reihe für die Reverse-/Holo-Ausgabe.
     # Sie gehört zu einer *zweiten* Ausgabe derselben Karte. Gibt es die nicht — weil die
     # Karte nur als Holo existiert (Base-Set-Glurak, jede LV.X) oder nur als Normaldruck —,
-    # gehört diese Zahl zu nichts. Die alte Bedingung prüfte nur den ersten Fall und ließ
-    # den Wert an 6.903 Karten hängen, die weder Holo noch Reverse haben.
-    con = get_db()
+    # gehört diese Zahl zu nichts.
     ohne_zweite = {r["id"] for r in con.execute(
         "SELECT id FROM cards WHERE NOT (COALESCE(has_normal,0) = 1"
         " AND (COALESCE(has_reverse,0) = 1 OR COALESCE(has_holo,0) = 1))")}
-    con.close()
     for e in ergebnisse:
         if e["id"] in ohne_zweite:
             e["eur_holo"] = None
@@ -1476,10 +1532,13 @@ def _preishistorie_job():
         if e["id"] in mehrdeutig:
             e["eur"] = None
             e["eur_holo"] = None
+            # Gehört das Produkt nicht dieser Karte, gehört auch sein Tiefstpreis nicht
+            # dazu. Vorher stand bei solchen Karten „ab 0,50 €" ohne Trend darüber.
+            sp = e.get("spanne") or {}
+            sp["eur_low"] = None
+            sp["eur_avg30"] = None
 
-    con = get_db()
     geschrieben = _preis_schreiben(con, ergebnisse)
-    var_neu = _varianten_schreiben(con, ergebnisse)
     con.commit()
     kurs, urteile = _kurs_pruefen(con)
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
@@ -1510,7 +1569,7 @@ def _preishistorie_job():
 # zwei Monate alt. Sie landen deshalb in `eur_geschaetzt` mit dem Vermerk „zweitquelle“ und
 # nie in `eur` oder in der Preishistorie.
 PTC_SETS = "https://api.pokemontcg.io/v2/sets?pageSize=250&select=id,name,releaseDate,total"
-PTC_KARTEN = "https://api.pokemontcg.io/v2/cards?q=set.id:{sid}&pageSize=250&select=id,cardmarket,tcgplayer"
+PTC_KARTEN = "https://api.pokemontcg.io/v2/cards?q=set.id:{sid}&pageSize=250&select=id,number,cardmarket,tcgplayer"
 
 
 def _ptc_set_schluessel(sid, name, datum):
@@ -1553,10 +1612,18 @@ def _ptcgio_job(nur_set=None):
         print("Zweitquelle übersprungen: PTCGIO_KEY fehlt")
         return 0
     con = get_db()
+    merker = con.execute("SELECT value FROM kv WHERE key='preis_kurs'").fetchone()
+    try:
+        kurs = float(merker["value"]) if merker else None
+    except Exception:
+        kurs = None
     offen = {}
+    # Karten ohne Europreis brauchen die Zweitquelle; Karten ohne `ptc_id` brauchen sie für
+    # den Cardmarket-Direktlink. Beides kommt aus derselben Antwort, also in einem Durchgang.
     for r in con.execute(
             "SELECT c.id, c.set_id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
-            " WHERE COALESCE(c.region,'intl') = 'intl' AND (p.card_id IS NULL OR p.eur IS NULL)"):
+            " WHERE COALESCE(c.region,'intl') = 'intl'"
+            " AND (p.card_id IS NULL OR p.eur IS NULL OR p.ptc_id IS NULL)"):
         offen.setdefault(r["set_id"], set()).add(r["id"])
     if nur_set:
         offen = {k: v for k, v in offen.items() if k == nur_set}
@@ -1574,28 +1641,49 @@ def _ptcgio_job(nur_set=None):
                 daten = _ptc_get(client, PTC_KARTEN.format(sid=ziel)).get("data") or []
             except Exception:
                 continue
+            # Die Kennungen weichen bei manchen Sets ab; die Karte wird über die Nummer
+            # zugeordnet, nicht über die volle Kennung.
+            nach_nr = {}
+            for x in ids:
+                nach_nr[x.rsplit("-", 1)[-1].lstrip("0").lower()] = x
             for c in daten:
-                cid = c.get("id")
-                if cid not in ids:
+                cid_ptc = c.get("id") or ""
+                cid = cid_ptc if cid_ptc in ids else nach_nr.get(
+                    cid_ptc.rsplit("-", 1)[-1].lstrip("0").lower())
+                if not cid:
                     continue
                 cm = ((c.get("cardmarket") or {}).get("prices") or {})
                 tp = ((c.get("tcgplayer") or {}).get("prices") or {})
-                wert = None
+                wert = tief = None
                 for k in ("trendPrice", "averageSellPrice", "avg30", "lowPrice"):
                     if cm.get(k):
                         wert = round(float(cm[k]), 2); break
+                if cm.get("lowPrice"):
+                    tief = round(float(cm["lowPrice"]), 2)
+                quelle = "zweitquelle"
+                # Manche Sets führt Cardmarket bei pokemontcg.io gar nicht — die
+                # DP-Black-Star-Promos etwa. Dort gibt es wenigstens einen US-Marktpreis;
+                # umgerechnet ist er besser als ein leeres Feld, solange es dransteht.
+                if wert is None and kurs:
+                    us = [v.get("market") for v in tp.values()
+                          if isinstance(v, dict) and v.get("market")]
+                    if us:
+                        wert = round(min(us) / kurs, 2)
+                        quelle = "geschaetzt"
                 keys = ",".join(sorted(tp.keys())) or None
-                if wert is None and not keys:
-                    continue
                 con.execute(
-                    "INSERT INTO card_prices (card_id, eur_geschaetzt, status, tp_keys, updated_at)"
-                    " VALUES (?,?,?,?,datetime('now'))"
+                    "INSERT INTO card_prices (card_id, eur_geschaetzt, eur_low, status, tp_keys,"
+                    " ptc_id, updated_at) VALUES (?,?,?,?,?,?,datetime('now'))"
                     " ON CONFLICT(card_id) DO UPDATE SET"
                     " eur_geschaetzt=COALESCE(excluded.eur_geschaetzt, card_prices.eur_geschaetzt),"
-                    " status=CASE WHEN excluded.eur_geschaetzt IS NOT NULL THEN 'zweitquelle'"
+                    " eur_low=CASE WHEN card_prices.eur IS NULL AND excluded.eur_low IS NOT NULL"
+                    "              THEN excluded.eur_low ELSE card_prices.eur_low END,"
+                    " status=CASE WHEN excluded.eur_geschaetzt IS NOT NULL"
+                    "             AND card_prices.eur IS NULL THEN excluded.status"
                     "             ELSE card_prices.status END,"
-                    " tp_keys=COALESCE(excluded.tp_keys, card_prices.tp_keys)",
-                    (cid, wert, "zweitquelle" if wert is not None else None, keys))
+                    " tp_keys=COALESCE(excluded.tp_keys, card_prices.tp_keys),"
+                    " ptc_id=excluded.ptc_id",
+                    (cid, wert, tief, quelle if wert is not None else None, keys, cid_ptc))
                 if wert is not None:
                     gefuellt += 1
             con.commit()
@@ -1609,6 +1697,69 @@ def _ptcgio_job(nur_set=None):
     con.close()
     print(f"Zweitquelle: {gefuellt} Preise ergänzt, {var} Varianten berichtigt")
     return gefuellt
+
+
+# --- Cardmarket-Produktseite ------------------------------------------------
+# pokemontcg.io betreibt unter prices.pokemontcg.io/cardmarket/<id> eine Weiterleitung
+# auf die echte Produktseite. Ein Aufruf je Karte genügt, das Ergebnis steht danach in
+# `card_prices.cm_url`. Dasselbe Verfahren nutzt das Empire-Dashboard für den TCG-Bereich.
+CM_REDIRECT = "https://prices.pokemontcg.io/cardmarket/{cid}"
+CM_SPRACHE = {"de": 3, "en": 1, "fr": 2, "es": 4, "it": 5, "jp": 7, "ja": 7, "kr": 10}
+
+
+def _cm_url_aufloesen(client, card_id, ptc_id=None):
+    """→ die Adresse der Cardmarket-Produktseite oder None."""
+    try:
+        r = client.get(CM_REDIRECT.format(cid=ptc_id or card_id),
+                       headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"},
+                       follow_redirects=False)
+        ziel = r.headers.get("location", "")
+        if ziel.startswith("http") and "cardmarket.com" in ziel:
+            # Die Weiterleitung landet auf der englischen Fassung ohne „www“. Gespeichert
+            # wird der Pfad ab „/Pokemon/“, damit die Sprache der Oberfläche folgen kann.
+            pfad = ziel.split("?")[0]
+            schnitt = pfad.find("/Pokemon/")
+            return pfad[schnitt:] if schnitt > 0 else pfad
+    except Exception:
+        pass
+    return None
+
+
+@app.get("/api/cards/{card_id}/cardmarket")
+def card_cardmarket(card_id: str, sprache: str = "", ui: str = "de"):
+    """Die Cardmarket-Seite genau dieser Karte — aufgelöst und danach gespeichert.
+
+    Ohne Treffer bleibt die Namenssuche als Rückfall; sie ist schlecht, aber besser als
+    ein toter Link."""
+    con = get_db()
+    row = con.execute("SELECT cm_url, ptc_id FROM card_prices WHERE card_id = ?",
+                      (card_id,)).fetchone()
+    karte = con.execute("SELECT name_en, name_de, local_id FROM cards WHERE id = ?",
+                        (card_id,)).fetchone()
+    con.close()
+    if not karte:
+        raise HTTPException(404, "Karte unbekannt")
+    url = row["cm_url"] if row and "cm_url" in row.keys() else None
+    if not url:
+        ptc = row["ptc_id"] if row and "ptc_id" in row.keys() else None
+        with httpx.Client(timeout=12, headers=UA) as client:
+            url = _cm_url_aufloesen(client, card_id, ptc)
+        if url:
+            con = get_db()
+            con.execute("INSERT INTO card_prices (card_id, cm_url) VALUES (?,?)"
+                        " ON CONFLICT(card_id) DO UPDATE SET cm_url = excluded.cm_url",
+                        (card_id, url))
+            con.commit()
+            con.close()
+    loc = "en" if (ui or "").lower() == "en" else "de"
+    if not url:
+        name = karte["name_en"] or karte["name_de"] or ""
+        return {"url": f"https://www.cardmarket.com/{loc}/Pokemon/Products/Search?searchString="
+                       + quote(f"{name} {karte['local_id'] or ''}".strip()), "genau": False}
+    voll = url if url.startswith("http") else f"https://www.cardmarket.com/{loc}{url}"
+    # Sprachfilter anhängen: Binderplan weiß, in welcher Sprache die Karte gesucht wird.
+    nr = CM_SPRACHE.get((sprache or "").lower())
+    return {"url": voll + (f"?language={nr}" if nr else ""), "genau": True}
 
 
 @app.post("/api/admin/sets_nachladen")
@@ -2377,6 +2528,10 @@ def card_detail(card_id: str):
     pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg30,"
                      " usd, usd_low, usd_mid, usd_high, preise_json, status, kurs,"
                      " eur_geschaetzt FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
+    # Im Detail gilt dieselbe Regel wie überall sonst: fehlt der Cardmarket-Trend, tritt die
+    # Zahl der Zweitquelle an seine Stelle — mit dem Vermerk, woher sie kommt.
+    if pr and pr["eur"] is None and pr["eur_geschaetzt"] is not None:
+        pr = dict(pr); pr["eur"] = pr["eur_geschaetzt"]
     # Fehlt der Preis, weil das Cardmarket-Produkt noch anderen Karten gehört? Dann soll
     # die Karte das sagen können, statt kommentarlos einen Strich zu zeigen.
     # Zwei verschiedene Gründe für einen fehlenden Preis, und der Unterschied gehört
@@ -2398,10 +2553,18 @@ def card_detail(card_id: str):
                           if isinstance(v, dict) and v.get("eur") is not None}
         except Exception:
             var_preise = {}
-        var_preise.setdefault("normal", pr["eur"])
+        # Der Grundpreis gehört der Ausprägung, die es wirklich gibt. Bei einer Karte, die
+        # nur als Holo existiert (jede LV.X), stand er sonst unter „normal" — einer
+        # Ausprägung, die gar nicht zur Wahl steht.
+        grund = ("normal" if k.get("normal") is not False
+                 else "holo" if k.get("holo") else "reverse" if k.get("reverse")
+                 else "first" if k.get("first") else "normal")
+        var_preise.setdefault(grund, pr["eur"])
         if pr["eur_holo"] is not None:
-            var_preise.setdefault("reverse", pr["eur_holo"])
-            var_preise.setdefault("holo", pr["eur_holo"])
+            if k.get("reverse"):
+                var_preise.setdefault("reverse", pr["eur_holo"])
+            if k.get("holo") and grund != "holo":
+                var_preise.setdefault("holo", pr["eur_holo"])
         var_preise = {a: w for a, w in var_preise.items() if w is not None}
     # Die obere US-Zahl ist das teuerste Einzelangebot, nicht der Marktrand: 132 Karten
     # führen dort 9.999 $. Gezeigt wird deshalb nur noch Tief bis Mitte.
@@ -3305,8 +3468,11 @@ async def preise(request: Request):
     result, holo, fehlt = {}, {}, []
     for start in range(0, len(ids), 500):
         chunk = ids[start:start + 500]
+        # Wo Cardmarket über TCGdex nichts hergibt, zählt die Zahl der Zweitquelle. Ohne
+        # diesen Rückfall blieben in Sammlung und Binder Felder leer, obwohl ein Preis da war.
         rows = con.execute(
-            "SELECT card_id, eur, eur_holo, updated_at FROM card_prices WHERE card_id IN (%s)"
+            "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, updated_at"
+            " FROM card_prices WHERE card_id IN (%s)"
             % ",".join("?" * len(chunk)), chunk).fetchall()
         alle = {r["card_id"]: r for r in rows}
         for cid in chunk:
@@ -3823,6 +3989,8 @@ def binder_list(request: Request, ids: str = ""):
             # Weicht mindestens eine Seite vom Standardraster ab? Sonst behauptet die
             # Kachel „3×3" für einen Binder, in dem auch 4×4-Seiten stecken.
             "gemischt": bool(optionen.get("seitenLayouts")),
+            # Zählt dieser Binder zur Kaufliste? Ohne Angabe ja — so war es immer.
+            "wants": optionen.get("wants") is not False,
             "gesammelt": (sum(1 for i in items if i.get("id") in besitz) if user
                           else sum(1 for i in items if i.get("have"))),
             "updated_at": r["updated_at"],
@@ -4337,7 +4505,7 @@ def _binder_zeilen(binder, lang, user=None):
     pokemon_names = {r["dex_id"]: (r[spalte] or r["name_de"])
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
     preise = {r["card_id"]: r for r in con.execute(
-        "SELECT card_id, eur, eur_holo, eur_low FROM card_prices")}
+        "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, eur_low FROM card_prices")}
     besitz = _besitz_ids(user, con)
     con.close()
 
