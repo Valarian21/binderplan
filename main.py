@@ -93,6 +93,44 @@ AEREN = [
      "von": "2025", "bis": "", "start": "2025-09-01"},
 ]
 # Japanische Serien → lesbare Ären (TCGdex-ja-Serien-IDs)
+# Die japanischen Sets vor 2015 kennt der Cardmarket-Katalog nicht (dort beginnen die
+# japanischen Erweiterungen erst mit „Double Crisis"). Für die 27 Sets, in denen wir Karten
+# führen, steht der eingebürgerte englische Name deshalb von Hand hier — „拡張パック" sagt
+# niemandem etwas, „Expansion Pack" schon.
+JP_SET_NAMEN = {
+    "PMCG1": "Expansion Pack", "PMCG2": "Pokémon Jungle", "PMCG3": "Mystery of the Fossils",
+    "PMCG4": "Rocket Gang", "PMCG5": "Leaders' Stadium", "PMCG6": "Challenge from the Darkness",
+    "jp-neo1": "Gold, Silver, to a New World...", "jp-neo2": "Crossing the Ruins...",
+    "jp-neo3": "Awakening Legends", "jp-neo4": "Darkness, and to Light...",
+    "VS1": "Pokémon Card VS", "web1": "Pokémon Card web",
+    "E1": "Base Expansion Pack", "E2": "The Town on No Map", "E3": "Wind from the Sea",
+    "E4": "Split Earth", "E5": "Mysterious Mountains",
+    "ADV1": "Expansion Pack ADV", "ADV2": "Miracle of the Desert", "ADV3": "Rulers of the Heavens",
+    "ADV5": "Undone Seal",
+    "PCG1": "Flight of Legends", "PCG2": "Clash of the Blue Sky", "PCG3": "Rocket Gang Strikes Back",
+    "PCG4": "Golden Sky, Silvery Ocean", "PCG5": "Mirage Forest", "PCG6": "Holon Research Tower",
+    "PCG7": "Holon Phantom", "PCG8": "Miracle Crystal", "PCG9": "Offense and Defense of the Furthest Ends",
+    "SM1M": "Collection Moon", "SM1S": "Collection Sun",
+    "SVK": "Deck Build Box: Stellar Miracle",
+    "SVLS": "Starter Set Terastal: Skeledirge ex", "SVLN": "Starter Set Terastal: Sylveon ex",
+}
+
+# Was der Cardmarket-Katalog nicht abdeckt und der Pokédex-Abgleich nicht kann: die
+# Basisenergien und eine Handvoll Trainerkarten, die in fast jedem Set stecken.
+JP_KARTEN_NAMEN = {
+    "基本草エネルギー": "Basic Grass Energy", "基本炎エネルギー": "Basic Fire Energy",
+    "基本水エネルギー": "Basic Water Energy", "基本雷エネルギー": "Basic Lightning Energy",
+    "基本超エネルギー": "Basic Psychic Energy", "基本闘エネルギー": "Basic Fighting Energy",
+    "基本悪エネルギー": "Basic Darkness Energy", "基本鋼エネルギー": "Basic Metal Energy",
+    "基本妖エネルギー": "Basic Fairy Energy", "基本無色エネルギー": "Basic Colorless Energy",
+    "レインボーエネルギー": "Rainbow Energy", "闇のエネルギー": "Darkness Energy",
+    "金属エネルギー": "Metal Energy", "ポケモンいれかえ": "Switch", "ボスの指令": "Boss's Orders",
+    "博士の研究": "Professor's Research", "ハイパーボール": "Ultra Ball", "ネストボール": "Nest Ball",
+    "ワープポイント": "Warp Point", "すごいつりざお": "Super Rod",
+    "スーパースクープアップ": "Super Scoop Up", "クリスタルシャード": "Crystal Shard",
+    "ナンジャモ": "Iono", "ネモ": "Nemona", "ペパー": "Arven",
+}
+
 JP_AEREN = {
     "PMCG": ("Original (1996–2000)", "Original (1996–2000)"), "neo": ("neo", "neo"), "VS": ("VS", "VS"), "web": ("web", "web"),
     "e": ("Karte e", "Card e"), "ADV": ("ADV (Rubin & Saphir)", "ADV (Ruby & Sapphire)"), "PCG": ("PCG", "PCG"),
@@ -1076,7 +1114,11 @@ def run_sync_ja():
                         " ON CONFLICT(id) DO UPDATE SET name=excluded.name, serie_id=excluded.serie_id,"
                         " serie_name=excluded.serie_name, release_date=excluded.release_date,"
                         " total=excluded.total, official=excluded.official,"
-                        " symbol=COALESCE(excluded.symbol, sets.symbol), name_en=excluded.name_en,"
+                        " symbol=COALESCE(excluded.symbol, sets.symbol),"
+                        # Der englische Setname kommt aus dem Cardmarket-Katalog und darf
+                        # nicht bei jedem Japan-Sync wieder auf den japanischen zurückfallen.
+                        " name_en=CASE WHEN sets.name_en IS NULL OR sets.name_en = sets.name"
+                        "   THEN excluded.name_en ELSE sets.name_en END,"
                         " serie_name_en=excluded.serie_name_en"
                         " WHERE sets.region = 'jp'",
                         (sid, d.get("name"), serie.get("id"), serie.get("name"), d.get("releaseDate"),
@@ -2520,6 +2562,47 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
         bericht["eindeutig"] = sum(1 for a in aendern if a[1])
         con.commit()
 
+        # --- Lesbare Namen für japanische Karten und Sets ---------------------
+        #
+        # „アクア団のしたっぱ" erkennt hier niemand — Cardmarket führt dieselbe Karte als
+        # „Team Aqua Grunt". Der Pokédex-Abgleich des Japan-Syncs greift nur bei Pokémon;
+        # Trainer und Energien (2.467 Karten) blieben japanisch. Von denen tragen 1.994
+        # eine Cardmarket-Zuordnung, und damit einen englischen Namen.
+        n_karten = con.execute(
+            "UPDATE cards SET name_en = (SELECT p.cm_name FROM card_prices p"
+            "   WHERE p.card_id = cards.id)"
+            " WHERE COALESCE(region,'intl') = 'jp' AND COALESCE(name_en,'') = ''"
+            "   AND (SELECT p.cm_name FROM card_prices p WHERE p.card_id = cards.id)"
+            "       IS NOT NULL").rowcount
+        bericht["jp_namen"] = n_karten
+        # Dasselbe für die Sets: Cardmarket führt japanische Erweiterungen unter
+        # englischen Namen („VMAX Climax" für „VMAXクライマックス"). Welche Erweiterung ein
+        # Set ist, sagt die Mehrheit seiner Karten.
+        ex_namen = cm_erweiterungsnamen(nonsingles_roh) if nonsingles_roh else {}
+        if ex_namen:
+            n_sets = 0
+            for r in con.execute(
+                    "SELECT c.set_id, p.cm_expansion ex, COUNT(*) n FROM cards c"
+                    " JOIN card_prices p ON p.card_id = c.id"
+                    " WHERE COALESCE(c.region,'intl') = 'jp' AND p.cm_expansion IS NOT NULL"
+                    " GROUP BY c.set_id, p.cm_expansion ORDER BY c.set_id, n DESC"):
+                name = ex_namen.get(r["ex"])
+                if not name:
+                    continue
+                # ORDER BY liefert je Set zuerst die häufigste Erweiterung; spätere
+                # Zeilen desselben Sets prallen an der Bedingung ab.
+                n_sets += con.execute(
+                    "UPDATE sets SET name_en = ? WHERE id = ? AND region = 'jp'"
+                    " AND (name_en IS NULL OR name_en = name)", (name, r["set_id"])).rowcount
+            bericht["jp_sets"] = n_sets
+        for ja, en in JP_KARTEN_NAMEN.items():
+            con.execute("UPDATE cards SET name_en = ? WHERE COALESCE(region,'intl') = 'jp'"
+                        " AND name_ja = ? AND COALESCE(name_en,'') = ''", (en, ja))
+        for sid, name in JP_SET_NAMEN.items():
+            con.execute("UPDATE sets SET name_en = ? WHERE id = ? AND region = 'jp'"
+                        " AND COALESCE(name_en, name) <> ?", (name, sid, name))
+        con.commit()
+
         # Die Erweiterung des zugeordneten Produkts festhalten. Ohne sie findet die
         # Suche 75 Palkia aus zwanzig Jahren; mit ihr bleibt die eine übrig.
         con.executemany("UPDATE card_prices SET cm_expansion = ? WHERE card_id = ?",
@@ -3059,6 +3142,211 @@ def _cm_urls_job(grenze=40000):
     return n
 
 
+# --- Scans, die TCGdex nicht hat --------------------------------------------
+#
+# Für 8.899 japanische Karten führt TCGdex kein Bild (`image: null`) — darunter die
+# Originalserie von 1996. Ein Scan liegt trotzdem im Netz: TCGplayer zeigt zu jedem
+# Produkt ein Foto, und TCGdex nennt in `variants_detailed[].thirdParty.tcgplayer` die
+# Produktnummer. Aus ihr wird die Bildadresse gebaut; ausgeliefert wird sie wie jedes
+# andere Bild über den eigenen Zwischenspeicher, nicht als Fremdlink im Browser.
+TP_BILD = "https://product-images.tcgplayer.com/{tp}.jpg"
+
+
+def _tp_id_holen(client, card_id, region):
+    """Die TCGplayer-Produktnummer einer Karte bei TCGdex."""
+    pfad = "ja" if region == "jp" else "en"
+    try:
+        r = client.get(f"https://api.tcgdex.net/v2/{pfad}/cards/{card_id}", timeout=20)
+        if r.status_code != 200:
+            return None
+        d = r.json()
+    except Exception:
+        return None
+    for v in d.get("variants_detailed") or []:
+        tp = (v.get("thirdParty") or {}).get("tcgplayer")
+        if tp:
+            return int(tp)
+    return None
+
+
+def _tp_bilder_job(grenze=20000):
+    """Karten ohne Scan mit dem Bild von TCGplayer versorgen.
+
+    Zwei Schritte: erst die Karten, deren Produktnummer schon in `card_prices` steht
+    (die kosten keinen einzigen Netzaufruf), dann der Rest über TCGdex."""
+    con = get_db()
+    schon = [(r["id"], r["tcgplayer_id"]) for r in con.execute(
+        "SELECT c.id, p.tcgplayer_id FROM cards c JOIN card_prices p ON p.card_id = c.id"
+        " WHERE p.tcgplayer_id IS NOT NULL AND c.image_de IS NULL AND c.image_en IS NULL"
+        " AND COALESCE(c.image_alt,'') = '' LIMIT ?", (grenze,))]
+    for cid, tp in schon:
+        con.execute("UPDATE cards SET image_alt = ? WHERE id = ?", (TP_BILD.format(tp=tp), cid))
+    con.commit()
+    offen = [(r["id"], r["region"] or "intl") for r in con.execute(
+        "SELECT c.id, c.region FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+        " WHERE c.image_de IS NULL AND c.image_en IS NULL AND COALESCE(c.image_alt,'') = ''"
+        " AND p.tcgplayer_id IS NULL ORDER BY c.release_date LIMIT ?", (grenze,))]
+    con.close()
+    print(f"TCGplayer-Bilder: {len(schon)} aus vorhandenen Nummern, {len(offen)} werden abgefragt")
+    gefunden = len(schon)
+    with httpx.Client(timeout=25, headers=UA) as client:
+        for start in range(0, len(offen), 300):
+            block = offen[start:start + 300]
+            with ThreadPoolExecutor(6) as pool:
+                paare = list(pool.map(lambda x: (x[0], _tp_id_holen(client, x[0], x[1])), block))
+            con = get_db()
+            for cid, tp in paare:
+                if not tp:
+                    continue
+                con.execute("UPDATE cards SET image_alt = ? WHERE id = ?",
+                            (TP_BILD.format(tp=tp), cid))
+                con.execute("INSERT INTO card_prices (card_id, tcgplayer_id) VALUES (?,?)"
+                            " ON CONFLICT(card_id) DO UPDATE SET tcgplayer_id = excluded.tcgplayer_id",
+                            (cid, tp))
+                gefunden += 1
+            con.execute("INSERT OR REPLACE INTO kv (key,value)"
+                        " VALUES ('tp_bilder_lauf', datetime('now'))")
+            con.commit()
+            con.close()
+    print(f"TCGplayer-Bilder: {gefunden} Karten haben jetzt einen Scan")
+    return gefunden
+
+
+# Für die japanischen Sets von 2000 bis 2006 (neo, VS, web, e-Card, PCG) führt TCGdex
+# keine TCGplayer-Nummer — für diese 1.400 Karten gäbe es sonst weiter keinen Scan.
+# TCGplayer selbst führt sie: sein Katalog kennt die japanischen Sets unter denselben
+# englischen Namen, die auch hier stehen („The Town on No Map", 92 Karten — genau unsere
+# Zahl), und nennt zu jedem Produkt die Kartennummer. Darüber wird zugeordnet: Set über
+# den Namen, Karte über die Nummer. Ein Lauf sind rund sechzig Abfragen, danach liegen
+# die Bilder im eigenen Zwischenspeicher.
+TP_SUCHE = "https://mp-search-api.tcgplayer.com/v1/search/request?q=&isList=false"
+TP_KOPF = {"Content-Type": "application/json",
+           "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36"}
+
+
+TP_SEITE = 48        # mehr als 50 lehnt die Suche mit „Bad Request" ab
+
+
+def _tp_anfrage(client, setname=None, von=0, groesse=TP_SEITE):
+    term = {"productLineName": ["pokemon-japan"]}
+    if setname:
+        term["setName"] = [setname]
+    rumpf = {"algorithm": "sales_synonym_v2", "from": von, "size": groesse,
+             "filters": {"term": term, "range": {}, "match": {}},
+             "context": {"cart": {}, "shippingCountry": "US"},
+             "settings": {"useFuzzySearch": True, "didYouMean": {}}, "sort": {}}
+    r = client.post(TP_SUCHE, json=rumpf, headers=TP_KOPF, timeout=30)
+    r.raise_for_status()
+    return (r.json().get("results") or [{}])[0]
+
+
+def _tp_norm(name):
+    """Setnamen vergleichbar machen.
+
+    TCGplayer stellt dem Namen das Kürzel der Reihe voran („S8b: VMAX Climax"), der
+    Cardmarket-Katalog nicht („VMAX Climax"); dazu kommen Akzent und Zeichensetzung
+    („Pokémon Card VS" gegen „Pokemon VS")."""
+    n = str(name or "").lower().replace("é", "e")
+    n = re.sub(r"^[a-z0-9.+-]{1,7}:\s*", "", n)      # führendes Reihenkürzel
+    n = re.sub(r"\b(pokemon|card|jp)\b", " ", n)
+    return re.sub(r"[^a-z0-9]", "", n)
+
+
+def _tp_nummer(text):
+    """„059/092" → „59". Führende Nullen fliegen, damit „059" und „59" dasselbe sind."""
+    n = str(text or "").split("/")[0].strip().upper()
+    return n.lstrip("0") or n
+
+
+def _tp_katalog_job():
+    con = get_db()
+    offen = {}
+    for r in con.execute(
+            "SELECT c.id, c.set_id, c.local_id, s.name_en FROM cards c JOIN sets s ON s.id = c.set_id"
+            " WHERE COALESCE(c.region,'intl') = 'jp' AND c.image_de IS NULL AND c.image_en IS NULL"
+            " AND COALESCE(c.image_alt,'') = '' AND s.name_en IS NOT NULL"):
+        offen.setdefault((r["set_id"], r["name_en"]), []).append((r["id"], r["local_id"]))
+    con.close()
+    if not offen:
+        return 0
+    gefunden = 0
+    with httpx.Client(timeout=40) as client:
+        try:
+            kopf = _tp_anfrage(client, groesse=1)
+            tp_sets = {}
+            for a in (kopf.get("aggregations") or {}).get("setName", []):
+                tp_sets.setdefault(a["value"].strip().lower(), a["urlValue"])
+                tp_sets.setdefault(_tp_norm(a["value"]), a["urlValue"])
+        except Exception as exc:
+            print("TCGplayer-Katalog: Setliste fehlgeschlagen:", exc)
+            return 0
+        print(f"TCGplayer-Katalog: {len(offen)} Sets offen, {len(tp_sets)} Sets im Katalog")
+        for (sid, name_en), karten in sorted(offen.items()):
+            url = (tp_sets.get((name_en or "").strip().lower())
+                   or tp_sets.get(_tp_norm(name_en)))
+            if not url:
+                continue
+
+            produkte = {}
+            for von in range(0, 1200, TP_SEITE):
+                try:
+                    d = _tp_anfrage(client, url, von, TP_SEITE)
+                except Exception as exc:
+                    print(f"TCGplayer-Katalog: {sid} Seite {von} fehlgeschlagen: {exc}")
+                    break
+                treffer = d.get("results") or []
+                for p in treffer:
+                    nr = _tp_nummer((p.get("customAttributes") or {}).get("number"))
+                    if nr and nr not in produkte:
+                        produkte[nr] = (int(p["productId"]), p.get("productName"))
+                if len(treffer) < TP_SEITE:
+                    break
+            if not produkte:
+                continue
+            con = get_db()
+            n = 0
+            for cid, local_id in karten:
+                treffer = produkte.get(_tp_nummer(local_id))
+                if not treffer:
+                    continue
+                pid, pname = treffer
+                con.execute("UPDATE cards SET image_alt = ? WHERE id = ?", (TP_BILD.format(tp=pid), cid))
+                con.execute("INSERT INTO card_prices (card_id, tcgplayer_id) VALUES (?,?)"
+                            " ON CONFLICT(card_id) DO UPDATE SET tcgplayer_id = excluded.tcgplayer_id",
+                            (cid, pid))
+                # Der englische Produktname füllt nebenbei die letzten japanischen Namen.
+                if pname:
+                    con.execute("UPDATE cards SET name_en = ? WHERE id = ?"
+                                " AND COALESCE(name_en,'') = ''", (pname, cid))
+                n += 1
+            con.commit()
+            con.close()
+            gefunden += n
+            print(f"TCGplayer-Katalog: {sid} ({name_en}) — {n} von {len(karten)} zugeordnet")
+    con = get_db()
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('tp_katalog_lauf', datetime('now'))")
+    con.commit()
+    con.close()
+    print(f"TCGplayer-Katalog: {gefunden} Karten haben jetzt einen Scan")
+    return gefunden
+
+
+@app.post("/api/admin/tp_katalog")
+def admin_tp_katalog(key: str = ""):
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    threading.Thread(target=_tp_katalog_job, daemon=True).start()
+    return {"ok": True}
+
+
+@app.post("/api/admin/tp_bilder")
+def admin_tp_bilder(key: str = "", grenze: int = 20000):
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    threading.Thread(target=lambda: _tp_bilder_job(grenze), daemon=True).start()
+    return {"ok": True}
+
+
 @app.post("/api/admin/cm_urls")
 def admin_cm_urls(key: str = "", grenze: int = 40000):
     if not admin_ok(key):
@@ -3158,6 +3446,13 @@ def _hintergrund_takt():
                     _cm_urls_job(3000)      # neue Karten bekommen ihre Produktseite
                 except Exception as exc:
                     print("Cardmarket-Adressen fehlgeschlagen:", exc)
+                try:
+                    # Neue Karten ohne Scan: erst die günstige Quelle (TCGdex nennt die
+                    # TCGplayer-Nummer), dann der Katalogabgleich für ganze Sets.
+                    _tp_bilder_job(3000)
+                    _tp_katalog_job()
+                except Exception as exc:
+                    print("Zweitbilder fehlgeschlagen:", exc)
                 try:
                     con = get_db()
                     _historie_verdichten(con)
@@ -3400,6 +3695,9 @@ def meta():
         d["promo"] = bool(re.search(r"promo|jumbo|misc|mcdonald|trainer kit|pop series|deck|starter", (d.get("name_en") or d.get("name") or ""), re.I)
                           or (d["serie_id"] in ("pop", "tk", "mc", "misc")))
         if d["region"] == "jp":
+            # Der englische Name kommt aus dem Cardmarket-Katalog (siehe cm_import); erst
+            # wenn er fehlt, bleibt der japanische stehen.
+            d["name"] = d["name_en"] or d["name"]
             jn = JP_AEREN.get(d["serie_id"] or "", (d["serie_name"] or d["serie_id"] or "?",) * 2)
             d["aera"] = "jp:" + (d["serie_id"] or "?"); d["aera_name"] = jn[0]; d["aera_name_en"] = jn[1]
             d["symbol"] = d["symbol"] or None
@@ -3706,10 +4004,15 @@ def _card_brief(row):
     keys = row.keys()
     name_ja = row["name_ja"] if "name_ja" in keys else None
     region = (row["region"] if "region" in keys else None) or "intl"
+    # Japanische Karten tragen den lateinischen Namen, nicht den japanischen: „Pikachu"
+    # statt „ピカチュウ · Pikachu". Der japanische Markt ist nicht die Zielgruppe, und wer
+    # hier sucht, erkennt die Zeichen nicht. Der Originalname bleibt als eigenes Feld
+    # erhalten — die Kartenansicht zeigt ihn klein darunter, die Suche findet ihn weiter.
     return {
         "id": row["id"],
-        "name": (row["name_de"] or row["name_en"] or name_ja) if region != "jp" else (f"{name_ja} · {row['name_de']}" if row["name_de"] else name_ja),
-        "name_en": (row["name_en"] or row["name_de"] or name_ja) if region != "jp" else (f"{name_ja} · {row['name_en']}" if row["name_en"] else name_ja),
+        "name": row["name_de"] or row["name_en"] or name_ja,
+        "name_en": row["name_en"] or row["name_de"] or name_ja,
+        "name_ja": name_ja if region == "jp" else None,
         "region": region,
         # Welche Sprache das Bild hat: alte WotC-Sets haben bei TCGdex keine deutschen Scans
         "img_lang": "de" if row["image_de"] else ("en" if row["image_en"] else ("alt" if ("image_alt" in keys and row["image_alt"]) else None)),
@@ -3718,7 +4021,10 @@ def _card_brief(row):
         "illustrator": row["illustrator"] if "illustrator" in keys else None,
         "regmark": row["regulation_mark"] if "regulation_mark" in keys else None,
         "set_id": row["set_id"],
-        "set_name": SET_NAME_FIX_DE.get(row["set_id"], row["set_name"]) or row["set_name_en"],
+        # Bei japanischen Sets steht der englische Name vorn (aus dem Cardmarket-Katalog);
+        # „拡張パック" sagt hier niemandem etwas.
+        "set_name": ((row["set_name_en"] or row["set_name"]) if region == "jp"
+                     else (SET_NAME_FIX_DE.get(row["set_id"], row["set_name"]) or row["set_name_en"])),
         "set_name_en": row["set_name_en"] or row["set_name"],
         "local_id": row["local_id"],
         "rarity": row["rarity"],
@@ -4945,9 +5251,16 @@ IMG_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 
 def _alt_urls(image_alt, variante):
-    """pokemontcg.io-Fallback: gespeichert ist die small-URL (…/2.png)."""
+    """Zweitquellen für den Scan: pokemontcg.io (small-URL …/2.png) und TCGplayer.
+
+    Bei TCGplayer steht die volle Auflösung unter der nackten Nummer; für die Kachel
+    genügt die zurechtgerechnete Fassung, die ein Viertel wiegt."""
     if not image_alt:
         return []
+    if "product-images.tcgplayer.com" in image_alt:
+        klein = image_alt.replace("product-images.tcgplayer.com/",
+                                  "product-images.tcgplayer.com/fit-in/437x437/")
+        return [image_alt] if variante == "high" else [klein, image_alt]
     if variante == "high" and image_alt.endswith(".png"):
         return [image_alt[:-4] + "_hires.png", image_alt]
     return [image_alt]
@@ -4975,7 +5288,11 @@ def card_image(card_id: str, variante: str = "low", lang: str = "de"):
         urls += _alt_urls(row["image_alt"], variante)
         if not _fetch_asset(urls, target):
             raise HTTPException(404, "Kein Bild verfügbar")
-    media = "image/png" if target.read_bytes()[:4] == b"\x89PNG" else "image/webp"
+    # Der Dateikopf entscheidet, nicht die Endung: die Zweitquellen liefern PNG (pokemontcg.io)
+    # und JPEG (TCGplayer), und ein JPEG als „image/webp" ausgeliefert zeigt kein Browser an.
+    kopf = target.read_bytes()[:4]
+    media = ("image/png" if kopf == b"\x89PNG"
+             else "image/jpeg" if kopf[:3] == b"\xff\xd8\xff" else "image/webp")
     return FileResponse(target, media_type=media, headers=IMG_HEADERS)
 
 
