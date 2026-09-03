@@ -1064,7 +1064,14 @@
     .planer-rumpf { padding: 10px; gap: 12px; }
     .planer-seite { width: 100%; max-width: 420px; margin: 0 auto; }
     .toast { bottom: 74px; max-width: 92vw; text-align: center; }
-    .modal { padding: 16px; }
+    /* Die untere Navigationsleiste liegt über allem (z-index 60). Ein Dialog, der bis
+       zum Fensterrand geht, endet damit unter ihr: im Artwork-Dialog waren die letzten
+       Stilkacheln, das Wunschfeld und der Startknopf nicht mehr erreichbar. Deshalb
+       endet der Dialog eine Leistenhöhe früher und bekommt so viel Fuß, dass sich das
+       letzte Element freischeiben lässt. */
+    .modal { padding: 16px 16px calc(78px + env(safe-area-inset-bottom));
+             max-height: calc(88vh - 62px); }
+    body.nur-ansicht .modal { padding-bottom: 16px; max-height: 88vh; }
     .tarife { flex-direction: column; }
   }
   /* ---------- 2026-08-27 (2): Binder-Wechsler, Segment, Planer-Tab, Fach-Menü, Panel ---------- */
@@ -1293,7 +1300,11 @@
   .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent); border-radius: 50%; animation: dreh .9s linear infinite; }
   .aw-ergebnis { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
   .aw-vorschau { flex: 0 1 440px; max-width: 100%; }
-  .aw-vorschau img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
+  /* Nur die ganze Seite wird gedeckelt. Die neun Kachelbilder sind dasselbe Seitenbild,
+     absichtlich dreimal so groß wie ihr Fach und verschoben — ein `max-height` daran
+     staucht sie, und jedes Fach zeigt dann den falschen Ausschnitt. Genau das war am
+     Handy zu sehen: Motive verrutscht, die Schnittfuge mitten im Fach. */
+  .aw-vorschau > img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
   .aw-kacheln { display: grid; background: var(--panel2); padding: 10px; border-radius: 10px; }
   .aw-kacheln .aw-kachel { position: relative; aspect-ratio: 63 / 88; overflow: hidden; border-radius: 3px; background: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
   .aw-kacheln .aw-kachel img { position: absolute; max-width: none; display: block; }
@@ -1354,7 +1365,7 @@
     .aw-grid { max-width: 200px; margin: 0 auto; }
     .aw-fach .aw-badge { font-size: 8px; padding: 1px 2px; }
     #modal-artwork h2 { font-size: 16px; }
-    .aw-ergebnis img { max-height: 50vh; }
+    .aw-ergebnis .aw-vorschau > img { max-height: 50vh; }
   }
 
   /* ================= Neunundneunzig, ruhige Fassung =================
