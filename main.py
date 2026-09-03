@@ -1857,7 +1857,7 @@ def cm_preisverzeichnis_lesen(roh: bytes):
     return aus
 
 
-def cm_katalog_lesen(roh: bytes):
+def cm_katalog_lesen(roh: bytes, nur_singles=True):
     """→ [{id, name, expansion, nummer}] aus dem Produktkatalog.
 
     Der Katalog führt keine Kartennummer: die Karten heißen dort „Weedle [Multiply]“ oder
@@ -1873,7 +1873,7 @@ def cm_katalog_lesen(roh: bytes):
         except (TypeError, ValueError):
             continue
         kategorie = felder.get("idcategory")
-        if kategorie is not None and str(kategorie).strip().isdigit() \
+        if nur_singles and kategorie is not None and str(kategorie).strip().isdigit() \
                 and int(str(kategorie).strip()) != CM_KATEGORIE_SINGLE:
             continue
         roh_name = str(felder.get("name") or felder.get("enname") or "").strip()
@@ -1890,6 +1890,33 @@ def cm_katalog_lesen(roh: bytes):
             "nummer": nummer,
         })
     return aus
+
+
+# Produktarten, die einer Erweiterung angehängt werden. „Base Set Booster" verrät, dass
+# Erweiterung 1523 „Base Set" heißt — der Einzelkarten-Katalog nennt nur die Nummer.
+CM_PRODUKTARTEN = ("Elite Trainer Box", "Ultra Premium Collection", "Premium Collection",
+                   "Booster Box", "Booster Pack", "Booster Bundle", "Booster",
+                   "Build and Battle", "Theme Deck", "Starter Deck", "Deck",
+                   "Display", "Blister", "Tin", "Box Set", "Coin", "Bundle",
+                   "Collection", "Premium", "Box")
+
+
+def cm_erweiterungsnamen(roh: bytes):
+    """→ {idExpansion: Name} aus dem Katalog der Nicht-Einzelkarten."""
+    zaehler = {}
+    for e in cm_katalog_lesen(roh, nur_singles=False):
+        name = e["name"]
+        for art in CM_PRODUKTARTEN:
+            name = re.sub(r"\s*" + re.escape(art) + r"e?s?\b.*$", "", name, flags=re.I)
+        name = name.strip()
+        try:
+            ex = int(e["expansion"])
+        except (TypeError, ValueError):
+            continue
+        if len(name) >= 3:
+            zaehler.setdefault(ex, {}).setdefault(name, 0)
+            zaehler[ex][name] += 1
+    return {ex: max(namen, key=namen.get) for ex, namen in zaehler.items()}
 
 
 def _cm_basisname(name):
@@ -1915,7 +1942,7 @@ def _cm_name_norm(name):
     return re.sub(r"[^a-z0-9]", "", n)
 
 
-def cm_import(preise_roh=None, katalog_roh=None):
+def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
     """Preisverzeichnis und Produktkatalog übernehmen.
 
     Reihenfolge ist wichtig: erst der Katalog (er stellt fehlende Zuordnungen her), dann
@@ -1949,6 +1976,24 @@ def cm_import(preise_roh=None, katalog_roh=None):
                 gelernt.setdefault(r["set_id"], {}).setdefault(e, 0)
                 gelernt[r["set_id"]][e] += 1
         set_exp = {sid: max(zaehler, key=zaehler.get) for sid, zaehler in gelernt.items()}
+        # Zweite Brücke: Sets, für die keine einzige Zuordnung steht, lassen sich über den
+        # Namen der Erweiterung finden — den verraten die Nicht-Einzelkarten („Base Set
+        # Booster" gehört zu Erweiterung 1523, also heißt sie „Base Set").
+        if nonsingles_roh:
+            namen = cm_erweiterungsnamen(nonsingles_roh)
+            bericht["erweiterungsnamen"] = len(namen)
+            nach_name = {}
+            for ex, nm in namen.items():
+                nach_name.setdefault(_cm_basisname(nm), []).append(ex)
+            for r in con.execute("SELECT id, name, name_en FROM sets"):
+                if r["id"] in set_exp:
+                    continue
+                for feld in (r["name_en"], r["name"]):
+                    treffer = nach_name.get(_cm_basisname(feld or ""))
+                    if treffer and len(treffer) == 1:
+                        set_exp[r["id"]] = treffer[0]
+                        bericht["sets_ueber_namen"] = bericht.get("sets_ueber_namen", 0) + 1
+                        break
         bericht["erweiterungen"] = len(set_exp)
 
         vergeben = {r["cm_produkt"] for r in con.execute(
@@ -2057,10 +2102,85 @@ def _cm_nummer(text):
     return buchstaben + ziffern
 
 
-def _cm_dateien():
-    """→ (Preisverzeichnis, Produktkatalog) aus dem Ordner `cardmarket/`, als Bytes."""
+# Die Downloads liegen auf einem eigenen Ablageplatz, nicht hinter Cloudflare: die
+# Seiten cardmarket.com/…/Data/Price-Guide und …/Data/Product-List verlinken direkt
+# dorthin, und der Server erreicht sie ohne Anmeldung in unter einer Sekunde. Damit
+# braucht es weder Browser noch Zugangsdaten — der Nachtlauf holt sie selbst.
+# Die 6 ist Pokémon (1 = Magic, 18 = One Piece).
+CM_ABLAGE = "https://downloads.s3.cardmarket.com/productCatalog"
+CM_DOWNLOADS = {
+    "price_guide_6.json": f"{CM_ABLAGE}/priceGuide/price_guide_6.json",
+    "products_singles_6.json": f"{CM_ABLAGE}/productList/products_singles_6.json",
+    "products_nonsingles_6.json": f"{CM_ABLAGE}/productList/products_nonsingles_6.json",
+}
+
+
+def _cm_download_job():
+    """Die drei Cardmarket-Dateien holen. → {Datei: Bytes} der wirklich neuen.
+
+    Geladen wird immer, geschrieben nur, wenn sich der Zeitstempel in der Datei geändert
+    hat: das Preisverzeichnis wird täglich erneuert, die Kataloge nur bei einer
+    Neuveröffentlichung. Ein unvollständiger Download darf die vorhandene Datei nicht
+    ersetzen, deshalb erst prüfen, dann schreiben."""
     ordner = BASE / "cardmarket"
-    preise = katalog = None
+    ordner.mkdir(exist_ok=True)
+    neu = {}
+    with httpx.Client(timeout=180, headers=UA, follow_redirects=True) as client:
+        for name, url in CM_DOWNLOADS.items():
+            ziel = ordner / name
+            try:
+                r = client.get(url)
+                if r.status_code != 200 or len(r.content) < 10000:
+                    print(f"Cardmarket-Download {name}: HTTP {r.status_code},"
+                          f" {len(r.content)} Bytes — übersprungen")
+                    continue
+            except Exception as exc:
+                print(f"Cardmarket-Download {name} fehlgeschlagen:", exc)
+                continue
+            # Zeitstempel aus dem Kopf der Datei lesen, ohne die 15 MB zu zerlegen.
+            treffer = re.search(rb'"createdAt"\s*:\s*"([^"]+)"', r.content[:500])
+            stand = treffer.group(1).decode() if treffer else ""
+            alt = ""
+            if ziel.exists():
+                mit = re.search(rb'"createdAt"\s*:\s*"([^"]+)"', ziel.read_bytes()[:500])
+                alt = mit.group(1).decode() if mit else ""
+            if stand and stand == alt:
+                continue          # unverändert, nichts zu tun
+            ziel.write_bytes(r.content)
+            neu[name] = stand or "?"
+            print(f"Cardmarket-Download {name}: {len(r.content)} Bytes, Stand {stand}")
+    if neu:
+        con = get_db()
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_download_lauf', ?)",
+                    (json.dumps({"am": _now_text(), "neu": neu}),))
+        con.commit()
+        con.close()
+    return neu
+
+
+def _now_text():
+    from datetime import datetime as _dt
+    return _dt.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+
+@app.post("/api/admin/cm_download")
+def admin_cm_download(key: str = "", einlesen: int = 1):
+    """Dateien holen und gleich einlesen."""
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+
+    def lauf():
+        neu = _cm_download_job()
+        if neu and einlesen:
+            _cm_import_job()
+    threading.Thread(target=lauf, daemon=True).start()
+    return {"ok": True}
+
+
+def _cm_dateien():
+    """→ (Preisverzeichnis, Einzelkarten-Katalog, Nicht-Einzelkarten) als Bytes."""
+    ordner = BASE / "cardmarket"
+    preise = katalog = nonsingles = None
     if ordner.exists():
         for datei in sorted(ordner.glob("*")):
             if not datei.is_file():
@@ -2068,9 +2188,11 @@ def _cm_dateien():
             name = datei.name.lower()
             if "price" in name or "preis" in name:
                 preise = datei.read_bytes()
+            elif "nonsingle" in name or "non_single" in name:
+                nonsingles = datei.read_bytes()
             elif "product" in name or "katalog" in name or "catalog" in name:
                 katalog = datei.read_bytes()
-    return preise, katalog
+    return preise, katalog, nonsingles
 
 
 def _cm_import_job():
@@ -2092,10 +2214,10 @@ def _cm_import_job():
                 print("Cardmarket-Preisverzeichnis geladen:", len(r.content), "Bytes")
         except Exception as exc:
             print("Cardmarket-Preisverzeichnis nicht ladbar:", exc)
-    preise, katalog = _cm_dateien()
+    preise, katalog, nonsingles = _cm_dateien()
     if not preise and not katalog:
         return None
-    bericht = cm_import(preise, katalog)
+    bericht = cm_import(preise, katalog, nonsingles)
     print("Cardmarket-Import:", bericht)
     return bericht
 
@@ -2108,7 +2230,7 @@ async def admin_cm_import(request: Request, key: str = ""):
     Dateien im Ordner `cardmarket/` neben der Datenbank."""
     if not admin_ok(key):
         raise HTTPException(403, "Kein Zugriff")
-    preise_roh = katalog_roh = None
+    preise_roh = katalog_roh = nonsingles_roh = None
     art = (request.headers.get("content-type") or "")
     if art.startswith("multipart/form-data"):
         form = await request.form()
@@ -2116,12 +2238,14 @@ async def admin_cm_import(request: Request, key: str = ""):
             preise_roh = await form["preise"].read()
         if form.get("katalog") is not None and hasattr(form["katalog"], "read"):
             katalog_roh = await form["katalog"].read()
+        if form.get("nonsingles") is not None and hasattr(form["nonsingles"], "read"):
+            nonsingles_roh = await form["nonsingles"].read()
     else:
-        preise_roh, katalog_roh = _cm_dateien()
+        preise_roh, katalog_roh, nonsingles_roh = _cm_dateien()
     if not preise_roh and not katalog_roh:
         raise HTTPException(400, "Weder Preisverzeichnis noch Produktkatalog gefunden. "
                                  "Dateien hochladen oder in den Ordner cardmarket/ legen.")
-    bericht = await run_in_threadpool(cm_import, preise_roh, katalog_roh)
+    bericht = await run_in_threadpool(cm_import, preise_roh, katalog_roh, nonsingles_roh)
     return {"ok": True, **bericht}
 
 
@@ -2486,6 +2610,10 @@ def _hintergrund_takt():
                 # das Cardmarket-Preisverzeichnis überschreibt sie mit den echten Zahlen,
                 # und die Zweitquelle füllt nur noch, was danach leer geblieben ist.
                 _preishistorie_job()
+                try:
+                    _cm_download_job()
+                except Exception as exc:
+                    print("Cardmarket-Download fehlgeschlagen:", exc)
                 try:
                     _cm_import_job()
                 except Exception as exc:
