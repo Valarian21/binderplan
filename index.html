@@ -2068,6 +2068,9 @@
          die niemand braucht. -->
     <div class="aw-lauf hidden" id="aw-lauf">
       <div class="aw-mini-vorschau" id="aw-lauf-grid"></div>
+      <!-- Die Ladeanimation der App (ein Fächerraster, das sich füllt) gehört genau
+           hierhin: sie zeigt, dass etwas läuft. Das Vorschau-Raster darüber steht still. -->
+      <div id="aw-lauf-lader"></div>
       <span data-i18n="aw_laeuft">Die KI malt … das dauert etwa 60 Sekunden.</span>
     </div>
     <div class="aw-ergebnis hidden" id="aw-ergebnis">
@@ -9150,6 +9153,9 @@ function artworkAnsicht(w) {
   $('aw-editor').classList.toggle('hidden', w !== 'editor');
   $('aw-lauf').classList.toggle('hidden', w !== 'lauf');
   $('aw-ergebnis').classList.toggle('hidden', w !== 'ergebnis');
+  // Läuft die Animation nicht, steht sie auch nicht im Weg: nur solange gemalt wird.
+  const l = $('aw-lauf-lader');
+  if (l) l.innerHTML = w === 'lauf' ? lader('gross') : '';
 }
 
 // Seitenraster: Kartenfächer (Anker) ↔ „KI übermalt“, leere Fächer = werden gemalt
