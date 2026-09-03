@@ -242,6 +242,10 @@
   .vt-tabs button { font-size: 13px; font-weight: 700; padding: 6px 13px; border-radius: 999px; color: var(--mut); }
   .vt-tabs button.on { background: var(--kontur); color: #fff; }
   .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px; }
+  /* Kunstseiten sind hochkant und werden ganz gezeigt — bei 360er Kacheln füllte am Handy
+     eine einzige Seite den Bildschirm. Schmalere Spalten zeigen mehrere nebeneinander,
+     ohne dass etwas beschnitten wird. */
+  .vt-gitter.kunst { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
   /* Eine Vitrine-Kachel zeigt, was den Binder ausmacht: eine echte aufgeschlagene Seite auf
      dunklem Grund. Vier Karten in einer Reihe sahen aus wie eine beliebige Trefferliste. */
   .vt-blatt { background: var(--bseite, #14161a); padding: 9px; display: grid; gap: 4px;
@@ -338,8 +342,12 @@
   /* Kunstseiten-Kacheln: das Bild ist die Ware, es bekommt die ganze Breite. */
   .kk { background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden;
         display: flex; flex-direction: column; }
-  .kk .bild { position: relative; width: 100%; padding-top: 74%; background: var(--panel2); cursor: pointer; }
-  .kk .bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Die Kachel hat das Format der Seite selbst (aus `breite`/`hoehe` der fertigen Datei,
+     sonst aus dem Raster gerechnet). Vorher war sie querformatig und schnitt die Seite
+     mit `cover` zu: zu sehen war ein waagerechter Streifen aus der Mitte — am Handy erst
+     recht, weil die Kachel dort die ganze Breite hat. */
+  .kk .bild { position: relative; width: 100%; padding-top: 138%; background: var(--panel2); cursor: pointer; }
+  .kk .bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
   .kk .txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
   .kk .kt { font-weight: 800; font-size: 13.5px; }
   .kk .km { font-size: 11.5px; color: var(--mut); }
@@ -385,6 +393,10 @@
     .vt-filter > * { flex-shrink: 0; }
     .vt-filter .chip { min-height: 34px; display: inline-flex; align-items: center; }
     .vt-filter > div[style*="flex:1"] { display: none; }
+    /* Zwei Kunstseiten nebeneinander statt einer, die den ganzen Bildschirm füllt. */
+    .vt-gitter.kunst { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .vt-gitter.kunst .kt { font-size: 12.5px; }
+    .vt-gitter.kunst .km { font-size: 11px; }
 
     /* Der Erklärsatz über der Vitrine kostet am Handy vier Zeilen. Die Kacheln erklären
        sich selbst, sobald man eine sieht. */
@@ -5874,17 +5886,25 @@ async function vitrineLaden() {
  *  davon zurück. Beides steht auf der Kachel, damit niemand raten muss. */
 function zeichneKunst() {
   if (!VT.kunst.length) {
+    $('vt-gitter').classList.add('kunst');
     $('vt-gitter').innerHTML = `<div class="vt-leer">${t('vt_k_leer')}</div>`;
     return;
   }
+  $('vt-gitter').classList.add('kunst');
   $('vt-gitter').innerHTML = VT.kunst.map((a) => {
     const knopf = a.mein
       ? `<span class="habe">${t('vt_k_meine')}</span>`
       : a.habe
         ? `<button class="btn sekundaer" onclick="kunstInBinder('${esc(a.id)}')">${t('vt_k_einfuegen')}</button>`
         : `<button class="btn" onclick="kunstUebernehmen('${esc(a.id)}')">${t('vt_k_holen').replace('{n}', VT.preis)}</button>`;
+    // Seitenformat: die fertige Datei kennt es genau; ohne sie rechnet es sich aus dem
+    // Raster (63×88 mm je Fach, 4 mm Fuge).
+    const [sp, ze] = (LAYOUTS[a.layout] || [3, 3]);
+    const anteil = a.breite && a.hoehe
+      ? a.hoehe / a.breite
+      : (ze * 88 + (ze - 1) * 4) / (sp * 63 + (sp - 1) * 4);
     return `<div class="kk">
-      <div class="bild" onclick="kunstGross('${esc(a.id)}')"><img loading="lazy" src="${esc(a.vorschau)}" alt=""></div>
+      <div class="bild" style="padding-top:${(anteil * 100).toFixed(1)}%" onclick="kunstGross('${esc(a.id)}')"><img loading="lazy" src="${esc(a.vorschau)}" alt=""></div>
       <div class="txt">
         <div class="kt">${esc(a.titel)}</div>
         <div class="km"><a onclick="profilseiteOeffnen('${esc(a.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(a.besitzer)}</a>
@@ -6002,6 +6022,7 @@ const VT_ARTEN = { dex: 'vt_a_dex', artwork: 'vt_a_artwork', kuenstler: 'vt_a_ku
                    master: 'vt_a_master', pokemon: 'vt_a_pokemon', frei: '' };
 
 function zeichneVitrine() {
+  $('vt-gitter').classList.remove('kunst');
   if (!VT.binder.length) {
     $('vt-gitter').innerHTML = `<div class="vt-leer">${t('vt_leer')}</div>`;
     return;
