@@ -371,6 +371,7 @@
   .bp-titel:hover { color: var(--akzent); }
   .bp-nowants { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
     color: var(--mut); border: 1.5px solid var(--line); border-radius: 999px; padding: 1px 7px; }
+  .bp-nowants.an { color: #B8860B; border-color: #E0A21B; }
   .bstapel { margin: 2px 0 10px; }
   .bstapel .vt-blatt.stapel { padding: 0 10px 10px 0; }
 
@@ -573,6 +574,8 @@
   /* Drei Beispiele fürs Bildmotiv — die Funktion war hinter dem Klappknopf unsichtbar */
   .f-motiv-schnell { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 2px; }
   .f-motiv-schnell .chip { font-size: 11.5px; }
+  .tk-hab .wunsch { flex: 0 0 auto; padding: 0 8px; color: var(--mut); }
+  .tk-hab .wunsch.an { color: #E0A21B; }
   
 
 
@@ -797,7 +800,8 @@
   body.zieht-karte .slot { border-color: var(--akzent); }
   body.zieht-karte .slot.frei { background: color-mix(in srgb, var(--akzent) 12%, transparent); }
   .slot.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -2px; }
-  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12.5px; color: var(--mut); }
+  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 7px;
+    flex-wrap: wrap; font-size: 12.5px; color: var(--mut); }
   .seiten-nav strong { color: var(--ink); }
   .schalter { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
   .schalter input { width: 15px; height: 15px; accent-color: var(--akzent); }
@@ -1097,8 +1101,15 @@
   .ps-titel .ps-akt { display: inline-flex; gap: 2px; }
   .ps-titel .ps-akt button { font-size: 12px; color: var(--mut); padding: 1px 5px; border-radius: 6px; }
   .ps-titel .ps-akt button:hover { background: var(--panel2); color: var(--ink); }
-  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; z-index: 45; max-width: 96vw; flex-wrap: wrap; justify-content: center; }
+  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--pl-bar-unten, 18px); background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; z-index: 45; max-width: 96vw; flex-wrap: wrap; justify-content: center; }
   .planer-bar .btn { font-size: 12.5px; padding: 6px 12px; }
+  .planer-bar .pl-strich { width: 1px; height: 18px; background: var(--line); }
+  /* In einer Leiste am unteren Rand muss ein Menü nach oben aufklappen. */
+  .menu.hoch { top: auto; bottom: calc(100% + 8px); }
+  .segment.klein button { padding: 5px 11px; font-size: 12px; }
+  .seiten-nav .segment { margin-left: 4px !important; }
+  /* Die Suchschublade ist mal 50, mal 210 Pixel hoch — die Höhe wird gemessen
+     (`plBarSetzen`) und die Auswahlleiste setzt sich darüber, statt daraufzuliegen. */
   .erg-leer { grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--mut); display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .up-tab { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
   .up-tab th, .up-tab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
@@ -1155,7 +1166,7 @@
   .st-leer .onb-tpl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   /* ---------- 2026-08-27: Kopfzeile, Filter, Onboarding, Detail, Varianten, Undo ---------- */
   .mobil-only { display: none !important; }
-  .seiten-nav .seite-btn { font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1.5px solid var(--line); }
+  .seiten-nav .seite-btn { font-size: 12px; font-weight: 700; padding: 5px 9px; border-radius: 8px; border: 1.5px solid var(--line); white-space: nowrap; }
   .seiten-nav .seite-btn:hover { border-color: var(--blau); color: var(--blau); }
   .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }
   .namefeld:hover, .namefeld:focus-within { background: var(--panel2); }
@@ -1232,7 +1243,12 @@
     .bw-btn { max-width: 100%; width: 100%; justify-content: space-between; }
     #menu-bw { min-width: 0; left: 0; right: 0; width: min(92vw, 360px); }
     #planer { top: 54px; padding-bottom: 62px; }
-    .planer-bar { bottom: 72px; border-radius: 16px; }
+    /* Am Handy als Leiste über die volle Breite statt als Pille in der Mitte: sechs
+       Bedienelemente in einer Pille brachen in vier Zeilen um. */
+    .planer-bar { bottom: calc(var(--pl-bar-unten, 18px) + 54px); border-radius: 14px;
+      left: 8px; right: 8px; transform: none; max-width: none; gap: 5px; padding: 7px 9px; }
+    .planer-bar .btn { padding: 6px 9px; font-size: 12px; }
+    .planer-bar .pl-wort, .planer-bar .pl-strich { display: none; }
     .bp-tools { flex-wrap: wrap; }
     /* Am Handy trägt die Zeile nur die Navigation plus „Seite …“ — sieben nackte Symbole
        nebeneinander waren nicht zuzuordnen. */
@@ -1483,10 +1499,15 @@
       <!-- Was gerade filtert, steht hier als Chip und lässt sich einzeln wegnehmen. Vorher
            musste man alle zwölf Felder durchsehen, um zu wissen, warum nur acht Karten kommen. -->
       <div class="f-aktiv" id="f-aktiv"></div>
-      <div class="f-motiv-schnell" id="f-motiv-schnell"></div>
+      <!-- Ära und Seltenheit stehen hier oben, weil danach wirklich gesucht wird; die drei
+           Bildmotiv-Beispiele sind in den Bildmotiv-Kasten gezogen, wo sie hingehören. -->
+      <div class="f-zweispaltig">
+        <div><div class="f-lbl" data-i18n="f_aera">Ära</div><select class="feld" id="f-serie"></select></div>
+        <div><div class="f-lbl" data-i18n="f_rarity">Seltenheit</div><select class="feld" id="f-rgroup-select"></select><div class="hidden" id="f-rgroup"></div></div>
+      </div>
       <button class="btn sekundaer f-mehr" id="f-art-btn" onclick="artFilterToggle()"><span data-i18n="f_art_motiv">Bildmotiv</span> <span id="f-art-zahl"></span> <span id="f-art-caret">▾</span></button>
       <div id="f-art-box" class="hidden f-mehr-box">
-        <div class="f-art-hinweis" id="f-art-hinweis"></div>
+        <div class="f-motiv-schnell" id="f-motiv-schnell"></div>
         <div>
           <div class="f-lbl" data-i18n="f_art_text">Im Bild zu sehen</div>
           <input class="feld" id="f-art-text" placeholder="z. B. Mond, Wasserfall, Laterne" data-i18n-ph="ph_art_text" oninput="artTextGetippt()">
@@ -1496,25 +1517,28 @@
           <div class="f-chips" id="f-art-orte"></div>
         </div>
         <div>
-          <div class="f-lbl" data-i18n="f_art_wasser">Wasser</div>
-          <div class="f-chips" id="f-art-wasser"></div>
-        </div>
-        <div>
-          <div class="f-lbl" data-i18n="f_art_zeit">Tageszeit</div>
-          <div class="f-chips" id="f-art-zeit"></div>
-        </div>
-        <div>
           <div class="f-lbl" data-i18n="f_art_merkmal">Was zu sehen ist</div>
           <div class="f-chips" id="f-art-merkmale"></div>
         </div>
+        <div class="f-zweispaltig">
+          <div>
+            <div class="f-lbl" data-i18n="f_art_zeit">Tageszeit</div>
+            <div class="f-chips" id="f-art-zeit"></div>
+          </div>
+          <div>
+            <div class="f-lbl" data-i18n="f_art_wasser">Wasser</div>
+            <div class="f-chips" id="f-art-wasser"></div>
+          </div>
+        </div>
+        <button class="btn sekundaer" style="font-size:12px;padding:5px 10px;align-self:start"
+                id="f-art-alle-btn" onclick="artAlleUmschalten()" data-i18n="f_art_alle">Seltene Motive zeigen</button>
+        <div class="f-art-hinweis" id="f-art-hinweis"></div>
       </div>
       <button class="btn sekundaer f-mehr" id="f-mehr-btn" onclick="mehrFilterToggle()"><span data-i18n="f_mehr">Erweiterte Filter</span> <span id="f-mehr-zahl"></span> <span id="f-mehr-caret">▾</span></button>
       <div id="f-mehr" class="hidden f-mehr-box">
-        <div><div class="f-lbl" data-i18n="f_aera">Ära</div><select class="feld" id="f-serie"></select></div>
-        <div class="f-zweispaltig" id="f-illu-rar">
+        <div id="f-illu-rar">
           <div><div class="f-lbl" data-i18n="f_illu">Künstler</div><select class="feld" id="f-illu"></select><datalist id="illu-namen"></datalist><div class="hidden" id="f-illu-chips"></div>
             <input class="feld" id="f-illu-suche" list="illu-namen" placeholder="Künstler suchen …" data-i18n-ph="illu_suche" style="margin-top:6px"></div>
-          <div><div class="f-lbl" data-i18n="f_rarity">Seltenheit</div><select class="feld" id="f-rgroup-select"></select><div class="hidden" id="f-rgroup"></div></div>
         </div>
         <div>
           <div class="f-lbl" data-i18n="f_sort">Sortierung</div>
@@ -1600,7 +1624,7 @@
               <div class="trenn"></div>
               <label class="schalter" style="margin:6px 12px 8px;display:flex;gap:8px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="wb-wants" onchange="wantsUmschalten(this.checked)">
-                <span data-i18n="wants_lbl">Fehlende Karten in die Kaufliste</span></label>
+                <span data-i18n="wants_lbl">Dieser Binder steht auf der Wunschliste</span></label>
               <div style="font-size:11px;color:var(--mut);margin:-4px 12px 8px;line-height:1.45" data-i18n="wants_u">Aus: Dieser Binder ist zum Ausprobieren oder für andere — seine Karten stehen nicht unter „fehlt mir noch“.</div>
               <div class="trenn"></div>
               <button onclick="event.stopPropagation();document.getElementById('wb-aussehen').classList.toggle('hidden')" data-i18n="binder_aussehen">Aussehen …</button>
@@ -1642,40 +1666,33 @@
       <div class="gal-umschalter hidden" id="gal-umschalter"></div>
       <div class="gal hidden" id="gal-seiten"></div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
+      <!-- Vorher standen hier sieben Bedienelemente nebeneinander: zwei Pfeile für die
+           Seite, zwei zum Verschieben der Seite, „Alle Seiten", Durchblättern und ein
+           Menü. Jetzt drei Gruppen: blättern, Ansicht, alles Weitere im Menü. Der
+           Umschalter „Seite | Alle" steht im Planer an derselben Stelle — hin und zurück
+           ist damit derselbe Griff. -->
       <div class="seiten-nav" id="wb-nav">
-        <button onclick="seiteZiehen(-1)" class="nur-edit" title="Diese Seite nach vorne schieben" aria-label="Seite nach vorne" data-i18n-title="s_seite_hoch" id="wb-seite-vor">
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <rect x="3" y="4" width="9" height="12" rx="1.6"/><path d="M16 12.5 16 7.5M13.6 9.9 16 7.4l2.4 2.5"/></svg>
-        </button>
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite" data-i18n-aria="s_vorherige">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
-        <button onclick="ansicht('planer')" class="seite-btn" style="margin-left:6px;white-space:nowrap" data-i18n="pl_alle"
-                title="Alle Seiten des Binders nebeneinander" data-i18n-title="pl_alle_t">Alle Seiten</button>
-        <button onclick="seiteZiehen(1)" class="nur-edit" title="Diese Seite nach hinten schieben" aria-label="Seite nach hinten" data-i18n-title="s_seite_runter" id="wb-seite-zurueck">
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5 4 12.5M1.6 10.1 4 12.6l2.4-2.5"/></svg>
-        </button>
+        <div class="segment klein" role="tablist" style="margin-left:8px">
+          <button class="on" onclick="ansicht('suche')" data-i18n="pl_eine">Seite</button>
+          <button onclick="ansicht('planer')" data-i18n="pl_alle_kurz" title="Alle Seiten des Binders nebeneinander" data-i18n-title="pl_alle_t">Alle</button>
+        </div>
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="menuToggle('menu-seite')" class="seite-btn" data-i18n="seite_menue">Seite …</button>
-          <div class="menu hidden" id="menu-seite" style="right:0;left:auto;min-width:230px">
-            <button onclick="ansicht('planer')" data-i18n="pl_alle">Alle Seiten</button>
-            <div class="trenn"></div>
+          <div class="menu hidden" id="menu-seite" style="right:0;left:auto;min-width:240px">
             <button onclick="seiteAnhaengen()" data-i18n="neue_seite_lbl">Neue leere Seite anhängen</button>
-            <button onclick="seiteZiehen(-1)" data-i18n="s_seite_hoch">Seite nach vorn</button>
-            <button onclick="seiteZiehen(1)" data-i18n="s_seite_runter">Seite nach hinten</button>
+            <button onclick="seiteZiehen(-1)" id="wb-seite-vor" data-i18n="s_seite_hoch">Seite nach vorn</button>
+            <button onclick="seiteZiehen(1)" id="wb-seite-zurueck" data-i18n="s_seite_runter">Seite nach hinten</button>
             <div class="trenn"></div>
+            <button onclick="blaetternOeffnen()" data-i18n="bv_titel">Durchblättern</button>
             <button onclick="artworkOeffnen()" data-i18n="aw_t">Artwork-Seite gestalten</button>
             <button onclick="themaOeffnen()" data-i18n="th_titel">Seite nach Thema</button>
             <div class="trenn"></div>
             <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
           </div>
         </div>
-        <button onclick="blaetternOeffnen()" style="margin-left:2px" title="Durchblättern" aria-label="Durchblättern" data-i18n-title="bv_titel">
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-            <path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/>
-            <path d="M10 4.5v12"/></svg>
-        </button>
       </div>
       <div id="wb-sammel" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
@@ -2059,16 +2076,28 @@
 <!-- Planer (zweite Ansicht neben der Suche; Kopfzeile bleibt) -->
 <div id="planer" class="hidden">
   <div class="planer-kopf">
-    <button class="btn sekundaer" style="font-size:13px" onclick="ansicht('suche')" data-i18n="pl_zurueck">‹ Eine Seite</button>
+    <div class="segment klein" role="tablist">
+      <button onclick="ansicht('suche')" data-i18n="pl_eine">Seite</button>
+      <button class="on" data-i18n="pl_alle_kurz">Alle</button>
+    </div>
     <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
     <div style="flex:1"></div>
-    <div class="binder-groesse desktop-only" style="width:150px" title="${''}">
+    <div class="binder-groesse desktop-only" style="width:130px">
       <span data-i18n="pl_zoom">Größe</span>
       <input type="range" id="pl-zoom" min="220" max="620" step="20" oninput="planerZoom(this.value)">
     </div>
     <button class="btn sekundaer" style="font-size:12.5px" onclick="plSucheUmschalten()" id="pl-such-knopf"
             data-i18n="pl_such_auf">Karte suchen</button>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
+    <div class="menuwrap">
+      <button class="btn sekundaer" style="font-size:12.5px" onclick="menuToggle('menu-planer')"
+              data-i18n="mehr_nav">Mehr</button>
+      <div class="menu hidden" id="menu-planer" style="right:0;left:auto;min-width:230px">
+        <button onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
+        <button onclick="lueckenSchliessen()" data-i18n="luecken">Lücken schließen</button>
+        <div class="trenn"></div>
+        <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
+      </div>
+    </div>
   </div>
   <div class="planer-rumpf" id="planer-rumpf"></div>
   <div class="pl-suche zu" id="pl-suche">
@@ -2081,18 +2110,35 @@
     </div>
     <div class="pl-treffer" id="pl-treffer"></div>
   </div>
+  <!-- Zehn Knöpfe in zwei Reihen waren hier: Sortierfeld, Sortieren, Hierher, zwei
+       Pfeile, Nach vorn, Ans Ende, Löschen, Herausnehmen, Aufheben — sie brachen um und
+       lagen über der Suchschublade. Jetzt: schieben, sortieren, löschen, aufheben; alles
+       Seltenere im Menü. -->
   <div class="planer-bar hidden" id="planer-bar">
-    <strong id="planer-anzahl">0</strong> <span data-i18n="gewaehlt">gewählt</span>
-    <select class="feld" id="planer-sortkey" style="width:auto;padding:5px 8px"></select>
-    <button class="btn sekundaer pl-akt" onclick="auswahlSortieren()" data-i18n="sortieren">Sortieren</button>
-    <button class="btn sekundaer pl-akt" onclick="zielModusAn()" data-i18n="hierher">Hierher …</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(-1)" title="←">◂</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(1)" title="→">▸</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
+    <strong id="planer-anzahl">0</strong> <span class="pl-wort" data-i18n="gewaehlt">gewählt</span>
+    <span class="pl-strich"></span>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(-1)" title="Nach links" data-i18n-title="nach_links">◂</button>
+    <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(1)" title="Nach rechts" data-i18n-title="nach_rechts">▸</button>
+    <div class="menuwrap">
+      <button class="btn sekundaer pl-akt" onclick="menuToggle('menu-pl-sort')" data-i18n="pl_sortieren">Sortieren</button>
+      <div class="menu hoch hidden" id="menu-pl-sort" style="min-width:210px">
+        <div class="menu-lbl" data-i18n="pl_sort_nach">Auswahl sortieren nach</div>
+        <div id="planer-sortliste"></div>
+      </div>
+    </div>
     <button class="btn sekundaer pl-akt" onclick="auswahlEntfernen()" data-i18n="entfernen">Löschen</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlHerausnehmen()" data-i18n="herausnehmen">Herausnehmen</button>
-    <button class="btn sekundaer pl-akt" onclick="auswahlLeeren()" data-i18n="aufheben">Aufheben</button>
+    <div class="menuwrap">
+      <button class="btn sekundaer pl-akt" onclick="menuToggle('menu-pl-mehr')" aria-label="Mehr">⋯</button>
+      <div class="menu hoch hidden" id="menu-pl-mehr" style="right:0;left:auto;min-width:220px">
+        <button onclick="zielModusAn()" data-i18n="hierher">Hierher …</button>
+        <button onclick="auswahlVerschieben('anfang')" data-i18n="nach_vorn">Nach vorn</button>
+        <button onclick="auswahlVerschieben('ende')" data-i18n="ans_ende">Ans Ende</button>
+        <div class="trenn"></div>
+        <button onclick="auswahlHerausnehmen()" data-i18n="herausnehmen">Herausnehmen</button>
+      </div>
+    </div>
+    <button class="btn sekundaer pl-akt" onclick="auswahlLeeren()" title="Auswahl aufheben"
+            data-i18n-title="aufheben" aria-label="Auswahl aufheben">✕</button>
   </div>
 </div>
 
@@ -2607,7 +2653,8 @@ const T = {
     m_leer: 'Leerer Binder',
     meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', planen: 'Planen',
     pl_alle: 'Alle Seiten', pl_alle_t: 'Alle Seiten des Binders nebeneinander',
-    pl_zurueck: '‹ Eine Seite', pdf: 'Drucken',
+    pl_zurueck: '‹ Eine Seite', pl_eine: 'Seite', pl_alle_kurz: 'Alle',
+    pl_sort_nach: 'Auswahl sortieren nach', pl_sortieren: 'Sortieren', nach_links: 'Nach links', nach_rechts: 'Nach rechts', pdf: 'Drucken',
     f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
     f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
     alle: '+ Alle Treffer …', alle_ende: '… ans Ende anhängen', alle_seite: '… ab nächster freier Seite',
@@ -2748,7 +2795,11 @@ const T = {
     sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
     sm_login: 'Für die Sammlung brauchst du ein Konto.',
     sm_karten: 'Karten', sm_verschieden: 'verschiedene', sm_wert: 'Wert nach Cardmarket', sm_gezahlt: 'dafür gezahlt',
-    sm_alle: 'Alle', sm_doppelt: 'Doppelte', sm_ohne_binder: 'In keinem Binder', sm_fehlt: 'Fehlt mir noch',
+    sm_alle: 'Alle', sm_doppelt: 'Doppelte', sm_ohne_binder: 'In keinem Binder', sm_fehlt: 'Wunschliste',
+    wl_titel: 'Wunschliste', wl_drauf: 'Auf der Wunschliste', wl_dazu: 'Auf die Wunschliste gesetzt',
+    wl_weg: 'Von der Wunschliste genommen', wl_leer: 'Deine Wunschliste ist leer. Setz Karten mit ☆ darauf – oder stell einen ganzen Binder dazu.',
+    wl_binder: 'Ganze Binder auf der Wunschliste', wl_binder_u: 'Alle Karten dieser Binder, die dir fehlen, stehen auf der Wunschliste.',
+    wl_einzeln: '{n} einzelne Karten', wl_summe: 'Wunschliste zusammen etwa {s}',
     sm_entfernen: 'Aus der Sammlung nehmen',
     sm_leer: 'Noch nichts drin. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab.',
     sm_leer_doppelt: 'Keine Doppelten. Sobald du eine Karte zweimal erfasst, taucht sie hier als Tauschmaterial auf.',
@@ -2811,6 +2862,7 @@ const T = {
     sf_dunkel: 'Schwarz', sf_hell: 'Weiß',
 
     f_art_motiv: 'Bildmotiv', f_art_text: 'Im Bild zu sehen', f_art_ort: 'Wo spielt es',
+    f_art_alle: 'Seltene Motive zeigen', f_art_wenig: 'Nur häufige Motive',
     f_art_wasser: 'Wasser', f_art_zeit: 'Tageszeit', f_art_merkmal: 'Was zu sehen ist',
     f_art_tag: 'Tag', f_art_daemmerung: 'Dämmerung', f_art_nacht: 'Nacht',
     f_art_w1: 'Wasser im Bild', f_art_w2: 'Berührt Wasser', f_art_w3: 'Unter Wasser',
@@ -2868,7 +2920,7 @@ const T = {
     up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
     up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
     nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
-    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', gal_bearbeiten: 'Diese Seite bearbeiten', wants_lbl: 'Fehlende Karten in die Kaufliste', wants_u: 'Aus: Dieser Binder ist zum Ausprobieren oder für andere — seine Karten stehen nicht unter „fehlt mir noch“.', wants_aus_kurz: 'ohne Kaufliste', wants_an_toast: 'Zählt jetzt zur Kaufliste', wants_aus_toast: 'Zählt nicht mehr zur Kaufliste', sm_wants_hin: 'Gezählt werden nur Binder, bei denen „Fehlende Karten in die Kaufliste“ an ist.', binder_aussehen: 'Aussehen …', planer_hinweis_touch: 'Fach antippen wählt aus · gedrückt halten und ziehen verschiebt.', sm_weg_suche: 'Karten suchen', vt_b_binder: 'Binder', vt_b_kunst: 'Kunstseiten', vt_u_kunst: 'Von Sammlern gestaltete Seiten. Übernimm eine in deinen Binder — der Ersteller bekommt Credits dafür.', vt_suche_kunst: 'Kunstseite suchen …', vt_k_top: 'Meistgeladen', vt_k_leer: 'Hier steht noch keine Kunstseite.', vt_k_geladen: 'geladen', vt_k_meine: 'Deine Seite', vt_k_einfuegen: 'In den Binder', vt_k_holen: 'Holen · {n} Credits', vt_k_preis: 'Eine Seite kostet {n} Credits', vt_k_frage: 'Diese Kunstseite für {n} Credits übernehmen? Sie gehört danach dauerhaft dir und lässt sich beliebig oft drucken.', vt_k_gekauft: '{n} Credits abgebucht', vt_k_schon: 'Gehört dir schon', vt_k_kein_binder: 'Öffne zuerst einen Binder.', vt_k_eingesetzt: 'Seite angehängt', awt_t: 'Andere diese Seite laden lassen?', awt_titel: 'Titel in der Vitrine', awt_ph: 'z. B. Glurak am Vulkan', awt_hin: 'Du kannst die Seite jederzeit zurückziehen. Bereits geladene Seiten bleiben bei ihren Besitzern.', awt_nein: 'Nein, privat lassen', awt_ja: 'Ja, freigeben', awt_ja_kurz: 'In die Vitrine stellen …', awt_u: 'Stell die Seite in die Kunstseiten-Vitrine. Jedes Mal, wenn sie jemand übernimmt, zahlt er {p} Credits — davon bekommst du {a} zurück.', awt_frei: 'Seite steht in der Vitrine', awt_privat: 'Seite ist wieder privat', aw_oeffentlich: 'In der Vitrine', aw_verdient: '{n} Credits verdient', vt_k_binder_kosten: 'Dieser Binder enthält {n} Kunstseite(n) · {c} Credits', vt_k_ohne: 'Ohne Kunstseiten kopieren', vt_k_binder_frage: 'Dieser Binder enthält {n} fremde Kunstseite(n). Der Plan selbst ist frei — die Seiten kosten {c} Credits. Mitkopieren? (Abbrechen kopiert den Binder ohne sie.)', vt_k_mit: 'Mit Kunstseiten ({c} Credits)', st_karten_geplant: 'Karten geplant', st_karten_besitz: 'Karten im Besitz', pr_unsicher: 'Beide Börsen weichen stark ab – die Zahl ist unsicher.', pr_abstand: 'USA {f}× über dem üblichen Kurs — bei alten Karten normal, kann aber auch eine falsche Zuordnung sein.', pr_geschaetzt: 'aus dem US-Preis umgerechnet', pr_q_geschaetzt: 'Aus dem US-Marktpreis umgerechnet – Cardmarket führt für diese Karte keinen Trend.', pr_q_zweitquelle: 'Von pokemontcg.io statt TCGdex – dort hängt die Karte am richtigen Cardmarket-Produkt.', pr_q_unsicher: 'Europa und USA liegen weit auseinander.', pr_zweitquelle: 'zweite Quelle (pokemontcg.io)', pr_7: '7-Tage-Schnitt', pr_direkt: 'direkt aus dem Cardmarket-Preisverzeichnis', tk_klick: 'Klick legt die Karte ins Fach', tk_info: 'Details und Preise', tk_besitz: 'Besitze ich', f_chip_weg: 'Filter entfernen', karten_zeigen: 'Karten zeigen', f_preset: 'Schnellauswahl', bv_wischen: 'Zum Blättern wischen', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …', pl_such_auf: 'Karte suchen', pl_such_zu: 'Suche ausblenden', pl_such_hinweis: 'Tippe einen Kartennamen — ein Klick auf den Treffer legt ihn in den Binder.',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Drucken', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', gal_bearbeiten: 'Diese Seite bearbeiten', wants_lbl: 'Dieser Binder steht auf der Wunschliste', wants_u: 'An: Alle Karten dieses Binders, die dir fehlen, stehen auf der Wunschliste. Aus (Standard): Der Binder ist ein Plan, keine Einkaufsliste.', wants_aus_kurz: 'nicht auf der Wunschliste', wants_an_toast: 'Steht auf der Wunschliste', wants_aus_toast: 'Nicht mehr auf der Wunschliste', sm_wants_hin: 'Gezählt werden nur Binder, die du auf die Wunschliste gestellt hast.', binder_aussehen: 'Aussehen …', planer_hinweis_touch: 'Fach antippen wählt aus · gedrückt halten und ziehen verschiebt.', sm_weg_suche: 'Karten suchen', vt_b_binder: 'Binder', vt_b_kunst: 'Kunstseiten', vt_u_kunst: 'Von Sammlern gestaltete Seiten. Übernimm eine in deinen Binder — der Ersteller bekommt Credits dafür.', vt_suche_kunst: 'Kunstseite suchen …', vt_k_top: 'Meistgeladen', vt_k_leer: 'Hier steht noch keine Kunstseite.', vt_k_geladen: 'geladen', vt_k_meine: 'Deine Seite', vt_k_einfuegen: 'In den Binder', vt_k_holen: 'Holen · {n} Credits', vt_k_preis: 'Eine Seite kostet {n} Credits', vt_k_frage: 'Diese Kunstseite für {n} Credits übernehmen? Sie gehört danach dauerhaft dir und lässt sich beliebig oft drucken.', vt_k_gekauft: '{n} Credits abgebucht', vt_k_schon: 'Gehört dir schon', vt_k_kein_binder: 'Öffne zuerst einen Binder.', vt_k_eingesetzt: 'Seite angehängt', awt_t: 'Andere diese Seite laden lassen?', awt_titel: 'Titel in der Vitrine', awt_ph: 'z. B. Glurak am Vulkan', awt_hin: 'Du kannst die Seite jederzeit zurückziehen. Bereits geladene Seiten bleiben bei ihren Besitzern.', awt_nein: 'Nein, privat lassen', awt_ja: 'Ja, freigeben', awt_ja_kurz: 'In die Vitrine stellen …', awt_u: 'Stell die Seite in die Kunstseiten-Vitrine. Jedes Mal, wenn sie jemand übernimmt, zahlt er {p} Credits — davon bekommst du {a} zurück.', awt_frei: 'Seite steht in der Vitrine', awt_privat: 'Seite ist wieder privat', aw_oeffentlich: 'In der Vitrine', aw_verdient: '{n} Credits verdient', vt_k_binder_kosten: 'Dieser Binder enthält {n} Kunstseite(n) · {c} Credits', vt_k_ohne: 'Ohne Kunstseiten kopieren', vt_k_binder_frage: 'Dieser Binder enthält {n} fremde Kunstseite(n). Der Plan selbst ist frei — die Seiten kosten {c} Credits. Mitkopieren? (Abbrechen kopiert den Binder ohne sie.)', vt_k_mit: 'Mit Kunstseiten ({c} Credits)', st_karten_geplant: 'Karten geplant', st_karten_besitz: 'Karten im Besitz', pr_unsicher: 'Beide Börsen weichen stark ab – die Zahl ist unsicher.', pr_abstand: 'USA {f}× über dem üblichen Kurs — bei alten Karten normal, kann aber auch eine falsche Zuordnung sein.', pr_geschaetzt: 'aus dem US-Preis umgerechnet', pr_q_geschaetzt: 'Aus dem US-Marktpreis umgerechnet – Cardmarket führt für diese Karte keinen Trend.', pr_q_zweitquelle: 'Von pokemontcg.io statt TCGdex – dort hängt die Karte am richtigen Cardmarket-Produkt.', pr_q_unsicher: 'Europa und USA liegen weit auseinander.', pr_zweitquelle: 'zweite Quelle (pokemontcg.io)', pr_7: '7-Tage-Schnitt', pr_direkt: 'direkt aus dem Cardmarket-Preisverzeichnis', tk_klick: 'Klick legt die Karte ins Fach', tk_info: 'Details und Preise', tk_besitz: 'Besitze ich', f_chip_weg: 'Filter entfernen', karten_zeigen: 'Karten zeigen', f_preset: 'Schnellauswahl', bv_wischen: 'Zum Blättern wischen', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …', pl_such_auf: 'Karte suchen', pl_such_zu: 'Suche ausblenden', pl_such_hinweis: 'Tippe einen Kartennamen — ein Klick auf den Treffer legt ihn in den Binder.',
     pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
     pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
     pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
@@ -2972,7 +3024,8 @@ const T = {
     m_leer: 'Empty binder',
     meine: 'My binders', preise: 'Prices', planer: 'Planner', planen: 'Plan',
     pl_alle: 'All pages', pl_alle_t: 'Every page of the binder side by side',
-    pl_zurueck: '‹ One page', pdf: 'Print',
+    pl_zurueck: '‹ One page', pl_eine: 'Page', pl_alle_kurz: 'All',
+    pl_sort_nach: 'Sort selection by', pl_sortieren: 'Sort', nach_links: 'Move left', nach_rechts: 'Move right', pdf: 'Print',
     f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
     f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
     alle: '+ All results …', alle_ende: '… append at the end', alle_seite: '… start on next free page',
@@ -3095,7 +3148,11 @@ const T = {
     mk_jp_karten: 'Japanese cards', mk_west_karten: 'Western cards',
     mk_jp_schnitt: 'average {p}', mk_faktor: 'Ratio of averages', mk_faktor_u: 'Western average divided by Japanese',
     mk_jp_top: 'Most expensive Japanese cards',
-    sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Still missing', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
+    sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Wishlist',
+    wl_titel: 'Wishlist', wl_drauf: 'On the wishlist', wl_dazu: 'Added to the wishlist',
+    wl_weg: 'Removed from the wishlist', wl_leer: 'Your wishlist is empty. Add cards with ☆ – or put a whole binder on it.',
+    wl_binder: 'Whole binders on the wishlist', wl_binder_u: 'Every card of these binders you do not own yet is on the wishlist.',
+    wl_einzeln: '{n} single cards', wl_summe: 'wishlist worth about {s}', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
 
     best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
 
@@ -3112,7 +3169,8 @@ const T = {
 
     neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
 
-    f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
+    f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting',
+    f_art_alle: 'Show rare motifs', f_art_wenig: 'Common motifs only', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
 
     th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks — this takes a few seconds …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
  faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
@@ -3155,7 +3213,7 @@ const T = {
     up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
     up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
     nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
-    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', gal_bearbeiten: 'Edit this page', wants_lbl: 'Missing cards go on the buy list', wants_u: 'Off: this binder is for trying things out or for someone else — its cards never show up under “still missing”.', wants_aus_kurz: 'no buy list', wants_an_toast: 'Now counts towards the buy list', wants_aus_toast: 'No longer counts towards the buy list', sm_wants_hin: 'Only binders with “Missing cards go on the buy list” switched on are counted.', binder_aussehen: 'Appearance …', planer_hinweis_touch: 'Tap a slot to select · press and hold to move it.', sm_weg_suche: 'Search cards', vt_b_binder: 'Binders', vt_b_kunst: 'Art pages', vt_u_kunst: 'Pages designed by collectors. Take one into your binder — the creator earns credits for it.', vt_suche_kunst: 'Search art pages …', vt_k_top: 'Most downloaded', vt_k_leer: 'No art page here yet.', vt_k_geladen: 'taken', vt_k_meine: 'Your page', vt_k_einfuegen: 'Add to binder', vt_k_holen: 'Get · {n} credits', vt_k_preis: 'One page costs {n} credits', vt_k_frage: 'Take this art page for {n} credits? It is yours for good afterwards and can be printed as often as you like.', vt_k_gekauft: '{n} credits charged', vt_k_schon: 'Already yours', vt_k_kein_binder: 'Open a binder first.', vt_k_eingesetzt: 'Page appended', awt_t: 'Let others download this page?', awt_titel: 'Title in the showcase', awt_ph: 'e.g. Charizard at the volcano', awt_hin: 'You can withdraw the page at any time. Pages already taken stay with their owners.', awt_nein: 'No, keep it private', awt_ja: 'Yes, share it', awt_ja_kurz: 'Put into the showcase …', awt_u: 'Put the page into the art showcase. Every time someone takes it they pay {p} credits — {a} of those come back to you.', awt_frei: 'Page is in the showcase', awt_privat: 'Page is private again', aw_oeffentlich: 'In the showcase', aw_verdient: '{n} credits earned', vt_k_binder_kosten: 'This binder holds {n} art page(s) · {c} credits', vt_k_ohne: 'Copy without art pages', vt_k_binder_frage: 'This binder holds {n} art page(s) by someone else. The plan itself is free — the pages cost {c} credits. Include them? (Cancel copies the binder without them.)', vt_k_mit: 'With art pages ({c} credits)', st_karten_geplant: 'Cards planned', st_karten_besitz: 'Cards owned', pr_unsicher: 'The two exchanges differ widely – treat this figure with care.', pr_abstand: 'US price is {f}× the usual rate — common for older cards, but it can also mean a wrong product link.', pr_geschaetzt: 'converted from the US price', pr_q_geschaetzt: 'Converted from the US market price – Cardmarket has no trend for this card.', pr_q_zweitquelle: 'From pokemontcg.io instead of TCGdex – there the card is linked to the right Cardmarket product.', pr_q_unsicher: 'Europe and the US are far apart.', pr_zweitquelle: 'second source (pokemontcg.io)', pr_7: '7-day average', pr_direkt: 'straight from the Cardmarket price guide', tk_klick: 'Click adds the card to a slot', tk_info: 'Details and prices', tk_besitz: 'I own this', f_chip_weg: 'Remove filter', karten_zeigen: 'Show cards', f_preset: 'Quick pick', bv_wischen: 'Swipe to turn the page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …', pl_such_auf: 'Find a card', pl_such_zu: 'Hide search', pl_such_hinweis: 'Type a card name — one click on a result puts it into the binder.',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Print', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', gal_bearbeiten: 'Edit this page', wants_lbl: 'This binder is on the wishlist', wants_u: 'On: every card of this binder you do not own yet goes on the wishlist. Off (default): the binder is a plan, not a shopping list.', wants_aus_kurz: 'no buy list', wants_an_toast: 'Now on the wishlist', wants_aus_toast: 'No longer on the wishlist', sm_wants_hin: 'Only binders you put on the wishlist are counted.', binder_aussehen: 'Appearance …', planer_hinweis_touch: 'Tap a slot to select · press and hold to move it.', sm_weg_suche: 'Search cards', vt_b_binder: 'Binders', vt_b_kunst: 'Art pages', vt_u_kunst: 'Pages designed by collectors. Take one into your binder — the creator earns credits for it.', vt_suche_kunst: 'Search art pages …', vt_k_top: 'Most downloaded', vt_k_leer: 'No art page here yet.', vt_k_geladen: 'taken', vt_k_meine: 'Your page', vt_k_einfuegen: 'Add to binder', vt_k_holen: 'Get · {n} credits', vt_k_preis: 'One page costs {n} credits', vt_k_frage: 'Take this art page for {n} credits? It is yours for good afterwards and can be printed as often as you like.', vt_k_gekauft: '{n} credits charged', vt_k_schon: 'Already yours', vt_k_kein_binder: 'Open a binder first.', vt_k_eingesetzt: 'Page appended', awt_t: 'Let others download this page?', awt_titel: 'Title in the showcase', awt_ph: 'e.g. Charizard at the volcano', awt_hin: 'You can withdraw the page at any time. Pages already taken stay with their owners.', awt_nein: 'No, keep it private', awt_ja: 'Yes, share it', awt_ja_kurz: 'Put into the showcase …', awt_u: 'Put the page into the art showcase. Every time someone takes it they pay {p} credits — {a} of those come back to you.', awt_frei: 'Page is in the showcase', awt_privat: 'Page is private again', aw_oeffentlich: 'In the showcase', aw_verdient: '{n} credits earned', vt_k_binder_kosten: 'This binder holds {n} art page(s) · {c} credits', vt_k_ohne: 'Copy without art pages', vt_k_binder_frage: 'This binder holds {n} art page(s) by someone else. The plan itself is free — the pages cost {c} credits. Include them? (Cancel copies the binder without them.)', vt_k_mit: 'With art pages ({c} credits)', st_karten_geplant: 'Cards planned', st_karten_besitz: 'Cards owned', pr_unsicher: 'The two exchanges differ widely – treat this figure with care.', pr_abstand: 'US price is {f}× the usual rate — common for older cards, but it can also mean a wrong product link.', pr_geschaetzt: 'converted from the US price', pr_q_geschaetzt: 'Converted from the US market price – Cardmarket has no trend for this card.', pr_q_zweitquelle: 'From pokemontcg.io instead of TCGdex – there the card is linked to the right Cardmarket product.', pr_q_unsicher: 'Europe and the US are far apart.', pr_zweitquelle: 'second source (pokemontcg.io)', pr_7: '7-day average', pr_direkt: 'straight from the Cardmarket price guide', tk_klick: 'Click adds the card to a slot', tk_info: 'Details and prices', tk_besitz: 'I own this', f_chip_weg: 'Remove filter', karten_zeigen: 'Show cards', f_preset: 'Quick pick', bv_wischen: 'Swipe to turn the page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …', pl_such_auf: 'Find a card', pl_such_zu: 'Hide search', pl_such_hinweis: 'Type a card name — one click on a result puts it into the binder.',
     pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
     pw_email_noetig: 'Enter your email above, then click “forgot password”.',
     pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
@@ -4450,8 +4508,11 @@ function baueFilterLeiste() {
   // Sortierung
   $('f-sort').innerHTML = ['datum', 'dex', 'name', 'nummer', 'typ'].map((s) =>
     `<option value="${s}" ${filter.sort === s ? 'selected' : ''}>${t('s_' + s)}</option>`).join('');
-  $('planer-sortkey').innerHTML = ['datum', 'dex', 'name', 'nummer', 'typ', 'rarity'].map((s) =>
-    `<option value="${s}">${t('s_' + s)}</option>`).join('');
+  // Im Planer war es ein Auswahlfeld *und* ein Knopf — zwei Schritte für eine Absicht.
+  // Jetzt ist jede Sortierung ein Eintrag im Menü und sortiert beim Klick.
+  const sl = $('planer-sortliste');
+  if (sl) sl.innerHTML = ['datum', 'dex', 'name', 'nummer', 'typ', 'rarity'].map((x) =>
+    `<button onclick="auswahlSortieren('${x}')">${t('s_' + x)}</button>`).join('');
 }
 
 function baueSetSelect() {
@@ -4704,6 +4765,8 @@ function zeichneErgebnisse() {
       <div class="tk-hab">
         <button class="${sn ? 'hat' : ''}" onclick="event.stopPropagation();sammlungAufnehmen('${esc(k.id)}')"
                 title="${t('sm_aufnehmen_t')}">${sn ? '✓ ' + sn + '× ' + t('tk_besitz') : t('tk_besitz')}</button>
+        <button class="wunsch ${wunschHat(k.id) ? 'an' : ''}" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}')"
+                title="${t('wl_titel')}" aria-label="${t('wl_titel')}">${wunschHat(k.id) ? '★' : '☆'}</button>
         ${k.reverse ? `<button class="rev" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="${t('v_reverse')}">+ REV</button>` : ''}
       </div>
     </div>`;
@@ -4719,14 +4782,27 @@ function zeichneErgebnisse() {
    (`S.ergebnisse`) — nur ein zweites Bild davon. Deshalb genügt es, dass
    `zeichneErgebnisse()` am Ende hier vorbeischaut; was die Werkbank zeigt, zeigt die
    Schublade auch, ohne zweiten Netzaufruf und ohne zweite Wahrheit. */
+/** Die Auswahlleiste schwebt über der Suchschublade. Deren Höhe wechselt (zu: nur die
+ *  Zeile, offen: dazu der Trefferstreifen), also wird sie gemessen. */
+function plBarSetzen() {
+  const d = $('pl-suche');
+  document.documentElement.style.setProperty('--pl-bar-unten',
+    ((d ? d.offsetHeight : 0) + 14) + 'px');
+}
+window.addEventListener('resize', plBarSetzen);
+
 function plSucheAuf() {
   $('pl-suche').classList.remove('zu');
+  document.body.classList.add('pl-suche-offen');
+  setTimeout(plBarSetzen, 30);
   const k = $('pl-such-knopf'); if (k) k.textContent = t('pl_such_zu');
   if ($('pl-q').value !== $('f-suche').value) $('pl-q').value = $('f-suche').value;
   plTrefferZeichnen();
 }
 function plSucheZu() {
   $('pl-suche').classList.add('zu');
+  document.body.classList.remove('pl-suche-offen');
+  setTimeout(plBarSetzen, 30);
   const k = $('pl-such-knopf'); if (k) k.textContent = t('pl_such_auf');
 }
 function plSucheUmschalten() {
@@ -4957,11 +5033,12 @@ function zeichneBinder() {
   const titel = $('wb-titel');
   if (titel) {
     titel.textContent = S.binder.name || t('neuer_binder');
-    // Ein Binder, der nicht zur Kaufliste zählt, sagt das hier — sonst wundert man sich,
-    // warum seine Karten nicht unter „fehlt mir noch" auftauchen.
-    if (S.binder.options && S.binder.options.wants === false) {
+    // Umgekehrt seit dem 04.09.2026: nicht der Normalfall wird beschriftet, sondern die
+    // Ausnahme. Steht der Binder auf der Wunschliste, sagt er das — sonst wundert man
+    // sich, warum seine Karten unter „Wunschliste" auftauchen.
+    if (S.binder.options && S.binder.options.wants === true) {
       const m = document.createElement('span');
-      m.className = 'bp-nowants'; m.textContent = t('wants_aus_kurz');
+      m.className = 'bp-nowants an'; m.textContent = '★ ' + t('wl_titel');
       titel.appendChild(m);
     }
   }
@@ -6405,7 +6482,11 @@ S.besitz = {};          // card_id → Anzahl, für die Fachanzeige im Binder
 
 async function besitzLaden() {
   if (!S.user) { S.besitz = {}; return; }
-  try { S.besitz = (await api('api/sammlung/besitz')).besitz || {}; } catch (e) { S.besitz = {}; }
+  try {
+    const d = await api('api/sammlung/besitz');
+    S.besitz = d.besitz || {};
+    S.wunsch = new Set(d.wants || []);
+  } catch (e) { S.besitz = {}; S.wunsch = new Set(); }
 }
 
 /** Gehört mir diese Karte? Ohne Konto zählt weiterhin das Häkchen im Binder. */
@@ -6458,17 +6539,45 @@ function zeichneSammlungFilter() {
 }
 function sammlungFilter(w) { SM.filter = w; zeichneSammlungFilter(); sammlungLaden(); }
 
-/** Unter „fehlt mir noch" steht, woher die Liste kommt — sonst sucht man den Binder,
- *  dessen Karten fehlen, und findet ihn nicht, weil er nicht zur Kaufliste zählt. */
+/** Unter der Wunschliste steht, woraus sie besteht — und dort stellt man ganze Binder
+ *  dazu. Ohne diese Zeile sucht man den Schalter im Binder-Menü und findet ihn nicht. */
 function zeichneSammlungHinweis() {
   let box = $('sm-hinweis');
   if (!box) {
     box = document.createElement('div');
     box.id = 'sm-hinweis';
-    box.style.cssText = 'font-size:11.5px;color:var(--mut);margin:-4px 0 10px;line-height:1.5';
-    $('sm-filter').after(box);
+    // Unter die *ganze* Leiste, nicht neben die Chips: in der Flex-Reihe der Filter
+    // wurde daraus sonst eine vierte Spalte zwischen Suche und Sortierung.
+    box.style.cssText = 'font-size:11.5px;color:var(--mut);margin:2px 0 14px;line-height:1.6;'
+      + 'border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel2)';
+    ($('sm-filter').closest('.sm-leiste') || $('sm-filter')).after(box);
   }
-  box.textContent = SM.filter === 'fehlt' ? t('sm_wants_hin') : '';
+  box.classList.toggle('hidden', SM.filter !== 'fehlt');
+  if (SM.filter !== 'fehlt') { box.innerHTML = ''; return; }
+  const w = SM.wunsch || {};
+  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+    { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  box.innerHTML = `<div style="margin-bottom:5px">${t('wl_binder')} — <span style="opacity:.85">${t('wl_binder_u')}</span></div>
+    <div class="f-chips">${(w.binder || []).map((b) =>
+      `<button class="chip ${b.an ? 'on' : ''}" onclick="wunschBinder('${esc(b.id)}', ${b.an ? 0 : 1})"
+        title="${esc(b.name)} · ${b.karten}">${b.an ? '★ ' : '＋ '}${esc(b.name)}</button>`).join('')
+      || `<span style="opacity:.7">–</span>`}</div>
+    <div style="margin-top:6px">${t('wl_einzeln').replace('{n}', (w.einzeln || []).length)}${
+      w.summe ? ' · ' + t('wl_summe').replace('{s}', eur(w.summe)) : ''}</div>`;
+}
+
+/** Einen ganzen Binder auf die Wunschliste stellen oder herunternehmen. */
+async function wunschBinder(id, an) {
+  try {
+    await api('api/wants/binder', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ binder_id: id, an: !!an }) });
+    if (S.binder && S.binder.id === id) {
+      S.binder.options = S.binder.options || {};
+      S.binder.options.wants = !!an;
+      wantsSchalterSetzen();
+    }
+    sammlungLaden();
+  } catch (e) { toast(e.message); }
 }
 let smTimer = null;
 function sammlungSuchen() { clearTimeout(smTimer); smTimer = setTimeout(sammlungLaden, 350); }
@@ -6484,8 +6593,13 @@ async function sammlungLaden() {
     const q = encodeURIComponent($('sm-suche').value.trim());
     const sort = $('sm-sort').value;
     if (SM.filter === 'fehlt') {
-      const d = await api('api/sammlung/fehlt');
-      SM.karten = (d.karten || []).map((k) => ({ ...k, anzahl: 0, fehlt: true }));
+      const d = await api('api/wants');
+      SM.wunsch = d;
+      S.wunsch = new Set(d.einzeln || []);
+      const einzeln = new Set(d.einzeln || []);
+      SM.karten = (d.karten || []).map((k) => ({ ...k, anzahl: 0, fehlt: true,
+                                                 wunsch_einzeln: einzeln.has(k.id) }));
+      zeichneSammlungHinweis();
     } else {
       const d = await api(`api/sammlung?nur=${SM.filter}&q=${q}&sortierung=${sort}&limit=120`);
       SM.karten = d.karten || [];
@@ -6509,7 +6623,7 @@ function zeichneSammlungZahlen() {
 function zeichneSammlung() {
   if (!SM.karten.length) {
     const hinweise = { '': t('sm_leer'), doppelt: t('sm_leer_doppelt'),
-                       ohne_binder: t('sm_leer_ohne'), fehlt: t('sm_leer_fehlt') };
+                       ohne_binder: t('sm_leer_ohne'), fehlt: t('wl_leer') };
     // Eine graue Zeile war zu wenig: es gibt drei Wege, die Sammlung zu füllen, und
     // keiner davon stand hier.
     const wege = SM.filter ? '' : `<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px">
@@ -6523,7 +6637,9 @@ function zeichneSammlung() {
   $('sm-gitter').innerHTML = SM.karten.map((k) => `
     <div class="sm-karte" onclick="detailOeffnenId('${esc(k.id)}')">
       ${k.anzahl > 1 ? `<span class="sm-anz">${k.anzahl}×</span>` : ''}
-      ${k.fehlt ? '' : `<button class="sm-weg" onclick="event.stopPropagation();sammlungWeg('${esc(k.id)}')" title="${t('sm_entfernen')}">✕</button>`}
+      ${k.fehlt
+        ? (k.wunsch_einzeln ? `<button class="sm-weg" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}');setTimeout(sammlungLaden,300)" title="${t('wl_weg')}">✕</button>` : '')
+        : `<button class="sm-weg" onclick="event.stopPropagation();sammlungWeg('${esc(k.id)}')" title="${t('sm_entfernen')}">✕</button>`}
       <img loading="lazy" src="${imgUrl(k.id)}" alt="">
       <div class="sm-txt">
         <div class="sm-name">${esc(k.name || k.id)}</div>
@@ -6562,6 +6678,11 @@ async function sammlungAufnehmen(id, opt) {
     S.besitz[id] = d.anzahl;
     restkostenNeu();
     zeichneErgebnisse(); zeichneBinder();
+    // Steht der Kartendialog offen, gehört die neue Zahl auch auf seinen Knopf.
+    const hab = $('detail-hab');
+    if (hab && detailKarte && detailKarte.id === id) {
+      hab.textContent = '✓ ' + d.anzahl + '× ' + t('tk_besitz');
+    }
     toast(t('sm_aufgenommen').replace('{n}', d.anzahl));
   } catch (e) { toast(e.message); }
 }
@@ -6649,7 +6770,12 @@ const REST = { binder: null, daten: null, laeuft: false };
 
 async function restkostenZeigen() {
   const box = $('wb-rest'); if (!box) return;
-  if (!S.user || S.nurAnsicht || !S.binder || !S.binder.id) { box.classList.add('hidden'); return; }
+  // Nur für Binder, die ausdrücklich auf der Wunschliste stehen. Sonst stand über jedem
+  // Plan eine Kaufsumme, die niemand ausgeben wollte.
+  if (!S.user || S.nurAnsicht || !S.binder || !S.binder.id
+      || !(S.binder.options && S.binder.options.wants === true)) {
+    box.classList.add('hidden'); return;
+  }
   if (REST.binder === S.binder.id && REST.daten) return restkostenMalen();
   if (REST.laeuft) return;
   REST.laeuft = true;
@@ -6674,6 +6800,31 @@ function restkostenMalen() {
 }
 /** Nach jeder Änderung an der Sammlung neu rechnen. */
 function restkostenNeu() { REST.binder = null; REST.daten = null; restkostenZeigen(); }
+
+/* ---------- Wunschliste ----------
+   Was gekauft werden soll, sagt man ausdrücklich: einzelne Karten hier, ganze Binder im
+   Sammlungsbereich. Vorher galt alles als Wunsch, was irgendwo geplant und nicht im Regal
+   war — bei einem Pokédex-Binder waren das tausend Karten. */
+function wunschHat(id) { return !!(S.wunsch && S.wunsch.has(id)); }
+
+async function wunschToggle(id, imDetail) {
+  if (!S.user) return loginOeffnen(t('gate_login'));
+  const an = !wunschHat(id);
+  S.wunsch = S.wunsch || new Set();
+  an ? S.wunsch.add(id) : S.wunsch.delete(id);
+  if (imDetail) {
+    const b = $('detail-wunsch');
+    if (b) b.innerHTML = an ? '★ ' + t('wl_drauf') : '☆ ' + t('wl_titel');
+  } else zeichneErgebnisse();
+  try {
+    await api('api/wants', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify({ card_id: id, an }) });
+    toast(an ? t('wl_dazu') : t('wl_weg'));
+  } catch (e) {
+    an ? S.wunsch.delete(id) : S.wunsch.add(id);
+    toast(e.message);
+  }
+}
 
 async function sammlungWeg(id) {
   try {
@@ -6861,8 +7012,11 @@ function wantsUmschalten(an) {
 }
 
 function wantsSchalterSetzen() {
+  // Umgedreht seit dem 04.09.2026: ein Binder zählt nur zur Wunschliste, wenn man es
+  // sagt. Vorher zählte jeder mit, dem niemand widersprochen hatte — und über einem
+  // Binder, den man zum Ausprobieren angelegt hat, stand „dir fehlen 340 Karten".
   const el = $('wb-wants');
-  if (el && S.binder) el.checked = !(S.binder.options && S.binder.options.wants === false);
+  if (el && S.binder) el.checked = !!(S.binder.options && S.binder.options.wants === true);
 }
 
 function binderLeeren() {
@@ -7941,9 +8095,10 @@ function leereSeite() {
   speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
 }
 
-async function auswahlSortieren() {
+async function auswahlSortieren(key) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (S.auswahl.size < 2) return toast(t('erst_waehlen'));
-  const key = $('planer-sortkey').value;
+  key = key || 'datum';
   const idxe = [...S.auswahl].sort((a, b) => a - b);
   const items = idxe.map((i) => S.binder.items[i]);
   const cardIds = [...new Set(items.filter((i) => i.type === 'card').map((i) => i.id))];
@@ -8438,6 +8593,23 @@ const ART_MERKMAL_TEXT = {
 // Ort und Merkmal überschneiden sich an vier Stellen — die Ortsspalte gewinnt,
 // damit in der Leiste nicht zweimal „Wald“ oder „Kampf“ steht.
 const ART_MERKMAL_AUS = ['schnee', 'gebaeude', 'technik', 'kampf'];
+// Die Bildmotiv-Suche kennt 24 Orte und 37 Merkmale — nebeneinander sind das sechzig
+// Chips, in denen niemand etwas findet. Gezeigt wird deshalb, was viele Treffer *und*
+// eine anschauliche Bedeutung hat (Zahlen aus 23.461 gesichteten Karten); der Rest steht
+// eine Zeile tiefer hinter „Seltene Motive zeigen". „abstrakt" (28 %) und „leuchtet"
+// (30 %) sind die häufigsten Werte überhaupt und trotzdem die nutzlosesten Filter — sie
+// beschreiben keinen Ort und kein Motiv, sondern den Kartenhintergrund.
+const ART_ORT_TOP = ['wald', 'wiese', 'himmel', 'gewaesser', 'berge', 'stadt',
+                     'unterwasser', 'wueste', 'schnee', 'weltraum', 'hoehle', 'strand'];
+const ART_MERKMAL_TOP = ['fliegt', 'mehrere_pokemon', 'mensch', 'blumen', 'feuer', 'sterne',
+                         'mond', 'eis', 'blitz', 'wasserfall', 'regenbogen', 'schlaeft'];
+let artAlle = false;
+function artAlleUmschalten() {
+  artAlle = !artAlle;
+  const b = $('f-art-alle-btn');
+  if (b) b.textContent = t(artAlle ? 'f_art_wenig' : 'f_art_alle');
+  zeichneArtChips();
+}
 let artFilterOffen = false, artIndex = null, artTippUhr = null;
 
 const artText = (tab, k) => (tab[k] || [k, k])[LANG === 'en' ? 1 : 0];
@@ -8469,9 +8641,17 @@ function artHinweis() {
 function zeichneArtChips() {
   if (!artIndex) return;
   const chip = (an, klick, label) => `<button class="chip ${an ? 'on' : ''}" onclick="${klick}">${esc(label)}</button>`;
-  $('f-art-orte').innerHTML = (artIndex.orte || []).map((o) =>
+  // Gewählte Filter bleiben immer sichtbar, auch wenn sie aus der kurzen Liste fallen —
+  // sonst verschwindet ein aktiver Filter aus der Ansicht und niemand findet ihn wieder.
+  const sicht = (liste, top, gewaehlt) => (liste || []).filter(
+    (x) => artAlle || top.includes(x) || gewaehlt.has(x));
+  const ortListe = sicht(artIndex.orte, ART_ORT_TOP, filter.artOrte);
+  const merkListe = sicht((artIndex.merkmale || []).filter((m) => !ART_MERKMAL_AUS.includes(m)),
+                          ART_MERKMAL_TOP, filter.artMerkmale);
+  const rang = (top) => (a, b) => (top.indexOf(a) + 1 || 99) - (top.indexOf(b) + 1 || 99);
+  $('f-art-orte').innerHTML = ortListe.sort(rang(ART_ORT_TOP)).map((o) =>
     chip(filter.artOrte.has(o), `artOrtToggle('${o}')`, artText(ART_ORT_TEXT, o))).join('');
-  $('f-art-merkmale').innerHTML = (artIndex.merkmale || []).filter((m) => !ART_MERKMAL_AUS.includes(m)).map((m) =>
+  $('f-art-merkmale').innerHTML = merkListe.sort(rang(ART_MERKMAL_TOP)).map((m) =>
     chip(filter.artMerkmale.has(m), `artMerkmalToggle('${m}')`, artText(ART_MERKMAL_TEXT, m))).join('');
   $('f-art-zeit').innerHTML = [['tag', t('f_art_tag')], ['daemmerung', t('f_art_daemmerung')], ['nacht', t('f_art_nacht')]]
     .map(([w, l]) => chip(filter.artZeit === w, `artZeitToggle('${w}')`, l)).join('');
@@ -8598,6 +8778,9 @@ async function detailOeffnen(idOrIdx) {
         <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
+          <button class="btn sekundaer" id="detail-hab" onclick="sammlungAufnehmen('${esc(k.id)}')"
+                  title="${t('sm_aufnehmen_t')}">${(S.user && S.besitz[k.id]) ? '✓ ' + S.besitz[k.id] + '× ' + t('tk_besitz') : t('tk_besitz')}</button>
+          <button class="btn sekundaer" id="detail-wunsch" onclick="wunschToggle('${esc(k.id)}', 1)">${wunschHat(k.id) ? '★ ' + t('wl_drauf') : '☆ ' + t('wl_titel')}</button>
           <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
         </div>
         ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
@@ -8888,6 +9071,7 @@ function planerZoomInit() {
 }
 
 function planerAktionen() {
+  plBarSetzen();
   const n = S.auswahl.size;
   $('planer-bar').classList.toggle('hidden', n === 0);
   $('planer-anzahl').textContent = n;

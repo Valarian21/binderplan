@@ -62,6 +62,10 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             PRIMARY KEY (user_id, card_id, variante)
         );
         CREATE INDEX IF NOT EXISTS idx_sammlung_user ON sammlung(user_id);
+        CREATE TABLE IF NOT EXISTS wants (
+            user_id INTEGER, card_id TEXT, created_at TEXT,
+            PRIMARY KEY (user_id, card_id)
+        );
     """)
     con.commit()
     con.close()
@@ -76,13 +80,14 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.close()
         return {r["card_id"]: r["n"] for r in reihen if r["n"] > 0}
 
-    def _geplant(user_id, nur_wants=True):
-        """→ {card_id: wie oft in Bindern geplant}. Grundlage für „fehlt mir noch".
+    def _geplant(user_id, nur_wants=False):
+        """→ {card_id: wie oft in Bindern geplant}.
 
-        Nicht jeder Binder ist eine Einkaufsliste. Man legt einen an, um etwas
-        auszuprobieren, oder baut Kunstseiten für andere — solche Karten sollen nicht als
-        „fehlt mir noch" auftauchen. Jeder Binder trägt deshalb `options.wants`; ohne
-        Angabe zählt er wie bisher mit."""
+        `nur_wants` zählt nur die Binder, die **ausdrücklich** auf der Wunschliste stehen
+        (`options.wants is True`). Vorher war es umgekehrt: jeder Binder zählte mit, wenn
+        niemand widersprochen hatte — und dann stand über einem Binder, den man zum
+        Ausprobieren angelegt hat, „dir fehlen 340 Karten für 1.200 €". Ein Plan ist keine
+        Einkaufsliste; was gekauft werden soll, sagt man ausdrücklich."""
         con = get_db()
         reihen = con.execute("SELECT items, options FROM binders WHERE user_id = ?",
                              (user_id,)).fetchall()
@@ -91,10 +96,10 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         for r in reihen:
             if nur_wants:
                 try:
-                    if json.loads(r["options"] or "{}").get("wants") is False:
+                    if json.loads(r["options"] or "{}").get("wants") is not True:
                         continue
                 except Exception:
-                    pass
+                    continue
             try:
                 items = json.loads(r["items"] or "[]")
             except Exception:
@@ -102,6 +107,35 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             for i in items:
                 if i.get("type") == "card" and i.get("id"):
                     aus[i["id"]] = aus.get(i["id"], 0) + 1
+        return aus
+
+    def _wants(user_id):
+        """→ Menge der gewünschten Karten: einzeln gemerkte plus die Karten der Binder,
+        die auf der Wunschliste stehen."""
+        con = get_db()
+        aus = {r["card_id"] for r in con.execute(
+            "SELECT card_id FROM wants WHERE user_id = ?", (user_id,))}
+        con.close()
+        aus |= set(_geplant(user_id, nur_wants=True))
+        return aus
+
+    def _wunsch_binder(user_id):
+        """Alle Binder mit der Angabe, ob sie auf der Wunschliste stehen."""
+        con = get_db()
+        aus = []
+        for r in con.execute("SELECT id, name, items, options FROM binders WHERE user_id = ?"
+                             " ORDER BY updated_at DESC", (user_id,)):
+            try:
+                an = json.loads(r["options"] or "{}").get("wants") is True
+            except Exception:
+                an = False
+            try:
+                n = sum(1 for i in json.loads(r["items"] or "[]")
+                        if i.get("type") == "card" and i.get("id"))
+            except Exception:
+                n = 0
+            aus.append({"id": r["id"], "name": r["name"], "karten": n, "an": an})
+        con.close()
         return aus
 
     def _preise(card_ids):
@@ -145,7 +179,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             return {"karten": [], "gesamt": 0}
 
         # „In keinem Binder" fragt nach dem Plan überhaupt, nicht nach der Kaufliste.
-        geplant = _geplant(user["id"], nur_wants=(nur != "ohne_binder")) if nur in ("ohne_binder", "") else {}
+        geplant = _geplant(user["id"]) if nur == "ohne_binder" else {}
         ids = set(besitz)
         if nur == "doppelt":
             ids = {c for c in ids if besitz[c] >= 2}
@@ -230,8 +264,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         mit_preis = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id = ? AND kaufpreis IS NOT NULL",
                                 (user["id"],)).fetchone()["c"]
         con.close()
-        geplant = _geplant(user["id"])
-        fehlt = sum(1 for c in geplant if c not in besitz)
+        geplant = _geplant(user["id"])                    # alle Binder: „in keinem Binder"
+        fehlt = sum(1 for c in _wants(user["id"]) if c not in besitz)
         return {
             "karten": sum(besitz.values()), "verschiedene": len(besitz),
             "wert": round(wert, 2), "mit_preis": len([c for c in besitz if preise.get(c)]),
@@ -360,13 +394,10 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.close()
         return {"ok": True, "anzahl": gesamt}
 
-    @app.get("/api/sammlung/fehlt")
-    def fehlt(request: Request, limit: int = 300):
-        """In Bindern geplant, aber nicht in der Sammlung — die Kaufliste über alle Binder."""
-        user = require_user(request)
+    def _wunschliste(user, limit=300):
+        """Die Wunschliste ohne das, was längst im Regal steht."""
         besitz = _besitz(user["id"])
-        geplant = _geplant(user["id"])
-        offen = [c for c in geplant if c not in besitz]
+        offen = [c for c in _wants(user["id"]) if c not in besitz]
         if not offen:
             return {"karten": [], "gesamt": 0, "summe": 0}
         preise = _preise(offen)
@@ -385,6 +416,80 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         aus.sort(key=lambda k: -(k["eur"] or 0))
         return {"karten": aus[:limit], "gesamt": len(aus),
                 "summe": round(sum(k["eur"] or 0 for k in aus), 2)}
+
+    @app.get("/api/sammlung/fehlt")
+    def fehlt(request: Request, limit: int = 300):
+        """Alter Name der Wunschliste — bleibt, damit ältere Oberflächen weiterlaufen."""
+        return _wunschliste(require_user(request), limit)
+
+    # --- Wunschliste --------------------------------------------------------
+    #
+    # Vorher war „fehlt mir noch" eine Rechnung über *alle* Binder: alles, was irgendwo
+    # geplant und nicht im Regal war, galt als Kaufwunsch. Das stimmt fast nie — Binder
+    # sind Pläne, Entwürfe, Geschenke, Kunstseiten. Die Wunschliste ist jetzt eine eigene
+    # Liste: einzelne Karten kommen per Klick hinein, und ein ganzer Binder lässt sich
+    # dazustellen (dann zählen alle seine Karten). Nichts davon passiert von allein.
+
+    @app.get("/api/wants")
+    def wants_liste(request: Request, limit: int = 300):
+        user = require_user(request)
+        aus = _wunschliste(user, limit)
+        con = get_db()
+        einzeln = [r["card_id"] for r in con.execute(
+            "SELECT card_id FROM wants WHERE user_id = ?", (user["id"],))]
+        con.close()
+        aus["einzeln"] = einzeln
+        aus["binder"] = _wunsch_binder(user["id"])
+        return aus
+
+    @app.post("/api/wants")
+    async def wants_setzen(request: Request):
+        """Eine Karte auf die Wunschliste oder herunter (`an`)."""
+        user = require_user(request)
+        data = await request.json()
+        card_id = str(data.get("card_id") or "").strip()
+        if not card_id:
+            raise HTTPException(400, "Keine Karte angegeben")
+        an = data.get("an")
+        con = get_db()
+        da = con.execute("SELECT 1 FROM wants WHERE user_id = ? AND card_id = ?",
+                         (user["id"], card_id)).fetchone()
+        an = (not da) if an is None else bool(an)      # ohne Angabe: umschalten
+        if an:
+            con.execute("INSERT OR IGNORE INTO wants (user_id, card_id, created_at)"
+                        " VALUES (?,?,?)", (user["id"], card_id, _now()))
+        else:
+            con.execute("DELETE FROM wants WHERE user_id = ? AND card_id = ?",
+                        (user["id"], card_id))
+        con.commit()
+        n = con.execute("SELECT COUNT(*) c FROM wants WHERE user_id = ?",
+                        (user["id"],)).fetchone()["c"]
+        con.close()
+        return {"ok": True, "an": an, "einzeln": n}
+
+    @app.post("/api/wants/binder")
+    async def wants_binder(request: Request):
+        """Einen ganzen Binder auf die Wunschliste stellen oder herunternehmen."""
+        user = require_user(request)
+        data = await request.json()
+        binder_id = str(data.get("binder_id") or "")
+        an = bool(data.get("an"))
+        con = get_db()
+        row = con.execute("SELECT options FROM binders WHERE id = ? AND user_id = ?",
+                          (binder_id, user["id"])).fetchone()
+        if not row:
+            con.close()
+            raise HTTPException(404, "Binder nicht gefunden")
+        try:
+            opt = json.loads(row["options"] or "{}")
+        except Exception:
+            opt = {}
+        opt["wants"] = an
+        con.execute("UPDATE binders SET options = ? WHERE id = ? AND user_id = ?",
+                    (json.dumps(opt), binder_id, user["id"]))
+        con.commit()
+        con.close()
+        return {"ok": True, "an": an}
 
     @app.post("/api/sammlung/aus_binder")
     async def aus_binder(request: Request):
@@ -470,8 +575,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         """Kompakte Liste für den Binder: welche Karten besitze ich, wie oft."""
         user = current_user(request)
         if not user:
-            return {"besitz": {}}
-        return {"besitz": _besitz(user["id"])}
+            return {"besitz": {}, "wants": []}
+        con = get_db()
+        wl = [r["card_id"] for r in con.execute("SELECT card_id FROM wants WHERE user_id = ?",
+                                                (user["id"],))]
+        con.close()
+        return {"besitz": _besitz(user["id"]), "wants": wl}
 
     def kennzahlen():
         con = get_db()
