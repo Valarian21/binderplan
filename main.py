@@ -3988,8 +3988,10 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, r
             params += [f'%"{k}"%' for k in kinds]
     sql_where = (" WHERE " + " AND ".join(where)) if where else ""
     order = SORTS.get(sort, SORTS["datum"])
-    if region == "jp" and sort == "datum" and richtung == "asc":
-        richtung = "desc"   # Japan: neueste zuerst – die 1996er-Sets haben kaum Scans
+    # Japan lief hier auf „neueste zuerst", weil die alten Sets kaum Scans hatten. Seit
+    # die Bilder von TCGplayer kommen (1996–2006 nahezu lückenlos), gibt es dafür keinen
+    # Grund mehr — und zwei Regionen mit gegenläufiger Reihenfolge verwirren mehr, als
+    # die Ausnahme je gebracht hat.
     if richtung == "desc":
         order = ", ".join(
             part.strip() + " DESC" if "IS NULL" not in part else part.strip()

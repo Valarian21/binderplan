@@ -578,6 +578,11 @@
     color: var(--mut); border: 1.5px solid var(--line); border-radius: 7px; padding: 3px 6px; }
   .aw-mini-teilen.an { color: #B8860B; border-color: #E0A21B; }
   .aw-mini-teilen:hover { border-color: var(--blau); color: var(--blau); }
+  .aw-passung { margin-top: 8px; font-size: 11.5px; line-height: 1.55; border: 1.5px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; background: var(--panel2); }
+  .aw-passung.gut { border-color: var(--gruen); }
+  .aw-passung.mittel { border-color: #E0A21B; }
+  .aw-passung strong { font-size: 12px; }
   .tk-hab .wunsch { flex: 0 0 auto; padding: 0 8px; color: var(--mut); }
   .tk-hab .wunsch.an { color: #E0A21B; }
   
@@ -2040,6 +2045,9 @@
       <div class="aw-links">
         <div class="aw-grid" id="aw-grid"></div>
         <div class="aw-hint" data-i18n="aw_leer_hint">Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.</div>
+        <!-- Passen die gewählten Karten zusammen? Steht in den Bildmotiv-Daten und wird
+             gezeigt, bevor Credits fließen. -->
+        <div class="aw-passung hidden" id="aw-passung"></div>
       </div>
       <div class="aw-rechts">
         <div class="feld-lbl" style="margin-top:0" data-i18n="aw_stil">Stil</div>
@@ -2621,6 +2629,9 @@ const T = {
     aw_login: 'Zum Erzeugen von Artwork-Seiten bitte anmelden – die erste Seite ist kostenlos.',
     aw_kein_anker: 'Lege zuerst mindestens eine Karte in ein Fach dieser Seite.', aw_kein_platz: 'Auf dieser Seite ist kein Fach frei, das die KI füllen könnte.',
     aw_laeuft_schon: 'Es läuft bereits eine Artwork-Seite – bitte kurz warten.', aw_fehler: 'Das hat leider nicht geklappt', aw_geloescht: 'Artwork gelöscht.',
+    aw_p_gut: 'Die Karten passen zusammen', aw_p_bruch: 'Die Karten passen nur bedingt zusammen',
+    aw_p_gemeinsam: 'gemeinsam: {o}',
+    aw_p_rat: 'Die KI baut trotzdem eine Seite daraus – erwarte einen sichtbaren Übergang. Weniger Ankerkarten oder Karten mit ähnlichem Motiv geben ein ruhigeres Bild.',
     aw_privat: 'KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.',
     aw_druck_hint: 'Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.',
     aw_erg_info: '{k} Karte(n) · {f} Fächer mit Artwork · {s}',
@@ -2864,7 +2875,7 @@ const T = {
     foto_waehlen: 'Fotos auswählen', foto_los: 'Karten erkennen', foto_vor: 'Nach vorne', foto_zurueck: 'Nach hinten',
     foto_lauf: 'Foto {i} von {n} wird ausgewertet …', foto_bilanz: '{n} Karten auf {s} Seiten erkannt.',
     foto_unsicher: '{u} davon solltest du prüfen (gelb umrandet).', foto_pruefen: 'bitte prüfen',
-    foto_tauschen: 'Antippen für andere Treffer', foto_alternativen: 'Stattdessen diese Karte',
+    foto_gelesen: 'Gelesen', foto_tauschen: 'Antippen für andere Treffer', foto_alternativen: 'Stattdessen diese Karte',
     foto_keine_alt: 'Keine weiteren Treffer', foto_nochmal: 'Andere Fotos',
     foto_anhaengen: 'An diesen Binder anhängen', foto_neu: 'Neuen Binder anlegen',
     foto_bindername: 'Fotoimport', foto_fertig: '{n} Karten übernommen', foto_leer: 'Keine Karten erkannt',
@@ -2992,6 +3003,9 @@ const T = {
     aw_login: 'Please sign in to create artwork pages – the first one is free.',
     aw_kein_anker: 'Place at least one card in a pocket of this page first.', aw_kein_platz: 'There is no free pocket on this page for the AI to fill.',
     aw_laeuft_schon: 'An artwork page is already being generated – please wait a moment.', aw_fehler: 'That did not work', aw_geloescht: 'Artwork deleted.',
+    aw_p_gut: 'These cards fit together', aw_p_bruch: 'These cards only partly fit together',
+    aw_p_gemeinsam: 'shared: {o}',
+    aw_p_rat: 'The AI will still build the page – expect a visible seam. Fewer anchor cards, or cards with a similar setting, give a calmer picture.',
     aw_privat: 'AI image for private use. The original card stays untouched in its pocket; the cut-outs are labelled “Page · Slot”.',
     aw_druck_hint: 'Print on heavy paper (≥ 200 g) or photo paper, cut along the grey lines, slide into the empty sleeves.',
     aw_erg_info: '{k} card(s) · {f} pockets with artwork · {s}',
@@ -3177,7 +3191,7 @@ const T = {
     geburtsdatum: 'Date of birth', geb_hint: 'Only used to know whether you may show binders publicly — allowed from 16. It is never shown publicly.',
     geb_noetig: 'Please enter your date of birth.',
 
-    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: 'Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
+    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: 'Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_gelesen: 'Read', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
 
     neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
 
@@ -5609,6 +5623,7 @@ function zeichneFotoErgebnis() {
               <div class="fi-name">${esc(k.name || k.id)}</div>
               <div class="fi-set">${esc(k.set || '')} ${k.nr ? '· ' + esc(k.nr) : ''}</div>
               ${k.sicher ? '' : `<div class="fi-warn">${t('foto_pruefen')}</div>`}
+              ${!k.sicher && k.gelesen ? `<div class="fi-set" style="opacity:.8">${t('foto_gelesen')}: ${esc(k.gelesen)}${k.gelesen_nr ? ' ' + esc(k.gelesen_nr) : ''}</div>` : ''}
             </div>
           </div>`).join('')}
       </div>
@@ -9118,6 +9133,7 @@ function artworkOeffnen(seite) {
   $('aw-seite-nr').textContent = AW.seite + 1;
   $('aw-fehler').textContent = '';
   AW.pokemon = []; zeichneArtworkPoke(); $('aw-poke').value = '';
+  passungLaden();
   if (!S.pokedex) ladePokedex().catch(() => {});
   if (!AW.preise) api('api/artwork/stile').then((d) => {
     AW.preise = { basis: d.preis_basis, je_karte: d.preis_je_karte, max: d.preis_max };
@@ -9159,6 +9175,36 @@ function artworkAnkerToggle(s) {
   $('aw-fehler').textContent = '';
   zeichneArtworkGrid('aw-grid', true);
   artworkKontingentText();
+  passungLaden();
+}
+
+/* ---------- Passen die Karten zusammen? ----------
+   Eine Seite aus einer Unterwasser- und einer Vulkankarte kann kein Bildmodell zu einer
+   Landschaft verbinden. Das steht in den Bildmotiv-Daten, die für 23.461 Karten vorliegen —
+   also wird es gesagt, bevor der Sammler Credits ausgibt. */
+let passungUhr = null;
+function passungLaden() {
+  clearTimeout(passungUhr);
+  passungUhr = setTimeout(async () => {
+    const box = $('aw-passung');
+    if (!box || !S.binder) return;
+    const sp = seiteInfo(AW.seite), pp = sp.laenge;
+    const ids = [...AW.anker].map((s) => (S.binder.items[AW.seite * pp + s] || {}).id).filter(Boolean);
+    if (ids.length < 2) { box.classList.add('hidden'); return; }
+    try {
+      const d = await api('api/artwork/passung?ids=' + ids.map(encodeURIComponent).join(','));
+      if (d.wert == null) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      box.classList.toggle('gut', d.wert >= 80);
+      box.classList.toggle('mittel', d.wert < 80);
+      const karten = (d.karten || []).map((k) => `${esc(k.name)}${k.ort ? ' – ' + esc(k.ort) : ''}${k.zeit ? ', ' + esc(k.zeit) : ''}`).join('<br>');
+      box.innerHTML = `<strong>${d.wert >= 80 ? t('aw_p_gut') : t('aw_p_bruch')}</strong>`
+        + (d.gemeinsam ? ` — ${t('aw_p_gemeinsam').replace('{o}', esc(d.gemeinsam))}` : '')
+        + (d.konflikte && d.konflikte.length ? `<div style="margin-top:4px">${d.konflikte.map(esc).join('<br>')}</div>` : '')
+        + `<div style="margin-top:5px;color:var(--mut)">${karten}</div>`
+        + (d.wert < 80 ? `<div style="margin-top:5px;color:var(--mut)">${t('aw_p_rat')}</div>` : '');
+    } catch (e) { box.classList.add('hidden'); }
+  }, 250);
 }
 function zeichneArtworkStile() {
   $('aw-stile').innerHTML = AW_STILE.map((k) => `<button class="chip ${AW.stil === k ? 'on' : ''}" onclick="AW.stil='${k}';zeichneArtworkStile()">${t('stil_' + k)}</button>`).join('');

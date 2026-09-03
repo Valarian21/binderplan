@@ -58,6 +58,10 @@ STANDARD_MODUS = "schnell"
 STUFE_A_FAKTOR = 2.3      # Stufe A: Illustration um diesen Faktor erweitern (kleiner Schritt = genaue Geometrie)
 STUFE_A_MAX_ANTEIL = 0.8  # deckt Stufe A schon ≥ 80 % der Seite, entfällt Stufe B
 ANALYSE_MODELL = "google/gemini-3.5-flash"            # Vision-Analyse der Karte (≈ 0,5 ct)
+# Der Wunschtext ist reines Umschreiben — dafür genügt das kleine Modell. Gemessen an vier
+# echten Wünschen: 2.5-flash 0,009 ct und behält die Fortsetzungs-Formulierung („extend the
+# forest …"), 3.5-flash kostet 0,7 ct für dasselbe, flash-lite verliert den Bezug zur Karte.
+WUNSCH_MODELL = "google/gemini-2.5-flash"
 
 # Bildgröße je Fach/Fuge wie im Platzhalter-PDF (mm)
 KARTE_W, KARTE_H, FUGE = 63.0, 88.0, 4.0
@@ -430,6 +434,101 @@ def _zonen(cols, rows, anker):
     return zone, sorted(paare)
 
 
+# --- Passen die Karten überhaupt zusammen? ----------------------------------
+#
+# Eine Seite aus einer Unterwasserkarte und einer Vulkankarte kann das beste Bildmodell
+# nicht zu einer Landschaft verbinden — es wird ein Bruch oder ein Brei. Das lässt sich
+# vorher sagen: `card_art_tags` hält für 23.461 Karten Ort, Tageszeit und Wasseranteil
+# (aus dem Bildmotiv-Index, siehe themen.py). Der Nutzer erfährt es, bevor er Credits
+# ausgibt, und der Regie-Plan bekommt den gemeinsamen Lebensraum als Vorgabe.
+ORT_GRUPPEN = {
+    "wasser": {"unterwasser", "gewaesser", "strand", "fluss"},
+    "gruen": {"wald", "dschungel", "wiese"},
+    "karg": {"berge", "wueste", "vulkan", "hoehle", "unterirdisch", "ruinen"},
+    "kalt": {"schnee"},
+    "gebaut": {"stadt", "gebaeude", "innenraum", "technik"},
+    "himmel": {"himmel", "weltraum"},
+}
+ORT_TEXT = {
+    "unterwasser": "unter Wasser", "gewaesser": "am Wasser", "strand": "am Strand", "fluss": "am Fluss",
+    "wald": "im Wald", "dschungel": "im Dschungel", "wiese": "auf der Wiese", "berge": "in den Bergen",
+    "wueste": "in der Wüste", "vulkan": "am Vulkan", "hoehle": "in einer Höhle",
+    "unterirdisch": "unterirdisch", "ruinen": "in Ruinen", "schnee": "im Schnee", "stadt": "in der Stadt",
+    "gebaeude": "in einem Gebäude", "innenraum": "im Innenraum", "technik": "in technischer Umgebung",
+    "himmel": "am Himmel", "weltraum": "im Weltraum", "dunkelheit": "im Dunkeln", "kampf": "im Kampf",
+    "abstrakt": "ohne erkennbaren Ort", "portraet": "als Porträt",
+}
+ZEIT_TEXT = {"tag": "am Tag", "nacht": "nachts", "daemmerung": "in der Dämmerung",
+             "dunkelheit": "im Dunkeln", "sonnenunterg": "im Sonnenuntergang", "unklar": ""}
+
+
+def _tags(card_ids):
+    con = _dep["get_db"]()
+    marken = ",".join("?" * len(card_ids)) or "''"
+    reihen = con.execute(
+        f"SELECT card_id, orte, zeit, wasser, merkmale FROM card_art_tags WHERE card_id IN ({marken})",
+        list(card_ids)).fetchall()
+    con.close()
+    aus = {}
+    for r in reihen:
+        aus[r["card_id"]] = {
+            "orte": [o for o in re.split(r"[,\s]+", r["orte"] or "") if o],
+            "zeit": (r["zeit"] or "").strip(),
+            "wasser": r["wasser"] or 0,
+            "merkmale": [m for m in re.split(r"[,\s]+", r["merkmale"] or "") if m],
+        }
+    return aus
+
+
+def _passung(card_ids, namen=None):
+    """→ {wert 0-100, gemeinsam, konflikte, karten}. Ohne Bildmotiv-Daten: neutral."""
+    namen = namen or {}
+    tags = _tags(list(dict.fromkeys(card_ids)))
+    bekannt = [c for c in dict.fromkeys(card_ids) if c in tags]
+    if len(bekannt) < 2:
+        return {"wert": None, "gemeinsam": "", "konflikte": [], "karten": [], "gruppen": []}
+    gruppen, zeiten, wasser = {}, {}, {}
+    for c in bekannt:
+        t = tags[c]
+        gs = {g for g, menge in ORT_GRUPPEN.items() if menge & set(t["orte"])}
+        gruppen[c] = gs
+        z = t["zeit"]
+        zeiten[c] = "nacht" if z in ("nacht", "dunkelheit") else ("tag" if z in ("tag", "sonnenunterg") else "")
+        wasser[c] = t["wasser"]
+    wert = 100
+    konflikte = []
+    alle_gruppen = set().union(*gruppen.values()) if gruppen else set()
+    geteilt = set.intersection(*[g for g in gruppen.values() if g]) if all(gruppen.values()) else set()
+    if len(alle_gruppen) > 1 and not geteilt:
+        wert -= min(50, 25 * (len(alle_gruppen) - 1))
+        namen_von = lambda g: ", ".join(namen.get(c, c) for c in bekannt if g in gruppen[c])
+        konflikte.append("Verschiedene Landschaften: "
+                         + " · ".join(f"{g} ({namen_von(g)})" for g in sorted(alle_gruppen)))
+    if "tag" in zeiten.values() and "nacht" in zeiten.values():
+        wert -= 35
+        konflikte.append("Tag trifft Nacht: "
+                         + ", ".join(namen.get(c, c) for c in bekannt if zeiten[c] == "nacht") + " spielt nachts")
+    if any(w >= 3 for w in wasser.values()) and any(w == 0 for w in wasser.values()):
+        wert -= 30
+        konflikte.append("Unter Wasser trifft Land: "
+                         + ", ".join(namen.get(c, c) for c in bekannt if wasser[c] >= 3) + " spielt unter Wasser")
+    gemeinsam = ""
+    if geteilt:
+        orte = [o for c in bekannt for o in tags[c]["orte"]]
+        haeufig = max(set(orte), key=orte.count) if orte else ""
+        gemeinsam = ORT_TEXT.get(haeufig, haeufig)
+    z = [x for x in zeiten.values() if x]
+    # „nachts" nur, wenn es mindestens zwei Karten sagen — eine allein ist keine Tageszeit
+    # der Seite, sondern der Ausreißer, den der Plan überbrücken muss.
+    if len(z) >= 2 and len(set(z)) == 1:
+        gemeinsam = (gemeinsam + " " + ZEIT_TEXT.get(z[0], "")).strip()
+    return {"wert": max(0, wert), "gemeinsam": gemeinsam, "konflikte": konflikte,
+            "gruppen": sorted(alle_gruppen),
+            "karten": [{"id": c, "name": namen.get(c, c),
+                        "ort": ", ".join(ORT_TEXT.get(o, o) for o in tags[c]["orte"][:2]),
+                        "zeit": ZEIT_TEXT.get(tags[c]["zeit"], "")} for c in bekannt]}
+
+
 REGIE_PROMPT = (
     "You are an art director planning ONE 'extended art' page for a card collector. Several finished illustrations "
     "sit on the page; the painter has to fill everything around them so the page reads as one coherent habitat, "
@@ -444,7 +543,42 @@ REGIE_PROMPT = (
 )
 
 
-def _regie(cols, rows, anker, namen, analysen):
+WUNSCH_PROMPT = (
+    "You turn a collector's wish into ONE instruction for a painter who extends a trading-card "
+    "illustration into a full page around the card.\n"
+    "Rules: keep the intent and every concrete thing the collector asked for; make it visual and "
+    "specific; English; imperative; at most 35 words; one sentence or two. Never mention cards, "
+    "frames, borders, grids, pockets, text or logos. Do not invent a second main creature. "
+    "If the wish is already fine, just tighten it. Answer with the instruction only."
+)
+
+
+def _wunsch_scharf(wunsch, kontext=""):
+    """Den Wunschtext des Sammlers vor dem Bildmodell schärfen (≈ 0,2 ct).
+
+    Gemessen an der Praxis: „mehr wasser bitte und schön hell" landet als deutscher
+    Halbsatz mitten in einem englischen Prompt und wird überlesen. Ein kurzer Textschritt
+    macht daraus eine Anweisung, die das Bildmodell wörtlich ausführen kann. Fällt der
+    Schritt aus, geht der Originaltext weiter wie bisher."""
+    wunsch = (wunsch or "").strip()
+    if len(wunsch) < 4:
+        return wunsch, 0.0
+    try:
+        d = _openrouter({
+            "model": _dep["env"]().get("ARTWORK_WUNSCH_MODELL") or WUNSCH_MODELL,
+            "messages": [{"role": "user", "content":
+                          WUNSCH_PROMPT + (f"\n\nPAGE CONTEXT: {kontext}" if kontext else "")
+                          + f"\n\nWISH (any language): {wunsch[:400]}"}],
+            "usage": {"include": True},
+        }, timeout=60)
+        text = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        text = re.sub(r"^[\"\u201c\u201e]|[\"\u201d]$", "", text).strip()
+        return (text[:400] or wunsch), float((d.get("usage") or {}).get("cost") or 0)
+    except Exception:
+        return wunsch, 0.0
+
+
+def _regie(cols, rows, anker, namen, analysen, passung=None):
     """Kompositionsplan für Seiten mit mehreren Karten (reines Text-Modell, ≈ 0,5 ct)."""
     zone, paare = _zonen(cols, rows, anker)
     beschreibung = []
@@ -455,8 +589,21 @@ def _regie(cols, rows, anker, namen, analysen):
             f"SOURCE {namen.get(cid) or cid} sits at row {row + 1}, column {col + 1}; its surrounding zone covers "
             f"{len(felder)} neighbouring areas.\n{_analyse_text(analysen.get(cid))}")
     nachbarn = "; ".join(f"{namen.get(a) or a} ↔ {namen.get(b) or b}" for a, b in paare) or "none"
+    # Was der Bildmotiv-Index über die Karten weiß, gehört in den Plan: er nennt den
+    # gemeinsamen Lebensraum, statt ihn aus den Fließtexten erraten zu lassen — und die
+    # Brüche, die der Maler überbrücken muss.
+    hinweis = ""
+    if passung and passung.get("wert") is not None:
+        teile = []
+        if passung.get("gemeinsam"):
+            teile.append(f"measured common setting: {passung['gemeinsam']}")
+        if passung.get("konflikte"):
+            teile.append("known clashes to bridge, do not average them away: "
+                         + " | ".join(passung["konflikte"]))
+        hinweis = ("\n\nMEASURED CONTEXT (from an image index over all cards): "
+                   + "; ".join(teile)) if teile else ""
     text = (REGIE_PROMPT + "\n\nSOURCES:\n" + "\n\n".join(beschreibung)
-            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}")
+            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}" + hinweis)
     try:
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_REGIE_MODELL") or ANALYSE_MODELL,
@@ -819,10 +966,23 @@ def _job(artwork_id):
                 crop = crop.copy(); crop.thumbnail((1024, 1024))
                 bilder[cid] = crop
         con.close()
+        # Passt die Auswahl zusammen? Die Antwort steht in den Bildmotiv-Daten und geht in
+        # den Regie-Plan; der Nutzer sieht sie schon vor dem Start (/api/artwork/passung).
+        passung = _passung(list(anker.values()), namen)
+        if passung.get("wert") is not None:
+            schritte.append({"passung": passung["wert"], "gemeinsam": passung["gemeinsam"],
+                             "konflikte": passung["konflikte"]})
+        # Den Wunsch des Sammlers vor dem Bildmodell schärfen
+        if wunsch:
+            wunsch_roh = wunsch
+            wunsch, kw = _wunsch_scharf(wunsch, passung.get("gemeinsam") or "")
+            kosten += kw
+            if wunsch != wunsch_roh:
+                schritte.append({"wunsch_roh": wunsch_roh, "wunsch": wunsch})
         # Regie-Plan bei mehreren Karten (billiger Textschritt, verhindert den „alles-verschmolzen“-Matsch)
         regie = ""
         if len(dict.fromkeys(anker.values())) > 1:
-            regie, kr = _regie(cols, rows, anker, namen, analysen)
+            regie, kr = _regie(cols, rows, anker, namen, analysen, passung)
             kosten += kr
             if regie:
                 schritte.append({"regie": regie})
@@ -1108,6 +1268,21 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "preis_basis": _dep["abo"].ARTWORK_BASIS, "preis_je_karte": _dep["abo"].ARTWORK_JE_KARTE,
                 "preis_max": _dep["abo"].ARTWORK_MAX,
                 "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
+
+    @app.get("/api/artwork/passung")
+    def artwork_passung(request: Request, ids: str = ""):
+        """Passen diese Karten auf eine Seite? Antwort vor dem Ausgeben der Credits.
+
+        Grundlage sind die Bildmotiv-Daten (Ort, Tageszeit, Wasser) aus `card_art_tags`."""
+        liste = [x.strip() for x in ids.split(",") if x.strip()][:12]
+        if len(liste) < 2:
+            return {"wert": None, "gemeinsam": "", "konflikte": [], "karten": []}
+        con = get_db()
+        marken = ",".join("?" * len(liste))
+        namen = {r["id"]: (r["name_de"] or r["name_en"] or r["id"]) for r in con.execute(
+            f"SELECT id, name_de, name_en FROM cards WHERE id IN ({marken})", liste)}
+        con.close()
+        return _passung(liste, namen)
 
     @app.post("/api/artwork")
     async def artwork_start(request: Request):
