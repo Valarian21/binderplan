@@ -148,6 +148,49 @@ SHINY_RARITIES = {
 }
 
 
+# --- Druckvarianten ---------------------------------------------------------
+# Welche Ausprägungen es von einer Karte gibt, stand bisher allein in der Momentaufnahme
+# `variants` aus dem Katalog-Sync. Gegen die tatsächlich gehandelten TCGplayer-Varianten
+# stimmte davon am 03.09.2026 nur ein Drittel. Drei Regeln räumen das auf:
+#
+# 1. Der nächtliche Preislauf liest die TCGplayer-Schlüssel derselben Antwort mit
+#    (`normal`, `holofoil`, `reverse-holofoil`, `1st-edition…`). Wer einen Preis für
+#    `reverse-holofoil` führt, handelt Reverse Holos — verlässlicher als jedes Flag.
+# 2. Reverse Holos gibt es erst ab Legendary Collection. Was die Quelle davor behauptet,
+#    ist falsch, egal wie oft sie es wiederholt.
+# 3. Poké-Ball- und Master-Ball-Muster gehören zu genau zwei Sets. Sie wurden vorher bei
+#    jeder der 33.732 Karten zur Wahl gestellt, auch beim Grundset-Glurak von 1999.
+REVERSE_AB = "2002-05-24"          # Legendary Collection, das erste Set mit Reverse Holos
+
+# Sets mit Sondermuster statt eigener Karten-IDs. Kommt ein neues dazu, gehört es hierhin
+# — und nur hierhin: Kartendetail, Sammlung und Trefferkachel lesen dieselbe Liste.
+MUSTER_SETS = {
+    "sv03.5": ["pokeball", "masterball"],      # 151
+    "sv08.5": ["pokeball", "masterball"],      # Prismatische Entwicklungen
+}
+
+# TCGplayer-Schlüssel → unsere Variante
+TP_VARIANTE = {
+    "normal": "normal", "unlimited": "normal", "unlimited-holofoil": "holo",
+    "holofoil": "holo", "reverse-holofoil": "reverse",
+    "1st-edition": "first", "1st-edition-normal": "first", "1st-edition-holofoil": "first",
+}
+
+
+def varianten_aus_tp(keys):
+    """→ {normal, reverse, holo, first} aus den gehandelten TCGplayer-Varianten."""
+    out = {"normal": False, "reverse": False, "holo": False, "first": False}
+    for k in keys or []:
+        v = TP_VARIANTE.get(k)
+        if v:
+            out[v] = True
+    return out
+
+
+def muster_fuer_set(set_id):
+    return MUSTER_SETS.get(set_id or "", [])
+
+
 def _compute_kinds(category, stage, suffix, rarity, name_en, name_de, local_id=""):
     """Alle zutreffenden Kartenarten (Mehrfach-Label) für die Filter-Chips."""
     kinds = []
@@ -389,6 +432,14 @@ def init_db():
                    "ALTER TABLE card_prices ADD COLUMN usd REAL",
                    "ALTER TABLE card_prices ADD COLUMN usd_holo REAL",
                    "ALTER TABLE card_prices ADD COLUMN tcgplayer_id INTEGER",
+                   # 2026-09-03: was TCGdex in `variants_detailed` und im TCGplayer-Block
+                   # ohnehin mitliefert — Preis je Druckvariante, die tatsächlich
+                   # gehandelten Varianten und das Urteil des Börsenvergleichs.
+                   "ALTER TABLE card_prices ADD COLUMN preise_json TEXT",
+                   "ALTER TABLE card_prices ADD COLUMN tp_keys TEXT",
+                   "ALTER TABLE card_prices ADD COLUMN status TEXT",
+                   "ALTER TABLE card_prices ADD COLUMN kurs REAL",
+                   "ALTER TABLE card_prices ADD COLUMN eur_geschaetzt REAL",
                    "ALTER TABLE price_history ADD COLUMN usd REAL"):
         try:
             con.execute(befehl)
@@ -401,6 +452,199 @@ def init_db():
 
 
 init_db()
+
+
+# --- Japanische Set-Kennungen, die es auch international gibt -----------------
+# TCGdex führt beide Kataloge unter denselben Kennungen, wenn ein Set in beiden Regionen
+# so heißt: `neo1` bis `neo4` gibt es einmal als Neo Genesis/Discovery/Revelation/Destiny
+# und einmal als japanische Neo-Reihe. Der japanische Sync hat die internationalen Zeilen
+# überschrieben — vier Sets standen danach unter japanischem Namen in der japanischen Ära,
+# und bei Neo Destiny verdrängten japanische Karten die Nummern 100 bis 113. Verschwunden
+# war dabei unter anderem Shining Charizard (`neo4-107`), an dessen Stelle ein japanisches
+# Trainerkärtchen mit dessen Preis von 1.477 € stand.
+#
+# Seither trägt jede japanische Zeile, deren Kennung international belegt ist, den Präfix
+# `jp-`. Welche das sind, wird beim Sync gemessen und nicht gepflegt.
+JP_PRAEFIX = "jp-"
+
+# Tabellen, die eine Karten-ID führen — beim Umbenennen müssen alle mit.
+KARTEN_TABELLEN = ("card_prices", "price_history", "sammlung", "card_art_tags",
+                   "card_art_analysis", "card_hashes")
+
+
+def jp_id(kennung, kollision):
+    return JP_PRAEFIX + kennung if kennung in kollision else kennung
+
+
+def _jp_kollision_umbenennen():
+    """Einmalige Reparatur: bereits gespeicherte japanische Zeilen mit belegter Kennung
+    umbenennen, damit der internationale Sync sie danach zurückholen kann.
+
+    Läuft genau einmal (Merker in `kv`) und rührt nur Zeilen mit region='jp' an."""
+    con = get_db()
+    try:
+        if con.execute("SELECT value FROM kv WHERE key='jp_praefix'").fetchone():
+            return
+        kollision = [r["id"] for r in con.execute(
+            "SELECT j.id FROM sets j WHERE j.region = 'jp'"
+            " AND EXISTS (SELECT 1 FROM cards c WHERE c.set_id = j.id AND c.region = 'intl')")]
+        for sid in kollision:
+            neu_sid = JP_PRAEFIX + sid
+            karten = [r["id"] for r in con.execute(
+                "SELECT id FROM cards WHERE set_id = ? AND region = 'jp'", (sid,))]
+            for cid in karten:
+                neu_cid = JP_PRAEFIX + cid
+                for tab in KARTEN_TABELLEN:
+                    try:
+                        con.execute(f"UPDATE OR IGNORE {tab} SET card_id = ? WHERE card_id = ?",
+                                    (neu_cid, cid))
+                    except sqlite3.OperationalError:
+                        pass
+                con.execute("UPDATE cards SET id = ?, set_id = ? WHERE id = ?",
+                            (neu_cid, neu_sid, cid))
+            # Die Set-Zeile selbst gehört jetzt wieder dem internationalen Katalog; die
+            # japanische bekommt eine eigene. Der nächste intl-Sync füllt die alte auf.
+            row = con.execute("SELECT * FROM sets WHERE id = ?", (sid,)).fetchone()
+            if row and row["region"] == "jp":
+                spalten = [k for k in row.keys() if k != "id"]
+                con.execute(
+                    f"INSERT OR REPLACE INTO sets (id,{','.join(spalten)})"
+                    f" VALUES (?,{','.join('?' * len(spalten))})",
+                    (neu_sid, *[row[k] for k in spalten]))
+                con.execute("DELETE FROM sets WHERE id = ?", (sid,))
+            _binderitems_umbenennen(con, {JP_PRAEFIX + c: c for c in karten})
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('jp_praefix', ?)",
+                    (",".join(kollision) or "-",))
+        con.commit()
+        if kollision:
+            print(f"Japan-Präfix gesetzt für {kollision}")
+            threading.Thread(target=_intl_sets_nachladen, args=(list(kollision),),
+                             daemon=True).start()
+    except Exception as exc:
+        print("JP-Umbenennung übersprungen:", exc)
+    finally:
+        con.close()
+
+
+def _binderitems_umbenennen(con, neu_nach_alt):
+    """Karten-IDs in gespeicherten Bindern und Artwork-Ankern mitziehen."""
+    alt_nach_neu = {v: k for k, v in neu_nach_alt.items()}
+    if not alt_nach_neu:
+        return
+    for row in con.execute("SELECT id, items FROM binders").fetchall():
+        try:
+            items = json.loads(row["items"] or "[]")
+        except Exception:
+            continue
+        geaendert = False
+        for i in items:
+            if isinstance(i, dict) and i.get("id") in alt_nach_neu:
+                i["id"] = alt_nach_neu[i["id"]]; geaendert = True
+        if geaendert:
+            con.execute("UPDATE binders SET items = ? WHERE id = ?",
+                        (json.dumps(items), row["id"]))
+    for row in con.execute("SELECT id, anker FROM artworks").fetchall():
+        try:
+            anker = json.loads(row["anker"] or "[]")
+        except Exception:
+            continue
+        geaendert = False
+        for a in anker:
+            if isinstance(a, dict) and a.get("card_id") in alt_nach_neu:
+                a["card_id"] = alt_nach_neu[a["card_id"]]; geaendert = True
+        if geaendert:
+            con.execute("UPDATE artworks SET anker = ? WHERE id = ?",
+                        (json.dumps(anker), row["id"]))
+
+
+def _intl_sets_nachladen(ids):
+    """Internationale Sets samt fehlender Karten aus TCGdex nachholen.
+
+    Gegenstück zur Umbenennung: die vier Neo-Sets hatten danach keine Set-Zeile mehr,
+    und Neo Destiny fehlten vierzehn Karten — die Nummern 100 bis 113, die der japanische
+    Sync verdrängt hatte. Darunter Shining Charizard. Läuft im Hintergrund, damit ein
+    langsamer Netzabruf den Start nicht aufhält."""
+    if not ids:
+        return
+    try:
+        with httpx.Client(timeout=40, headers=UA) as client:
+            en_series = {}
+            try:
+                en_series = {x["id"]: x["name"] for x in client.get(f"{TCGDEX}/en/series").json()}
+            except Exception:
+                pass
+            con = get_db()
+            neu_karten = 0
+            for sid in ids:
+                de = en = None
+                for lang, ziel in (("de", "de"), ("en", "en")):
+                    try:
+                        r = client.get(f"{TCGDEX}/{lang}/sets/{sid}")
+                        if r.status_code == 200:
+                            if ziel == "de":
+                                de = r.json()
+                            else:
+                                en = r.json()
+                    except Exception:
+                        pass
+                haupt = de or en
+                if not haupt:
+                    continue
+                serie = haupt.get("serie") or {}
+                cc = haupt.get("cardCount") or {}
+                con.execute(
+                    "INSERT INTO sets (id,name,serie_id,serie_name,release_date,total,official,"
+                    "symbol,name_en,serie_name_en,region) VALUES (?,?,?,?,?,?,?,?,?,?,'intl')"
+                    " ON CONFLICT(id) DO UPDATE SET name=excluded.name, serie_id=excluded.serie_id,"
+                    " serie_name=excluded.serie_name, release_date=excluded.release_date,"
+                    " total=excluded.total, official=excluded.official,"
+                    " symbol=COALESCE(excluded.symbol, sets.symbol), name_en=excluded.name_en,"
+                    " serie_name_en=excluded.serie_name_en, region='intl'",
+                    (sid, haupt.get("name"), serie.get("id"), serie.get("name"),
+                     haupt.get("releaseDate"), cc.get("total"), cc.get("official"),
+                     haupt.get("symbol"), (en or haupt).get("name"),
+                     en_series.get(serie.get("id")) or serie.get("name")))
+                de_karten = {c["id"]: c for c in (de or {}).get("cards") or []}
+                da = {r["id"] for r in con.execute(
+                    "SELECT id FROM cards WHERE set_id = ? AND COALESCE(region,'intl') = 'intl'", (sid,))}
+                for c in (en or haupt).get("cards") or []:
+                    if c["id"] in da:
+                        continue
+                    d = {}
+                    try:
+                        rr = client.get(f"{TCGDEX}/en/cards/{c['id']}")
+                        if rr.status_code == 200:
+                            d = rr.json()
+                    except Exception:
+                        pass
+                    dex = d.get("dexId") or []
+                    v = d.get("variants") or {}
+                    dek = de_karten.get(c["id"], {})
+                    con.execute(
+                        "INSERT OR IGNORE INTO cards (id,set_id,local_id,local_num,name_de,name_en,"
+                        "image_de,image_en,category,rarity,stage,suffix,kind,kinds,dex_ids,first_dex,"
+                        "types,has_normal,has_reverse,has_holo,has_first,illustrator,hp,release_date,region)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'intl')",
+                        (c["id"], sid, c.get("localId"), _local_num(c.get("localId")),
+                         dek.get("name"), c.get("name"), dek.get("image"), c.get("image"),
+                         d.get("category"), d.get("rarity"), d.get("stage"), d.get("suffix"),
+                         _card_kind(d.get("category"), d.get("stage"), d.get("suffix"), c.get("name")),
+                         json.dumps(_compute_kinds(d.get("category"), d.get("stage"), d.get("suffix"),
+                                                   d.get("rarity"), c.get("name"), dek.get("name"),
+                                                   c.get("localId") or "")),
+                         json.dumps(dex), dex[0] if dex else None, json.dumps(d.get("types") or []),
+                         1 if v.get("normal") else 0, 1 if v.get("reverse") else 0,
+                         1 if v.get("holo") else 0, 1 if v.get("firstEdition") else 0,
+                         d.get("illustrator"), d.get("hp"), haupt.get("releaseDate")))
+                    neu_karten += 1
+                con.commit()
+            con.close()
+            print(f"Internationale Sets wiederhergestellt: {ids}, {neu_karten} Karten nachgeladen")
+    except Exception as exc:
+        print("Set-Reparatur fehlgeschlagen:", exc)
+
+
+_jp_kollision_umbenennen()
 
 
 def recompute_kinds():
@@ -535,7 +779,8 @@ def _sync_sets(client, con):
                 " serie_name=excluded.serie_name, release_date=excluded.release_date,"
                 " total=excluded.total, official=excluded.official,"
                 " symbol=COALESCE(excluded.symbol, sets.symbol), name_en=excluded.name_en,"
-                " serie_name_en=excluded.serie_name_en",
+                " serie_name_en=excluded.serie_name_en"
+                " WHERE COALESCE(sets.region,'intl') = 'intl'",
                 (detail["id"], detail.get("name"), serie.get("id"), serie.get("name"),
                  detail.get("releaseDate"), cc.get("total"), cc.get("official"),
                  detail.get("symbol"), en_names.get(detail["id"]),
@@ -586,7 +831,9 @@ def _sync_cards(client, con):
                 " rarity=excluded.rarity, stage=excluded.stage, suffix=excluded.suffix,"
                 " kind=excluded.kind, dex_ids=excluded.dex_ids, first_dex=excluded.first_dex,"
                 " types=excluded.types, has_normal=excluded.has_normal,"
-                " has_reverse=excluded.has_reverse, has_holo=excluded.has_holo",
+                " has_reverse=excluded.has_reverse, has_holo=excluded.has_holo"
+                # Gegenstück zum Präfix: der internationale Sync fasst japanische Zeilen nicht an.
+                " WHERE COALESCE(cards.region,'intl') = 'intl'",
                 (c["id"], set_id, c.get("localId"), _local_num(c.get("localId")),
                  de.get("name"), c.get("name"), de.get("image"), c.get("image"),
                  c.get("category"), c.get("rarity"), c.get("stage"), c.get("suffix"), kind,
@@ -735,6 +982,10 @@ def run_sync_ja():
         namen = _ja_pokemon_namen(con)
         with httpx.Client(timeout=60, headers=UA) as client:
             sets = client.get(f"{TCGDEX}/ja/sets").json()
+            # Kennungen, die es international auch gibt, bekommen den Präfix. Gemessen,
+            # nicht gepflegt: ein neues Set fällt damit von selbst richtig herum.
+            intl = {r["id"] for r in con.execute("SELECT id FROM sets WHERE region = 'intl'")}
+            kollision = {x["id"] for x in sets if x["id"] in intl}
             SYNC["total"] = len(sets)
 
             def fetch(sid):
@@ -750,19 +1001,35 @@ def run_sync_ja():
                         continue
                     serie = d.get("serie") or {}
                     cc = d.get("cardCount") or {}
+                    sid = jp_id(d["id"], kollision)
+                    # ON CONFLICT statt REPLACE, und nur auf japanischen Zeilen: REPLACE hat
+                    # 2026 die vier Neo-Sets des internationalen Katalogs überschrieben.
                     con.execute(
-                        "INSERT OR REPLACE INTO sets (id,name,serie_id,serie_name,release_date,total,official,symbol,name_en,serie_name_en,region)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?,'jp')",
-                        (d["id"], d.get("name"), serie.get("id"), serie.get("name"), d.get("releaseDate"),
+                        "INSERT INTO sets (id,name,serie_id,serie_name,release_date,total,official,symbol,name_en,serie_name_en,region)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,'jp')"
+                        " ON CONFLICT(id) DO UPDATE SET name=excluded.name, serie_id=excluded.serie_id,"
+                        " serie_name=excluded.serie_name, release_date=excluded.release_date,"
+                        " total=excluded.total, official=excluded.official,"
+                        " symbol=COALESCE(excluded.symbol, sets.symbol), name_en=excluded.name_en,"
+                        " serie_name_en=excluded.serie_name_en"
+                        " WHERE sets.region = 'jp'",
+                        (sid, d.get("name"), serie.get("id"), serie.get("name"), d.get("releaseDate"),
                          cc.get("total"), cc.get("official"), d.get("symbol"), d.get("name"), serie.get("name")))
                     for c in d.get("cards") or []:
                         dex = _ja_dex_fuer_name(c.get("name"), namen)
                         kinds = _ja_kinds(c.get("name"))
                         con.execute(
-                            "INSERT OR REPLACE INTO cards (id,set_id,local_id,local_num,name_de,name_en,name_ja,image_de,image_en,"
+                            "INSERT INTO cards (id,set_id,local_id,local_num,name_de,name_en,name_ja,image_de,image_en,"
                             "category,kind,kinds,dex_ids,first_dex,types,release_date,region)"
-                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'jp')",
-                            (c["id"], d["id"], c.get("localId"), _local_num(c.get("localId")),
+                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'jp')"
+                            " ON CONFLICT(id) DO UPDATE SET set_id=excluded.set_id,"
+                            " local_id=excluded.local_id, local_num=excluded.local_num,"
+                            " name_ja=excluded.name_ja, image_en=excluded.image_en,"
+                            " category=excluded.category, kind=excluded.kind, kinds=excluded.kinds,"
+                            " dex_ids=excluded.dex_ids, first_dex=excluded.first_dex,"
+                            " release_date=excluded.release_date"
+                            " WHERE cards.region = 'jp'",
+                            (jp_id(c["id"], kollision), sid, c.get("localId"), _local_num(c.get("localId")),
                              None, None, c.get("name"), None, c.get("image"),
                              "Energy" if "energie" in kinds else "Pokemon", kinds[0], json.dumps(kinds),
                              json.dumps([dex] if dex else []), dex, "[]", d.get("releaseDate")))
@@ -782,6 +1049,11 @@ def run_sync_ja():
         _sync_lock.release()
 
 
+def jp_quell_id(card_id):
+    """Für den Abruf bei TCGdex zählt die Kennung ohne unseren Präfix."""
+    return card_id[len(JP_PRAEFIX):] if card_id.startswith(JP_PRAEFIX) else card_id
+
+
 def run_backfill_ja_details():
     """Japan: Einzelkarten-Details (Künstler, Seltenheit, Pokédex, HP, Regulation Mark, Varianten) nachladen –
     die ja-Listen liefern das nicht, die Einzelabfrage schon. ~12.800 Anfragen, gedrosselt, im Hintergrund."""
@@ -798,7 +1070,7 @@ def run_backfill_ja_details():
             for versuch in range(3):
                 try:
                     with httpx.Client(timeout=30, headers=UA) as client:
-                        r = client.get(f"{TCGDEX}/ja/cards/{cid}")
+                        r = client.get(f"{TCGDEX}/ja/cards/{jp_quell_id(cid)}")
                     if r.status_code == 200:
                         return cid, r.json()
                     if r.status_code == 404:
@@ -1004,14 +1276,16 @@ def _preis_schreiben(con, reihen):
     der alte Preis bleibt lieber stehen, als durch einen Ausfall gelöscht zu werden."""
     heute = _heute()
     geschrieben = 0
-    for cid, ok, eur, holo, usd, usd_holo, tid, pid, spanne in reihen:
-        if not ok:
+    for e in reihen:
+        if not e["ok"]:
             continue
         geschrieben += 1
+        sp = e.get("spanne") or {}
         con.execute(
             "INSERT INTO card_prices (card_id, eur, eur_holo, usd, usd_holo, tcgplayer_id,"
-            " cm_produkt, eur_low, eur_avg30, usd_low, usd_mid, usd_high, updated_at)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))"
+            " cm_produkt, eur_low, eur_avg30, usd_low, usd_mid, usd_high, preise_json,"
+            " tp_keys, updated_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))"
             " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur, eur_holo=excluded.eur_holo,"
             " usd=COALESCE(excluded.usd, card_prices.usd),"
             " usd_holo=COALESCE(excluded.usd_holo, card_prices.usd_holo),"
@@ -1019,17 +1293,19 @@ def _preis_schreiben(con, reihen):
             " cm_produkt=excluded.cm_produkt, eur_low=excluded.eur_low,"
             " eur_avg30=excluded.eur_avg30, usd_low=excluded.usd_low,"
             " usd_mid=excluded.usd_mid, usd_high=excluded.usd_high,"
+            " preise_json=excluded.preise_json, tp_keys=excluded.tp_keys,"
             " updated_at=excluded.updated_at",
-            (cid, eur, holo, usd, usd_holo, tid, pid,
-             (spanne or {}).get("eur_low"), (spanne or {}).get("eur_avg30"),
-             (spanne or {}).get("usd_low"), (spanne or {}).get("usd_mid"),
-             (spanne or {}).get("usd_high")))
-        if eur is not None or usd is not None:
+            (e["id"], e["eur"], e["eur_holo"], e["usd"], e["usd_holo"], e["tcgplayer_id"],
+             e["cm_produkt"], sp.get("eur_low"), sp.get("eur_avg30"), sp.get("usd_low"),
+             sp.get("usd_mid"), sp.get("usd_high"),
+             json.dumps(e.get("varianten") or {}) if e.get("varianten") else None,
+             ",".join(e.get("tp_keys") or []) or None))
+        if e["eur"] is not None or e["usd"] is not None:
             con.execute("INSERT INTO price_history (card_id, datum, eur, usd) VALUES (?,?,?,?)"
                         " ON CONFLICT(card_id, datum) DO UPDATE SET"
                         " eur=COALESCE(excluded.eur, price_history.eur),"
                         " usd=COALESCE(excluded.usd, price_history.usd)",
-                        (cid, heute, eur, usd))
+                        (e["id"], heute, e["eur"], e["usd"]))
     return geschrieben
 
 
@@ -1039,22 +1315,102 @@ def _mehrdeutige_produkte(reihen):
     TCGdex ordnet gleichnamige Karten desselben Sets gern demselben Produkt zu — die
     vier Mewtwo/Mew-Promos aus „XY Black Star Promos" hingen alle an Produkt 554275 und
     trugen deshalb denselben Preis von 5.550 €, während die eigentliche Karte bei knapp
-    170 € steht. Welche der Karten den Preis zu Recht trägt, lässt sich von außen nicht
-    entscheiden, also bekommt keine einen: eine leere Stelle ist ehrlich, eine falsche
-    Zahl nicht. Die Produktnummer wird trotzdem gespeichert, damit der Fall nachvollzogen
-    werden kann.
+    170 € steht. Welche der Karten den Preis zu Recht trägt, lässt sich aus dieser Quelle
+    nicht entscheiden, also bekommt keine einen: eine leere Stelle ist ehrlich, eine
+    falsche Zahl nicht. Der amerikanische Preis bleibt davon unberührt — er hängt an einer
+    eigenen Produktnummer je Karte und ist die Grundlage der Schätzung.
 
     → Menge der Karten-IDs, deren Europreis verworfen werden muss."""
     nach_produkt = {}
     for e in reihen:
-        cid, ok, eur, pid = e[0], e[1], e[2], e[7]
-        if ok and pid is not None and eur is not None:
-            nach_produkt.setdefault(pid, []).append(cid)
+        if e["ok"] and e["cm_produkt"] is not None and e["eur"] is not None:
+            nach_produkt.setdefault(e["cm_produkt"], []).append(e["id"])
     raus = set()
-    for pid, karten in nach_produkt.items():
+    for karten in nach_produkt.values():
         if len(karten) > 1:
             raus.update(karten)
     return raus
+
+
+def _varianten_schreiben(con, reihen):
+    """Die gehandelten TCGplayer-Varianten in `cards` übernehmen.
+
+    Vereinigung, keine Ersetzung: eine Ausprägung gilt, wenn der Katalog *oder* die Börse
+    sie kennt. Die Börse kennt fast immer mehr (628 fehlende Reverse Holos in einer
+    Stichprobe von 1.544 Karten), der Katalog gelegentlich Sonderdrucke ohne US-Handel.
+    Gestrichen wird nur, was unmöglich ist: Reverse Holos vor Legendary Collection.
+
+    Sammlungseinträge werden dabei nie angefasst — wer eine Ausprägung erfasst hat, behält
+    sie, sie wird nur nicht mehr neu angeboten."""
+    geaendert = 0
+    for e in reihen:
+        if not e["ok"] or not e.get("tp_keys"):
+            continue
+        row = con.execute("SELECT has_normal, has_reverse, has_holo, has_first, release_date"
+                          " FROM cards WHERE id = ?", (e["id"],)).fetchone()
+        if not row:
+            continue
+        tp = varianten_aus_tp(e["tp_keys"])
+        neu = {
+            "normal": 1 if (row["has_normal"] or tp["normal"]) else 0,
+            "reverse": 1 if (row["has_reverse"] or tp["reverse"]) else 0,
+            "holo": 1 if (row["has_holo"] or tp["holo"]) else 0,
+            "first": 1 if (row["has_first"] or tp["first"]) else 0,
+        }
+        if (row["release_date"] or "9999") < REVERSE_AB:
+            neu["reverse"] = 0
+        if (neu["normal"], neu["reverse"], neu["holo"], neu["first"]) == (
+                row["has_normal"], row["has_reverse"], row["has_holo"], row["has_first"]):
+            continue
+        con.execute("UPDATE cards SET has_normal=?, has_reverse=?, has_holo=?, has_first=?"
+                    " WHERE id = ?",
+                    (neu["normal"], neu["reverse"], neu["holo"], neu["first"], e["id"]))
+        geaendert += 1
+    return geaendert
+
+
+# Ab diesem Abstand vom Median-Wechselkurs stimmt mindestens eine der beiden Börsen nicht.
+KURS_UNSICHER = 3.0          # Zahl weiter zeigen, aber mit Warnung
+KURS_GESPERRT = 10.0         # gar keine Zahl mehr
+
+
+def _kurs_pruefen(con):
+    """Beide Börsen gegeneinander stellen und je Karte ein Urteil ablegen.
+
+    Der Wechselkurs wird nicht gesetzt, sondern gemessen: Median über alle Karten, die
+    in beiden Märkten einen Preis haben. So wandert er mit, ohne dass ihn jemand pflegt.
+    Weicht eine einzelne Karte weit davon ab, ist nicht der Kurs falsch, sondern eine der
+    beiden Zuordnungen — am 03.09.2026 betraf das 27,3 % aller Kartenpaare.
+
+    → (Median-Kurs, {status: Anzahl})"""
+    paare = [(r["card_id"], r["usd"] / r["eur"]) for r in con.execute(
+        "SELECT card_id, eur, usd FROM card_prices WHERE eur > 0.5 AND usd > 0.5")]
+    if len(paare) < 200:
+        return None, {}
+    werte = sorted(v for _, v in paare)
+    median = werte[len(werte) // 2]
+
+    con.execute("UPDATE card_prices SET status = NULL, kurs = NULL, eur_geschaetzt = NULL")
+    zaehler = {}
+
+    def setze(cid, status, kurs=None, geschaetzt=None):
+        con.execute("UPDATE card_prices SET status=?, kurs=?, eur_geschaetzt=? WHERE card_id=?",
+                    (status, kurs, geschaetzt, cid))
+        zaehler[status] = zaehler.get(status, 0) + 1
+
+    for cid, kurs in paare:
+        abstand = max(kurs / median, median / kurs)
+        if abstand > KURS_GESPERRT:
+            setze(cid, "gesperrt", round(kurs, 2))
+        elif abstand > KURS_UNSICHER:
+            setze(cid, "unsicher", round(kurs, 2))
+
+    # Karten ohne Europreis, aber mit amerikanischem: umgerechnet ist besser als leer,
+    # solange danebensteht, dass es eine Umrechnung ist.
+    for r in con.execute("SELECT card_id, usd FROM card_prices"
+                         " WHERE eur IS NULL AND usd > 0").fetchall():
+        setze(r["card_id"], "geschaetzt", round(median, 2), round(r["usd"] / median, 2))
+    return round(median, 4), zaehler
 
 
 def _preishistorie_job():
@@ -1063,18 +1419,23 @@ def _preishistorie_job():
     Vorher lief das nur über Karten, die schon einmal jemand angesehen hatte — dadurch
     kannte die Datenbank 649 von 33.700 Karten und jede Marktaussage stand auf Sand.
     Jetzt holt jeder Lauf zuerst Karten ohne Preis dazu (der Katalog ist nach etwa zehn
-    Läufen vollständig) und frischt danach die ältesten Einträge auf."""
+    Läufen vollständig) und frischt danach die ältesten Einträge auf.
+
+    Seit dem 03.09.2026 fällt im selben Durchgang zweierlei mit ab, ohne einen einzigen
+    zusätzlichen Netzaufruf: die tatsächlich gehandelten Druckvarianten und der Vergleich
+    beider Börsen."""
     con = get_db()
     # Auch japanische Karten: die Annahme, Cardmarket führe sie nicht, war falsch — es gibt
     # dort für praktisch jede japanische Karte ein Produkt mit Trendpreis (nur keine
     # TCGplayer-Preise, das ist ein rein amerikanischer Markt).
-    neue = [r["id"] for r in con.execute(
-        "SELECT c.id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+    neue = [(r["id"], r["region"] or "intl") for r in con.execute(
+        "SELECT c.id, c.region FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
         " WHERE p.card_id IS NULL"
         " ORDER BY c.release_date DESC LIMIT ?", (PREIS_STAPEL,))]
     # Solange noch erfasst wird, hat das Vorrang — sonst der ganze bepreiste Katalog.
-    alt = [] if neue else [r["card_id"] for r in con.execute(
-        "SELECT card_id FROM card_prices ORDER BY updated_at LIMIT ?", (PREIS_TAGESLAUF,))]
+    alt = [] if neue else [(r["card_id"], r["region"] or "intl") for r in con.execute(
+        "SELECT p.card_id, c.region FROM card_prices p LEFT JOIN cards c ON c.id = p.card_id"
+        " ORDER BY p.updated_at LIMIT ?", (PREIS_TAGESLAUF,))]
     offen = con.execute(
         "SELECT COUNT(*) c FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
         " WHERE p.card_id IS NULL").fetchone()["c"]
@@ -1085,48 +1446,192 @@ def _preishistorie_job():
         return
     with httpx.Client(timeout=20, headers=UA) as client:
         with ThreadPoolExecutor(6) as pool:
-            ergebnisse = list(pool.map(lambda c: _fetch_price_voll(client, c), ids))
+            ergebnisse = list(pool.map(lambda x: _fetch_price_voll(client, x[0], x[1]), ids))
 
     # Ein paar Ausfälle sind normal (Zeitüberschreitung, einzelne 404). Fällt aber ein
     # Fünftel aus, ist die Quelle selbst gestört; dann wird gar nichts geschrieben,
     # sonst wandert der Ausfall als Datenstand in die Historie.
-    fehl = sum(1 for e in ergebnisse if not e[1])
+    fehl = sum(1 for e in ergebnisse if not e["ok"])
     if fehl > len(ergebnisse) * 0.2:
         print(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
         return
 
     # Cardmarket führt neben dem Trend eine zweite Reihe für die Reverse-/Holo-Ausgabe.
-    # Gibt es die Karte nur in einer Form — Base-Set-Glurak, jede LV.X —, gehört diese
-    # zweite Zahl zu nichts: bei Glaziola standen 234,59 € Trend neben 91,45 € „Holo".
-    # Wird sie hier verworfen, stimmt es überall: Anzeige, Sammlungswert, Auswertung.
+    # Sie gehört zu einer *zweiten* Ausgabe derselben Karte. Gibt es die nicht — weil die
+    # Karte nur als Holo existiert (Base-Set-Glurak, jede LV.X) oder nur als Normaldruck —,
+    # gehört diese Zahl zu nichts. Die alte Bedingung prüfte nur den ersten Fall und ließ
+    # den Wert an 6.903 Karten hängen, die weder Holo noch Reverse haben.
     con = get_db()
-    nur_holo = {r["id"] for r in con.execute(
-        "SELECT id FROM cards WHERE COALESCE(has_normal,0) = 0 AND COALESCE(has_reverse,0) = 0")}
+    ohne_zweite = {r["id"] for r in con.execute(
+        "SELECT id FROM cards WHERE NOT (COALESCE(has_normal,0) = 1"
+        " AND (COALESCE(has_reverse,0) = 1 OR COALESCE(has_holo,0) = 1))")}
     con.close()
-    if nur_holo:
-        ergebnisse = [
-            (e[0], e[1], e[2], None, e[4], e[5], e[6], e[7], e[8]) if e[0] in nur_holo else e
-            for e in ergebnisse
-        ]
+    for e in ergebnisse:
+        if e["id"] in ohne_zweite:
+            e["eur_holo"] = None
 
     # Preise verwerfen, die an einem mehrfach vergebenen Cardmarket-Produkt hängen.
     mehrdeutig = _mehrdeutige_produkte(ergebnisse)
-    if mehrdeutig:
-        ergebnisse = [
-            (e[0], e[1], None, None, e[4], e[5], e[6], e[7], e[8]) if e[0] in mehrdeutig else e
-            for e in ergebnisse
-        ]
+    for e in ergebnisse:
+        if e["id"] in mehrdeutig:
+            e["eur"] = None
+            e["eur_holo"] = None
 
     con = get_db()
     geschrieben = _preis_schreiben(con, ergebnisse)
+    var_neu = _varianten_schreiben(con, ergebnisse)
+    con.commit()
+    kurs, urteile = _kurs_pruefen(con)
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preise_offen', ?)",
                 (str(max(0, offen - len(neue))),))
+    if kurs:
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preis_kurs', ?)", (str(kurs),))
     con.commit()
     con.close()
     print(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt, {geschrieben} geschrieben,"
           f" {fehl} fehlgeschlagen, {len(mehrdeutig)} mehrdeutig verworfen,"
+          f" {var_neu} Varianten berichtigt, Kurs {kurs}, {urteile},"
           f" {max(0, offen - len(neue))} offen")
+
+
+# --- Zweitquelle pokemontcg.io ----------------------------------------------
+# Der Schlüssel liegt seit Langem in der .env und trug bisher nur fehlende Bilder und
+# Set-Symbole. Er kostet nichts, erlaubt 20.000 Abrufe am Tag und liefert je Set eine
+# Antwort mit allen Karten — der ganze westliche Katalog sind rund 200 Anfragen.
+#
+# Zwei Dinge holt er, die TCGdex nicht hergibt:
+#   1. eine eigene, unabhängig gepflegte Cardmarket-Zuordnung. Wo TCGdex vier Karten an
+#      dieselbe Produktnummer hängt und deshalb keine einen Preis bekommt, hat hier jede
+#      Karte ihre eigene Zahl.
+#   2. die gehandelten TCGplayer-Ausprägungen auch für Karten, für die TCGdex keine führt.
+#
+# Was er NICHT ist: eine Preisquelle erster Wahl. Am Prüftag waren seine Cardmarket-Zahlen
+# zwei Monate alt. Sie landen deshalb in `eur_geschaetzt` mit dem Vermerk „zweitquelle“ und
+# nie in `eur` oder in der Preishistorie.
+PTC_SETS = "https://api.pokemontcg.io/v2/sets?pageSize=250&select=id,name,releaseDate,total"
+PTC_KARTEN = "https://api.pokemontcg.io/v2/cards?q=set.id:{sid}&pageSize=250&select=id,cardmarket,tcgplayer"
+
+
+def _ptc_set_schluessel(sid, name, datum):
+    """Unsere Set-Kennung auf die von pokemontcg.io abbilden.
+
+    Die beiden Kataloge schreiben dieselben Sets verschieden: `sv03.5` heißt dort `sv3pt5`.
+    Erst die Normalform versuchen, dann Name und Erscheinungsdatum."""
+    roh = (sid or "").lower()
+    norm = roh.replace(".", "pt")
+    # führende Nullen im Zahlenteil weg: sv03pt5 → sv3pt5
+    import re as _re
+    norm2 = _re.sub(r"(?<=[a-z])0+(?=\d)", "", norm)
+    return [x for x in dict.fromkeys([roh, norm, norm2]) if x], (name or "").lower().strip(), (datum or "")[:10]
+
+
+def _ptc_set_karte(client, con):
+    """→ {unsere Set-ID: ptcgio-Set-ID}"""
+    daten = _ptc_get(client, PTC_SETS).get("data") or []
+    nach_id = {d["id"].lower(): d["id"] for d in daten}
+    nach_name = {}
+    for d in daten:
+        nach_name[((d.get("name") or "").lower().strip(),
+                   (d.get("releaseDate") or "").replace("/", "-")[:10])] = d["id"]
+    karte = {}
+    for r in con.execute("SELECT id, name_en, name, release_date FROM sets"
+                         " WHERE COALESCE(region,'intl') = 'intl'"):
+        kandidaten, name, datum = _ptc_set_schluessel(r["id"], r["name_en"] or r["name"], r["release_date"])
+        treffer = next((nach_id[k] for k in kandidaten if k in nach_id), None)
+        if not treffer:
+            treffer = nach_name.get((name, datum))
+        if treffer:
+            karte[r["id"]] = treffer
+    return karte
+
+
+def _ptcgio_job(nur_set=None):
+    """Karten ohne verlässlichen Europreis über die Zweitquelle auffüllen."""
+    key = _env().get("PTCGIO_KEY")
+    if not key:
+        print("Zweitquelle übersprungen: PTCGIO_KEY fehlt")
+        return 0
+    con = get_db()
+    offen = {}
+    for r in con.execute(
+            "SELECT c.id, c.set_id FROM cards c LEFT JOIN card_prices p ON p.card_id = c.id"
+            " WHERE COALESCE(c.region,'intl') = 'intl' AND (p.card_id IS NULL OR p.eur IS NULL)"):
+        offen.setdefault(r["set_id"], set()).add(r["id"])
+    if nur_set:
+        offen = {k: v for k, v in offen.items() if k == nur_set}
+    if not offen:
+        con.close()
+        return 0
+    with httpx.Client(timeout=40, headers=UA) as client:
+        karte = _ptc_set_karte(client, con)
+        gefuellt = 0
+        for sid, ids in sorted(offen.items(), key=lambda x: -len(x[1])):
+            ziel = karte.get(sid)
+            if not ziel:
+                continue
+            try:
+                daten = _ptc_get(client, PTC_KARTEN.format(sid=ziel)).get("data") or []
+            except Exception:
+                continue
+            for c in daten:
+                cid = c.get("id")
+                if cid not in ids:
+                    continue
+                cm = ((c.get("cardmarket") or {}).get("prices") or {})
+                tp = ((c.get("tcgplayer") or {}).get("prices") or {})
+                wert = None
+                for k in ("trendPrice", "averageSellPrice", "avg30", "lowPrice"):
+                    if cm.get(k):
+                        wert = round(float(cm[k]), 2); break
+                keys = ",".join(sorted(tp.keys())) or None
+                if wert is None and not keys:
+                    continue
+                con.execute(
+                    "INSERT INTO card_prices (card_id, eur_geschaetzt, status, tp_keys, updated_at)"
+                    " VALUES (?,?,?,?,datetime('now'))"
+                    " ON CONFLICT(card_id) DO UPDATE SET"
+                    " eur_geschaetzt=COALESCE(excluded.eur_geschaetzt, card_prices.eur_geschaetzt),"
+                    " status=CASE WHEN excluded.eur_geschaetzt IS NOT NULL THEN 'zweitquelle'"
+                    "             ELSE card_prices.status END,"
+                    " tp_keys=COALESCE(excluded.tp_keys, card_prices.tp_keys)",
+                    (cid, wert, "zweitquelle" if wert is not None else None, keys))
+                if wert is not None:
+                    gefuellt += 1
+            con.commit()
+    # Die Ausprägungen aus derselben Antwort mitnehmen — dieselbe Vereinigungsregel wie im
+    # Preislauf, nur mit den Schlüsseln von pokemontcg.io.
+    reihen = [{"id": r["card_id"], "ok": True, "tp_keys": (r["tp_keys"] or "").split(",")}
+              for r in con.execute("SELECT card_id, tp_keys FROM card_prices WHERE tp_keys IS NOT NULL")]
+    var = _varianten_schreiben(con, reihen)
+    con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('ptcgio_lauf', datetime('now'))")
+    con.commit()
+    con.close()
+    print(f"Zweitquelle: {gefuellt} Preise ergänzt, {var} Varianten berichtigt")
+    return gefuellt
+
+
+@app.post("/api/admin/sets_nachladen")
+def admin_sets_nachladen(key: str = "", ids: str = ""):
+    """Set-Zeilen und fehlende Karten eines internationalen Sets nachholen."""
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    liste = [x.strip() for x in ids.split(",") if x.strip()]
+    if not liste:
+        con = get_db()
+        merker = con.execute("SELECT value FROM kv WHERE key='jp_praefix'").fetchone()
+        con.close()
+        liste = [x for x in (merker["value"].split(",") if merker else []) if x and x != "-"]
+    threading.Thread(target=_intl_sets_nachladen, args=(liste,), daemon=True).start()
+    return {"ok": True, "sets": liste}
+
+
+@app.post("/api/admin/zweitquelle")
+def admin_zweitquelle(key: str = "", set_id: str = ""):
+    if not admin_ok(key):
+        raise HTTPException(403, "Kein Zugriff")
+    threading.Thread(target=lambda: _ptcgio_job(set_id or None), daemon=True).start()
+    return {"ok": True}
 
 
 def _aufraeumen_job():
@@ -1192,6 +1697,12 @@ def _hintergrund_takt():
             abstand = 0.75 if offen > 0 else 23
             if not letzter or letzter["value"] < datetime_str_vor(abstand):
                 _preishistorie_job()
+                # Direkt danach die Zweitquelle: sie arbeitet genau die Lücken ab, die der
+                # Hauptlauf gerade hinterlassen hat.
+                try:
+                    _ptcgio_job()
+                except Exception as exc:
+                    print("Zweitquelle fehlgeschlagen:", exc)
         except Exception:
             pass
         _time.sleep(3600)
@@ -1755,6 +2266,9 @@ def _card_brief(row):
         "dex": row["first_dex"],
         "datum": row["release_date"],
         "reverse": bool(row["has_reverse"]),
+        # Poké-Ball- und Master-Ball-Muster gibt es nur in zwei Sets. Vorher bot die
+        # Oberfläche sie bei jeder Karte an, auch beim Grundset-Glurak von 1999.
+        "muster": muster_fuer_set(row["set_id"]),
         "img": bool(row["image_de"] or row["image_en"] or ("image_alt" in keys and row["image_alt"])),
     }
 
@@ -1861,8 +2375,8 @@ def card_detail(card_id: str):
     if k["set"]:
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
     pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg30,"
-                     " usd, usd_low, usd_mid, usd_high FROM card_prices"
-                     " WHERE card_id = ?", (card_id,)).fetchone()
+                     " usd, usd_low, usd_mid, usd_high, preise_json, status, kurs,"
+                     " eur_geschaetzt FROM card_prices WHERE card_id = ?", (card_id,)).fetchone()
     # Fehlt der Preis, weil das Cardmarket-Produkt noch anderen Karten gehört? Dann soll
     # die Karte das sagen können, statt kommentarlos einen Strich zu zeigen.
     # Zwei verschiedene Gründe für einen fehlenden Preis, und der Unterschied gehört
@@ -1874,11 +2388,29 @@ def card_detail(card_id: str):
     if pr and pr["eur"] is None and pr["cm_produkt"]:
         geteilt = con.execute("SELECT COUNT(*) c FROM card_prices WHERE cm_produkt = ?",
                               (pr["cm_produkt"],)).fetchone()["c"]
+    # Preis je Druckvariante: was TCGdex in `variants_detailed` mitliefert, plus die
+    # beiden alten Reihen als Rückfall. Die Oberfläche schaltet damit den Preis um, wenn
+    # jemand die Ausprägung wechselt — vorher stand bei Reverse Holo der Normalpreis.
+    var_preise = {}
+    if pr:
+        try:
+            var_preise = {a: v.get("eur") for a, v in json.loads(pr["preise_json"] or "{}").items()
+                          if isinstance(v, dict) and v.get("eur") is not None}
+        except Exception:
+            var_preise = {}
+        var_preise.setdefault("normal", pr["eur"])
+        if pr["eur_holo"] is not None:
+            var_preise.setdefault("reverse", pr["eur_holo"])
+            var_preise.setdefault("holo", pr["eur_holo"])
+        var_preise = {a: w for a, w in var_preise.items() if w is not None}
+    # Die obere US-Zahl ist das teuerste Einzelangebot, nicht der Marktrand: 132 Karten
+    # führen dort 9.999 $. Gezeigt wird deshalb nur noch Tief bis Mitte.
     k["preis"] = {"eur": pr["eur"], "eur_holo": pr["eur_holo"], "stand": pr["updated_at"],
                   "geteilt": geteilt if geteilt > 1 else 0, "ohne_quelle": ohne_quelle,
                   "eur_low": pr["eur_low"], "eur_avg30": pr["eur_avg30"],
                   "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
-                  "usd_high": pr["usd_high"]} if pr else None
+                  "varianten": var_preise, "status": pr["status"], "kurs": pr["kurs"],
+                  "eur_geschaetzt": pr["eur_geschaetzt"]} if pr else None
     k["verlauf"] = [{"datum": h["datum"], "eur": h["eur"]} for h in con.execute(
         "SELECT datum, eur FROM price_history WHERE card_id = ? ORDER BY datum", (card_id,))]
     andere = []
@@ -2644,75 +3176,118 @@ except Exception as _e:  # pragma: no cover
 
 # --- Kartenpreise (Cardmarket-Trend via TCGdex, 24h-Cache) ------------------
 
-def _fetch_price_voll(client, card_id):
-    """→ (card_id, ok, eur, eur_holo, usd, usd_holo, tcgplayer_id, cm_produkt, spanne).
+def _fetch_price_voll(client, card_id, region="intl"):
+    """Eine Kartenantwort von TCGdex auswerten.
+
+    → dict(id, ok, eur, eur_holo, usd, usd_holo, tcgplayer_id, cm_produkt, spanne,
+           varianten, tp_keys)
 
     Dieselbe Antwort trägt beide Märkte: Cardmarket in Euro und TCGplayer in Dollar.
-    Die TCGplayer-Produktnummer wird mitgenommen, weil sie der Schlüssel zu allen
-    Anbietern gegradeter Preise ist — falls das später einmal dazukommt.
+    Seit dem 03.09.2026 wird sie zu Ende gelesen:
+
+    * `variants_detailed` führt je Druckvariante eine eigene Cardmarket-Produktnummer
+      und eigene Preise. Daraus entsteht `varianten` — der Preis, der wirklich zur
+      gewählten Ausprägung gehört, statt eines Grundpreises für alles.
+    * Die Schlüssel des TCGplayer-Blocks sagen, welche Ausprägungen überhaupt gehandelt
+      werden. Das ist die verlässlichste Variantenquelle, die es umsonst gibt.
 
     `ok` unterscheidet „abgerufen, kein Preis vorhanden" von „Abruf fehlgeschlagen".
     Ohne diese Unterscheidung sahen beide Fälle gleich aus (überall None), und ein
-    Ausfall der Quelle hätte beim nächsten Lauf sämtliche Preise auf NULL gesetzt —
-    mit frischem `updated_at`, sodass nicht einmal aufgefallen wäre, woher es kam.
-
-    Mitgenommen wird auch `idProduct`, die Cardmarket-Produktnummer. Sie ist der
-    Schlüssel zur Preisprüfung: TCGdex hängt gelegentlich mehrere Karten an dasselbe
-    Produkt (gleichnamige Promos etwa), und dann steht bei allen der Preis von einer."""
-    lang = "ja" if card_id[:1].isupper() else "en"
+    Ausfall der Quelle hätte beim nächsten Lauf sämtliche Preise auf NULL gesetzt."""
+    leer = {"id": card_id, "ok": False, "eur": None, "eur_holo": None, "usd": None,
+            "usd_holo": None, "tcgplayer_id": None, "cm_produkt": None, "spanne": {},
+            "varianten": {}, "tp_keys": []}
+    # Die Sprache kommt aus der Region, nicht aus der Schreibweise der Kennung: die alte
+    # Heuristik („beginnt mit einem Großbuchstaben") hielt jedes japanische Set mit kleiner
+    # Kennung (sv1a, neo1 …) für ein internationales und fragte den falschen Katalog.
+    lang = "ja" if region == "jp" else "en"
     try:
-        r = client.get(f"{TCGDEX}/{lang}/cards/{card_id}")
+        r = client.get(f"{TCGDEX}/{lang}/cards/{jp_quell_id(card_id)}")
         if r.status_code == 404:
             # Die Karte kennt die Quelle nicht — das ist ein Ergebnis, kein Ausfall. Als
             # Ausfall gezählt würden solche Karten jeden Lauf neu versucht und könnten
             # die Abbruchschwelle allein tragen.
-            return card_id, True, None, None, None, None, None, None, {}
+            return dict(leer, ok=True)
         if r.status_code != 200:
-            return card_id, False, None, None, None, None, None, None, {}
+            return leer
         d = r.json()
-        preise = d.get("pricing") or {}
-        cm = preise.get("cardmarket") or {}
-        eur = holo = None
-        # Eine 0 ist bei Cardmarket keine Preisangabe, sondern eine fehlende.
-        for key in ("trend", "avg30", "avg", "low"):
-            if cm.get(key):
-                eur = round(float(cm[key]), 2); break
-        for key in ("trend-holo", "avg30-holo", "avg-holo", "low-holo"):
-            if cm.get(key):
-                holo = round(float(cm[key]), 2); break
-
-        low = cm.get("low") or None
-        avg30 = cm.get("avg30") or None
-
-        tp = preise.get("tcgplayer") or {}
-        usd = usd_holo = None
-        u_low = u_mid = u_high = None
-        tid = None
-        # TCGplayer gliedert nach Druckvariante. „normal“ ist der Grundpreis, die Holo-Varianten
-        # der Aufpreis; welche es gibt, hängt von der Karte ab.
-        for name in ("normal", "1st-edition", "unlimited"):
-            v = tp.get(name)
-            if isinstance(v, dict) and v.get("marketPrice") is not None:
-                usd = round(float(v["marketPrice"]), 2)
-                u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
-                tid = tid or v.get("productId")
-                break
-        for name in ("holofoil", "reverse-holofoil", "1st-edition-holofoil"):
-            v = tp.get(name)
-            if isinstance(v, dict) and v.get("marketPrice") is not None:
-                usd_holo = round(float(v["marketPrice"]), 2)
-                if u_low is None:
-                    u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
-                tid = tid or v.get("productId")
-                break
-        if usd is None and usd_holo is not None:
-            usd = usd_holo
-        return (card_id, True, eur, holo, usd, usd_holo, tid, cm.get("idProduct"),
-                {"eur_low": low, "eur_avg30": avg30, "usd_low": u_low,
-                 "usd_mid": u_mid, "usd_high": u_high})
     except Exception:
-        pass
-    return card_id, False, None, None, None, None, None, None, {}
+        return leer
+
+    preise = d.get("pricing") or {}
+    cm = preise.get("cardmarket") or {}
+    tp = preise.get("tcgplayer") or {}
+
+    def cm_wert(block, *schluessel):
+        # Eine 0 ist bei Cardmarket keine Preisangabe, sondern eine fehlende.
+        for k in schluessel:
+            if block.get(k):
+                return round(float(block[k]), 2)
+        return None
+
+    eur = cm_wert(cm, "trend", "avg30", "avg", "low")
+    holo = cm_wert(cm, "trend-holo", "avg30-holo", "avg-holo", "low-holo")
+
+    tp_keys = [k for k in tp if k not in ("unit", "updated") and isinstance(tp.get(k), dict)]
+    usd = usd_holo = None
+    u_low = u_mid = u_high = None
+    tid = None
+    for name in ("normal", "1st-edition", "unlimited"):
+        v = tp.get(name)
+        if isinstance(v, dict) and v.get("marketPrice") is not None:
+            usd = round(float(v["marketPrice"]), 2)
+            u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
+            tid = tid or v.get("productId")
+            break
+    for name in ("holofoil", "reverse-holofoil", "1st-edition-holofoil"):
+        v = tp.get(name)
+        if isinstance(v, dict) and v.get("marketPrice") is not None:
+            usd_holo = round(float(v["marketPrice"]), 2)
+            if u_low is None:
+                u_low, u_mid, u_high = v.get("lowPrice"), v.get("midPrice"), v.get("highPrice")
+            tid = tid or v.get("productId")
+            break
+    if usd is None and usd_holo is not None:
+        usd = usd_holo
+    if tid is None:
+        for v in tp.values():
+            if isinstance(v, dict) and v.get("productId"):
+                tid = v["productId"]; break
+
+    # --- Preis je Druckvariante -------------------------------------------------
+    # `variants_detailed` nennt je Ausprägung ihr eigenes Cardmarket-Produkt. Wo es das
+    # gibt, ist der Preis eindeutig; wo nicht, bleibt es bei der alten Zuordnung
+    # (Trend = Grundausgabe, Trend-Holo = zweite Ausgabe).
+    varianten = {}
+    for v in d.get("variants_detailed") or []:
+        art = TCGDEX_VARIANTE.get(str(v.get("type") or "").lower())
+        if not art:
+            continue
+        vcm = ((v.get("pricing") or {}).get("cardmarket") or {})
+        wert = cm_wert(vcm, "trend-holo", "avg30-holo") if art in ("reverse", "holo") else None
+        wert = wert or cm_wert(vcm, "trend", "avg30", "avg", "low")
+        produkt = (v.get("thirdParty") or {}).get("cardmarket")
+        if wert is not None:
+            # Erster Treffer gewinnt: TCGdex listet dieselbe Ausprägung mehrfach, wenn eine
+            # Karte in mehreren Cardmarket-Produkten steckt (Base Set: Unlimited und 1st Edition).
+            varianten.setdefault(art, {"eur": wert, "produkt": produkt})
+    if eur is None and varianten.get("normal"):
+        eur = varianten["normal"]["eur"]
+    if holo is None:
+        for art in ("reverse", "holo"):
+            if varianten.get(art):
+                holo = varianten[art]["eur"]; break
+
+    return {"id": card_id, "ok": True, "eur": eur, "eur_holo": holo, "usd": usd,
+            "usd_holo": usd_holo, "tcgplayer_id": tid, "cm_produkt": cm.get("idProduct"),
+            "spanne": {"eur_low": cm.get("low") or None, "eur_avg30": cm.get("avg30") or None,
+                       "usd_low": u_low, "usd_mid": u_mid, "usd_high": u_high},
+            "varianten": varianten, "tp_keys": tp_keys}
+
+
+# TCGdex nennt die Ausprägung in `variants_detailed` anders als im TCGplayer-Block.
+TCGDEX_VARIANTE = {"normal": "normal", "reverse": "reverse", "holo": "holo",
+                   "firstedition": "first", "first-edition": "first"}
 
 
 @app.post("/api/preise")
@@ -2751,9 +3326,10 @@ async def preise(request: Request):
         nachgeladen = [] if frei_gedrosselt else fehlt[:400]
     if nachgeladen:
         # Die Abrufe laufen im Threadpool; im Event-Loop stand der ganze Dienst 5 bis 15 Sekunden.
-        for cid, ok, eur, eur_holo, pid in await run_in_threadpool(_preise_holen, nachgeladen):
-            if not ok:
+        for e in await run_in_threadpool(_preise_holen, nachgeladen):
+            if not e["ok"]:
                 continue          # Ausfall der Quelle: den vorhandenen Stand nicht anfassen
+            cid, eur, eur_holo, pid = e["id"], e["eur"], e["eur_holo"], e["cm_produkt"]
             # Gehört das Cardmarket-Produkt noch anderen Karten, ist der Preis nicht
             # dieser Karte zuzuordnen — dieselbe Regel wie im Nachtlauf.
             if pid is not None and eur is not None:
@@ -2762,16 +3338,28 @@ async def preise(request: Request):
                     (pid, cid)).fetchone()["c"]
                 if andere:
                     eur = eur_holo = None
+            # Dieselbe Regel wie im Nachtlauf: die zweite Cardmarket-Reihe gehört zu einer
+            # zweiten Ausgabe. Gibt es die nicht, gehört die Zahl zu nichts.
+            zweite = con.execute(
+                "SELECT COALESCE(has_normal,0) = 1 AND (COALESCE(has_reverse,0) = 1"
+                " OR COALESCE(has_holo,0) = 1) AS ja FROM cards WHERE id = ?", (cid,)).fetchone()
+            if not zweite or not zweite["ja"]:
+                eur_holo = None
             result[cid] = eur; holo[cid] = eur_holo
             # INSERT OR REPLACE würde usd, tcgplayer_id und cm_produkt mitlöschen.
             con.execute(
-                "INSERT INTO card_prices (card_id, eur, eur_holo, cm_produkt, updated_at)"
-                " VALUES (?,?,?,?,datetime('now'))"
+                "INSERT INTO card_prices (card_id, eur, eur_holo, cm_produkt, preise_json,"
+                " tp_keys, updated_at)"
+                " VALUES (?,?,?,?,?,?,datetime('now'))"
                 " ON CONFLICT(card_id) DO UPDATE SET eur=excluded.eur,"
                 " eur_holo=excluded.eur_holo,"
                 " cm_produkt=COALESCE(excluded.cm_produkt, card_prices.cm_produkt),"
+                " preise_json=COALESCE(excluded.preise_json, card_prices.preise_json),"
+                " tp_keys=COALESCE(excluded.tp_keys, card_prices.tp_keys),"
                 " updated_at=excluded.updated_at",
-                (cid, eur, eur_holo, pid))
+                (cid, eur, eur_holo, pid,
+                 json.dumps(e.get("varianten") or {}) if e.get("varianten") else None,
+                 ",".join(e.get("tp_keys") or []) or None))
             if eur is not None:
                 con.execute(
                     "INSERT INTO price_history (card_id, datum, eur) VALUES (?,?,?)"
@@ -2793,12 +3381,16 @@ async def preise(request: Request):
 def _preise_holen(ids):
     """Netzabrufe gesammelt im Threadpool — der Aufrufer bleibt frei.
 
-    → [(card_id, ok, eur, eur_holo, cm_produkt)]. Der Status wird durchgereicht, damit
+    → Liste der Ergebnisse von `_fetch_price_voll`. Der Status wird durchgereicht, damit
     ein Ausfall der Quelle nicht als „kein Preis" in der Datenbank landet."""
+    con = get_db()
+    regionen = {r["id"]: (r["region"] or "intl") for r in con.execute(
+        "SELECT id, region FROM cards WHERE id IN (%s)" % ",".join("?" * len(ids)), ids)}
+    con.close()
     with httpx.Client(timeout=20, headers=UA) as client:
         with ThreadPoolExecutor(8) as pool:
-            roh = list(pool.map(lambda c: _fetch_price_voll(client, c), ids))
-    return [(e[0], e[1], e[2], e[3], e[7]) for e in roh]
+            return list(pool.map(
+                lambda c: _fetch_price_voll(client, c, regionen.get(c, "intl")), ids))
 
 
 def datetime_str_vor(stunden):
@@ -3123,6 +3715,35 @@ RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4,
           "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
 
 
+def _besitz_ids(user, con=None):
+    """Welche Karten dem Konto wirklich gehören — die einzige Quelle dafür.
+
+    Seit dem Sammlungs-Umbau schreibt der Haken im Binder in die Tabelle `sammlung`;
+    `item.have` im Fach wird bei angemeldeten Nutzern nicht mehr gesetzt. Serverseitig
+    lasen PDF, Checkliste und Kaufliste aber weiterhin nur das Häkchen — „nur Fehlende"
+    druckte deshalb alles und die Checkliste meldete „0 von 30 gesammelt". Wer Besitz
+    braucht, fragt ab jetzt hier."""
+    if not user:
+        return set()
+    eigene = con is None
+    con = con or get_db()
+    try:
+        return {x["card_id"] for x in con.execute(
+            "SELECT card_id FROM sammlung WHERE user_id = ? AND anzahl > 0", (user["id"],))}
+    except Exception:
+        return set()
+    finally:
+        if eigene:
+            con.close()
+
+
+def _hat_karte(item, besitz, user):
+    """Ohne Konto zählt das Häkchen im Fach — dort gibt es keine Sammlung."""
+    if user:
+        return item.get("type") == "card" and item.get("id") in besitz
+    return bool(item.get("have"))
+
+
 def _blatt_vorschau(items, layout, seiten=3, seiten_layouts=None):
     """Die ersten Seiten eines Binders als Raster aus Fächern, leere Plätze inklusive.
     Dieselbe Form wie in der Vitrine, damit beide Vorschauen gleich aussehen.
@@ -3178,15 +3799,7 @@ def binder_list(request: Request, ids: str = ""):
             " AND id IN (%s)" % ",".join("?" * len(wanted)),
             wanted,
         ).fetchall()
-    # Besitz kommt seit der Sammlung aus `sammlung`, nicht mehr aus dem Häkchen im Fach.
-    # Ohne Konto zählt weiterhin das Häkchen — dort gibt es keine Sammlung.
-    besitz = set()
-    if user:
-        try:
-            besitz = {x["card_id"] for x in con.execute(
-                "SELECT card_id FROM sammlung WHERE user_id = ? AND anzahl > 0", (user["id"],))}
-        except Exception:
-            besitz = set()
+    besitz = _besitz_ids(user, con)
     con.close()
     gesehen = set()
     result = []
@@ -3543,7 +4156,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     plan = _seiten_plan(binder)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
     if variante == "checkliste":
-        return _checkliste_pdf(binder, lang, bool(nur_fehlende))
+        return _checkliste_pdf(binder, lang, bool(nur_fehlende), user)
     # Karten-PDF: zählt gegen das Monats-Limit von Free-Konten – ein zweiter Abruf desselben Binders
     # innerhalb von 30 Minuten (Download abgebrochen, nochmal drucken) bleibt frei.
     # Die Limit-Prüfung steht bewusst VOR der Credit-Abbuchung für fremde Artwork-Seiten:
@@ -3587,15 +4200,16 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     # die im Planer und in der Blattansicht steht.
     seiten_gesamt = len(plan)
     gewaehlt = _seiten_auswahl(seiten, seiten_gesamt)
+    besitz = _besitz_ids(user)
     printable = [
         (idx, item) for idx, item in enumerate(binder["items"])
         if item.get("type") != "empty"
-        and not (nur_fehlende and item.get("have"))
+        and not (nur_fehlende and _hat_karte(item, besitz, user))
         and not (nur_art and item.get("type") != "art")
         and (gewaehlt is None or (_seite_von(plan, idx) + 1) in gewaehlt)
     ]
 
-    gesammelt = sum(1 for i in binder["items"] if i.get("have"))   # Druck: Stand im Binder
+    gesammelt = sum(1 for i in binder["items"] if _hat_karte(i, besitz, user))
     gesamt = sum(1 for i in binder["items"] if i.get("type") not in ("empty", "art"))
     if lang == "de":
         stats = [
@@ -3702,8 +4316,14 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
     )
 
 
-def _binder_zeilen(binder, lang):
-    """Alle Nicht-Leer-Fächer mit Anzeigedaten (für Checkliste und Kaufliste)."""
+def _binder_zeilen(binder, lang, user=None):
+    """Alle Nicht-Leer-Fächer mit Anzeigedaten (für Checkliste und Kaufliste).
+
+    Zwei Dinge kommen seit dem 03.09.2026 von woanders: Besitz aus der Sammlung statt aus
+    `item.have`, und der Preis aus der geplanten Ausprägung statt aus dem Grundpreis. Ein
+    Fach, das ausdrücklich als Reverse Holo geplant war, stand in der Kaufliste vorher mit
+    dem Preis der Normalausgabe — während dasselbe Fach im Binderfenster den Holo-Preis
+    zeigte."""
     con = get_db()
     card_ids = [i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")]
     karten = {}
@@ -3716,8 +4336,17 @@ def _binder_zeilen(binder, lang):
     spalte = "name_en" if lang == "en" else "name_de"
     pokemon_names = {r["dex_id"]: (r[spalte] or r["name_de"])
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
-    preise = {r["card_id"]: r["eur"] for r in con.execute("SELECT card_id, eur FROM card_prices")}
+    preise = {r["card_id"]: r for r in con.execute(
+        "SELECT card_id, eur, eur_holo, eur_low FROM card_prices")}
+    besitz = _besitz_ids(user, con)
     con.close()
+
+    def preis_fuer(item):
+        p = preise.get(item.get("id"))
+        if not p:
+            return None
+        return preis_fuer_posten(p["eur"], p["eur_holo"], p["eur_low"],
+                                 item.get("variant") or "normal", item.get("zustand") or "")
     plan = _seiten_plan(binder)
     zeilen = []
     for idx, item in enumerate(binder["items"]):
@@ -3727,22 +4356,22 @@ def _binder_zeilen(binder, lang):
         pos = f"{nr + 1}·{idx - plan[nr]['start'] + 1}"
         if item.get("type") == "dex":
             zeilen.append({"pos": pos, "name": f"#{item.get('dex'):03d} {pokemon_names.get(item.get('dex'), '')}",
-                           "set": "Pokédex", "nr": "", "eur": None, "have": bool(item.get("have")),
-                           "variant": ""})
+                           "set": "Pokédex", "nr": "", "eur": None,
+                           "have": _hat_karte(item, besitz, user), "variant": ""})
         else:
             k = karten.get(item.get("id")) or {}
             name = (k.get("name_en") if lang == "en" else k.get("name")) or item.get("id", "?")
             setn = (k.get("set_name_en") if lang == "en" else k.get("set_name")) or ""
             zeilen.append({"pos": pos, "name": name, "set": setn, "nr": k.get("local_id") or "",
-                           "eur": preise.get(item.get("id")), "have": bool(item.get("have")),
+                           "eur": preis_fuer(item), "have": _hat_karte(item, besitz, user),
                            "variant": item.get("variant") or "", "zustand": item.get("zustand") or "",
                            "sprache": item.get("sprache") or ""})
     return zeilen
 
 
-def _checkliste_pdf(binder, lang, nur_fehlende):
+def _checkliste_pdf(binder, lang, nur_fehlende, user=None):
     """Karteiliste ohne Kartenbilder — zählt nicht als Export."""
-    zeilen = _binder_zeilen(binder, lang)
+    zeilen = _binder_zeilen(binder, lang, user)
     if nur_fehlende:
         zeilen = [z for z in zeilen if not z["have"]]
     buf = io.BytesIO()
@@ -3827,7 +4456,7 @@ def binder_kaufliste(binder_id: str, request: Request, format: str = "csv"):
         raise HTTPException(402, detail={"code": "limit_pro"})
     binder = _load_binder(binder_id)
     lang = "en" if (binder.get("options") or {}).get("sprache") == "en" else "de"
-    zeilen = [z for z in _binder_zeilen(binder, lang) if not z["have"]]
+    zeilen = [z for z in _binder_zeilen(binder, lang, user) if not z["have"]]
     summe = sum(z["eur"] or 0 for z in zeilen)
     ohne = sum(1 for z in zeilen if z["eur"] is None)
     if format == "txt":
@@ -3911,6 +4540,14 @@ try:
 except Exception as _e:  # pragma: no cover
     print("Vitrine-Modul nicht geladen:", _e)
     _vitrine_kennzahlen = None
+
+# Die Vitrine wird nach dem Artwork-Modul geladen, ihre Freigabeprüfung wird dort aber
+# gebraucht (Alter, Anzeigename, Textprüfung beim Veröffentlichen einer Kunstseite).
+# Deshalb erst hier verbinden — eine Regel, zwei Aufrufer.
+try:
+    _artwork._dep["vitrine_pruefen"] = _vitrine._dep.get("vitrine_pruefen")
+except Exception as _e:  # pragma: no cover
+    print("Kunstseiten-Prüfung nicht verbunden:", _e)
 
 
 # --- Sammlung: was wirklich besessen wird (Modul sammlung.py) ---------------

@@ -43,15 +43,37 @@ ARTWORK_JE_KARTE = 2        # je weiterer Ankerkarte
 ARTWORK_MAX = 32            # Obergrenze je Seite
 ARTWORK_4K_FAKTOR = 1.8     # Druckauflösung kostet das Modell entsprechend mehr
 
-ARTWORK_FREMD = 5           # fremde, veröffentlichte Artwork-Seite drucken
+ARTWORK_FREMD = 5           # fremde, veröffentlichte Artwork-Seite übernehmen
+ARTWORK_ANTEIL = 2          # davon bekommt der Ersteller
+ARTWORK_VERDIENST_MONAT = 300   # Obergrenze je Ersteller und Monat
 
 # Genau eine Artwork-Seite zum Ausprobieren. Vorher waren es zwei — bei einer Registrierung
 # ohne E-Mail-Nachweis war das ein offener Hahn von 27 ct je erfundener Adresse.
 START_CREDITS = 12
 
-# Eine fremde Seite zu drucken kostet uns nichts — sie ist schon erzeugt. Der Preis
+# Eine fremde Seite zu übernehmen kostet uns nichts — sie ist schon erzeugt. Der Preis
 # liegt trotzdem nicht bei null: sonst lohnt es sich, eine Seite einmal erzeugen zu
-# lassen und sie über die Vitrine an alle zu verteilen. Sechs statt zehn Credits.
+# lassen und sie über die Vitrine an alle zu verteilen. Fünf statt zwölf Credits.
+#
+# Vom Preis gehen zwei Credits an den Ersteller. Die Rechnung dahinter (Stand 03.09.2026):
+#
+#   Ein Credit kostet im Verkauf 4,0 bis 5,0 ct (Pro 200 für 7,99 €, Paket 600 für 23,99 €
+#   am unteren Rand, Plus und das 100er-Paket am oberen).
+#   Selbst erzeugen: 12 Credits ≈ 0,48–0,60 € Erlös bei 0,11–0,15 € Modellkosten.
+#   Übernehmen:      5 Credits ≈ 0,20–0,25 € Erlös bei praktisch null Kosten — die Datei
+#                    liegt schon im Cache. Zwei Credits gehen zurück an den Ersteller,
+#                    drei bleiben: 0,12–0,15 € je Übernahme.
+#   Was die zwei ausgeschütteten Credits uns wirklich kosten, hängt davon ab, wofür der
+#   Ersteller sie ausgibt. Im teuersten Fall — eine neue Artwork-Seite — sind es
+#   2/12 × 0,13 € ≈ 2,2 ct. In echtem Geld bleiben also rund 18 ct je Übernahme.
+#   Der Ersteller braucht sechs Übernahmen für eine neue eigene Seite; diese sechs haben
+#   uns 30 Credits eingebracht.
+#
+# Die wichtigste Eigenschaft ist aber nicht die Marge, sondern dass die Ausschüttung
+# KLEINER ist als der Preis: jede Übernahme vernichtet drei Credits netto. Zwei Konten,
+# die sich gegenseitig die Seiten abkaufen, verlieren beide — ein Kreisgeschäft lohnt
+# nicht. Die Monatsgrenze ist nur der zweite Riegel für den Fall, den wir nicht bedacht
+# haben.
 
 
 def artwork_preis(anker_anzahl: int, groesse: str = "2K") -> int:
@@ -225,6 +247,36 @@ def abbuchen(user, menge, grund, ref=""):
     con.commit()
     con.close()
     return saldo(u)
+
+
+def artwork_anteil(ersteller_id, artwork_id, menge=None):
+    """Den Erstelleranteil gutschreiben — gedeckelt auf ARTWORK_VERDIENST_MONAT je Monat.
+
+    → tatsächlich gutgeschriebene Menge (0, wenn die Grenze erreicht ist). Der Anteil
+    landet im gekauften Topf: er ist verdient und soll nicht am Monatsende verfallen."""
+    menge = ARTWORK_ANTEIL if menge is None else int(menge)
+    if not ersteller_id or menge <= 0:
+        return 0
+    con = _dep["get_db"]()
+    try:
+        row = con.execute("SELECT COALESCE(artwork_verdient_monat,0) m,"
+                          " COALESCE(artwork_verdient_periode,'') p FROM users WHERE id = ?",
+                          (ersteller_id,)).fetchone()
+        if not row:
+            return 0
+        monat = _monat()
+        bisher = row["m"] if row["p"] == monat else 0
+        frei = max(0, ARTWORK_VERDIENST_MONAT - bisher)
+        menge = min(menge, frei)
+        if menge <= 0:
+            return 0
+        con.execute("UPDATE users SET artwork_verdient_monat = ?, artwork_verdient_periode = ?"
+                    " WHERE id = ?", (bisher + menge, monat, ersteller_id))
+        _buchen(con, ersteller_id, 0, menge, "artwork_anteil", artwork_id)
+        con.commit()
+        return menge
+    finally:
+        con.close()
 
 
 def auffrischen(user, con=None, stripe_marke=None):
@@ -439,7 +491,9 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         );
         """
     )
-    for alter in ("ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0",
+    for alter in ("ALTER TABLE users ADD COLUMN artwork_verdient_monat INTEGER DEFAULT 0",
+                   "ALTER TABLE users ADD COLUMN artwork_verdient_periode TEXT",
+                   "ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0",
                   "ALTER TABLE users ADD COLUMN credits_abo INTEGER DEFAULT 0",
                   "ALTER TABLE users ADD COLUMN credits_periode TEXT",
                   "ALTER TABLE users ADD COLUMN abo_status TEXT",

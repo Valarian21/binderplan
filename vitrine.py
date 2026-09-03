@@ -513,6 +513,199 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
 
     # --- Melden & Moderation ----------------------------------------------
 
+    # --- Kunstseiten ------------------------------------------------------
+    # Bis hierher waren Artwork-Seiten nur zu finden, wenn jemand den ganzen Binder
+    # veröffentlicht hatte. Sie sind aber das Einzige in Binderplan, das echte Arbeit
+    # und echtes Geld enthält — sie verdienen einen eigenen Bereich.
+    #
+    # Preismodell (die Zahlen stehen in abo.py, die Begründung auch): eine fremde Seite
+    # kostet ARTWORK_FREMD Credits, davon gehen ARTWORK_ANTEIL an den Ersteller. Weil die
+    # Ausschüttung kleiner ist als der Preis, vernichtet jede Übernahme Credits — zwei
+    # Konten, die sich gegenseitig Seiten abkaufen, verlieren beide.
+
+    async def vitrine_pruefen(user, text):
+        """Dieselbe Schwelle wie beim Veröffentlichen eines Binders: Alter, Anzeigename,
+        Textprüfung. Wird von artwork.py mitbenutzt, damit es nur eine Regel gibt."""
+        jahre = _alter(user["geburtsdatum"] if "geburtsdatum" in user.keys() else None)
+        if jahre is None:
+            raise HTTPException(400, detail={"code": "geburtsdatum",
+                                             "text": "Bitte trage zuerst dein Geburtsdatum ein."})
+        if jahre < MIND_ALTER:
+            raise HTTPException(403, detail={"code": "zu_jung",
+                                             "text": f"Veröffentlichen geht erst ab {MIND_ALTER} Jahren."})
+        con = get_db()
+        pr = _profil_von(con, user["id"])
+        con.close()
+        if not pr or not pr.get("name"):
+            raise HTTPException(400, detail={"code": "kein_profil",
+                                             "text": "Bitte lege zuerst einen Anzeigenamen fest."})
+        if pr.get("gesperrt"):
+            raise HTTPException(403, "Dein Profil ist gesperrt.")
+        if text:
+            ok, grund = await run_in_threadpool(_text_ok, text)
+            if not ok:
+                raise HTTPException(400, detail={"code": "text", "text": grund})
+
+    _dep["vitrine_pruefen"] = vitrine_pruefen
+
+    def _kunst_zeile(r, meine):
+        return {
+            "id": r["id"], "titel": r["titel"] or "Kunstseite",
+            "stil": r["stil"], "layout": r["layout"],
+            "besitzer": r["besitzer"] or "—", "mein": r["user_id"] in meine,
+            "downloads": r["downloads"] or 0,
+            "veroeffentlicht_at": r["veroeffentlicht_at"],
+            "breite": r["breite"], "hoehe": r["hoehe"],
+            "vorschau": f"api/artwork/{r['id']}/bild?v=vorschau",
+        }
+
+    @app.get("/api/vitrine/artwork")
+    def vitrine_artwork(request: Request, sortierung: str = "neu", q: str = "", stil: str = "",
+                        layout: str = "", limit: int = 24, offset: int = 0):
+        """Der Kunstseiten-Bereich der Vitrine."""
+        limit = max(1, min(48, limit))
+        user = current_user(request)
+        abo = _dep["abo"]
+        con = get_db()
+        reihen = con.execute(
+            "SELECT a.id, a.titel, a.stil, a.layout, a.user_id, a.downloads, a.breite, a.hoehe,"
+            " a.veroeffentlicht_at, p.name AS besitzer"
+            " FROM artworks a LEFT JOIN profile p ON p.user_id = a.user_id"
+            " WHERE COALESCE(a.oeffentlich,0) = 1 AND a.status = 'fertig'"
+            " AND COALESCE(p.gesperrt,0) = 0").fetchall()
+        habe = set()
+        if user:
+            habe = {x["artwork_id"] for x in con.execute(
+                "SELECT artwork_id FROM artwork_freigaben WHERE user_id = ?", (user["id"],))}
+        con.close()
+        aus = []
+        for r in reihen:
+            if q and q.lower() not in ((r["titel"] or "") + " " + (r["besitzer"] or "") + " " + (r["stil"] or "")).lower():
+                continue
+            if stil and r["stil"] != stil:
+                continue
+            if layout and r["layout"] != layout:
+                continue
+            z = _kunst_zeile(r, {user["id"]} if user else set())
+            z["habe"] = r["id"] in habe or z["mein"]
+            aus.append(z)
+        if sortierung == "top":
+            aus.sort(key=lambda a: (-a["downloads"], a["veroeffentlicht_at"] or ""))
+        else:
+            aus.sort(key=lambda a: (a["veroeffentlicht_at"] or ""), reverse=True)
+        return {"artworks": aus[offset:offset + limit], "gesamt": len(aus),
+                "preis": abo.ARTWORK_FREMD, "anteil": abo.ARTWORK_ANTEIL,
+                "stile": sorted({r["stil"] for r in reihen if r["stil"]})}
+
+    def _uebernehmen(user, artwork_id):
+        """Eine fremde Kunstseite kaufen. Idempotent: wer sie schon hat, zahlt nicht noch mal."""
+        abo = _dep["abo"]
+        con = get_db()
+        r = con.execute("SELECT id, user_id, layout, seite, anker, stil, titel, status,"
+                        " COALESCE(oeffentlich,0) oeffentlich FROM artworks WHERE id = ?",
+                        (artwork_id,)).fetchone()
+        if not r or r["status"] != "fertig":
+            con.close(); raise HTTPException(404, "Kunstseite nicht gefunden")
+        if r["user_id"] == user["id"]:
+            con.close()
+            return {"ok": True, "bezahlt": 0, "artwork": artwork_id, "layout": r["layout"],
+                    "anker": json.loads(r["anker"] or "{}")}
+        if not r["oeffentlich"]:
+            con.close(); raise HTTPException(403, detail={"code": "nicht_oeffentlich",
+                                                          "text": "Diese Seite steht nicht öffentlich."})
+        # Erst die Freigabe eintragen, dann abbuchen: INSERT OR IGNORE meldet über rowcount,
+        # ob sie wirklich neu ist — zwei gleichzeitige Klicks zahlten sonst beide.
+        neu = con.execute("INSERT OR IGNORE INTO artwork_freigaben (user_id, artwork_id, created_at)"
+                          " VALUES (?,?,?)", (user["id"], artwork_id, _now())).rowcount
+        con.commit()
+        con.close()
+        bezahlt = 0
+        if neu:
+            try:
+                abo.abbuchen(user, abo.ARTWORK_FREMD, "artwork_uebernahme", artwork_id)
+                bezahlt = abo.ARTWORK_FREMD
+            except HTTPException:
+                con = get_db()
+                con.execute("DELETE FROM artwork_freigaben WHERE user_id = ? AND artwork_id = ?",
+                            (user["id"], artwork_id))
+                con.commit(); con.close()
+                raise HTTPException(402, detail={
+                    "code": "credits", "benoetigt": abo.ARTWORK_FREMD,
+                    "text": f"Diese Kunstseite kostet {abo.ARTWORK_FREMD} Credits."})
+            anteil = abo.artwork_anteil(r["user_id"], artwork_id)
+            con = get_db()
+            con.execute("UPDATE artworks SET downloads = COALESCE(downloads,0) + 1,"
+                        " verdient = COALESCE(verdient,0) + ? WHERE id = ?", (anteil, artwork_id))
+            con.commit(); con.close()
+        return {"ok": True, "bezahlt": bezahlt, "artwork": artwork_id, "layout": r["layout"],
+                "anker": json.loads(r["anker"] or "{}"), "titel": r["titel"] or "", "stil": r["stil"]}
+
+    @app.post("/api/vitrine/artwork/{artwork_id}/uebernehmen")
+    def vitrine_artwork_uebernehmen(artwork_id: str, request: Request):
+        user = require_user(request)
+        out = _uebernehmen(user, artwork_id)
+        out["konto"] = _dep["abo"].konto_info(user)
+        return out
+
+    @app.get("/api/vitrine/binder/{binder_id}/kosten")
+    def vitrine_binder_kosten(binder_id: str, request: Request):
+        """Was das Kopieren dieses Binders kostet.
+
+        Der Plan selbst ist frei und bleibt es: eine Liste von Kartennummern kostet uns
+        nichts, und das Kopieren ist der Grund, warum sich jemand fremde Binder überhaupt
+        ansieht. Geld steckt nur in den Kunstseiten darin — und die werden einzeln
+        abgerechnet, zum selben Preis wie im Kunstseiten-Bereich. Wer sie nicht will,
+        kopiert ohne sie."""
+        user = current_user(request)
+        abo = _dep["abo"]
+        con = get_db()
+        row = con.execute("SELECT items, user_id FROM binders WHERE id = ?", (binder_id,)).fetchone()
+        if not row:
+            con.close(); raise HTTPException(404, "Binder nicht gefunden")
+        try:
+            items = json.loads(row["items"] or "[]")
+        except Exception:
+            items = []
+        ids = {i.get("artwork") for i in items if i.get("type") == "art" and i.get("artwork")}
+        offen = []
+        if ids and user and row["user_id"] != user["id"]:
+            marken = ",".join("?" * len(ids))
+            schon = {x["artwork_id"] for x in con.execute(
+                f"SELECT artwork_id FROM artwork_freigaben WHERE user_id = ? AND artwork_id IN ({marken})",
+                (user["id"], *ids))}
+            offen = [x["id"] for x in con.execute(
+                f"SELECT id FROM artworks WHERE id IN ({marken}) AND user_id <> ?"
+                f" AND COALESCE(oeffentlich,0) = 1", (*ids, user["id"]))
+                if x["id"] not in schon]
+        elif ids and not user:
+            offen = list(ids)
+        con.close()
+        return {"artwork_seiten": len(ids), "zu_zahlen": len(offen),
+                "credits": len(offen) * abo.ARTWORK_FREMD, "preis": abo.ARTWORK_FREMD}
+
+    @app.post("/api/vitrine/binder/{binder_id}/artwork_kaufen")
+    def vitrine_binder_artwork_kaufen(binder_id: str, request: Request):
+        """Alle Kunstseiten eines fremden Binders auf einmal übernehmen."""
+        user = require_user(request)
+        con = get_db()
+        row = con.execute("SELECT items FROM binders WHERE id = ?", (binder_id,)).fetchone()
+        con.close()
+        if not row:
+            raise HTTPException(404, "Binder nicht gefunden")
+        try:
+            items = json.loads(row["items"] or "[]")
+        except Exception:
+            items = []
+        ids = [i for i in dict.fromkeys(
+            x.get("artwork") for x in items if x.get("type") == "art" and x.get("artwork")) if i]
+        gekauft, bezahlt = [], 0
+        for aid in ids:
+            out = _uebernehmen(user, aid)
+            gekauft.append(aid)
+            bezahlt += out["bezahlt"]
+        return {"ok": True, "seiten": gekauft, "bezahlt": bezahlt,
+                "konto": _dep["abo"].konto_info(user)}
+
     @app.post("/api/vitrine/meldung")
     async def meldung(request: Request):
         drossel = _dep.get("drossel")

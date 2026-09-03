@@ -880,14 +880,30 @@ def _job(artwork_id):
                 crop = bilder.get(anker[slot])
                 if crop is not None:
                     canvas_b.paste(crop.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS), (box[0], box[1]))
-        teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
-                              [] if stufen else pokemon, "", regie)
-        erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
-        kosten += kk
-        schritte.append({"stufe": "B"})
-        if erg.size != (geo["cw"], geo["ch"]):
-            erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
-        seite = erg.crop(geo["seite"])
+        # Nach dem Malen prüfen — im Schnellmodus war das bisher nicht der Fall, und genau
+        # dort entstand der Fehler, den eine gespeicherte Seite zeigte: die Ankerkarte
+        # noch einmal, leicht versetzt, hinter der echten Karte. `_pruefen` sucht diesen
+        # Fall ausdrücklich (Regel 2 im Prüf-Prompt) und kostet rund 0,5 ct. Eine einzige
+        # Wiederholung, und nur wenn die Prüfung wirklich etwas findet — sonst würde ein
+        # Fehlurteil jede Seite verdoppeln.
+        feedback_b, seite = "", None
+        for versuch in range(2):
+            teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
+                                  [] if stufen else pokemon, feedback_b, regie)
+            erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
+            kosten += kk
+            if erg.size != (geo["cw"], geo["ch"]):
+                erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
+            seite = erg.crop(geo["seite"])
+            if stufen or versuch or not bilder:
+                schritte.append({"stufe": "B", "versuch": versuch + 1})
+                break
+            ok, probleme, kp = _pruefen(next(iter(bilder.values())), seite)
+            kosten += kp
+            schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
+            if ok:
+                break
+            feedback_b = "; ".join(probleme)
         if stufe_a is not None:   # Stufe A weich zurücksetzen – sie ist die geometrisch genauere Fassung
             referenz = seite.crop(stufe_a_box)
             angeglichen = _farben_angleichen(stufe_a, referenz)
@@ -990,13 +1006,22 @@ def _pdf(artwork, mit_karten, lang):
 
 # --- Endpunkte ----------------------------------------------------------------
 
-def _artwork_row(artwork_id, user):
+def _artwork_row(artwork_id, user, mit_freigabe=False):
+    """Eine Artwork-Zeile holen.
+
+    `mit_freigabe=True` lässt auch durch, wer die Seite übernommen hat — seit es die
+    Kunstseiten-Vitrine gibt, gehört eine bezahlte Seite dem Käufer genauso wie dem
+    Ersteller. Ohne das könnte er sie zwar im Binder sehen, aber nicht drucken."""
     con = _dep["get_db"]()
     row = con.execute("SELECT * FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+    frei = False
+    if row and user and mit_freigabe and row["user_id"] != user["id"]:
+        frei = bool(con.execute("SELECT 1 FROM artwork_freigaben WHERE user_id = ? AND artwork_id = ?",
+                                (user["id"], artwork_id)).fetchone())
     con.close()
     if not row:
         raise HTTPException(404, "Artwork nicht gefunden")
-    if not user or row["user_id"] != user["id"]:
+    if not user or (row["user_id"] != user["id"] and not frei):
         raise HTTPException(403, detail={"code": "fremder_binder"})
     return dict(row)
 
@@ -1013,14 +1038,18 @@ def _payload(row):
         "pokemon": pokemon,
         "status": row["status"], "fehler": row["fehler"], "breite": row["breite"], "hoehe": row["hoehe"],
         "created_at": row["created_at"], "modell": row["modell"], "credits": row.get("credits") or 0,
+        "oeffentlich": bool(row.get("oeffentlich")), "titel": row.get("titel") or "",
+        "downloads": row.get("downloads") or 0, "verdient": row.get("verdient") or 0,
         "schritte": json.loads(row["schritte"]) if row.get("schritte") else [],
         "vorschau": f"api/artwork/{row['id']}/bild?v=vorschau" if row["status"] == "fertig" else None,
     }
 
 
 def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, card_image_path,
-             dex_image_path, pdf_wasserzeichen, env, CACHE, abo, bestaetigt=None):
-    _dep.update(bestaetigt=bestaetigt, get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
+             dex_image_path, pdf_wasserzeichen, env, CACHE, abo, bestaetigt=None,
+             vitrine_pruefen=None):
+    _dep.update(bestaetigt=bestaetigt, vitrine_pruefen=vitrine_pruefen,
+                get_db=get_db, current_user=current_user, require_user=require_user, ist_pro=ist_pro,
                 load_binder=load_binder, card_image_path=card_image_path, dex_image_path=dex_image_path,
                 pdf_wasserzeichen=pdf_wasserzeichen, env=env, CACHE=CACHE, abo=abo)
 
@@ -1043,7 +1072,15 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                   "ALTER TABLE users ADD COLUMN artwork_gesamt INTEGER DEFAULT 0",
                   "ALTER TABLE artworks ADD COLUMN pokemon TEXT",
                   "ALTER TABLE artworks ADD COLUMN schritte TEXT",
-                  "ALTER TABLE artworks ADD COLUMN credits INTEGER DEFAULT 0"):
+                  "ALTER TABLE artworks ADD COLUMN credits INTEGER DEFAULT 0",
+                  # 2026-09-03: Kunstseiten haben einen eigenen Bereich in der Vitrine.
+                  # Eine Seite steht dort erst, wenn ihr Ersteller sie ausdrücklich
+                  # freigibt — unabhängig davon, ob sein Binder öffentlich ist.
+                  "ALTER TABLE artworks ADD COLUMN oeffentlich INTEGER DEFAULT 0",
+                  "ALTER TABLE artworks ADD COLUMN titel TEXT",
+                  "ALTER TABLE artworks ADD COLUMN downloads INTEGER DEFAULT 0",
+                  "ALTER TABLE artworks ADD COLUMN verdient INTEGER DEFAULT 0",
+                  "ALTER TABLE artworks ADD COLUMN veroeffentlicht_at TEXT"):
         try:
             con.execute(alter)
         except Exception:
@@ -1172,7 +1209,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 raise HTTPException(404, "Artwork nicht gefunden")
             row = dict(r)
         else:
-            row = _artwork_row(artwork_id, current_user(request))
+            row = _artwork_row(artwork_id, current_user(request), mit_freigabe=True)
         if row["status"] != "fertig":
             raise HTTPException(404, "Noch nicht fertig")
         d = _artwork_dir()
@@ -1186,13 +1223,41 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
     @app.get("/api/artwork/{artwork_id}/pdf")
     def artwork_pdf(artwork_id: str, request: Request, mit_karten: int = 0):
         user = require_user(request)
-        row = _artwork_row(artwork_id, user)
+        row = _artwork_row(artwork_id, user, mit_freigabe=True)
         if row["status"] != "fertig":
             raise HTTPException(404, "Noch nicht fertig")
         lang = row["sprache"] or "de"
         pdf = _pdf(row, bool(mit_karten), lang)
         return Response(pdf, media_type="application/pdf",
                         headers={"Content-Disposition": f'inline; filename="artwork-seite-{row["seite"] + 1}.pdf"'})
+
+    @app.post("/api/artwork/{artwork_id}/veroeffentlichen")
+    async def artwork_veroeffentlichen(artwork_id: str, request: Request):
+        """Eine eigene Kunstseite in die Vitrine stellen — oder wieder herausnehmen.
+
+        Gefragt wird beim Übernehmen ins Fach: „Sollen andere diese Seite laden dürfen?"
+        Wer ja sagt, bekommt für jede Übernahme Credits zurück (siehe abo.ARTWORK_ANTEIL).
+        Dieselben Regeln wie beim Veröffentlichen eines Binders: Anzeigename, Mindestalter,
+        Textprüfung des Titels."""
+        user = require_user(request)
+        row = _artwork_row(artwork_id, user)
+        data = await request.json()
+        an = bool(data.get("oeffentlich"))
+        titel = str(data.get("titel") or "").strip()[:60]
+        pruef = _dep.get("vitrine_pruefen")
+        if an:
+            if row["status"] != "fertig":
+                raise HTTPException(400, "Die Seite ist noch nicht fertig.")
+            if pruef:
+                await pruef(user, titel)
+        con = get_db()
+        con.execute("UPDATE artworks SET oeffentlich = ?, titel = ?,"
+                    " veroeffentlicht_at = COALESCE(veroeffentlicht_at, datetime('now'))"
+                    " WHERE id = ?", (1 if an else 0, titel or None, artwork_id))
+        con.commit()
+        con.close()
+        return {"ok": True, "oeffentlich": an, "titel": titel,
+                "preis": _dep["abo"].ARTWORK_FREMD, "anteil": _dep["abo"].ARTWORK_ANTEIL}
 
     @app.delete("/api/artwork/{artwork_id}")
     def artwork_loeschen(artwork_id: str, request: Request):

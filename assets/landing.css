@@ -36,6 +36,12 @@
   .feat div { background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px; }
   .feat h3 { margin:0 0 4px; font-size:15px; }
   .feat p { margin:0; font-size:13.5px; color:var(--mut); }
+  /* Neun gleich große Kacheln hatten keine Rangfolge. Die drei, die den Kauf tragen,
+     stehen jetzt größer darüber. */
+  .feat--gross { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); margin-bottom:14px; }
+  .feat--gross div { padding:22px 20px; border-width:2px; }
+  .feat--gross h3 { font-size:18px; margin-bottom:7px; }
+  .feat--gross p { font-size:14.5px; color:var(--text); }
   .tarife { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
   .tarif { background:var(--card); border:2px solid var(--line); border-radius:16px; padding:20px; }
   .tarif.top { border-color:var(--akzent); }
