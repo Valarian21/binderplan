@@ -1426,7 +1426,10 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             if pruef:
                 await pruef(user, titel)
         con = get_db()
-        con.execute("UPDATE artworks SET oeffentlich = ?, titel = ?,"
+        # Der Titel bleibt, wenn keiner mitkommt: Zurückziehen schickt nur `oeffentlich:
+        # false` — vorher löschte das den Titel, und beim nächsten Freigeben stand das Feld
+        # wieder leer da.
+        con.execute("UPDATE artworks SET oeffentlich = ?, titel = COALESCE(?, titel),"
                     " veroeffentlicht_at = COALESCE(veroeffentlicht_at, datetime('now'))"
                     " WHERE id = ?", (1 if an else 0, titel or None, artwork_id))
         con.commit()

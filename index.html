@@ -9504,9 +9504,13 @@ async function awTeilenSpeichern() {
     });
     awTeilenZiel.oeffentlich = true; awTeilenZiel.titel = titel;
     VT.preis = d.preis; VT.anteil = d.anteil;
-    modalSchliessen();
+    // `modalSchliessen()` macht *alle* Overlays zu, also auch den Artwork-Dialog, aus dem
+    // die Freigabe kam. Wer zwei Seiten hintereinander freigeben will, stand danach wieder
+    // in der Werkbank. Deshalb: schließen und den Artwork-Dialog gleich wieder öffnen.
+    const zurueck = !$('modal-artwork').classList.contains('hidden');
     toast(t('awt_frei'));
-    if (typeof artworkGalerieLaden === 'function') artworkGalerieLaden();
+    if (zurueck) dialogWechsel(() => { modalOeffnen('modal-artwork'); artworkGalerieLaden(); });
+    else { modalSchliessen(); if (typeof artworkGalerieLaden === 'function') artworkGalerieLaden(); }
   } catch (e) {
     const f = e && e.detail && e.detail.text ? e.detail.text : (e.message || '');
     $('awt-fehler').textContent = f;
