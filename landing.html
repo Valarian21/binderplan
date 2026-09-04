@@ -81,11 +81,18 @@
         <a class="btn" href="/app#vitrine/kunst">Kunstseiten ansehen</a>
         <a class="btn sek" href="/app">Selbst gestalten</a>
       </div>
-      <div class="klein">Eine Probeseite gratis · danach ab 10 Credits je Seite</div>
+      <div class="klein">Rechts die beliebtesten Seiten aus der Vitrine zum Durchblättern · eine Probeseite gratis, danach ab 10 Credits</div>
     </div>
-    <div class="kb-bilder" id="kb-bilder">
-      <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork-Seite: Crown Zenith Golds" width="736" height="1016">
-      <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork-Seite: Kyogre und Groudon" width="736" height="1016">
+    <div class="kb-album" id="kb-album">
+      <div class="album kb">
+        <button class="album-pfeil" id="kb-zurueck" aria-label="Zurückblättern" hidden>‹</button>
+        <div class="album-seiten kb" id="kb-seiten">
+          <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork-Seite: Crown Zenith Golds" width="736" height="1016">
+          <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork-Seite: Kyogre und Groudon" width="736" height="1016">
+        </div>
+        <button class="album-pfeil" id="kb-vor" aria-label="Weiterblättern" hidden>›</button>
+      </div>
+      <div class="kb-stand"><span id="kb-stand"></span><span id="kb-titel"></span></div>
     </div>
   </section>
 
@@ -196,6 +203,6 @@
     Binderplan · <a href="recht#impressum">Impressum</a> · <a href="recht#agb">AGB</a> · <a href="recht#widerruf">Widerruf</a> · <a href="recht#datenschutz">Datenschutz</a> · <a href="/kuendigen">Verträge hier kündigen</a> · <a href="/en?lang=en" hreflang="en">English</a> · Inoffizielles Fan-Werkzeug, nicht verbunden mit The Pokémon Company / Nintendo. Kartendaten: TCGdex, PokéAPI.
   </footer>
 </div>
-<script src="/assets/schaufenster.js?v=20260904b" defer></script>
+<script src="/assets/schaufenster.js?v=20260904c" defer></script>
 </body>
 </html>

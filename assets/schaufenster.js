@@ -86,6 +86,40 @@
     }, { passive: true });
   })();
 
+  /* Kunst-Album im Band unter dem Aufmacher: zwei Seiten nebeneinander, Pfeile und Wischen
+     blättern durch die beliebtesten Kunstseiten (bis zu zehn). */
+  var KUNST = { liste: [], pos: 0 };
+  function kunstAlbum(liste) {
+    var box = document.getElementById('kb-seiten');
+    if (!box || !liste.length) return;
+    KUNST.liste = liste; KUNST.pos = 0;
+    var zurueck = document.getElementById('kb-zurueck'), vor = document.getElementById('kb-vor');
+    zurueck.hidden = vor.hidden = liste.length <= 2;
+    zurueck.addEventListener('click', function () { kunstWechsel(-1); });
+    vor.addEventListener('click', function () { kunstWechsel(1); });
+    var x0 = null;
+    box.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', function (e) {
+      if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 40) kunstWechsel(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    kunstZeichnen();
+  }
+  function kunstWechsel(d) {
+    var max = Math.max(0, KUNST.liste.length - 2);
+    KUNST.pos = Math.min(max, Math.max(0, KUNST.pos + d * 2));
+    kunstZeichnen();
+  }
+  function kunstZeichnen() {
+    var teil = KUNST.liste.slice(KUNST.pos, KUNST.pos + 2);
+    document.getElementById('kb-seiten').innerHTML = teil.map(function (a) { return seiteHtml(a.blatt.seiten[0], 'band'); }).join('');
+    var n = KUNST.liste.length, bis = Math.min(n, KUNST.pos + 2);
+    document.getElementById('kb-stand').textContent = (KUNST.pos + 1) + (bis > KUNST.pos + 1 ? '–' + bis : '') + ' ' + t.von + ' ' + n;
+    document.getElementById('kb-titel').textContent = teil.map(function (a) { return a.titel; }).join(' · ');
+    document.getElementById('kb-zurueck').disabled = KUNST.pos <= 0;
+    document.getElementById('kb-vor').disabled = KUNST.pos + 2 >= n;
+  }
+
   fetch('/api/vitrine/schaufenster').then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
     if (!d || !(d.binder || []).length) return;
     var f = document.getElementById('schau-fenster');
@@ -103,10 +137,7 @@
       el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auf(); } });
     });
     var kunst = d.kunst || [];
-    var band = document.getElementById('kb-bilder');
-    if (band && kunst.length >= 2 && kunst[0].blatt && kunst[1].blatt) {
-      band.innerHTML = kunst.slice(0, 2).map(function (a) { return seiteHtml(a.blatt.seiten[0], 'band'); }).join('');
-    }
+    kunstAlbum(kunst.filter(function (a) { return a.blatt; }));
     var kb = document.getElementById('schau-kunst-block');
     if (kunst.length) {
       document.getElementById('schau-kunst').innerHTML = kunst.map(function (a) {

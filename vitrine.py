@@ -752,7 +752,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             if f == "" or sum(1 for b in d["binder"] if b["stimmen_fenster"] > 0) >= 4:
                 gewaehlt, binder = f, d["binder"]
                 break
-        kunst = vitrine_artwork(request, sortierung="top", limit=8, fenster=gewaehlt)["artworks"]
+        kunst = vitrine_artwork(request, sortierung="top", limit=10, fenster=gewaehlt)["artworks"]
         for b in binder:
             for feld in ("gestimmt", "vorschau", "avatar_card"):
                 b.pop(feld, None)

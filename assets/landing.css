@@ -162,11 +162,27 @@
   .kunst-band .btn.sek { background: #fff; }
   .kunst-band .klein { font-size: 12.5px; color: #4a4d58; margin-top: 10px; }
   .kb-eyebrow { font-family: 'Bungee', 'Archivo', sans-serif; font-size: 12px; letter-spacing: .08em; color: var(--blau); }
-  .kb-bilder { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #14161a; border: 2.5px solid var(--kontur);
-               border-radius: 14px; padding: 10px; box-shadow: 5px 5px 0 var(--kontur); }
-  .kb-bilder img { display: block; width: 100%; height: auto; border-radius: 6px; }
-  .kb-bilder .s-seite { padding: 4px; }
+  /* Die Kunstseiten liegen im selben Album wie die Binder: zwei Seiten nebeneinander auf
+     dunklem Grund, Pfeile blättern durch die beliebtesten aus der Vitrine. Als Poster
+     waren sie zu groß und ohne Bezug zum Binder. */
+  .kb-album { max-width: 480px; margin-left: auto; width: 100%; }
+  .album.kb { gap: 8px; }
+  .album-seiten.kb { padding: 8px; gap: 8px; border-radius: 12px; box-shadow: 5px 5px 0 var(--kontur); min-height: 0; }
+  .album-seiten.kb img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .album-seiten.kb .s-seite { padding: 4px; }
+  .album.kb .album-pfeil { width: 34px; height: 34px; font-size: 20px; }
+  .kb-stand { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: #4a4d58; margin-top: 8px;
+              padding: 0 42px; font-variant-numeric: tabular-nums; }
+  .kb-stand #kb-titel { font-weight: 700; color: #14161C; text-align: right; }
   @media (max-width: 800px) {
     .kunst-band { grid-template-columns: 1fr; padding: 20px; box-shadow: 6px 6px 0 var(--kontur); gap: 18px; }
-    .kb-bilder { grid-template-columns: 1fr 1fr; }
+    .kb-album { max-width: 100%; margin: 0; }
+    .album.kb { gap: 6px; }
+    .kb-stand { padding: 0 40px; }
+  }
+  /* Handy: die Kunstseiten bleiben zu zweit nebeneinander — die Album-Regel weiter oben
+     stapelt am Handy nur das Binder-Album auf eine Seite. */
+  @media (max-width: 640px) {
+    .album-seiten.kb { grid-template-columns: 1fr 1fr; padding: 6px; gap: 6px; }
+    .album-seiten.kb .s-seite { padding: 3px; }
   }
