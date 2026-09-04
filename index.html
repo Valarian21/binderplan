@@ -838,8 +838,13 @@
 
   .spalte-binder { width: var(--binder-w, 486px); flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
                    padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
-  .binder-groesse { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--mut); }
-  .binder-groesse input[type=range] { flex: 1; accent-color: var(--gruen); cursor: pointer; }
+  .binder-groesse { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--mut);
+                    flex-shrink: 0; white-space: nowrap; }
+  /* `min-width: 0` ist hier Pflicht: ein Bereichsregler bringt eine eigene Standardbreite mit
+     (rund 130 px) und schrumpft ohne diese Zeile nicht darunter, egal was `flex` sagt. In der
+     schmalen Kopfzeile des Planers ragte er deshalb 40 px aus seinem Kasten und lag unter dem
+     Knopf „Karte suchen". */
+  .binder-groesse input[type=range] { flex: 1; min-width: 0; accent-color: var(--gruen); cursor: pointer; }
   /* Binderseiten haben eine eigene kleine Palette: echte Sammelalben sind fast immer
      schwarz, weil die Karten davor stehen. `body.dunkle-seiten` schaltet Werkbank,
      Planer und Durchblättern gemeinsam um — der Druck bleibt davon unberührt. */
