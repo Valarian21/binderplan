@@ -9572,9 +9572,12 @@ function zeichneArtworkKacheln(aw) {
     html += `<div class="aw-kachel ${karte ? 'karte' : ''}"><img src="${aw.vorschau}" alt="" style="width:${(pw / 63 * 100).toFixed(3)}%;height:${(ph / 88 * 100).toFixed(3)}%;left:-${(c * 67 / 63 * 100).toFixed(3)}%;top:-${(r * 92 / 88 * 100).toFixed(3)}%"><span>${karte ? t('aw_karte') : t('aw_fach') + ' ' + (s + 1)}</span></div>`;
   }
   box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  // Die Fuge in Prozent der Gesamtbreite, genau wie in der Vitrine. Vorher wurde sie aus der
+  // gemessenen Kachelbreite gerechnet — gemessen wurde aber, bevor die Fuge stand, und jede
+  // Fuge verändert die Kachelbreite wieder. Das Ergebnis passte nie zum Bildausschnitt, der
+  // fest mit 4 Einheiten auf 63 rechnet.
+  box.style.gap = (4 / pw * 100).toFixed(4) + '%';
   box.innerHTML = html;
-  const fuge = () => { const k = box.querySelector('.aw-kachel'); if (k) box.style.gap = (k.clientWidth * 4 / 63) + 'px'; };
-  fuge(); requestAnimationFrame(fuge);
 }
 function artworkVorschau(w) {
   AW.vorschauArt = w;
