@@ -62,10 +62,30 @@
         <a class="btn" href="/app">Plan a binder now</a>
         <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">See an example</a>
       </div>
-      <div class="klein">Free, no sign-up needed · 23,000+ cards, every era, English &amp; German · Japanese sets included</div>
+      <div class="klein">Free, no sign-up needed · 33,000+ cards, every era, English &amp; German · Japanese sets included</div>
     </div>
     <div class="shot shot--hoch"><img src="assets/hero_en.png" alt="Binderplan: a binder page with nine cards and Cardmarket prices" width="600" height="1013"></div>
   </div>
+
+  <section class="schau" id="schau" data-lang="en" hidden>
+    <h2>From the Showcase</h2>
+    <p class="sub">Real binders from our collectors – flip through them like an album. Like one? Take its pages into your own binder.</p>
+    <div class="album-box" id="schau-album">
+      <div class="album-kopf"><strong id="album-name"></strong><span id="album-meta"></span></div>
+      <div class="album">
+        <button class="album-pfeil" id="album-zurueck" aria-label="Previous">‹</button>
+        <div class="album-seiten" id="album-seiten"></div>
+        <button class="album-pfeil" id="album-vor" aria-label="Next">›</button>
+      </div>
+      <div class="album-fuss"><span id="album-stand"></span><span class="klein">Swipe or use the arrows</span><a class="btn sek" id="album-link" href="/app">See the whole binder</a></div>
+    </div>
+    <h3 class="schau-h3">Popular binders <span class="schau-fenster" id="schau-fenster"></span></h3>
+    <div class="schau-reihe" id="schau-binder"></div>
+    <div id="schau-kunst-block">
+      <h3 class="schau-h3">Popular art pages <span class="schau-fenster">AI-painted around real cards</span></h3>
+      <div class="schau-reihe kunst" id="schau-kunst"></div>
+    </div>
+  </section>
 
   <section class="neu-drei">
     <h2>Three things you won’t find anywhere else</h2>
@@ -149,5 +169,6 @@
     Binderplan · <a href="recht#impressum">Legal notice</a> · <a href="recht#agb">Terms</a> · <a href="recht#widerruf">Withdrawal</a> · <a href="recht#datenschutz">Privacy</a> · <a href="/kuendigen">Cancel contracts here</a> · <a href="/?lang=de" hreflang="de">Deutsch</a> · Unofficial fan tool, not affiliated with The Pokémon Company / Nintendo. Card data: TCGdex, PokéAPI.
   </footer>
 </div>
+<script src="/assets/schaufenster.js?v=20260904" defer></script>
 </body>
 </html>

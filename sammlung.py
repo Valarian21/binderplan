@@ -169,7 +169,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
     def sammlung(request: Request, q: str = "", set_id: str = "", serie: str = "", typ: str = "",
                  rarity: str = "", illustrator: str = "", art_ort: str = "", art_merkmal: str = "",
                  art_zeit: str = "", art_wasser: int = 0, art_text: str = "",
-                 nur: str = "", sortierung: str = "neu", limit: int = 60, offset: int = 0):
+                 nur: str = "", sortierung: str = "neu", umgekehrt: int = 0,
+                 limit: int = 60, offset: int = 0):
         """Die eigene Sammlung, mit denselben Filtern wie die Kartensuche — inklusive
         Bildmotiv. „Zeig mir alle Unterwasser-Karten, die ich besitze" geht nur so."""
         user = require_user(request)
@@ -245,6 +246,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             juengste = {cid: max((e["updated_at"] or "") for e in liste_e)
                         for cid, liste_e in eintraege.items()}
             karten.sort(key=lambda k: juengste.get(k["id"], ""), reverse=True)
+        if umgekehrt:
+            # Ein Knopf dreht die Reihenfolge um — „älteste zuerst", „günstigste zuerst".
+            karten.reverse()
         return {"karten": karten[offset:offset + limit], "gesamt": len(karten)}
 
     @app.get("/api/sammlung/uebersicht")

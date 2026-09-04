@@ -3410,6 +3410,36 @@ def _cache_job():
         print(f"Cache {teil}: auf {gesamt/1024/1024:.0f} MB gestutzt")
 
 
+NACHTLAUF_STUNDE, NACHTLAUF_MINUTE = 4, 30     # Serverzeit (Europe/Berlin)
+
+
+def _tageslauf_faellig(letzter_utc):
+    """Ist der tägliche Preislauf fällig? Fällig ab 04:30 Uhr Serverzeit, sobald der letzte
+    Lauf vor diesem Zeitpunkt lag. `letzter_utc` ist der kv-Wert (UTC, wie _now_text)."""
+    from datetime import datetime
+    jetzt = datetime.now()
+    heute = jetzt.replace(hour=NACHTLAUF_STUNDE, minute=NACHTLAUF_MINUTE, second=0, microsecond=0)
+    if jetzt < heute:
+        return False
+    if not letzter_utc:
+        return True
+    try:
+        letzter = datetime.strptime(letzter_utc, "%Y-%m-%d %H:%M:%S") + (datetime.now() - datetime.utcnow())
+    except ValueError:
+        return True
+    return letzter < heute
+
+
+def _sekunden_bis_nachtlauf():
+    """Wie lange bis zum nächsten 04:30 Uhr — damit der Takt nicht eine Stunde daneben liegt."""
+    from datetime import datetime, timedelta
+    jetzt = datetime.now()
+    ziel = jetzt.replace(hour=NACHTLAUF_STUNDE, minute=NACHTLAUF_MINUTE, second=30, microsecond=0)
+    if ziel <= jetzt:
+        ziel += timedelta(days=1)
+    return (ziel - jetzt).total_seconds()
+
+
 def _hintergrund_takt():
     import time as _time
     while True:
@@ -3421,10 +3451,16 @@ def _hintergrund_takt():
             offen_row = con.execute("SELECT value FROM kv WHERE key='preise_offen'").fetchone()
             con.close()
             offen = int((offen_row["value"] if offen_row else "0") or 0)
-            # Solange der Katalog noch nicht erfasst ist, läuft es stündlich weiter; danach
-            # genügt einmal am Tag, weil Cardmarket ohnehin nur täglich neu rechnet.
-            abstand = 0.75 if offen > 0 else 23
-            if not letzter or letzter["value"] < datetime_str_vor(abstand):
+            # Solange der Katalog noch nicht erfasst ist, läuft es stündlich weiter. Danach
+            # einmal am Tag zu einer FESTEN Uhrzeit: Cardmarket veröffentlicht das
+            # Preisverzeichnis gegen 02:45 Uhr, der Lauf ist ab 04:30 Uhr fällig. Vorher galt
+            # „23 Stunden nach dem letzten Lauf" — das wanderte täglich eine Stunde nach
+            # hinten und hätte irgendwann einen Cardmarket-Tag übersprungen.
+            if offen > 0:
+                faellig = not letzter or letzter["value"] < datetime_str_vor(0.75)
+            else:
+                faellig = _tageslauf_faellig(letzter["value"] if letzter else "")
+            if faellig:
                 # Die Reihenfolge ist die Rangfolge der Quellen, von der schwächsten zur
                 # stärksten: TCGdex legt die Grundlage und berichtigt die Ausprägungen,
                 # das Cardmarket-Preisverzeichnis überschreibt sie mit den echten Zahlen,
@@ -3461,7 +3497,8 @@ def _hintergrund_takt():
                     print("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
         except Exception:
             pass
-        _time.sleep(3600)
+        # Stündlich für Aufräumen und Cache; kurz vor 04:30 Uhr genau dorthin.
+        _time.sleep(max(60, min(3600, _sekunden_bis_nachtlauf())))
 
 
 def _maybe_autosync():
@@ -6503,12 +6540,13 @@ def asset(name: str):
     """Statische Dateien der Startseite: Bilder, Schriftarten und deren CSS (assets/ im Repo).
     Die Schriften liegen bewusst lokal — ohne Google-Fonts-CDN gibt es keine Datenübertragung
     an Dritte und damit auch keinen Einwilligungsbedarf."""
-    if not re.fullmatch(r"[a-z0-9_-]+\.(png|webp|jpg|svg|woff2|css)", name):
+    if not re.fullmatch(r"[a-z0-9_-]+\.(png|webp|jpg|svg|woff2|css|js)", name):
         raise HTTPException(404)
     f = BASE / "assets" / name
     if not f.exists():
         raise HTTPException(404)
-    typ = {"css": "text/css; charset=utf-8", "woff2": "font/woff2"}.get(name.rsplit(".", 1)[-1])
+    typ = {"css": "text/css; charset=utf-8", "woff2": "font/woff2",
+           "js": "text/javascript; charset=utf-8"}.get(name.rsplit(".", 1)[-1])
     return FileResponse(f, media_type=typ, headers=IMG_HEADERS)
 
 

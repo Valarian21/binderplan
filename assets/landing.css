@@ -91,3 +91,61 @@
   /* Sprachschalter in der Kopfzeile: klein, neben den Knöpfen */
   header nav .sprache { font-weight:800; font-size:13px; color:var(--mut); text-decoration:none; padding:6px 8px; border-radius:8px; }
   header nav .sprache:hover { background:var(--gelb); color:var(--ink); }
+
+  /* ================= Schaufenster: Aus der Vitrine =================
+     Binderseiten auf dunklem Grund, wie in der App. Das Album ist die einzige
+     Bühne der Seite: breit, kontur, gelber Schatten. Die Reihen darunter sind
+     Kacheln im Stil der übrigen Karten. */
+  .schau h2 { margin-bottom: 4px; }
+  .album-box { border: 3px solid var(--kontur); border-radius: 18px; background: var(--card);
+               box-shadow: 8px 8px 0 var(--gelb); padding: 16px 18px 14px; margin: 18px 0 30px; }
+  .album-kopf { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .album-kopf strong { font-family: 'Bungee', 'Archivo', sans-serif; font-weight: 400; font-size: 17px; }
+  .album-kopf span { color: var(--mut); font-size: 13px; }
+  .album { display: flex; align-items: center; gap: 10px; }
+  .album-seiten { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px;
+                  background: #14161a; border-radius: 14px; border: 2.5px solid var(--kontur); min-height: 120px; }
+  .album-pfeil { width: 42px; height: 42px; border-radius: 11px; border: 2.5px solid var(--kontur); background: var(--card);
+                 color: var(--ink); font-size: 24px; font-weight: 800; line-height: 1; cursor: pointer; flex-shrink: 0;
+                 box-shadow: 3px 3px 0 var(--kontur); }
+  .album-pfeil:hover { background: var(--gelb); }
+  .album-pfeil:disabled { opacity: .3; cursor: default; box-shadow: none; }
+  .album-fuss { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--mut); }
+  .album-fuss .klein { font-size: 12px; }
+  .album-fuss .btn { margin-left: auto; font-size: 13px; padding: 8px 14px; }
+  .s-seite { display: grid; background: #14161a; border-radius: 8px; padding: 5px; }
+  .s-seite.album { padding: 8px; border-radius: 10px; outline: 1px solid rgba(255,255,255,.12); outline-offset: -1px; }
+  .s-fach { position: relative; aspect-ratio: 63/88; border-radius: 3px; background: rgba(255,255,255,.05); overflow: hidden; }
+  .s-fach img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .s-fach.leer { border: 1px dashed rgba(255,255,255,.14); background: transparent; }
+  .s-fach .s-art { position: absolute; inset: 0; overflow: hidden; border-radius: 3px; display: block; }
+  .s-fach .s-art img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .s-stapel { position: relative; display: flex; align-items: flex-start; padding: 0 0 9%; }
+  .s-stapel .s-seite { flex: 0 0 36%; padding: 4px; border-radius: 7px; box-shadow: -5px 2px 12px rgba(0,0,0,.55);
+                       outline: 1px solid rgba(255,255,255,.13); outline-offset: -1px; }
+  .s-stapel .vorn { z-index: 3; }
+  .s-stapel .hinten2 { z-index: 2; margin-left: -4%; margin-top: 4%; filter: brightness(.88); }
+  .s-stapel .hinten3 { z-index: 1; margin-left: -4%; margin-top: 8%; filter: brightness(.76); }
+  .schau-h3 { font-size: 16px; font-weight: 800; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .schau-fenster { font-size: 12px; font-weight: 700; color: var(--mut); letter-spacing: .04em; text-transform: uppercase; }
+  .schau-reihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .schau-reihe.kunst { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .s-kachel { display: block; text-decoration: none; color: var(--ink); background: var(--card); border: 2.5px solid var(--kontur);
+              border-radius: 14px; box-shadow: 4px 4px 0 var(--kontur); overflow: hidden; cursor: pointer;
+              transition: transform .08s, box-shadow .08s; }
+  .s-kachel:hover, .s-kachel:focus-visible { transform: translate(1.5px, 1.5px); box-shadow: 2px 2px 0 var(--kontur); outline: none; }
+  .s-kachel.an { box-shadow: 4px 4px 0 var(--gelb); border-color: var(--kontur); }
+  .s-kachel .s-bild { background: var(--panel2); padding: 10px 10px 0; }
+  .s-kachel.kunst .s-bild { padding: 10px; }
+  .s-kachel .s-bild > img { display: block; width: 100%; border-radius: 6px; }
+  .s-kachel .s-txt { padding: 9px 12px 11px; display: flex; flex-direction: column; gap: 2px; }
+  .s-kachel .s-txt strong { font-size: 14px; }
+  .s-kachel .s-txt span { font-size: 12px; color: var(--mut); }
+  @media (max-width: 640px) {
+    .album-box { padding: 12px; box-shadow: 5px 5px 0 var(--gelb); }
+    .album-seiten { grid-template-columns: 1fr; padding: 8px; }
+    .album-pfeil { width: 34px; height: 34px; font-size: 20px; }
+    .schau-reihe { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .schau-reihe.kunst { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .s-kachel .s-txt strong { font-size: 13px; }
+  }

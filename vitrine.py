@@ -108,6 +108,15 @@ def _punkte(stimmen, veroeffentlicht_at):
     return (max(0, stimmen - 1)) / ((stunden + 2) ** 1.5)
 
 
+def _fenster_seit(fenster):
+    """Ab wann Herzen zählen: 'woche' = 7 Tage, 'monat' = 30 Tage, sonst alle.
+    Liefert einen UTC-Zeitstempel im Format der Tabellen; '' passt auf alles."""
+    tage = {"heute": 1, "woche": 7, "monat": 30}.get(fenster or "")
+    if not tage:
+        return ""
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - tage * 86400))
+
+
 def druckrecht_sichern(user, items):
     """Von main.py aufgerufen, bevor ein PDF entsteht."""
     f = _dep.get("druckrecht_sichern")
@@ -134,6 +143,11 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             PRIMARY KEY (binder_id, user_id)
         );
         CREATE INDEX IF NOT EXISTS idx_stimmen_binder ON stimmen(binder_id);
+        CREATE TABLE IF NOT EXISTS artwork_stimmen (
+            artwork_id TEXT, user_id INTEGER, created_at TEXT,
+            PRIMARY KEY (artwork_id, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_astimmen ON artwork_stimmen(artwork_id);
         CREATE TABLE IF NOT EXISTS artwork_freigaben (
             user_id INTEGER, artwork_id TEXT, created_at TEXT,
             PRIMARY KEY (user_id, artwork_id)
@@ -277,6 +291,27 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         con.close()
         return {"ok": True, "gestimmt": not da, "stimmen": n}
 
+    @app.post("/api/vitrine/artwork/stimme")
+    async def artwork_stimme(request: Request):
+        """Herz an einer Kunstseite — dasselbe Verfahren wie beim Binder. Vorher zählte dort
+        nur „geladen", und das misst Käufe: es stand überall auf null."""
+        user = require_user(request)
+        data = await request.json()
+        artwork_id = str(data.get("artwork_id") or "")
+        con = get_db()
+        row = con.execute("SELECT oeffentlich, status FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+        if not row or not row["oeffentlich"] or row["status"] != "fertig":
+            con.close(); raise HTTPException(404, "Diese Kunstseite steht nicht in der Vitrine")
+        neu = con.execute("INSERT OR IGNORE INTO artwork_stimmen (artwork_id, user_id, created_at) VALUES (?,?,?)",
+                          (artwork_id, user["id"], _now())).rowcount
+        da = not neu
+        if da:
+            con.execute("DELETE FROM artwork_stimmen WHERE artwork_id=? AND user_id=?", (artwork_id, user["id"]))
+        con.commit()
+        n = con.execute("SELECT COUNT(*) c FROM artwork_stimmen WHERE artwork_id=?", (artwork_id,)).fetchone()["c"]
+        con.close()
+        return {"ok": True, "gestimmt": not da, "stimmen": n}
+
     # --- Listen ------------------------------------------------------------
 
     RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4, 4),
@@ -310,7 +345,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             n += 1
         return max(1, n)
 
-    def _seiten_vorschau(items, layout, seiten=1, seiten_layouts=None):
+    def _seiten_vorschau(items, layout, seiten=1, seiten_layouts=None, hoechstens=3):
         """Die ersten Seiten des Binders als Raster. Eine Binderseite ist das, was den Binder
         ausmacht — vier Karten nebeneinander sahen aus wie eine beliebige Trefferliste.
 
@@ -320,7 +355,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         je = seiten_layouts or {}
         aus = []
         start = 0
-        for nr in range(max(1, min(3, seiten))):
+        for nr in range(max(1, min(hoechstens, seiten))):
             roh = je.get(str(nr), je.get(nr))
             l = roh if roh in RASTER else (layout or "3x3")
             sp, ze = RASTER.get(l, (3, 3))
@@ -334,6 +369,23 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 break
             aus.append({"spalten": sp, "zeilen": ze, "faecher": faecher})
         return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
+
+    def _kunst_blatt(artwork_id, layout, anker_json):
+        """Eine Kunstseite so beschreiben, wie die Vitrine eine Binderseite zeichnet:
+        Ankerkarten als echte Scans in ihren Fächern, die übrigen Fächer zeigen ihren
+        Ausschnitt der Malerei. Vorher stand das Bild als Poster in der Kachel — das
+        sah nach Wandbild aus, geliefert wird aber ein Druckbogen für die leeren Hüllen."""
+        sp, ze = RASTER.get(layout or "3x3", (3, 3))
+        try:
+            anker = json.loads(anker_json or "{}") or {}
+        except Exception:
+            anker = {}
+        faecher = []
+        for i in range(sp * ze):
+            cid = anker.get(str(i))
+            faecher.append({"art": "card", "id": cid, "sprache": ""} if cid
+                           else {"art": "artwork", "id": artwork_id, "slot": i, "layout": layout or "3x3"})
+        return {"spalten": sp, "zeilen": ze, "seiten": [{"spalten": sp, "zeilen": ze, "faecher": faecher}]}
 
     def _vorschau(items, anzahl=6):
         """Flache Kartenliste — wird noch für die Bildauswahl im Profil gebraucht."""
@@ -365,17 +417,21 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
     @app.get("/api/vitrine")
     def vitrine(request: Request, sortierung: str = "trend", limit: int = 24, offset: int = 0,
                 set_id: str = "", art_ort: str = "", art_merkmal: str = "", q: str = "",
-                art: str = "", groesse: str = ""):
+                art: str = "", groesse: str = "", fenster: str = ""):
+        """`fenster` (woche/monat/leer) zählt für die Bestenliste nur Herzen aus diesem
+        Zeitraum — „beliebt diese Woche" statt einer Liste, die für immer dieselbe bleibt."""
         limit = max(1, min(48, limit))
         user = current_user(request)
+        seit = _fenster_seit(fenster)
         con = get_db()
         reihen = con.execute(
             "SELECT b.id, b.name, b.layout, b.mode, b.options, b.items, b.veroeffentlicht_at, b.user_id,"
             " p.name AS besitzer, p.avatar_card,"
-            " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id) AS stimmen"
+            " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id) AS stimmen,"
+            " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id AND s.created_at >= ?) AS stimmen_fenster"
             " FROM binders b LEFT JOIN profile p ON p.user_id = b.user_id"
             " WHERE b.sichtbar = 1 AND COALESCE(b.gesperrt,0) = 0"
-            " AND COALESCE(p.gesperrt,0) = 0").fetchall()
+            " AND COALESCE(p.gesperrt,0) = 0", (seit,)).fetchall()
 
         meine = set()
         if user:
@@ -410,6 +466,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             aus.append({
                 "id": r["id"], "name": r["name"], "besitzer": r["besitzer"] or "—",
                 "avatar_card": r["avatar_card"], "stimmen": r["stimmen"],
+                "stimmen_fenster": r["stimmen_fenster"],
                 "gestimmt": r["id"] in meine, "karten": len(karten),
                 "seiten": _seitenzahl(items, r["layout"], optionen.get("seitenLayouts")),
                 "layout": r["layout"],
@@ -422,7 +479,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         con.close()
 
         if sortierung == "top":
-            aus.sort(key=lambda b: (-b["stimmen"], b["veroeffentlicht_at"] or ""))
+            aus.sort(key=lambda b: (-b["stimmen_fenster"], -b["stimmen"], b["veroeffentlicht_at"] or ""))
         elif sortierung == "neu":
             aus.sort(key=lambda b: (b["veroeffentlicht_at"] or ""), reverse=True)
         else:
@@ -430,7 +487,8 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         gesamt = len(aus)
         for b in aus:
             b.pop("_punkte", None)
-        return {"binder": aus[offset:offset + limit], "gesamt": gesamt, "sortierung": sortierung}
+        return {"binder": aus[offset:offset + limit], "gesamt": gesamt, "sortierung": sortierung,
+                "fenster": fenster}
 
     @app.get("/api/vitrine/binder/{binder_id}")
     def vitrine_binder(binder_id: str, request: Request):
@@ -609,22 +667,27 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
     @app.get("/api/vitrine/artwork")
     def vitrine_artwork(request: Request, sortierung: str = "neu", q: str = "", stil: str = "",
                         layout: str = "", jahr_von: int = 0, jahr_bis: int = 0,
-                        limit: int = 24, offset: int = 0):
+                        limit: int = 24, offset: int = 0, fenster: str = ""):
         """Der Kunstseiten-Bereich der Vitrine."""
         limit = max(1, min(48, limit))
         user = current_user(request)
         abo = _dep["abo"]
+        seit = _fenster_seit(fenster)
         con = get_db()
         reihen = con.execute(
             "SELECT a.id, a.titel, a.stil, a.layout, a.user_id, a.downloads, a.breite, a.hoehe,"
-            " a.veroeffentlicht_at, a.anker, p.name AS besitzer"
+            " a.veroeffentlicht_at, a.anker, p.name AS besitzer,"
+            " (SELECT COUNT(*) FROM artwork_stimmen s WHERE s.artwork_id = a.id) AS stimmen,"
+            " (SELECT COUNT(*) FROM artwork_stimmen s WHERE s.artwork_id = a.id AND s.created_at >= ?) AS stimmen_fenster"
             " FROM artworks a LEFT JOIN profile p ON p.user_id = a.user_id"
             " WHERE COALESCE(a.oeffentlich,0) = 1 AND a.status = 'fertig'"
-            " AND COALESCE(p.gesperrt,0) = 0").fetchall()
-        habe = set()
+            " AND COALESCE(p.gesperrt,0) = 0", (seit,)).fetchall()
+        habe, meine_herzen = set(), set()
         if user:
             habe = {x["artwork_id"] for x in con.execute(
                 "SELECT artwork_id FROM artwork_freigaben WHERE user_id = ?", (user["id"],))}
+            meine_herzen = {x["artwork_id"] for x in con.execute(
+                "SELECT artwork_id FROM artwork_stimmen WHERE user_id = ?", (user["id"],))}
         con.close()
         karten = _kunst_karten(reihen)
         aus = []
@@ -647,9 +710,14 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 continue
             z = _kunst_zeile(r, {user["id"]} if user else set(), k)
             z["habe"] = r["id"] in habe or z["mein"]
+            z["stimmen"] = r["stimmen"]
+            z["stimmen_fenster"] = r["stimmen_fenster"]
+            z["gestimmt"] = r["id"] in meine_herzen
+            z["blatt"] = _kunst_blatt(r["id"], r["layout"], r["anker"])
             aus.append(z)
         if sortierung == "top":
-            aus.sort(key=lambda a: (-a["downloads"], a["veroeffentlicht_at"] or ""))
+            aus.sort(key=lambda a: (-a["stimmen_fenster"], -a["stimmen"], -a["downloads"],
+                                    a["veroeffentlicht_at"] or ""))
         elif sortierung == "alt":
             aus.sort(key=lambda a: (a.get("jahr_alt") or 9999, a["veroeffentlicht_at"] or ""))
         elif sortierung == "jung":
@@ -660,7 +728,48 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         return {"artworks": aus[offset:offset + limit], "gesamt": len(aus),
                 "preis": abo.ARTWORK_FREMD, "anteil": abo.ARTWORK_ANTEIL,
                 "stile": sorted({r["stil"] for r in reihen if r["stil"]}),
-                "jahr_min": min(jahre) if jahre else None, "jahr_max": max(jahre) if jahre else None}
+                "jahr_min": min(jahre) if jahre else None, "jahr_max": max(jahre) if jahre else None,
+                "fenster": fenster}
+
+    # --- Schaufenster für die Startseite --------------------------------------
+
+    _schaufenster_cache = {"bis": 0.0, "daten": None}
+
+    @app.get("/api/vitrine/schaufenster")
+    def schaufenster(request: Request):
+        """Für die Startseite vor dem Anmelden: die beliebtesten Binder und Kunstseiten,
+        ohne Konto, zehn Minuten gecacht. Das Zeitfenster wählt sich selbst — das engste,
+        in dem mindestens vier Binder ein Herz haben. Sonst stünde wochenlang „Beliebt
+        diese Woche" über einer leeren Reihe. Jeder Binder bringt bis zu zwölf Seiten
+        mit, damit Besucher ihn auf der Startseite durchblättern können."""
+        jetzt = time.time()
+        c = _schaufenster_cache
+        if c["daten"] and c["bis"] > jetzt:
+            return c["daten"]
+        gewaehlt, binder = "", []
+        for f in ("woche", "monat", ""):
+            d = vitrine(request, sortierung="top", limit=8, fenster=f)
+            if f == "" or sum(1 for b in d["binder"] if b["stimmen_fenster"] > 0) >= 4:
+                gewaehlt, binder = f, d["binder"]
+                break
+        kunst = vitrine_artwork(request, sortierung="top", limit=8, fenster=gewaehlt)["artworks"]
+        for b in binder:
+            for feld in ("gestimmt", "vorschau", "avatar_card"):
+                b.pop(feld, None)
+            try:
+                voll = load_binder(b["id"])
+                opt = voll.get("options") or {}
+                b["seiten_alle"] = _seiten_vorschau(voll["items"], voll["layout"], 12,
+                                                    opt.get("seitenLayouts"), hoechstens=12)["seiten"]
+            except Exception:
+                b["seiten_alle"] = b["blatt"]["seiten"]
+        for a in kunst:
+            for feld in ("gestimmt", "habe", "mein"):
+                a.pop(feld, None)
+        daten = {"fenster": gewaehlt, "binder": binder, "kunst": kunst}
+        if not current_user(request):
+            c.update(bis=jetzt + 600, daten=daten)
+        return daten
 
     def _uebernehmen(user, artwork_id):
         """Eine fremde Kunstseite kaufen. Idempotent: wer sie schon hat, zahlt nicht noch mal."""
