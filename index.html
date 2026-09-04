@@ -2705,7 +2705,7 @@ const T = {
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
     aw_kosten_hin: 'für diese Seite · du hast {s}', aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
     aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
-    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt … das dauert etwa 60 Sekunden.', aw_im_binder: 'im Binder',
+    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt …', aw_im_binder: 'im Binder',
     pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
     pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
     preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise vom Vortag (1× täglich neu)',
@@ -3084,7 +3084,7 @@ const T = {
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
     aw_kosten_hin: 'for this page · you have {s}', aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
     aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
-    s_artwork: 'Open artwork page', aw_laeuft: 'The AI is painting … this takes about 60 seconds.', aw_im_binder: 'in binder',
+    s_artwork: 'Open artwork page', aw_laeuft: 'The AI is painting …', aw_im_binder: 'in binder',
     pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
     pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
     preise_live: 'Refresh prices any time', preise_tag: 'Prices from the previous day (refreshed once daily)',
@@ -9492,6 +9492,9 @@ function passungLaden() {
       box.innerHTML = `<strong>${d.wert >= 80 ? t('aw_p_gut') : t('aw_p_bruch')}</strong>`
         + (d.gemeinsam ? ` — ${t('aw_p_gemeinsam').replace('{o}', esc(d.gemeinsam))}` : '')
         + (d.konflikte && d.konflikte.length ? `<div style="margin-top:4px">${d.konflikte.map(esc).join('<br>')}</div>` : '')
+        // Hinweise sind keine Mängel: ein weiterer Bildausschnitt heißt nur, dass diese Karte
+        // in der Szene weiter hinten steht. Deshalb grau und ohne Abzug.
+        + (d.hinweise && d.hinweise.length ? `<div style="margin-top:4px;color:var(--mut)">${d.hinweise.map(esc).join('<br>')}</div>` : '')
         + `<div style="margin-top:5px;color:var(--mut)">${karten}</div>`
         + (d.wert < 80 ? `<div style="margin-top:5px;color:var(--mut)">${t('aw_p_rat')}</div>` : '');
     } catch (e) { box.classList.add('hidden'); }
