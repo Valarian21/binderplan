@@ -792,6 +792,11 @@
                    color: var(--mut); font-size: 11px; padding: 8px; text-align: center; }
   .tk .tk-name { font-size: 11px; font-weight: 700; padding: 5px 7px 0; }
   .tk .tk-meta { font-size: 9.5px; color: var(--mut); padding: 1px 7px 6px; }
+  /* Preis auf der Kachel, wie im Fach: schwarzes Schild unten links über dem Bild. */
+  .tk .tk-preis, .plk .tk-preis { position: absolute; left: 5px; bottom: 5px; background: var(--kontur); color: #fff;
+    font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; z-index: 2; }
+  .tk .tk-preis.leer, .plk .tk-preis.leer { background: var(--mut); }
+  .plk { position: relative; }
   .tk .anz { position: absolute; top: 5px; right: 5px; background: var(--gruen); color: #fff; font-size: 10.5px;
              font-weight: 700; min-width: 19px; height: 19px; border-radius: 999px; display: flex; align-items: center;
              justify-content: center; padding: 0 5px; }
@@ -3395,7 +3400,7 @@ const kl = () => (filter.region === 'jp' ? 'en' : KLANG);
 
 // ---------- Zustand ----------
 const S = {
-  meta: null, binder: null, pokedex: null, preise: {}, preiseHolo: {}, preiseAn: false,
+  meta: null, binder: null, pokedex: null, preise: {}, preiseHolo: {}, preiseAn: false, preiseAngefragt: new Set(),
   ergebnisse: [], gesamt: 0, offset: 0, seite: 0, speicherTimer: null,
   auswahl: new Set(),
   token: localStorage.getItem('bp_token') || '', user: null, nurAnsicht: false,
@@ -3680,7 +3685,8 @@ async function boot() {
     }, 2500);
   }
 
-  const hash = routeLesen();
+  let hash = routeLesen();
+  if (hash === 'vitrine/kunst') { VT.bereich = 'kunst'; hash = 'vitrine'; }   // Sprungziel der Startseite
   if (hash.startsWith('ansicht/')) {
     try {
       S.binder = await api('api/binders/' + hash.split('/')[1]);
@@ -4918,7 +4924,7 @@ function zeichneErgebnisse() {
     // Verschiedenes bedeuteten. Details liegen jetzt auf dem „i“, der Besitz auf einer
     // beschrifteten Zeile unter dem Namen.
     return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="kartAdd(${i})" title="${esc(nm(k))} – ${t('tk_klick')}">
-      <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}</div>
+      <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}${preisBadge(k.id)}</div>
       <button class="plus" onclick="event.stopPropagation();kartAdd(${i})">＋ ${t('in_binder')}</button>${enb}${jpb}
       <button class="info" onclick="event.stopPropagation();detailOeffnen(${i})" title="${t('tk_info')}" aria-label="${t('tk_info')}">i</button>
       ${n ? `<span class="anz" title="${t('im_binder')}">${n}</span>` : ''}
@@ -4934,6 +4940,30 @@ function zeichneErgebnisse() {
     </div>`;
   }).join('');
   plTrefferZeichnen();
+  if (S.preiseAn) preiseTrefferLaden();
+}
+
+/** Preis-Abzeichen auf einer Trefferkachel, sobald der Schalter „Preise" an ist. Vorher
+ *  erschienen Preise erst, wenn die Karte im Fach lag — zum Vergleichen kam das zu spät. */
+function preisBadge(id) {
+  if (!S.preiseAn) return '';
+  const p = S.preise[id];
+  if (p != null) return `<span class="tk-preis">${p.toFixed(2).replace('.', ',')} €</span>`;
+  if (S.preiseAngefragt.has(id) && (id in S.preise)) return `<span class="tk-preis leer" title="${t('kein_preis')}">?</span>`;
+  return '';
+}
+/** Preise der sichtbaren Treffer nachladen — nur die, die noch nie angefragt wurden.
+ *  Der Katalog ist nachts bepreist, die Antwort kommt deshalb aus dem Cache. */
+async function preiseTrefferLaden() {
+  const ids = S.ergebnisse.map((k) => k.id).filter((id) => !S.preiseAngefragt.has(id));
+  if (!ids.length) return;
+  ids.forEach((id) => S.preiseAngefragt.add(id));
+  try {
+    const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+    ids.forEach((id) => { if (!(id in (d.preise || {}))) S.preise[id] = null; });
+    Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
+    if (S.preiseAn) zeichneErgebnisse();
+  } catch (e) { /* still: die Kacheln bleiben ohne Abzeichen */ }
 }
 
 /* ---------- Suchschublade im Planer ----------
@@ -4991,7 +5021,7 @@ function plTrefferZeichnen() {
     const bild = k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">`
                        : `<div class="kein-bild">${nm(k)}</div>`;
     return `<div class="plk" onclick="plTrefferKlick(${i})" title="${esc(nm(k))} — ${t('tk_klick')}">
-      ${bild}${n ? `<span class="plk-anz">${n}</span>` : ''}
+      ${bild}${n ? `<span class="plk-anz">${n}</span>` : ''}${preisBadge(k.id)}
       <div class="plk-n">${nm(k)}</div></div>`;
   }).join('');
 }
@@ -6626,7 +6656,8 @@ window.addEventListener('popstate', (ev) => {
   // Nichts offen: dann hat sich die Route geändert – etwa Zurück aus der Nur-Ansicht in die
   // Vitrine oder zu einem anderen Binder. Die Seite baut sich dafür sauber neu auf; vorher
   // blieb die alte Ansicht einfach stehen und wirkte, als käme man nie wieder heraus.
-  const h = routeLesen();
+  let h = routeLesen();
+  if (h === 'vitrine/kunst') { VT.bereich = 'kunst'; h = 'vitrine'; }
   const istAnsicht = h.startsWith('ansicht/');
   const andererBinder = (istAnsicht || h.startsWith('binder/')) && S.binder && h.split('/')[1] !== S.binder.id;
   if (istAnsicht !== !!S.nurAnsicht || andererBinder) { location.reload(); return; }
@@ -7445,6 +7476,7 @@ async function preiseUmschalten() {
   $('wb-preise').classList.toggle('hidden', !S.preiseAn);
   if (S.preiseAn) await preiseLaden();
   zeichneBinder();
+  zeichneErgebnisse();     // Abzeichen auf den Treffern an- oder ausblenden
 }
 async function preiseLaden() {
   const ids = [...new Set(S.binder.items.filter((i) => i.type === 'card').map((i) => i.id))];

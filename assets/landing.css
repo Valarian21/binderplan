@@ -149,3 +149,24 @@
     .schau-reihe.kunst { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .s-kachel .s-txt strong { font-size: 13px; }
   }
+
+  /* ================= Artwork-Band unter dem Aufmacher ================= */
+  .btn.gelb { background: var(--gelb); color: var(--kontur); }
+  .btn.gelb:hover { background: #ffd43a; }
+  .kunst-band { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; align-items: center;
+                background: var(--gelb); color: #14161C; border: 3px solid var(--kontur); border-radius: 20px;
+                box-shadow: 9px 9px 0 var(--kontur); padding: 28px 32px; margin: 0 0 34px; }
+  .kunst-band h2 { color: #14161C; margin: 4px 0 10px; font-size: clamp(22px, 2.8vw, 30px); line-height: 1.15; }
+  .kunst-band p { margin: 0 0 16px; font-size: 15.5px; max-width: 48ch; color: #2b2e36; }
+  .kunst-band .cta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .kunst-band .btn.sek { background: #fff; }
+  .kunst-band .klein { font-size: 12.5px; color: #4a4d58; margin-top: 10px; }
+  .kb-eyebrow { font-family: 'Bungee', 'Archivo', sans-serif; font-size: 12px; letter-spacing: .08em; color: var(--blau); }
+  .kb-bilder { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #14161a; border: 2.5px solid var(--kontur);
+               border-radius: 14px; padding: 10px; box-shadow: 5px 5px 0 var(--kontur); }
+  .kb-bilder img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .kb-bilder .s-seite { padding: 4px; }
+  @media (max-width: 800px) {
+    .kunst-band { grid-template-columns: 1fr; padding: 20px; box-shadow: 6px 6px 0 var(--kontur); gap: 18px; }
+    .kb-bilder { grid-template-columns: 1fr 1fr; }
+  }

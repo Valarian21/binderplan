@@ -103,6 +103,10 @@
       el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auf(); } });
     });
     var kunst = d.kunst || [];
+    var band = document.getElementById('kb-bilder');
+    if (band && kunst.length >= 2 && kunst[0].blatt && kunst[1].blatt) {
+      band.innerHTML = kunst.slice(0, 2).map(function (a) { return seiteHtml(a.blatt.seiten[0], 'band'); }).join('');
+    }
     var kb = document.getElementById('schau-kunst-block');
     if (kunst.length) {
       document.getElementById('schau-kunst').innerHTML = kunst.map(function (a) {
