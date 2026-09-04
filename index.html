@@ -9476,10 +9476,14 @@ function passungLaden() {
     const box = $('aw-passung');
     if (!box || !S.binder) return;
     const sp = seiteInfo(AW.seite), pp = sp.laenge;
-    const ids = [...AW.anker].map((s) => (S.binder.items[AW.seite * pp + s] || {}).id).filter(Boolean);
+    const belegt = [...AW.anker].filter((s) => (S.binder.items[AW.seite * pp + s] || {}).id);
+    const ids = belegt.map((s) => S.binder.items[AW.seite * pp + s].id);
     if (ids.length < 2) { box.classList.add('hidden'); return; }
     try {
-      const d = await api('api/artwork/passung?ids=' + ids.map(encodeURIComponent).join(','));
+      // Fächer und Raster mitgeben: die Warnung nennt auch, wenn die Karten zu weit
+      // auseinanderliegen oder in sehr verschiedenem Bildausschnitt gemalt sind.
+      const d = await api('api/artwork/passung?ids=' + ids.map(encodeURIComponent).join(',')
+        + '&slots=' + belegt.join(',') + '&layout=' + encodeURIComponent(sp.layout || S.binder.layout));
       if (d.wert == null) { box.classList.add('hidden'); return; }
       box.classList.remove('hidden');
       box.classList.toggle('gut', d.wert >= 80);

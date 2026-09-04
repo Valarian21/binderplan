@@ -248,6 +248,24 @@ ANALYSE_PROMPT = (
 )
 
 
+# Der Maßstab ist die häufigste Ursache dafür, dass eine Seite auseinanderfällt: die Karte zeigt
+# zwei Meter Dschungelboden, das Bildmodell malt drumherum dreißig Meter Landschaft, weil ihm
+# niemand sagt, wie groß die abgebildete Welt ist. Gemessen an den 151er-Karten: Bisasam 2,2 m,
+# Bisaknosp 2,5 m, Bisaflor 4,5 m — die gemalten Blätter waren fünf- bis zehnmal zu groß.
+# Eigener kleiner Aufruf (≈ 0,8 ct) statt einer neuen Vollanalyse, damit die 23.000 schon
+# analysierten Karten ihren Eintrag behalten; das Ergebnis wird in dieselbe Zeile gemischt.
+MASS_PROMPT = (
+    "Look at the illustration of this Pokémon trading card. Estimate the REAL-WORLD scale of the "
+    "depicted scene. Answer JSON only:\n"
+    '{"span_m": how many metres of the world the illustration spans horizontally (a number),\n'
+    '"creature_m": the real height of the depicted creature in metres (a number),\n'
+    '"camera_m": how far the viewer stands from the subject, in metres (a number),\n'
+    '"anchor": ONE sentence naming two ordinary objects in the picture with their real size, so that '
+    'a painter can match the scale (e.g. "the round leaves in the foreground are about 25 cm across, '
+    'the tree trunk on the left is about 40 cm thick")}'
+)
+
+
 def _analyse(card_id, lang):
     """Beschreibung + Box des Illustrationsfensters, je Karte einmal ermittelt und in der DB gecacht."""
     get_db = _dep["get_db"]
@@ -297,6 +315,78 @@ def _analyse(card_id, lang):
     con.commit()
     con.close()
     return daten
+
+
+def _massstab(card_id, lang, analyse):
+    """Maßstabsfelder nachtragen, falls die gecachte Analyse sie noch nicht hat. → (analyse, kosten)
+
+    Läuft je Karte genau einmal; danach steht der Maßstab in derselben Zeile wie die übrige
+    Analyse. Schlägt der Aufruf fehl, bleibt die Analyse ohne Maßstab und der Auftrag lässt den
+    Block einfach weg — lieber keine Angabe als eine erfundene."""
+    if not analyse or analyse.get("fehler") or analyse.get("span_m") is not None:
+        return analyse, 0.0
+    bild = _kartenbild(card_id, lang)
+    if not bild:
+        return analyse, 0.0
+    klein = bild.copy()
+    klein.thumbnail((1024, 1024))
+    try:
+        d = _openrouter({
+            "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": MASS_PROMPT},
+                {"type": "image_url", "image_url": {"url": _data_url(klein, "JPEG")}},
+            ]}],
+            "response_format": {"type": "json_object"},
+            "usage": {"include": True},
+        }, timeout=90)
+        text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
+        mass = json.loads(text)
+    except Exception:
+        return analyse, 0.0
+    for k in ("span_m", "creature_m", "camera_m"):
+        try:
+            v = float(mass.get(k))
+        except (TypeError, ValueError):
+            v = None
+        analyse[k] = v if (v and 0 < v < 100000) else None
+    analyse["anchor"] = str(mass.get("anchor") or "")[:300]
+    kosten = float((d.get("usage") or {}).get("cost") or 0)
+    con = _dep["get_db"]()
+    con.execute("INSERT OR REPLACE INTO card_art_analysis (card_id, lang, daten, created_at) VALUES (?,?,?,?)",
+                (card_id, lang, json.dumps(analyse), _now()))
+    con.commit()
+    con.close()
+    return analyse, kosten
+
+
+def _mass_text(namen, analysen):
+    """Der Maßstabsblock für den Bildauftrag – oder \"\", wenn keine Karte eine Angabe hat."""
+    zeilen = []
+    for cid, a in analysen.items():
+        if not a or not a.get("span_m"):
+            continue
+        name = namen.get(cid) or "the source"
+        t = f"- {name}: its illustration spans about {a['span_m']:g} m of the world"
+        if a.get("creature_m"):
+            t += f"; {name} is about {a['creature_m']:g} m tall"
+        if a.get("camera_m"):
+            t += f"; the viewer stands about {a['camera_m']:g} m away"
+        if a.get("anchor"):
+            t += f". {a['anchor']}"
+        zeilen.append(t)
+    if not zeilen:
+        return ""
+    return (
+        "\nSCALE – the most common failure, read this carefully:\n" + "\n".join(zeilen) + "\n"
+        "The areas you paint show the SAME world seen from the SAME distance. Every leaf, flower, stone, "
+        "root, branch or trunk you paint must have the same real-world size as objects of that kind inside "
+        "the finished part"
+        + ("s" if len(analysen) > 1 else "") + ", and must therefore be drawn at the same size on the page. "
+        "Do NOT zoom out: no giant tree trunks, no wide valley vista, no distant canopy, no aerial view. The "
+        "camera does not move; we simply see more of the same close view. Before painting an object, compare "
+        "it with the objects at the nearest edge of a finished part and match their size.\n")
 
 
 def _illustration(card_id, lang, analyse):
@@ -480,7 +570,53 @@ def _tags(card_ids):
     return aus
 
 
-def _passung(card_ids, namen=None):
+def _massstaebe_gecacht(card_ids, lang="de"):
+    """Gespeicherte Maßstäbe je Karte, ohne einen einzigen Modellaufruf. → {card_id: span_m}
+
+    Die Passungsprüfung läuft, bevor der Sammler Credits ausgibt; sie darf deshalb nichts
+    kosten. Was schon gemessen wurde, wird genutzt, der Rest bleibt einfach unbeantwortet."""
+    if not card_ids:
+        return {}
+    con = _dep["get_db"]()
+    marken = ",".join("?" * len(card_ids))
+    aus = {}
+    for r in con.execute(f"SELECT card_id, daten FROM card_art_analysis WHERE card_id IN ({marken})",
+                         list(card_ids)):
+        try:
+            d = json.loads(r["daten"])
+        except Exception:
+            continue
+        if d.get("span_m"):
+            aus[r["card_id"]] = float(d["span_m"])
+    con.close()
+    return aus
+
+
+def _geometrie_hinweis(slots, cols, rows, anzahl_karten):
+    """Wie weit liegen die Ankerkarten auseinander? → (abzug, hinweis) oder (0, "")
+
+    Gemessen am Fall, der die Analyse ausgelöst hat: drei Karten über Eck (Fächer 0, 5, 6) mit
+    sechs freien Fächern dazwischen. Das Bildmodell muss zwei Drittel der Seite erfinden und
+    zwei lange Strecken überbrücken. Die guten Seiten der Vitrine haben ihre Karten nebeneinander."""
+    if not slots or len(slots) < 2:
+        return 0, ""
+    pos = [(int(s) % cols, int(s) // cols) for s in slots]
+    # Gemessen wird nicht die Spanne über die ganze Seite, sondern ob jede Karte eine Nachbarin
+    # hat: drei Karten in einer Reihe spannen ebenfalls über zwei Felder, sind aber der gute Fall.
+    # Entscheidend ist die größte Lücke zur jeweils nächsten Karte.
+    luecke = max(min(max(abs(a[0] - b[0]), abs(a[1] - b[1])) for b in pos if b != a) for a in pos)
+    frei = cols * rows - len(set(int(s) for s in slots))
+    if luecke >= 3:
+        return 20, (f"Die Karten liegen sehr weit auseinander ({frei} freie Fächer dazwischen). Die KI "
+                    "muss lange Strecken erfinden — nebeneinander oder in einer Reihe gelingt die "
+                    "Verbindung deutlich zuverlässiger.")
+    if luecke == 2:
+        return 12, ("Zwischen den Karten liegt jeweils ein freies Fach. Direkt nebeneinander gelingt "
+                    "der Übergang zuverlässiger.")
+    return 0, ""
+
+
+def _passung(card_ids, namen=None, slots=None, cols=3, rows=3):
     """→ {wert 0-100, gemeinsam, konflikte, karten}. Ohne Bildmotiv-Daten: neutral."""
     namen = namen or {}
     tags = _tags(list(dict.fromkeys(card_ids)))
@@ -512,6 +648,29 @@ def _passung(card_ids, namen=None):
         wert -= 30
         konflikte.append("Unter Wasser trifft Land: "
                          + ", ".join(namen.get(c, c) for c in bekannt if wasser[c] >= 3) + " spielt unter Wasser")
+    # Der Zoom entscheidet mit, ob eine Seite gelingt: eine Nahaufnahme neben einer Weitsicht
+    # lässt sich nicht in eine Landschaft bringen, ohne dass eine der beiden falsch wirkt.
+    # Gemessen nur aus schon gespeicherten Werten — die Prüfung kostet nichts.
+    spannen = _massstaebe_gecacht(bekannt)
+    if len(spannen) >= 2:
+        klein = min(spannen.values()); gross = max(spannen.values())
+        faktor = gross / max(0.01, klein)
+        if faktor >= 2.5:
+            wert -= 30
+            eng = [namen.get(c, c) for c in bekannt if spannen.get(c) == klein]
+            weit = [namen.get(c, c) for c in bekannt if spannen.get(c) == gross]
+            konflikte.append(
+                f"Sehr verschiedener Bildausschnitt (Faktor {faktor:.1f}): {', '.join(eng)} zeigt "
+                f"rund {klein:g} m, {', '.join(weit)} rund {gross:g} m. Die KI kann nur einen "
+                "Maßstab malen — eine der beiden Karten wirkt danach falsch groß.")
+        elif faktor >= 1.8:
+            wert -= 10
+            konflikte.append(f"Unterschiedlicher Bildausschnitt (Faktor {faktor:.1f}) – die KI hält "
+                             "den Maßstab der engsten Karte.")
+    abzug, hinweis = _geometrie_hinweis(slots, cols, rows, len(bekannt))
+    if hinweis:
+        wert -= abzug
+        konflikte.append(hinweis)
     gemeinsam = ""
     if geteilt:
         orte = [o for c in bekannt for o in tags[c]["orte"]]
@@ -623,10 +782,13 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
     abgeschnitten (Horizont, Licht und Wasserlinien laufen exakt weiter)."""
     mehrere = len(anker) > 1
     kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
+    plaetze = ", ".join(f"row {int(s) // cols + 1}/column {int(s) % cols + 1}"
+                        for s in sorted(anker, key=lambda x: int(x)))
     intro = (
         "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
-        + ("some rectangular parts are" if mehrere else "one rectangular part is")
-        + " finished (the source illustration" + ("s" if mehrere else "") + "); every gray pixel is still unpainted. "
+        + (f"exactly {len(anker)} rectangular parts are" if mehrere else "one rectangular part is")
+        + " finished (the source illustration" + ("s" if mehrere else "") + f", at {plaetze}); "
+        "every gray pixel is still unpainted. "
         + ("Paint all gray areas so that EACH finished part extends seamlessly into its own surroundings: around "
            "each source, that source's own scene, perspective, light, colours and painting technique continue "
            "outward without any visible transition – as if each source were a crop from this bigger painting. The "
@@ -643,9 +805,16 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
             continue
         col, row = int(slot) % cols, int(slot) // cols
         wo = f" (the one at row {row + 1}, column {col + 1} of IMAGE 1)" if mehrere else ""
+        # Bei Vollbildkarten liegen Namensfeld, HP und Attackentext direkt auf der Illustration.
+        # Das Modell liest sie als Bildbestandteil und malt die Karte samt Text ein zweites Mal
+        # daneben — gemessen im Vergleichslauf vom 04.09. Deshalb steht die Warnung genau hier,
+        # neben dem Bild, um das es geht, und nicht nur weiter unten in der Regelliste.
+        aufdruck = (" This scan carries printed card elements (name plate, HP, attack text, symbols) directly "
+                    "on the artwork. They are print, not scenery: never paint them, or anything like them, "
+                    "anywhere in the gray areas.") if _hat_aufdrucke(analysen.get(card_id)) else ""
         teile.append({"type": "text", "text": (
             f"IMAGE {n} – the source illustration{wo} in close-up, for reference of details, technique and colors. "
-            f"Its creature is {namen.get(card_id) or 'the main creature'}.\n{_analyse_text(analysen.get(card_id))}")})
+            f"Its creature is {namen.get(card_id) or 'the main creature'}.{aufdruck}\n{_analyse_text(analysen.get(card_id))}")})
         teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
         n += 1
     for p in pokemon:
@@ -683,17 +852,10 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         # und bei Ganzbildkarten liegen Namensfeld, HP, Attackentext und Symbole direkt auf der
         # Illustration. Das Modell liest sie als Bildbestandteil und malt eine zweite Karte
         # mitsamt Rahmen und Text ins Umfeld. Deshalb die Aufdrucke ausdruecklich benennen.
-        + "- The finished part is a scan of a printed trading card. Anything printed ON it – name plate, HP "
-        "number, attack and rules text, energy, set and rarity symbols, illustrator credit, card border, "
-        "rounded corners, holo sparkle overlay – is print on top of the picture, NOT part of the scene. "
-        "None of it may appear in the painted areas, and no second card, card frame, panel or rectangle of "
-        "any kind may be painted. Outside the finished part there is only the depicted world.\n"
-        "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
-
+        + "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
         "Not a single gray pixel may remain.\n"
         "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
-        f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; what "
-        "is painted stays the continuation of the source scene.\n"
+        + _technik_regel(stil, analysen)
     )
     if pokemon:
         regionen = _regionen(cols, rows, anker, len(pokemon))
@@ -710,9 +872,69 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
     if feedback:
         regeln += ("\nA previous attempt was rejected by a reviewer for these problems – avoid them this time: "
                    + feedback + "\n")
+    regeln += _mass_text(namen, analysen)
+    # Zuletzt, weil die letzte Anweisung am stärksten wirkt: der Fehler, der im Vergleichslauf
+    # als einziger übrig blieb, war eine komplett zweite Karte samt Textbox neben der echten.
+    regeln += (
+        "\nLAST AND ABSOLUTE: the finished part"
+        + ("s are scans" if mehrere else " is a scan") + " of printed trading cards. Everything printed on "
+        + ("them" if mehrere else "it") + " – card border, rounded corners, name plate, HP number, attack and "
+        "rules text boxes, energy, set and rarity symbols, illustrator credit, holo overlay – is print on top "
+        "of the picture and NOT part of the scene. Never paint any of it into the gray areas. Never paint a "
+        "second trading card, a card frame, a rounded rectangle, a panel, a text box, a number or a symbol "
+        "anywhere. Outside the finished part"
+        + ("s" if mehrere else "") + " there is only the depicted world.\n")
+    regeln += (f"\nCOUNT: the finished page contains exactly {len(anker)} rectangular finished area"
+               + ("s" if mehrere else "") + f" – the {'one' if not mehrere else len(anker)} already in IMAGE 1, "
+               f"at {plaetze}, unchanged and in the same place. Not one more. If you find yourself painting "
+               "another rectangle with a border, a name at the top, a number in a corner or a text box at the "
+               "bottom, you are painting a second trading card: stop and paint landscape there instead.\n")
     regeln += "Output exactly the same dimensions as IMAGE 1."
     teile.append({"type": "text", "text": regeln})
     return teile
+
+
+def _hat_aufdrucke(analyse):
+    """Liegt der Kartentext direkt auf der Illustration? (Vollbildkarten)
+
+    Das Feld `aufdrucke` kam erst später dazu; die vor ihm angelegten Analysen haben es nicht.
+    Deshalb der Rückfall über die Fenstergröße: deckt das Illustrationsfenster fast die ganze
+    Karte, ist es eine Vollbildkarte, und dann liegen Name, HP und Attackentext im Bild."""
+    a = analyse or {}
+    if a.get("aufdrucke") is not None:
+        return bool(a["aufdrucke"])
+    box = a.get("box")
+    if not (isinstance(box, list) and len(box) == 4):
+        return False
+    ymin, xmin, ymax, xmax = box
+    return (xmax - xmin) >= 880 and (ymax - ymin) >= 880
+
+
+def _technik_regel(stil, analysen):
+    """Wie die neuen Flächen gemalt werden. Die gemessene Technik der Quellen steht vor dem
+    Stil-Chip, nicht dahinter.
+
+    Vorher war der Chip die letzte und deutlichste Anweisung: „Ölgemälde" malte Impasto direkt
+    neben eine flache Gouache-Karte, und der Chip „Wie die Karte" verwies bei drei Karten auf
+    „die Kartenillustration", ohne zu sagen, welche. Jetzt wird die Technik ausgeschrieben."""
+    techniken = [str((a or {}).get("technique") or "").strip() for a in analysen.values()]
+    techniken = list(dict.fromkeys([t for t in techniken if t]))
+    quelle = " / ".join(techniken[:3])
+    if stil == "karte" and quelle:
+        text = ("- Technique for the new areas – copy the sources exactly: " + quelle
+                + " Match their flatness or depth, their brush texture, their level of detail and their "
+                "colour saturation, so that the painted areas are indistinguishable from the sources.\n")
+    else:
+        text = f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])}\n"
+        if quelle:
+            text += ("  Even in this technique, keep the sources' own look: " + quelle
+                     + " Match their level of detail, their flatness or depth and their colour saturation.\n")
+    # Der Fehler, der im Vergleich am haeufigsten auftrat: die Umgebung wird tiefer, dunkler und
+    # fotografischer als die Karte, und dadurch bricht jede Kartenkante sichtbar.
+    text += ("- Do not make the painted areas more photorealistic, deeper, softer, darker or more "
+             "atmospheric than the finished part(s). What is painted stays the continuation of the "
+             "source scene; only how it is painted follows the technique above.\n")
+    return text
 
 
 def _zonen_regeln(cols, rows, anker, namen, regie):
@@ -746,42 +968,62 @@ def _zonen_regeln(cols, rows, anker, namen, regie):
 # Die Nachkontrolle sucht bisher nach Gitterlinien und doppelten Kreaturen; der zweite
 # Kartenrahmen gehoert in dieselbe Liste.
 PRUEF_PROMPT = (
-    "You are a strict art director checking an 'extended art' painting. IMAGE 1 is the source: the illustration of "
-    "a trading card (it may include the card's frame, name, text boxes and symbols – that is expected and NOT a "
-    "problem; a real card will cover that area later). IMAGE 2 is a larger painting into which the source was "
-    "embedded (at its center); everything around it was painted to continue the source's SCENE. Judge only the "
-    "painted surroundings, never the card itself, its frame, its text or the straight edges of the card rectangle.\n"
-    "Check strictly:\n"
-    "1. At every edge of the embedded source, do the background elements continue consistently – same lines, angles "
-    "and heights (e.g. a pool edge, horizon, wall, railing, shoreline, beam of light continuing exactly where it "
-    "leaves the source)? Name every element that breaks, bends, jumps or ends abruptly.\n"
-    "2. Is the source's creature painted again or CONTINUED outside the source? Look especially for its body "
-    "carrying on past the card edge (ears, horns, wings, tail, limbs, fur, spikes, aura) as if the creature were "
-    "bigger than the card – that is the worst failure and always means ok=false. Also check for a second copy at "
-    "any size, as shadow, reflection, silhouette or abstract shape in its colours.\n"
-    "3. Are there frames, borders, straight seams, tiles, panels, text, or gray areas?\n"
-    "4. Is any CARD element repeated in the painted area – a second card frame or rounded rectangle, another name "
-    "plate, HP number, attack or rules text, energy/set/rarity symbol, illustrator credit? The source card's own "
-    "print is fine; a copy of it anywhere in the surroundings always means ok=false.\n"
-    "5. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
-    'Answer with JSON only: {"ok": true|false, "probleme": ["concrete problem with location", ...]}. '
-    "ok is true unless the surroundings clearly fail to continue the scene (minor softness, the card's own frame, "
-    "text or rectangular edge are never problems)."
+    "You are a strict art director checking an 'extended art' page for a card collector.\n"
+    "IMAGE 1 is the TEMPLATE: it shows the finished source illustrations at exactly the positions they "
+    "occupy on the page; every gray area was still unpainted. IMAGE 2 is the finished page: the gray areas "
+    "were painted so that each source continues seamlessly into its own surroundings.\n"
+    "The sources are scans of printed trading cards. Their frames, name plates, HP numbers, attack text, "
+    "symbols, holo overlay and straight rectangular edges are EXPECTED and are never a problem. Judge ONLY "
+    "the areas that are gray in IMAGE 1.\n"
+    "Check strictly, in the painted areas only:\n"
+    "1. EDGES: at every edge of every source, do the background elements continue consistently – same lines, "
+    "angles and heights (a shoreline, horizon, branch, wall, beam of light continuing exactly where it leaves "
+    "the source)? Name every element that breaks, bends, jumps or ends abruptly, and say at which source.\n"
+    "2. SCALE: are objects painted at the same real-world size as objects of the same kind inside the sources? "
+    "A leaf, stone, flower or trunk outside must not be several times larger or smaller than inside.\n"
+    "3. CREATURE – the worst failure, look hardest here: take each source's creature and follow its outline "
+    "to the edge of its rectangle. Does any part of its body carry on beyond that edge into the painted "
+    "area – ears, horns, wings, tail, limbs, claws, fur, spikes, ribbons, energy aura or glow – as if the "
+    "creature were bigger than its rectangle? Is it painted a second time anywhere, at any size, whole or "
+    "partial, as shadow, reflection, silhouette or abstract shape in its colours? Any of this is always "
+    "ok=false and always schwer=true, even when it looks beautiful.\n"
+    "4. CARD ELEMENTS – count them: IMAGE 1 shows a fixed number of source rectangles. Count the "
+    "card-like rectangles in IMAGE 2 (anything with a border and a name, a number or a text box). If "
+    "IMAGE 2 has MORE of them than IMAGE 1, a second card was painted into a gray area – say how many "
+    "and where. Also report a single new name plate, HP number, attack text box, energy/set/rarity "
+    "symbol or illustrator credit in a formerly gray area. The sources themselves never count here.\n"
+    "5. LOOK: do technique, palette, level of detail and light direction of the painted areas match the "
+    "sources, or did they become more photorealistic, deeper, darker or softer?\n"
+    "6. Are there frames, straight seams, tiles, panels, text, or remaining gray areas?\n"
+    'Answer with JSON only: {"ok": true|false, "schwer": true|false, "probleme": ["concrete problem with '
+    'location", ...]}.\n'
+    '"ok" is false as soon as you find anything from 1-6. "schwer" is true ONLY for: a duplicated or '
+    "continued creature, an extra card-like rectangle or any newly painted card element, remaining gray "
+    "areas, or a hard seam / broken edge – "
+    "those are worth painting the page again. Mismatched technique, palette or softness alone are NOT "
+    "schwer: repainting does not reliably fix them and only costs money."
 )
 
 
-def _pruefen(quelle: Image.Image, ergebnis: Image.Image):
-    """→ (ok, probleme) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht)."""
+def _pruefen(vorlage: Image.Image, ergebnis: Image.Image):
+    """→ (ok, schwer, probleme, kosten) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht).
+
+    `vorlage` ist die Vorlage der ganzen Seite: alle Illustrationen an ihrer echten Position,
+    alles Übrige grau. Bis zum 04.09.2026 bekam der Prüfer stattdessen EINE einzelne
+    Kartenillustration und den Satz, sie sitze in der Mitte — die übrigen echten Karten der Seite
+    hielt er folglich für hineingemalte Kartenrahmen. Gemessen über alle Läufe: 25 von 29
+    Beanstandungen bei Mehrkarten-Seiten waren genau dieser Fehlalarm, und jede davon hat die
+    Seite ein zweites Mal malen lassen (0,27 $ statt 0,13 $)."""
     try:
-        q = quelle.copy(); q.thumbnail((768, 768))
+        v = vorlage.copy(); v.thumbnail((1024, 1024))
         e = ergebnis.copy(); e.thumbnail((1024, 1024))
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
             "messages": [{"role": "user", "content": [
                 {"type": "text", "text": PRUEF_PROMPT},
-                {"type": "text", "text": "IMAGE 1 – source:"},
-                {"type": "image_url", "image_url": {"url": _data_url(q, "JPEG")}},
-                {"type": "text", "text": "IMAGE 2 – extended painting:"},
+                {"type": "text", "text": "IMAGE 1 – template (gray = was unpainted):"},
+                {"type": "image_url", "image_url": {"url": _data_url(v, "JPEG")}},
+                {"type": "text", "text": "IMAGE 2 – finished page:"},
                 {"type": "image_url", "image_url": {"url": _data_url(e, "JPEG")}},
             ]}],
             "response_format": {"type": "json_object"},
@@ -791,9 +1033,10 @@ def _pruefen(quelle: Image.Image, ergebnis: Image.Image):
         text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
         j = json.loads(text)
         probleme = [str(x)[:200] for x in (j.get("probleme") or [])][:6]
-        return bool(j.get("ok")) or not probleme, probleme, float((d.get("usage") or {}).get("cost") or 0)
+        ok = bool(j.get("ok")) or not probleme
+        return ok, (not ok and bool(j.get("schwer"))), probleme, float((d.get("usage") or {}).get("cost") or 0)
     except Exception:
-        return True, [], 0.0
+        return True, False, [], 0.0
 
 
 # --- Stufe C: Wunsch-Pokémon als Bearbeitung des fertigen Bilds ------------------------------------
@@ -959,6 +1202,11 @@ def _job(artwork_id):
             if r:
                 namen[cid] = r["name_en"] or r["name_de"]
             a = _analyse(cid, lang)
+            # Maßstab: je Karte einmal gemessen (≈ 0,8 ct) und dauerhaft gespeichert. Ohne ihn
+            # malt das Modell die Umgebung in einem beliebigen Zoom — der häufigste Grund dafür,
+            # dass eine Seite auseinanderfällt.
+            a, km = _massstab(cid, lang, a)
+            kosten += km
             analysen[cid] = a
             kosten += float((a or {}).get("_kosten") or 0)
             crop, _ = _illustration(cid, lang, a)
@@ -968,7 +1216,7 @@ def _job(artwork_id):
         con.close()
         # Passt die Auswahl zusammen? Die Antwort steht in den Bildmotiv-Daten und geht in
         # den Regie-Plan; der Nutzer sieht sie schon vor dem Start (/api/artwork/passung).
-        passung = _passung(list(anker.values()), namen)
+        passung = _passung(list(anker.values()), namen, slots=list(anker.keys()), cols=cols, rows=rows)
         if passung.get("wert") is not None:
             schritte.append({"passung": passung["wert"], "gemeinsam": passung["gemeinsam"],
                              "konflikte": passung["konflikte"]})
@@ -1014,7 +1262,7 @@ def _job(artwork_id):
                     bx1 = ax0 + round((box[2] - R[0]) * k); by1 = ay0 + round((box[3] - R[1]) * k)
                     canvas_a.paste(crop.resize((max(1, bx1 - bx0), max(1, by1 - by0)), Image.LANCZOS), (bx0, by0))
                 feedback = ""
-                quelle = next(iter(bilder.values()))
+                vorlage_a = canvas_a.crop(geo_a["seite"]).resize((rw, rh), Image.LANCZOS)
                 for versuch in range(2):
                     teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_a, bilder, [],
                                           feedback, regie)
@@ -1023,10 +1271,11 @@ def _job(artwork_id):
                     if erg.size != (geo_a["cw"], geo_a["ch"]):
                         erg = erg.resize((geo_a["cw"], geo_a["ch"]), Image.LANCZOS)
                     stufe_a = erg.crop(geo_a["seite"]).resize((rw, rh), Image.LANCZOS)
-                    ok, probleme, kp = _pruefen(quelle, stufe_a)
+                    ok, schwer, probleme, kp = _pruefen(vorlage_a, stufe_a)
                     kosten += kp
-                    schritte.append({"stufe": "A", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
-                    if ok or versuch == 1:
+                    schritte.append({"stufe": "A", "versuch": versuch + 1, "ok": ok, "schwer": schwer,
+                                     "probleme": probleme})
+                    if ok or not schwer or versuch == 1:
                         break
                     feedback = "; ".join(probleme)
                 stufe_a_box = R
@@ -1046,7 +1295,13 @@ def _job(artwork_id):
         # Fall ausdrücklich (Regel 2 im Prüf-Prompt) und kostet rund 0,5 ct. Eine einzige
         # Wiederholung, und nur wenn die Prüfung wirklich etwas findet — sonst würde ein
         # Fehlurteil jede Seite verdoppeln.
-        feedback_b, seite = "", None
+        # Geprüft wird gegen die Vorlage der ganzen Seite, und wiederholt nur bei schweren Mängeln
+        # (verdoppelte Kreatur, neu gemalte Kartenelemente, graue Reste, harte Naht). Stil und
+        # Weichzeichnung allein lösen keinen zweiten Lauf mehr aus: er behebt sie nicht, er würfelt
+        # neu — und kostet 13 Cent. Der zweite Versuch wird selbst geprüft; ist er nicht besser,
+        # bleibt der erste.
+        vorlage_seite = canvas_b.crop(geo["seite"])
+        feedback_b, seite, bester = "", None, None
         for versuch in range(2):
             teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
                                   [] if stufen else pokemon, feedback_b, regie)
@@ -1055,15 +1310,20 @@ def _job(artwork_id):
             if erg.size != (geo["cw"], geo["ch"]):
                 erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
             seite = erg.crop(geo["seite"])
-            if stufen or versuch or not bilder:
+            if stufen or not bilder:
                 schritte.append({"stufe": "B", "versuch": versuch + 1})
                 break
-            ok, probleme, kp = _pruefen(next(iter(bilder.values())), seite)
+            ok, schwer, probleme, kp = _pruefen(vorlage_seite, seite)
             kosten += kp
-            schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
-            if ok:
+            schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "schwer": schwer,
+                             "probleme": probleme})
+            if bester is None or ok or len(probleme) < len(bester[1]):
+                bester = (seite, probleme, ok)
+            if ok or not schwer or versuch == 1:
                 break
             feedback_b = "; ".join(probleme)
+        if bester is not None:
+            seite = bester[0]
         if stufe_a is not None:   # Stufe A weich zurücksetzen – sie ist die geometrisch genauere Fassung
             referenz = seite.crop(stufe_a_box)
             angeglichen = _farben_angleichen(stufe_a, referenz)
@@ -1270,11 +1530,17 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
 
     @app.get("/api/artwork/passung")
-    def artwork_passung(request: Request, ids: str = ""):
+    def artwork_passung(request: Request, ids: str = "", slots: str = "", layout: str = "3x3"):
         """Passen diese Karten auf eine Seite? Antwort vor dem Ausgeben der Credits.
 
-        Grundlage sind die Bildmotiv-Daten (Ort, Tageszeit, Wasser) aus `card_art_tags`."""
+        Grundlage sind die Bildmotiv-Daten (Ort, Tageszeit, Wasser) aus `card_art_tags`, dazu der
+        gespeicherte Maßstab je Karte und die Lage der Fächer. Kostet nichts: es wird nur gelesen."""
         liste = [x.strip() for x in ids.split(",") if x.strip()][:12]
+        faecher = [x.strip() for x in slots.split(",") if x.strip().isdigit()][:12]
+        try:
+            sp, ze = [int(v) for v in str(layout).split("x")]
+        except Exception:
+            sp, ze = 3, 3
         if len(liste) < 2:
             return {"wert": None, "gemeinsam": "", "konflikte": [], "karten": []}
         con = get_db()
@@ -1282,7 +1548,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
         namen = {r["id"]: (r["name_de"] or r["name_en"] or r["id"]) for r in con.execute(
             f"SELECT id, name_de, name_en FROM cards WHERE id IN ({marken})", liste)}
         con.close()
-        return _passung(liste, namen)
+        return _passung(liste, namen, slots=faecher, cols=sp, rows=ze)
 
     @app.post("/api/artwork")
     async def artwork_start(request: Request):
