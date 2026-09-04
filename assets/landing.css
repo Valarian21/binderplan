@@ -186,3 +186,26 @@
     .album-seiten.kb { grid-template-columns: 1fr 1fr; padding: 6px; gap: 6px; }
     .album-seiten.kb .s-seite { padding: 3px; }
   }
+
+  /* ================= Hero-Fächer: drei Blätter, drei Kernfunktionen ================= */
+  .hero-fan-wrap { width: 100%; max-width: 520px; margin: 0 auto; }
+  .hero-fan { position: relative; width: 100%; padding-top: 94%; }
+  /* Die gedrehten Blätter ragen sonst über den Rand hinaus und machen am Handy die
+     ganze Seite breiter als den Bildschirm. */
+  .hero { overflow: hidden; }
+  .hero-fan .fan { position: absolute; display: block; height: auto; border-radius: 10px;
+                   border: 2.5px solid var(--kontur); box-shadow: 6px 6px 0 var(--kontur); background: #fff; }
+  .hero-fan .links { width: 54%; left: 0; top: 7%; transform: rotate(-9deg); z-index: 1; }
+  .hero-fan .rechts { width: 50%; right: 0; top: 3%; transform: rotate(8deg); z-index: 2; box-shadow: 6px 6px 0 var(--kontur); }
+  .hero-fan .mitte { width: 58%; left: 21%; top: 0; z-index: 3; border-color: var(--kontur); box-shadow: 8px 8px 0 var(--gelb); }
+  .hero-fan-lbl { display: flex; justify-content: space-between; gap: 6px; margin-top: 14px; }
+  .hero-fan-lbl span { font-size: 11.5px; font-weight: 800; letter-spacing: .02em; color: var(--kontur); background: #fff;
+                       border: 2px solid var(--kontur); border-radius: 999px; padding: 5px 10px; box-shadow: 2px 2px 0 var(--kontur);
+                       white-space: nowrap; }
+  .hero-fan-lbl span.m { background: var(--gelb); }
+  @media (max-width: 800px) {
+    .hero-fan-wrap { max-width: 340px; }
+    .hero-fan { padding-top: 98%; }
+    .hero-fan-lbl { flex-wrap: wrap; justify-content: center; }
+    .hero-fan-lbl span { font-size: 10.5px; padding: 4px 8px; }
+  }
