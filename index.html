@@ -251,10 +251,6 @@
   .vt-blatt.einzeln .vt-seite { background: #14161a; border-radius: 7px; padding: 4px;
                                 outline: 1px solid rgba(255,255,255,.13); outline-offset: -1px; }
   .kk .kbild { background: var(--panel2); padding: 10px; cursor: pointer; }
-  .kw-melden { position: fixed; right: 18px; bottom: 18px; color: #fff; opacity: .75; font-size: 12px;
-               display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px;
-               background: rgba(255,255,255,.08); }
-  .kw-melden:hover { opacity: 1; }
   /* Kunstseiten sind hochkant und werden ganz gezeigt — bei 360er Kacheln füllte am Handy
      eine einzige Seite den Bildschirm. Schmalere Spalten zeigen mehrere nebeneinander,
      ohne dass etwas beschnitten wird. */
@@ -386,9 +382,44 @@
   .an-vorschau .an-kachel .lbl { font-size: 11.5px; color: var(--mut); }
   .an-vorschau .an-kachel .zahl { font-size: 24px; font-weight: 800; }
   .an-vorschau .an-kurve { width: 100%; height: 130px; margin-top: 14px; }
-  .kw-box { position: fixed; inset: 0; background: rgba(10,11,14,.9); z-index: 120; display: flex;
-            align-items: center; justify-content: center; padding: 20px; }
-  .kw-box img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  /* Großansicht einer Kunstseite: Kopf, Bühne, Fuß. Die Bühne trägt die Seite in ihrem echten
+     Seitenverhältnis, damit die Fächer stimmen; Pfeile links und rechts blättern weiter. */
+  .kw-box { position: fixed; inset: 0; background: rgba(10,11,14,.93); z-index: 120; display: flex;
+            flex-direction: column; padding: 14px 16px 16px; gap: 12px; }
+  .kw-box.hidden { display: none; }
+  body.kw-offen { overflow: hidden; }
+  .kw-kopf { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: #fff; flex: 0 0 auto; }
+  .kw-titel { display: flex; flex-direction: column; min-width: 0; }
+  .kw-titel strong { font-size: 15px; }
+  .kw-titel span { font-size: 12px; opacity: .72; }
+  .kw-um { margin-left: auto; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.22); }
+  .kw-um button { color: #d6d9e0; }
+  .kw-um button.on { background: #fff; color: var(--kontur); }
+  .kw-x { color: #fff; font-size: 20px; line-height: 1; padding: 6px 10px; border-radius: 8px; opacity: .8; }
+  .kw-x:hover { background: rgba(255,255,255,.14); opacity: 1; }
+  .kw-buehne { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .kw-seite { height: 100%; max-width: 100%; display: flex; align-items: center; justify-content: center; }
+  /* Nur das Bild der ganzen Seite wird eingepasst — NICHT die Bilder in den Fächern. Die sind
+     absichtlich um ein Vielfaches größer als ihr Fach und werden per Prozentversatz beschnitten;
+     ein `max-height` darauf schneidet den Ausschnitt kaputt und die Fächer bleiben leer. */
+  .kw-seite > img { max-width: 100%; max-height: 100%; border-radius: 8px; display: block; }
+  .kw-seite .vt-blatt { width: 100%; height: 100%; }
+  .kw-seite .vt-blatt.einzeln .vt-seite { height: 100%; padding: 6px; border-radius: 10px; }
+  .kw-pfeil { flex: 0 0 auto; width: 44px; height: 64px; border-radius: 12px; color: #fff; font-size: 30px;
+              line-height: 1; background: rgba(255,255,255,.1); opacity: .85; }
+  .kw-pfeil:hover { background: rgba(255,255,255,.2); opacity: 1; }
+  .kw-fuss { display: flex; align-items: center; justify-content: center; gap: 14px; flex: 0 0 auto; color: #fff; flex-wrap: wrap; }
+  .kw-fuss .vt-herz { color: #fff; }
+  .kw-stand { font-size: 12.5px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .kw-melden { color: #fff; opacity: .7; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
+               padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.08); }
+  .kw-melden:hover { opacity: 1; }
+  @media (max-width: 700px) {
+    .kw-box { padding: 10px; gap: 8px; }
+    .kw-um { margin-left: 0; order: 3; width: 100%; }
+    .kw-pfeil { width: 34px; height: 52px; font-size: 24px; }
+    .kw-titel strong { font-size: 14px; }
+  }
   /* Der Name des offenen Binders steht über seinen Fächern. Vorher stand er nur in der
      Kopfzeile, und bei mehreren Bindern war nicht zu sehen, in welchem man gerade plant. */
   .bp-titel { font-size: 14px; font-weight: 800; letter-spacing: -.01em; cursor: pointer;
@@ -6063,14 +6094,85 @@ function zeichneKunst() {
   }).join('');
 }
 
+/* Großansicht einer Kunstseite.
+   Sie zeigt zuerst die Binderseite mit Fächern und Fugen — das ist, was man ausdruckt und in
+   die Hüllen steckt; das Bild am Stück ist der Sonderfall und liegt auf dem Umschalter. Und man
+   blättert von hier aus weiter durch die Liste, statt für jede Seite zurück ins Gitter zu gehen. */
+const KW = { liste: [], pos: 0, art: 'faecher', box: null };
+
 function kunstGross(id) {
-  const box = document.createElement('div');
-  box.className = 'kw-box';
-  box.onclick = () => box.remove();
-  box.innerHTML = `<img src="api/artwork/${encodeURIComponent(id)}/bild?v=vorschau" alt="">`
-    + `<button class="kw-melden">${ic('fahne', 15)}<span>${t('md_t')}</span></button>`;
-  box.querySelector('.kw-melden').onclick = (ev) => { ev.stopPropagation(); box.remove(); meldenOeffnen('artwork', id); };
-  document.body.appendChild(box);
+  KW.liste = VT.kunst || [];
+  KW.pos = Math.max(0, KW.liste.findIndex((a) => a.id === id));
+  if (!KW.liste.length) return;
+  if (!KW.box) {
+    KW.box = document.createElement('div');
+    KW.box.className = 'kw-box';
+    KW.box.onclick = (ev) => { if (ev.target === KW.box || ev.target.classList.contains('kw-buehne')) kunstGrossZu(); };
+    document.body.appendChild(KW.box);
+    document.addEventListener('keydown', kunstGrossTaste);
+  }
+  KW.box.classList.remove('hidden');
+  document.body.classList.add('kw-offen');
+  zeichneKunstGross();
+}
+
+function kunstGrossZu() {
+  if (KW.box) KW.box.classList.add('hidden');
+  document.body.classList.remove('kw-offen');
+}
+
+function kunstGrossTaste(ev) {
+  if (!KW.box || KW.box.classList.contains('hidden')) return;
+  if (ev.key === 'Escape') { ev.preventDefault(); kunstGrossZu(); }
+  else if (ev.key === 'ArrowRight') { ev.preventDefault(); kunstGrossWechsel(1); }
+  else if (ev.key === 'ArrowLeft') { ev.preventDefault(); kunstGrossWechsel(-1); }
+}
+
+function kunstGrossWechsel(d) {
+  if (!KW.liste.length) return;
+  KW.pos = (KW.pos + d + KW.liste.length) % KW.liste.length;
+  zeichneKunstGross();
+}
+
+function kunstGrossAnsicht(w) { KW.art = w; zeichneKunstGross(); }
+
+function zeichneKunstGross() {
+  const a = KW.liste[KW.pos];
+  if (!a || !KW.box) return;
+  const [sp, ze] = LAYOUTS[a.layout] || [3, 3];
+  const pw = sp * 63 + (sp - 1) * 4, ph = ze * 88 + (ze - 1) * 4;
+  const knopf = a.mein
+    ? `<span class="habe">${t('vt_k_meine')}</span>`
+    : a.habe
+      ? `<button class="btn sekundaer" onclick="event.stopPropagation();kunstInBinder('${esc(a.id)}')">${t('vt_k_einfuegen')}</button>`
+      : `<button class="btn" onclick="event.stopPropagation();kunstUebernehmen('${esc(a.id)}')">${t('vt_k_holen').replace('{n}', VT.preis)}</button>`;
+  const bild = KW.art === 'voll' || !a.blatt
+    ? `<img src="api/artwork/${encodeURIComponent(a.id)}/bild?v=vorschau" alt="${esc(a.titel)}">`
+    : vitrineBlatt(a.blatt, false, true);
+  KW.box.innerHTML = `
+    <div class="kw-kopf" onclick="event.stopPropagation()">
+      <div class="kw-titel"><strong>${esc(a.titel)}</strong>
+        <span>${esc(a.besitzer)} · ${esc(a.layout.replace('x', '×'))}${a.stimmen ? ' · ' + a.stimmen + ' ♥' : ''}</span></div>
+      <div class="segment klein kw-um">
+        <button class="${KW.art === 'faecher' ? 'on' : ''}" onclick="kunstGrossAnsicht('faecher')">${t('aw_ansicht_faecher')}</button>
+        <button class="${KW.art === 'voll' ? 'on' : ''}" onclick="kunstGrossAnsicht('voll')">${t('aw_ansicht_voll')}</button>
+      </div>
+      <button class="kw-x" onclick="kunstGrossZu()" title="${t('schliessen_t')}" aria-label="${t('schliessen_t')}">✕</button>
+    </div>
+    <div class="kw-buehne">
+      <button class="kw-pfeil" onclick="event.stopPropagation();kunstGrossWechsel(-1)"
+              aria-label="${t('bv_zurueck')}" ${KW.liste.length < 2 ? 'hidden' : ''}>‹</button>
+      <div class="kw-seite" style="aspect-ratio:${pw}/${ph}" onclick="event.stopPropagation()">${bild}</div>
+      <button class="kw-pfeil" onclick="event.stopPropagation();kunstGrossWechsel(1)"
+              aria-label="${t('bv_vor')}" ${KW.liste.length < 2 ? 'hidden' : ''}>›</button>
+    </div>
+    <div class="kw-fuss" onclick="event.stopPropagation()">
+      <button class="vt-herz ${a.gestimmt ? 'an' : ''}" onclick="vitrineKunstStimme('${esc(a.id)}').then(zeichneKunstGross)">
+        ${ic('herz', 15, a.gestimmt ? 'voll' : '')}<span>${a.stimmen || 0}</span></button>
+      <span class="kw-stand">${KW.pos + 1} / ${KW.liste.length}</span>
+      ${knopf}
+      <button class="kw-melden" onclick="kunstGrossZu();meldenOeffnen('artwork','${esc(a.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>
+    </div>`;
 }
 
 /** Herz an einer Kunstseite — wie beim Binder. */
@@ -6086,6 +6188,7 @@ async function vitrineKunstStimme(id) {
     zeichneKunst();
   } catch (e) { if (!gate(e)) toast(e.message); }
 }
+
 
 /** Kaufen und sofort einsetzen. Bezahlt wird genau einmal je Seite und Konto. */
 async function kunstUebernehmen(id) {
