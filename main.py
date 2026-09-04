@@ -3807,10 +3807,30 @@ def meta():
 # --- Seltenheits-Gruppen & Sammel-Schnellauswahlen ---------------------------
 # 39 Roh-Seltenheiten (inkl. TCG Pocket „One Diamond“ …) sind kein Filter, den ein Sammler
 # versteht – die Gruppen entsprechen dem Sprachgebrauch: Illustration Rares, Full Arts, Secret/Gold …
+# Seltenheitsgruppen. Jeder Rohwert gehört zu genau einer Gruppe — eine Auswahl darf nie etwas
+# mitbringen, das nicht dazugehört.
+#
+# Der Haken dabei: der Rohwert allein reicht nicht. Bis zur Schwarz-Weiß-Ära schreibt die Quelle
+# für eine Holo-Rare dasselbe „Rare" wie für eine gewöhnliche Rare — gemessen tragen 4.036 Karten
+# den Wert „Rare", und nur 47 % davon gibt es überhaupt als Holo. Deshalb entscheidet zusätzlich
+# `has_holo`, das aus den Ausprägungen der Börsen stammt und verlässlich ist:
+#   `werte`            gelten unabhängig davon,
+#   `werte_holo`       nur mit has_holo = 1,
+#   `werte_ohne_holo`  nur mit has_holo = 0.
+# Anlass: „Ära Diamant & Perl + Rare/Holo" brachte Bannoss (dp3-23) mit, das es nie als Holo gab.
 RARITY_GROUPS = {
     "common":       {"name": "Common", "name_en": "Common", "werte": ["Common"]},
     "uncommon":     {"name": "Uncommon", "name_en": "Uncommon", "werte": ["Uncommon"]},
-    "rare":         {"name": "Rare / Holo", "name_en": "Rare / Holo", "werte": ["Rare", "Rare Holo", "Holo Rare", "Double rare", "Triple Rare", "Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR", "Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection"]},
+    "rare":         {"name": "Rare (ohne Holo)", "name_en": "Rare (non-holo)",
+                     "werte": [], "werte_ohne_holo": ["Rare"]},
+    "holo":         {"name": "Rare Holo", "name_en": "Rare Holo",
+                     "werte": ["Rare Holo", "Holo Rare"], "werte_holo": ["Rare"]},
+    "double":       {"name": "Double Rare (ex)", "name_en": "Double Rare (ex)",
+                     "werte": ["Double rare", "Triple Rare"]},
+    "v":            {"name": "V / VMAX / VSTAR", "name_en": "V / VMAX / VSTAR",
+                     "werte": ["Holo Rare V", "Holo Rare VMAX", "Holo Rare VSTAR"]},
+    "lvx":          {"name": "LV.X / Prime / LEGEND", "name_en": "LV.X / Prime / LEGEND",
+                     "werte": ["Rare Holo LV.X", "Rare PRIME", "LEGEND", "Classic Collection"]},
     "ultra":        {"name": "Ultra Rare / Full Art", "name_en": "Ultra Rare / Full Art", "werte": ["Ultra Rare", "Full Art Trainer"]},
     "illustration": {"name": "Illustration Rare / Alt Art", "name_en": "Illustration Rare / Alt Art", "werte": ["Illustration rare", "Special illustration rare", "Character Rare", "Character Super Rare"]},
     "secret":       {"name": "Secret / Gold / Rainbow", "name_en": "Secret / Gold / Rainbow", "werte": ["Secret Rare", "Hyper rare", "Mega Hyper Rare", "Black White Rare"]},
@@ -3957,11 +3977,23 @@ def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, r
     if illustrator:
         where.append("illustrator = ?"); params.append(illustrator)
     if rgroup:
-        werte = []
+        teile, gp = [], []
         for g in rgroup.split(","):
-            werte += RARITY_GROUPS.get(g, {}).get("werte", [])
-        if werte:
-            where.append("rarity IN (%s)" % ",".join("?" * len(werte))); params += werte
+            gd = RARITY_GROUPS.get(g)
+            if not gd:
+                continue
+            for schluessel, holo in (("werte", None), ("werte_holo", 1), ("werte_ohne_holo", 0)):
+                w = gd.get(schluessel) or []
+                if not w:
+                    continue
+                frag = "rarity IN (%s)" % ",".join("?" * len(w))
+                gp += w
+                if holo is not None:
+                    frag = f"({frag} AND COALESCE(has_holo, 0) = ?)"
+                    gp.append(holo)
+                teile.append(frag)
+        if teile:
+            where.append("(" + " OR ".join(teile) + ")"); params += gp
     if trainer_type:
         where.append("trainer_type = ?"); params.append(trainer_type)
     if regmark:
