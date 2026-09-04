@@ -50,12 +50,6 @@ MAX_POKEMON = 3
 TAGESLIMIT_USD = 25.0
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
-# Seiten mit mehreren Karten sind der schwere Fall: dort muss eine Landschaft mehrere Fenster
-# verbinden, ohne eine Kreatur zu verdoppeln. Gemessen am 04.09. an derselben Seite in der
-# ungünstigen Anordnung: Flash brauchte beide Male einen Reparaturlauf (0,32 $), Pro lief auf
-# Anhieb sauber durch (0,26 $). Bei einer einzelnen Karte bleibt Flash — dort genügt es und
-# kostet die Hälfte. Preis je Bild-Token: Flash 0,00006 $, Pro 0,00012 $.
-MEHRKARTEN_MODELL = "google/gemini-3-pro-image"       # Nano Banana Pro
 STANDARD_GROESSE = "2K"
 # Modus: "schnell" = Analyse + ein Malschritt (~0,12 $), "stufen" = Ring → Kontrolle → Seite → Pokémon-Edit
 # (~0,33–0,46 $). Die Stufen brachten im Vergleich keinen sichtbaren Mehrwert (28.08.) – Standard ist "schnell";
@@ -64,10 +58,6 @@ STANDARD_MODUS = "schnell"
 STUFE_A_FAKTOR = 2.3      # Stufe A: Illustration um diesen Faktor erweitern (kleiner Schritt = genaue Geometrie)
 STUFE_A_MAX_ANTEIL = 0.8  # deckt Stufe A schon ≥ 80 % der Seite, entfällt Stufe B
 ANALYSE_MODELL = "google/gemini-3.5-flash"            # Vision-Analyse der Karte (≈ 0,5 ct)
-# Der Wunschtext ist reines Umschreiben — dafür genügt das kleine Modell. Gemessen an vier
-# echten Wünschen: 2.5-flash 0,009 ct und behält die Fortsetzungs-Formulierung („extend the
-# forest …"), 3.5-flash kostet 0,7 ct für dasselbe, flash-lite verliert den Bezug zur Karte.
-WUNSCH_MODELL = "google/gemini-2.5-flash"
 
 # Bildgröße je Fach/Fuge wie im Platzhalter-PDF (mm)
 KARTE_W, KARTE_H, FUGE = 63.0, 88.0, 4.0
@@ -254,24 +244,6 @@ ANALYSE_PROMPT = (
 )
 
 
-# Der Maßstab ist die häufigste Ursache dafür, dass eine Seite auseinanderfällt: die Karte zeigt
-# zwei Meter Dschungelboden, das Bildmodell malt drumherum dreißig Meter Landschaft, weil ihm
-# niemand sagt, wie groß die abgebildete Welt ist. Gemessen an den 151er-Karten: Bisasam 2,2 m,
-# Bisaknosp 2,5 m, Bisaflor 4,5 m — die gemalten Blätter waren fünf- bis zehnmal zu groß.
-# Eigener kleiner Aufruf (≈ 0,8 ct) statt einer neuen Vollanalyse, damit die 23.000 schon
-# analysierten Karten ihren Eintrag behalten; das Ergebnis wird in dieselbe Zeile gemischt.
-MASS_PROMPT = (
-    "Look at the illustration of this Pokémon trading card. Estimate the REAL-WORLD scale of the "
-    "depicted scene. Answer JSON only:\n"
-    '{"span_m": how many metres of the world the illustration spans horizontally (a number),\n'
-    '"creature_m": the real height of the depicted creature in metres (a number),\n'
-    '"camera_m": how far the viewer stands from the subject, in metres (a number),\n'
-    '"anchor": ONE sentence naming two ordinary objects in the picture with their real size, so that '
-    'a painter can match the scale (e.g. "the round leaves in the foreground are about 25 cm across, '
-    'the tree trunk on the left is about 40 cm thick")}'
-)
-
-
 def _analyse(card_id, lang):
     """Beschreibung + Box des Illustrationsfensters, je Karte einmal ermittelt und in der DB gecacht."""
     get_db = _dep["get_db"]
@@ -321,124 +293,6 @@ def _analyse(card_id, lang):
     con.commit()
     con.close()
     return daten
-
-
-def _massstab(card_id, lang, analyse):
-    """Maßstabsfelder nachtragen, falls die gecachte Analyse sie noch nicht hat. → (analyse, kosten)
-
-    Läuft je Karte genau einmal; danach steht der Maßstab in derselben Zeile wie die übrige
-    Analyse. Schlägt der Aufruf fehl, bleibt die Analyse ohne Maßstab und der Auftrag lässt den
-    Block einfach weg — lieber keine Angabe als eine erfundene."""
-    if not analyse or analyse.get("fehler") or analyse.get("span_m") is not None:
-        return analyse, 0.0
-    bild = _kartenbild(card_id, lang)
-    if not bild:
-        return analyse, 0.0
-    klein = bild.copy()
-    klein.thumbnail((1024, 1024))
-    try:
-        d = _openrouter({
-            "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
-            "messages": [{"role": "user", "content": [
-                {"type": "text", "text": MASS_PROMPT},
-                {"type": "image_url", "image_url": {"url": _data_url(klein, "JPEG")}},
-            ]}],
-            "response_format": {"type": "json_object"},
-            "usage": {"include": True},
-        }, timeout=90)
-        text = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
-        text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
-        mass = json.loads(text)
-    except Exception:
-        return analyse, 0.0
-    for k in ("span_m", "creature_m", "camera_m"):
-        try:
-            v = float(mass.get(k))
-        except (TypeError, ValueError):
-            v = None
-        analyse[k] = v if (v and 0 < v < 100000) else None
-    analyse["anchor"] = str(mass.get("anchor") or "")[:300]
-    kosten = float((d.get("usage") or {}).get("cost") or 0)
-    con = _dep["get_db"]()
-    con.execute("INSERT OR REPLACE INTO card_art_analysis (card_id, lang, daten, created_at) VALUES (?,?,?,?)",
-                (card_id, lang, json.dumps(analyse), _now()))
-    con.commit()
-    con.close()
-    return analyse, kosten
-
-
-def _tiefen(anker, cols, namen, analysen):
-    """Die Karten nach Bildausschnitt in Tiefenebenen ordnen. → Textblock oder ""
-
-    Ein unterschiedlicher Ausschnitt ist kein Widerspruch, sondern Tiefe: Wer 5 m Dschungel
-    zeigt, steht weiter hinten als wer 1,8 m zeigt. Statt einen einheitlichen Maßstab zu
-    erzwingen — was die Seite flach macht — bekommt jede Karte ihre Ebene im Raum, und die
-    gemalten Flächen dazwischen sind der Weg von vorne nach hinten. Liegt die weiteste Karte
-    ohnehin oben, stimmt die Staffelung mit der Anordnung überein und das Bild trägt sich
-    von selbst."""
-    mit = [(s, c) for s, c in anker.items() if (analysen.get(c) or {}).get("span_m")]
-    if len(mit) < 2:
-        return ""
-    nach_weite = sorted(mit, key=lambda sc: analysen[sc[1]]["span_m"])
-    stufen = ["the FOREGROUND", "the MIDDLE distance", "the BACKGROUND"]
-    zeilen = []
-    for i, (slot, cid) in enumerate(nach_weite):
-        a = analysen[cid]
-        if len(nach_weite) == 2:
-            wo = stufen[0] if i == 0 else stufen[2]
-        else:
-            wo = stufen[min(i * len(stufen) // len(nach_weite), 2)]
-        zeile = int(slot) // cols + 1
-        zeilen.append(
-            f"- The finished rectangle at row {zeile} (the one showing {namen.get(cid) or cid}) is a "
-            f"WINDOW into {wo} of the scene: it spans about {a['span_m']:g} m of the world, seen from "
-            f"about {a.get('camera_m') or '?'} m away. Paint the areas around that window at that depth."
-            + (f" {a['anchor']}" if a.get("anchor") else ""))
-    eng = analysen[nach_weite[0][1]]["span_m"]
-    weit = analysen[nach_weite[-1][1]]["span_m"]
-    return (
-        "\nONE SPACE, STAGED IN DEPTH – this is what makes the page work:\n"
-        "The finished rectangles are windows into the same place, seen from different distances. That "
-        "is not a problem: it is the depth of one single scene. A window showing more of the world "
-        "looks further back; a window showing less looks closer to us. The creatures inside the "
-        "windows stay exactly where they are — only the areas AROUND each window take its depth.\n"
-        + "\n".join(zeilen) + "\n"
-        f"Build ONE continuous space from front to back around them: near the foreground source paint "
-        f"large, close objects at its scale (it shows about {eng:g} m across); as the eye travels towards "
-        f"the background source, the same kinds of objects get smaller, softer and hazier until they match "
-        f"its scale (about {weit:g} m across). The ground, water, canopy and light run through all of it "
-        "without a break, so one can walk from the nearest source to the furthest.\n"
-        "Do NOT paint every area at the same size, and do NOT zoom the camera out beyond the furthest "
-        "source: match each area to the depth it sits in. Compare every object you paint with the objects "
-        "in the nearest source and place it correctly in front of or behind them.\n")
-
-
-def _mass_text(namen, analysen):
-    """Der Maßstabsblock für den Bildauftrag – oder \"\", wenn keine Karte eine Angabe hat."""
-    zeilen = []
-    for cid, a in analysen.items():
-        if not a or not a.get("span_m"):
-            continue
-        name = namen.get(cid) or "the source"
-        t = f"- {name}: its illustration spans about {a['span_m']:g} m of the world"
-        if a.get("creature_m"):
-            t += f"; {name} is about {a['creature_m']:g} m tall"
-        if a.get("camera_m"):
-            t += f"; the viewer stands about {a['camera_m']:g} m away"
-        if a.get("anchor"):
-            t += f". {a['anchor']}"
-        zeilen.append(t)
-    if not zeilen:
-        return ""
-    return (
-        "\nSCALE – the most common failure, read this carefully:\n" + "\n".join(zeilen) + "\n"
-        "The areas you paint show the SAME world seen from the SAME distance. Every leaf, flower, stone, "
-        "root, branch or trunk you paint must have the same real-world size as objects of that kind inside "
-        "the finished part"
-        + ("s" if len(analysen) > 1 else "") + ", and must therefore be drawn at the same size on the page. "
-        "Do NOT zoom out: no giant tree trunks, no wide valley vista, no distant canopy, no aerial view. The "
-        "camera does not move; we simply see more of the same close view. Before painting an object, compare "
-        "it with the objects at the nearest edge of a finished part and match their size.\n")
 
 
 def _illustration(card_id, lang, analyse):
@@ -553,60 +407,6 @@ def _regionen(cols, rows, anker, anzahl):
     return worte
 
 
-RICHTUNG = {(0, -1): ("above", "top"), (0, 1): ("below", "bottom"),
-            (-1, 0): ("left of", "left"), (1, 0): ("right of", "right")}
-
-
-def _freiflaechen(cols, rows, anker):
-    """Die freien Fächer in zusammenhängende Stücke zerlegen. → [[slot, …], …], größtes zuerst."""
-    belegt = {int(s) for s in anker}
-    frei = [s for s in range(cols * rows) if s not in belegt]
-    gesehen, stuecke = set(), []
-    for start in frei:
-        if start in gesehen:
-            continue
-        stapel, teil = [start], []
-        while stapel:
-            k = stapel.pop()
-            if k in gesehen:
-                continue
-            gesehen.add(k); teil.append(k)
-            x, y = k % cols, k // cols
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nx, ny = x + dx, y + dy
-                n = ny * cols + nx
-                if 0 <= nx < cols and 0 <= ny < rows and n in frei and n not in gesehen:
-                    stapel.append(n)
-        stuecke.append(sorted(teil))
-    return sorted(stuecke, key=len, reverse=True)
-
-
-def _layout_text(cols, rows, anker, namen):
-    """Die Seite als Text: welches freie Fach grenzt an welche Karte, und an welche ihrer Kanten.
-
-    Diese Auswertung fehlte bisher ganz. Jede Karte wurde einzeln sehr genau analysiert, die Seite
-    als Ganzes gar nicht — der Planer musste raten, wo etwas hingehört. Gemessen an den gelungenen
-    Seiten ist genau das der Unterschied: dort benannte der Plan eine Struktur und einen Inhalt je
-    Fläche, bei den misslungenen stand „mehr Dschungel"."""
-    zeilen = []
-    for stueck in _freiflaechen(cols, rows, anker):
-        for slot in stueck:
-            x, y = slot % cols, slot // cols
-            nachbarn = []
-            for (dx, dy), (wort, kante) in RICHTUNG.items():
-                nx, ny = x + dx, y + dy
-                n = ny * cols + nx
-                if 0 <= nx < cols and 0 <= ny < rows and str(n) in anker:
-                    cid = anker[str(n)]
-                    # Liegt die Karte rechts vom freien Fach, setzt das Fach ihre LINKE Kante fort.
-                    gegen = {"top": "bottom", "bottom": "top", "left": "right", "right": "left"}[kante]
-                    nachbarn.append(f"{namen.get(cid) or cid} is {wort} it, so this area continues "
-                                    f"that source's {gegen} edge")
-            zeilen.append(f"- row {y + 1} / column {x + 1}: "
-                          + ("; ".join(nachbarn) if nachbarn else "touches no source directly"))
-    return "\n".join(zeilen)
-
-
 def _zonen(cols, rows, anker):
     """Jedes freie Fach der nächstgelegenen Karte zuordnen → {slot: card_id} + Nachbarpaare der Zonen.
     Bei mehreren Karten scheitert „eine gemeinsame Szene“; jede Karte bekommt stattdessen ihre eigene
@@ -630,362 +430,64 @@ def _zonen(cols, rows, anker):
     return zone, sorted(paare)
 
 
-# --- Passen die Karten überhaupt zusammen? ----------------------------------
-#
-# Eine Seite aus einer Unterwasserkarte und einer Vulkankarte kann das beste Bildmodell
-# nicht zu einer Landschaft verbinden — es wird ein Bruch oder ein Brei. Das lässt sich
-# vorher sagen: `card_art_tags` hält für 23.461 Karten Ort, Tageszeit und Wasseranteil
-# (aus dem Bildmotiv-Index, siehe themen.py). Der Nutzer erfährt es, bevor er Credits
-# ausgibt, und der Regie-Plan bekommt den gemeinsamen Lebensraum als Vorgabe.
-ORT_GRUPPEN = {
-    "wasser": {"unterwasser", "gewaesser", "strand", "fluss"},
-    "gruen": {"wald", "dschungel", "wiese"},
-    "karg": {"berge", "wueste", "vulkan", "hoehle", "unterirdisch", "ruinen"},
-    "kalt": {"schnee"},
-    "gebaut": {"stadt", "gebaeude", "innenraum", "technik"},
-    "himmel": {"himmel", "weltraum"},
-}
-ORT_TEXT = {
-    "unterwasser": "unter Wasser", "gewaesser": "am Wasser", "strand": "am Strand", "fluss": "am Fluss",
-    "wald": "im Wald", "dschungel": "im Dschungel", "wiese": "auf der Wiese", "berge": "in den Bergen",
-    "wueste": "in der Wüste", "vulkan": "am Vulkan", "hoehle": "in einer Höhle",
-    "unterirdisch": "unterirdisch", "ruinen": "in Ruinen", "schnee": "im Schnee", "stadt": "in der Stadt",
-    "gebaeude": "in einem Gebäude", "innenraum": "im Innenraum", "technik": "in technischer Umgebung",
-    "himmel": "am Himmel", "weltraum": "im Weltraum", "dunkelheit": "im Dunkeln", "kampf": "im Kampf",
-    "abstrakt": "ohne erkennbaren Ort", "portraet": "als Porträt",
-}
-ZEIT_TEXT = {"tag": "am Tag", "nacht": "nachts", "daemmerung": "in der Dämmerung",
-             "dunkelheit": "im Dunkeln", "sonnenunterg": "im Sonnenuntergang", "unklar": ""}
-
-
-def _tags(card_ids):
-    con = _dep["get_db"]()
-    marken = ",".join("?" * len(card_ids)) or "''"
-    reihen = con.execute(
-        f"SELECT card_id, orte, zeit, wasser, merkmale FROM card_art_tags WHERE card_id IN ({marken})",
-        list(card_ids)).fetchall()
-    con.close()
-    aus = {}
-    for r in reihen:
-        aus[r["card_id"]] = {
-            "orte": [o for o in re.split(r"[,\s]+", r["orte"] or "") if o],
-            "zeit": (r["zeit"] or "").strip(),
-            "wasser": r["wasser"] or 0,
-            "merkmale": [m for m in re.split(r"[,\s]+", r["merkmale"] or "") if m],
-        }
-    return aus
-
-
-def _massstaebe_gecacht(card_ids, lang="de"):
-    """Gespeicherte Maßstäbe je Karte, ohne einen einzigen Modellaufruf. → {card_id: span_m}
-
-    Die Passungsprüfung läuft, bevor der Sammler Credits ausgibt; sie darf deshalb nichts
-    kosten. Was schon gemessen wurde, wird genutzt, der Rest bleibt einfach unbeantwortet."""
-    if not card_ids:
-        return {}
-    con = _dep["get_db"]()
-    marken = ",".join("?" * len(card_ids))
-    aus = {}
-    for r in con.execute(f"SELECT card_id, daten FROM card_art_analysis WHERE card_id IN ({marken})",
-                         list(card_ids)):
-        try:
-            d = json.loads(r["daten"])
-        except Exception:
-            continue
-        if d.get("span_m"):
-            aus[r["card_id"]] = float(d["span_m"])
-    con.close()
-    return aus
-
-
-def _geometrie_hinweis(slots, cols, rows, anzahl_karten):
-    """Wie weit liegen die Ankerkarten auseinander? → (abzug, hinweis) oder (0, "")
-
-    Gemessen am Fall, der die Analyse ausgelöst hat: drei Karten über Eck (Fächer 0, 5, 6) mit
-    sechs freien Fächern dazwischen. Das Bildmodell muss zwei Drittel der Seite erfinden und
-    zwei lange Strecken überbrücken. Die guten Seiten der Vitrine haben ihre Karten nebeneinander."""
-    if not slots or len(slots) < 2:
-        return 0, ""
-    pos = [(int(s) % cols, int(s) // cols) for s in slots]
-    # Gemessen wird nicht die Spanne über die ganze Seite, sondern ob jede Karte eine Nachbarin
-    # hat: drei Karten in einer Reihe spannen ebenfalls über zwei Felder, sind aber der gute Fall.
-    # Entscheidend ist die größte Lücke zur jeweils nächsten Karte.
-    luecke = max(min(max(abs(a[0] - b[0]), abs(a[1] - b[1])) for b in pos if b != a) for a in pos)
-    frei = cols * rows - len(set(int(s) for s in slots))
-    if luecke >= 3:
-        return 20, (f"Die Karten liegen sehr weit auseinander ({frei} freie Fächer dazwischen). Die KI "
-                    "muss lange Strecken erfinden — nebeneinander oder in einer Reihe gelingt die "
-                    "Verbindung deutlich zuverlässiger.")
-    if luecke == 2:
-        return 12, ("Zwischen den Karten liegt jeweils ein freies Fach. Direkt nebeneinander gelingt "
-                    "der Übergang zuverlässiger.")
-    return 0, ""
-
-
-# Woraus die Umgebung besteht, entscheidet mit, wie frei die KI erfinden darf. Fels, Wasser,
-# Himmel und Feuer haben keine feste Größe — dort sieht jede Erfindung richtig aus. Blätter,
-# Blüten und Gras haben eine: ein Monstera-Blatt ist 40 cm lang, und daneben liegt die Karte,
-# auf der es in der richtigen Größe zu sehen ist. Gemessen an den Seiten der Vitrine sind alle
-# gelungenen Mehrkarten-Seiten aus maßstabsfreiem Material (Schlucht, Strand, Vulkan, Sturmsee).
-MATERIAL_FREI = {"berge", "vulkan", "hoehle", "unterirdisch", "gewaesser", "unterwasser", "strand",
-                 "fluss", "himmel", "weltraum", "schnee", "wueste", "ruinen", "dunkelheit", "abstrakt"}
-MATERIAL_GEBUNDEN = {"wald", "dschungel", "wiese", "stadt", "gebaeude", "innenraum", "technik"}
-
-
-def _material(card_ids):
-    """→ "frei" | "gebunden" | "" — woraus die Umgebung dieser Karten besteht."""
-    tags = _tags(list(dict.fromkeys(card_ids)))
-    if not tags:
-        return ""
-    f = g = 0
-    for t in tags.values():
-        orte = set(t["orte"])
-        f += len(orte & MATERIAL_FREI)
-        g += len(orte & MATERIAL_GEBUNDEN)
-        if "nahaufnahme" in (t.get("merkmale") or ""):
-            g += 1
-    if g > f:
-        return "gebunden"
-    return "frei" if f else ""
-
-
-def _material_regel(art):
-    """Wie ausführlich die Umgebung ausgemalt werden soll."""
-    if art != "gebunden":
-        return ""
-    return ("- This kind of scenery is made of things with a known size (leaves, flowers, grass, "
-            "windows, bricks). Away from the sources, keep it simple and let it recede: fewer and "
-            "larger shapes, deeper shade, haze and soft focus towards the edges of the page. Detail "
-            "belongs close to the sources; further out the scene falls into shadow and mist. That "
-            "reads as depth and is safer than inventing many new plants at guessed sizes.\n")
-
-
-def _passung(card_ids, namen=None, slots=None, cols=3, rows=3):
-    """→ {wert 0-100, gemeinsam, konflikte, karten}. Ohne Bildmotiv-Daten: neutral."""
-    namen = namen or {}
-    tags = _tags(list(dict.fromkeys(card_ids)))
-    bekannt = [c for c in dict.fromkeys(card_ids) if c in tags]
-    if len(bekannt) < 2:
-        return {"wert": None, "gemeinsam": "", "konflikte": [], "karten": [], "gruppen": []}
-    gruppen, zeiten, wasser = {}, {}, {}
-    for c in bekannt:
-        t = tags[c]
-        gs = {g for g, menge in ORT_GRUPPEN.items() if menge & set(t["orte"])}
-        gruppen[c] = gs
-        z = t["zeit"]
-        zeiten[c] = "nacht" if z in ("nacht", "dunkelheit") else ("tag" if z in ("tag", "sonnenunterg") else "")
-        wasser[c] = t["wasser"]
-    wert = 100
-    konflikte, hinweise, gruppen_konflikt = [], [], False
-    alle_gruppen = set().union(*gruppen.values()) if gruppen else set()
-    geteilt = set.intersection(*[g for g in gruppen.values() if g]) if all(gruppen.values()) else set()
-    if len(alle_gruppen) > 1 and not geteilt:
-        gruppen_konflikt = True
-        wert -= min(50, 25 * (len(alle_gruppen) - 1))
-        namen_von = lambda g: ", ".join(namen.get(c, c) for c in bekannt if g in gruppen[c])
-        konflikte.append("Verschiedene Landschaften: "
-                         + " · ".join(f"{g} ({namen_von(g)})" for g in sorted(alle_gruppen)))
-    if "tag" in zeiten.values() and "nacht" in zeiten.values():
-        wert -= 35
-        konflikte.append("Tag trifft Nacht: "
-                         + ", ".join(namen.get(c, c) for c in bekannt if zeiten[c] == "nacht") + " spielt nachts")
-    if any(w >= 3 for w in wasser.values()) and any(w == 0 for w in wasser.values()):
-        wert -= 30
-        konflikte.append("Unter Wasser trifft Land: "
-                         + ", ".join(namen.get(c, c) for c in bekannt if wasser[c] >= 3) + " spielt unter Wasser")
-    # Der Zoom entscheidet mit, ob eine Seite gelingt: eine Nahaufnahme neben einer Weitsicht
-    # lässt sich nicht in eine Landschaft bringen, ohne dass eine der beiden falsch wirkt.
-    # Gemessen nur aus schon gespeicherten Werten — die Prüfung kostet nichts.
-    spannen = _massstaebe_gecacht(bekannt)
-    if len(spannen) >= 2:
-        klein = min(spannen.values()); gross = max(spannen.values())
-        faktor = gross / max(0.01, klein)
-        # Ein weiterer Ausschnitt ist kein Widerspruch, sondern Tiefe: diese Karte steht in der
-        # Szene weiter hinten. Das ist ein Hinweis, kein Mangel — der Auftrag staffelt danach.
-        if faktor >= 1.8:
-            eng = [namen.get(c, c) for c in bekannt if spannen.get(c) == klein]
-            weit = [namen.get(c, c) for c in bekannt if spannen.get(c) == gross]
-            hinweise.append(
-                f"{', '.join(weit)} zeigt einen weiteren Ausschnitt ({gross:g} m) als "
-                f"{', '.join(eng)} ({klein:g} m) — die KI stellt es entsprechend weiter hinten "
-                "in die Szene.")
-    abzug, hinweis = _geometrie_hinweis(slots, cols, rows, len(bekannt))
-    if hinweis:
-        wert -= abzug
-        konflikte.append(hinweis)
-    gemeinsam = ""
-    if geteilt:
-        orte = [o for c in bekannt for o in tags[c]["orte"]]
-        haeufig = max(set(orte), key=orte.count) if orte else ""
-        gemeinsam = ORT_TEXT.get(haeufig, haeufig)
-    z = [x for x in zeiten.values() if x]
-    # „nachts" nur, wenn es mindestens zwei Karten sagen — eine allein ist keine Tageszeit
-    # der Seite, sondern der Ausreißer, den der Plan überbrücken muss.
-    if len(z) >= 2 and len(set(z)) == 1:
-        gemeinsam = (gemeinsam + " " + ZEIT_TEXT.get(z[0], "")).strip()
-    return {"wert": max(0, wert), "gemeinsam": gemeinsam, "konflikte": konflikte,
-            "hinweise": hinweise, "gruppen_konflikt": gruppen_konflikt,
-            "gruppen": sorted(alle_gruppen),
-            "karten": [{"id": c, "name": namen.get(c, c),
-                        "ort": ", ".join(ORT_TEXT.get(o, o) for o in tags[c]["orte"][:2]),
-                        "zeit": ZEIT_TEXT.get(tags[c]["zeit"], "")} for c in bekannt]}
-
-
 REGIE_PROMPT = (
-    "You are the art director for ONE 'extended art' page. IMAGE 1 shows the page: the finished "
-    "illustrations sit at their real positions, every gray area still has to be painted. The images "
-    "after it are those illustrations in close-up.\n"
-    "LOOK AT THE IMAGES and decide what goes into each gray area, so the whole page reads as one place.\n\n"
-    "Two things decide whether this works:\n"
-    "A) ONE structure that runs across the whole page and touches every source – a stream, a ridge, "
-    "a path, a fallen trunk, a shaft of light, a shoreline. Not a mood, not 'more jungle': a thing "
-    "with a course. Say where it starts, which source edges it touches and where it ends.\n"
-    "B) Every gray area gets its own content. An area with nothing assigned is where the painter "
-    "invents a creature.\n\n"
-    "Answer with JSON only:\n"
-    '{"habitat": "the place, time of day and light direction in one sentence",\n'
-    '"struktur": "the one structure from A, one or two sentences, concrete and visual",\n'
-    '"faecher": {"row/column": "one sentence naming what is seen in exactly this area – name plants, '
-    'water, rock, ground, sky, and say which source edge it continues", ...}}\n'
-    "Use exactly the row/column keys listed under FREE AREAS. Be visual and specific. Never mention "
-    "cards, frames, grids, pockets or Pokémon by name in the faecher sentences – describe scenery only."
+    "You are an art director planning ONE 'extended art' page for a card collector. Several finished illustrations "
+    "sit on the page; the painter has to fill everything around them so the page reads as one coherent habitat, "
+    "WITHOUT merging the illustrations into a single averaged scene.\n\n"
+    "Write a short, concrete plan for the painter (English, max 160 words, no headings, no meta talk):\n"
+    "1. The common habitat, time of day and light direction that fits all sources with the fewest contradictions "
+    "(pick the dominant one, don't average).\n"
+    "2. For each neighbouring pair listed below: ONE concrete connective element that leads from one scene into the "
+    "other (e.g. 'a stream runs from the pond of A down between dense ferns into the forest floor of B').\n"
+    "3. What fills the outer corners far from any source.\n"
+    "Be visual and specific, name plants, water, rocks, light. Never mention cards, frames, grids or pockets."
 )
 
 
-def _drehbuch_text(plan, cols, rows, anker):
-    """Den Plan als Auftrag rendern. Fächer ohne Satz bekommen einen Rückfall, damit keine Fläche
-    ohne Inhalt bleibt — genau dort entstand bisher das zweite Pokémon."""
-    if not isinstance(plan, dict):
-        return ""
-    teile = []
-    if plan.get("habitat"):
-        teile.append("THE PLACE: " + str(plan["habitat"])[:300])
-    if plan.get("struktur"):
-        teile.append("ONE STRUCTURE RUNS THROUGH THE WHOLE PAGE, touching every finished part: "
-                     + str(plan["struktur"])[:400])
-    faecher = plan.get("faecher") if isinstance(plan.get("faecher"), dict) else {}
-    zeilen = []
-    for stueck in _freiflaechen(cols, rows, anker):
-        for slot in stueck:
-            x, y = slot % cols, slot // cols
-            key = f"{y + 1}/{x + 1}"
-            satz = faecher.get(key) or faecher.get(f"row {y + 1} / column {x + 1}") or faecher.get(str(slot))
-            zeilen.append(f"- row {y + 1} / column {x + 1}: "
-                          + (str(satz)[:220] if satz else "the same scenery as the area next to it, "
-                             "continuing the nearest source; nothing new is introduced here"))
-    if zeilen:
-        teile.append("WHAT IS IN EACH AREA THAT IS STILL GRAY – paint exactly this, nothing else:\n"
-                     + "\n".join(zeilen))
-    return "\n".join(teile) + "\n" if teile else ""
-
-
-WUNSCH_PROMPT = (
-    "You turn a collector's wish into ONE instruction for a painter who extends a trading-card "
-    "illustration into a full page around the card.\n"
-    "Rules: keep the intent and every concrete thing the collector asked for; make it visual and "
-    "specific; English; imperative; at most 35 words; one sentence or two. Never mention cards, "
-    "frames, borders, grids, pockets, text or logos. Do not invent a second main creature. "
-    "If the wish is already fine, just tighten it. Answer with the instruction only."
-)
-
-
-def _wunsch_scharf(wunsch, kontext=""):
-    """Den Wunschtext des Sammlers vor dem Bildmodell schärfen (≈ 0,2 ct).
-
-    Gemessen an der Praxis: „mehr wasser bitte und schön hell" landet als deutscher
-    Halbsatz mitten in einem englischen Prompt und wird überlesen. Ein kurzer Textschritt
-    macht daraus eine Anweisung, die das Bildmodell wörtlich ausführen kann. Fällt der
-    Schritt aus, geht der Originaltext weiter wie bisher."""
-    wunsch = (wunsch or "").strip()
-    if len(wunsch) < 4:
-        return wunsch, 0.0
-    try:
-        d = _openrouter({
-            "model": _dep["env"]().get("ARTWORK_WUNSCH_MODELL") or WUNSCH_MODELL,
-            "messages": [{"role": "user", "content":
-                          WUNSCH_PROMPT + (f"\n\nPAGE CONTEXT: {kontext}" if kontext else "")
-                          + f"\n\nWISH (any language): {wunsch[:400]}"}],
-            "usage": {"include": True},
-        }, timeout=60)
-        text = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
-        text = re.sub(r"^[\"\u201c\u201e]|[\"\u201d]$", "", text).strip()
-        return (text[:400] or wunsch), float((d.get("usage") or {}).get("cost") or 0)
-    except Exception:
-        return wunsch, 0.0
-
-
-def _regie(cols, rows, anker, namen, analysen, passung=None, vorlage=None, bilder=None):
-    """Drehbuch für Seiten mit mehreren Karten (Vision-Aufruf, ≈ 1,5 ct). → (plan, kosten)
-
-    Der Plan war bis zum 04.09. ein reiner Textschritt ohne Blick auf die Seite und lieferte Prosa.
-    Gemessen an den Seiten der Vitrine ist er die entscheidende Stelle: die gelungenen Seiten haben
-    eine benannte Struktur quer über die Seite und einen Inhalt je Fläche, die misslungenen hatten
-    „mehr Dschungel"."""
+def _regie(cols, rows, anker, namen, analysen):
+    """Kompositionsplan für Seiten mit mehreren Karten (reines Text-Modell, ≈ 0,5 ct)."""
+    zone, paare = _zonen(cols, rows, anker)
     beschreibung = []
     for slot, cid in sorted(anker.items(), key=lambda kv: int(kv[0])):
         col, row = int(slot) % cols, int(slot) // cols
-        a = analysen.get(cid) or {}
-        mass = (f" It spans about {a['span_m']:g} m of the world." if a.get("span_m") else "")
+        felder = [s for s, z in zone.items() if z == cid and str(s) not in anker]
         beschreibung.append(
-            f"SOURCE {namen.get(cid) or cid} at row {row + 1}, column {col + 1}.{mass}\n"
-            + _analyse_text(a))
-    hinweis = ""
-    if passung and passung.get("konflikte"):
-        hinweis = "\n\nKNOWN CLASHES to bridge, do not average them away: " + " | ".join(passung["konflikte"])
+            f"SOURCE {namen.get(cid) or cid} sits at row {row + 1}, column {col + 1}; its surrounding zone covers "
+            f"{len(felder)} neighbouring areas.\n{_analyse_text(analysen.get(cid))}")
+    nachbarn = "; ".join(f"{namen.get(a) or a} ↔ {namen.get(b) or b}" for a, b in paare) or "none"
     text = (REGIE_PROMPT + "\n\nSOURCES:\n" + "\n\n".join(beschreibung)
-            + "\n\nFREE AREAS (these are the keys for \"faecher\"):\n"
-            + _layout_text(cols, rows, anker, namen) + hinweis)
-    inhalt = [{"type": "text", "text": text}]
-    if vorlage is not None:
-        v = vorlage.copy(); v.thumbnail((1024, 1024))
-        inhalt.append({"type": "text", "text": "IMAGE 1 – the page (gray = to be painted):"})
-        inhalt.append({"type": "image_url", "image_url": {"url": _data_url(v, "JPEG")}})
-        for i, (slot, cid) in enumerate(sorted(anker.items(), key=lambda kv: int(kv[0]))):
-            crop = (bilder or {}).get(cid)
-            if crop is None:
-                continue
-            c = crop.copy(); c.thumbnail((640, 640))
-            inhalt.append({"type": "text", "text": f"IMAGE {i + 2} – {namen.get(cid) or cid} in close-up:"})
-            inhalt.append({"type": "image_url", "image_url": {"url": _data_url(c, "JPEG")}})
+            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}")
     try:
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_REGIE_MODELL") or ANALYSE_MODELL,
-            "messages": [{"role": "user", "content": inhalt}],
-            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": text}],
             "usage": {"include": True},
-        }, timeout=120)
-        roh = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
-        roh = re.sub(r"^```(?:json)?|```$", "", roh, flags=re.M).strip()
-        return json.loads(roh), float((d.get("usage") or {}).get("cost") or 0)
+        }, timeout=90)
+        plan = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        return plan[:1600], float((d.get("usage") or {}).get("cost") or 0)
     except Exception:
-        return {}, 0.0
+        return "", 0.0
 
 
-def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback="",
-                  regie=None, eine_szene=False, material=""):
-    """Interleaved content für das Bildmodell: Auftrag, Vorlage, Ausschnitte, Drehbuch, fünf Regeln.
-
-    Der Auftrag war am 04.09. auf 11.900 Zeichen und vierzehn Regelzeilen angewachsen, mit
-    19 Verneinungen — die guten Seiten der Vitrine entstanden mit 8.800 Zeichen und elf Regeln.
-    Ein Bildmodell gewichtet den Anfang stark; eine lange Verbotsliste arbeitet gegen sich selbst.
-    Belegt: die Anweisung gegen ein zweites Kartenbild stand an drei Stellen und wurde trotzdem
-    übergangen — gewirkt hat erst eine ZAHL. Deshalb: sagen, was zu sehen ist (Drehbuch), und nur
-    das Nötigste verbieten."""
+def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback="", regie=""):
+    """Interleaved content für das Bildmodell: Outpainting-Auftrag, Vorlage, Illustrations-Ausschnitte,
+    Pokémon-Referenzen. Bewusst KEIN Wort über Binder, Fächer oder Raster (→ Gitterlinien) und kein
+    „erweitere das Artwork“ (→ Kreatur wird dupliziert). Kurz und konkret hat im Vergleich am besten
+    abgeschnitten (Horizont, Licht und Wasserlinien laufen exakt weiter)."""
     mehrere = len(anker) > 1
     kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
-    plaetze = ", ".join(f"row {int(s_) // cols + 1}/column {int(s_) % cols + 1}"
-                        for s_ in sorted(anker, key=lambda x: int(x)))
     intro = (
-        "OUTPAINTING TASK. IMAGE 1 is one large painting of which only "
-        + (f"{len(anker)} rectangular parts are" if mehrere else "one rectangular part is")
-        + f" finished (at {plaetze}); every gray pixel is still unpainted. Paint all gray areas so "
-        "that the finished part" + ("s become windows into one and the same picture: the scene, "
-                                    "perspective, light, colours and painting technique of each one "
-                                    "continue outward from its edges without any visible transition."
-                                    if mehrere else
-                                    " extends seamlessly in every direction: the same scene, the same "
-                                    "horizon height, light, colours and painting technique continue "
-                                    "outward without any visible transition.") + "\n")
+        "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
+        + ("some rectangular parts are" if mehrere else "one rectangular part is")
+        + " finished (the source illustration" + ("s" if mehrere else "") + "); every gray pixel is still unpainted. "
+        + ("Paint all gray areas so that EACH finished part extends seamlessly into its own surroundings: around "
+           "each source, that source's own scene, perspective, light, colours and painting technique continue "
+           "outward without any visible transition – as if each source were a crop from this bigger painting. The "
+           "whole page shows ONE habitat, but every source keeps its own part of it.\n" if mehrere else
+           "Paint all gray areas so that the finished part extends seamlessly in every direction: the same scene, "
+           "same perspective and horizon height, same light, same colors and the same painting technique continue "
+           "outward without any visible transition – as if the source were a crop from this bigger painting.\n")
+    )
     teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     n = 2
     for slot, card_id in sorted(anker.items(), key=lambda kv: int(kv[0])):
@@ -993,154 +495,82 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         if crop is None:
             continue
         col, row = int(slot) % cols, int(slot) // cols
-        wo = f" at row {row + 1}, column {col + 1}" if mehrere else ""
-        a = analysen.get(card_id) or {}
-        # Kurzfassung der Analyse: die Kanten sind das, was fortgesetzt werden muss; alles Übrige
-        # sieht das Modell auf dem Bild selbst.
-        kanten = a.get("edges") if isinstance(a.get("edges"), dict) else {}
-        kantentext = "; ".join(f"{k}: {str(v)[:150]}" for k, v in kanten.items() if v)
-        mass = (f" The illustration spans about {a['span_m']:g} m of the world"
-                + (f"; {a['anchor']}" if a.get("anchor") else "") + "." if a.get("span_m") else "")
-        aufdruck = (" Card print (name, HP, attack text, symbols) lies on this artwork – it is print, "
-                    "not scenery.") if _hat_aufdrucke(a) else ""
+        wo = f" (the one at row {row + 1}, column {col + 1} of IMAGE 1)" if mehrere else ""
         teile.append({"type": "text", "text": (
-            f"IMAGE {n} – the finished part{wo} in close-up. Its creature is "
-            f"{namen.get(card_id) or 'the main creature'}.{mass}{aufdruck}\n"
-            + (f"What is cut off at its edges and has to continue – {kantentext}" if kantentext else ""))})
+            f"IMAGE {n} – the source illustration{wo} in close-up, for reference of details, technique and colors. "
+            f"Its creature is {namen.get(card_id) or 'the main creature'}.\n{_analyse_text(analysen.get(card_id))}")})
         teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
         n += 1
     for p in pokemon:
         if p.get("_bild") is None:
             continue
         teile.append({"type": "text", "text": (
-            f"IMAGE {n} – reference for the anatomy and colors of {p['name_en']} ONLY. Do not copy this "
-            "picture: no white background, no cut-out look, not this pose.")})
+            f"IMAGE {n} – reference for the anatomy and colors of {p['name_en']} ONLY. Do not copy this picture: "
+            "no white background, no cut-out look, not this pose.")})
         teile.append({"type": "image_url", "image_url": {"url": _data_url(p["_bild"], 'JPEG')}})
         n += 1
-
-    wer = " and ".join(kreaturen) if kreaturen else "the creature of the finished part"
-    erlaubt = ", ".join(p["name_en"] for p in pokemon) if pokemon else ""
-    text = ""
-    if mehrere and regie:
-        text += "\n" + _drehbuch_text(regie, cols, rows, anker)
-    # Fünf Regeln. Mehr wurden nachweislich nicht gelesen.
-    text += (
+    erlaubt = ", ".join(p["name_en"] for p in pokemon) if pokemon else "none"
+    wer = " and ".join(kreaturen) if kreaturen else "The creature of the source illustration"
+    regeln = (
         "\nRules:\n"
-        f"1. {wer} exist"
-        f"{'s' if len(kreaturen) <= 1 else ''} only inside the finished part"
-        + ("s, and stop at their edges." if mehrere else ", and stops at its edge.") + " Where a body is cut off there, hide the "
-        "cut behind scenery – mist, foliage, rock, water, light. Number of creatures you paint into "
-        f"the gray areas: {'exactly one ' + erlaubt if erlaubt else '0'}.\n"
-        "2. At every edge of a finished part, continue what is cut off there at the same height and "
-        "angle, then more of the same landscape, atmosphere and depth. Objects keep the real-world "
-        "size they have inside the finished part.\n"
-        "3. " + _technik_regel(stil, analysen).strip().lstrip("- ").replace("\n- ", " ") + "\n"
-        f"4. The page keeps exactly {len(anker)} rectangular finished area"
-        + ("s" if mehrere else "") + f", at {plaetze}. Everything printed on them – border, name plate, "
-        "HP, text boxes, symbols – is print, not scenery: none of it appears in the painted areas, and "
-        "no second card, frame, panel, text or number is painted anywhere.\n"
-        "5. One continuous painting, no gray pixel left, and the finished parts stay untouched.\n")
-    text += _material_regel(material)
+        # Der haeufigste Fehler bei Ganzbildkarten: die Kreatur fuellt fast die ganze Vorlage,
+        # das Modell liest ihre Silhouette als Landschaft und setzt sie nach aussen fort. Ergebnis
+        # ist ein riesiges zweites Exemplar rund um die Karte. Deshalb steht diese Regel zuerst
+        # und sagt ausdruecklich, was an einer angeschnittenen Kreatur zu tun ist.
+        f"- MOST IMPORTANT: {wer} exist"
+        f"{'s' if len(kreaturen) <= 1 else ''} ONLY inside the finished part"
+        + ("s" if mehrere else "") + " and ends at the edge of it. The creature is often cut off there – "
+        "do NOT continue its body, head, ears, horns, wings, tail, limbs, fur, spikes, energy aura or glow "
+        "outside. Do not repeat it at any size, not partially, not as shadow, reflection, silhouette, "
+        "outline or abstract shape in its colours. Where the creature meets the edge, hide the cut behind "
+        "scenery – mist, smoke, foliage, rock, water, light – so that outside there is only the world.\n"
+        f"- {wer} appear"
+        f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
+        + ("s" if mehrere else "") + ". "
+        f"Creatures allowed in the new areas: {erlaubt}. Everything else outside is only the world the scene lives in.\n"
+        "- Continue the surroundings: what is cut off at the edges of the finished part continues exactly there, at the "
+        "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
+        "calm – the source stays the most detailed and most important area.\n"
+        + (_zonen_regeln(cols, rows, anker, namen, regie) if mehrere else "")
+        # Zweithäufigster Fehler nach der duplizierten Kreatur: die Vorlage IST eine Spielkarte,
+        # und bei Ganzbildkarten liegen Namensfeld, HP, Attackentext und Symbole direkt auf der
+        # Illustration. Das Modell liest sie als Bildbestandteil und malt eine zweite Karte
+        # mitsamt Rahmen und Text ins Umfeld. Deshalb die Aufdrucke ausdruecklich benennen.
+        + "- The finished part is a scan of a printed trading card. Anything printed ON it – name plate, HP "
+        "number, attack and rules text, energy, set and rarity symbols, illustrator credit, card border, "
+        "rounded corners, holo sparkle overlay – is print on top of the picture, NOT part of the scene. "
+        "None of it may appear in the painted areas, and no second card, card frame, panel or rectangle of "
+        "any kind may be painted. Outside the finished part there is only the depicted world.\n"
+        "- One continuous painting: no frames, borders, lines, panels, tiles, text, letters, logos, watermarks. "
+
+        "Not a single gray pixel may remain.\n"
+        "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
+        f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; what "
+        "is painted stays the continuation of the source scene.\n"
+    )
+    if pokemon:
+        regionen = _regionen(cols, rows, anker, len(pokemon))
+        plaetze = "; ".join(f"ONE single {p['name_en']} in the {regionen[i] if i < len(regionen) else 'free'} "
+                            "region of the painting" for i, p in enumerate(pokemon))
+        regeln += ("- Add " + plaetze + " – and nowhere else; the painting contains exactly one of each. Paint it "
+                   "as a real inhabitant of this scene: in exactly the same technique, lit by the scene's light "
+                   "with cast shadows and reflections, standing / sitting / swimming / flying ON or IN the "
+                   "environment (feet on the ground, splashing water, wind in fur), partly overlapped by foreground "
+                   "elements where natural, seen from the scene's perspective, doing something that fits the moment "
+                   "(watching the source creature, playing, resting). Never a floating cut-out.\n")
     if wunsch:
-        text += f"Wish from the collector: {wunsch.strip()[:400]}\n"
+        regeln += f"- Wishes from the collector: {wunsch.strip()[:400]}\n"
     if feedback:
-        text += "A previous attempt was rejected for: " + feedback + " – avoid that.\n"
-    text += "Output exactly the same dimensions as IMAGE 1."
-    teile.append({"type": "text", "text": text})
+        regeln += ("\nA previous attempt was rejected by a reviewer for these problems – avoid them this time: "
+                   + feedback + "\n")
+    regeln += "Output exactly the same dimensions as IMAGE 1."
+    teile.append({"type": "text", "text": regeln})
     return teile
 
 
-def _hat_aufdrucke(analyse):
-    """Liegt der Kartentext direkt auf der Illustration? (Vollbildkarten)
-
-    Das Feld `aufdrucke` kam erst später dazu; die vor ihm angelegten Analysen haben es nicht.
-    Deshalb der Rückfall über die Fenstergröße: deckt das Illustrationsfenster fast die ganze
-    Karte, ist es eine Vollbildkarte, und dann liegen Name, HP und Attackentext im Bild."""
-    a = analyse or {}
-    if a.get("aufdrucke") is not None:
-        return bool(a["aufdrucke"])
-    box = a.get("box")
-    if not (isinstance(box, list) and len(box) == 4):
-        return False
-    ymin, xmin, ymax, xmax = box
-    return (xmax - xmin) >= 880 and (ymax - ymin) >= 880
-
-
-def _technik_regel(stil, analysen):
-    """Wie die neuen Flächen gemalt werden. Die gemessene Technik der Quellen steht vor dem
-    Stil-Chip, nicht dahinter.
-
-    Vorher war der Chip die letzte und deutlichste Anweisung: „Ölgemälde" malte Impasto direkt
-    neben eine flache Gouache-Karte, und der Chip „Wie die Karte" verwies bei drei Karten auf
-    „die Kartenillustration", ohne zu sagen, welche. Jetzt wird die Technik ausgeschrieben."""
-    techniken = [str((a or {}).get("technique") or "").strip() for a in analysen.values()]
-    techniken = list(dict.fromkeys([t for t in techniken if t]))
-    quelle = " / ".join(techniken[:3])
-    if stil == "karte" and quelle:
-        text = ("- Technique for the new areas – copy the sources exactly: " + quelle
-                + " Match their flatness or depth, their brush texture, their level of detail and their "
-                "colour saturation, so that the painted areas are indistinguishable from the sources.\n")
-    else:
-        text = f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])}\n"
-        if quelle:
-            text += ("  Even in this technique, keep the sources' own look: " + quelle
-                     + " Match their level of detail, their flatness or depth and their colour saturation.\n")
-    # Der Fehler, der im Vergleich am haeufigsten auftrat: die Umgebung wird tiefer, dunkler und
-    # fotografischer als die Karte, und dadurch bricht jede Kartenkante sichtbar.
-    text += ("- Do not make the painted areas more photorealistic, deeper, softer, darker or more "
-             "atmospheric than the finished part(s). What is painted stays the continuation of the "
-             "source scene; only how it is painted follows the technique above.\n")
-    return text
-
-
-def _eine_szene(passung):
-    """Gehören die Karten in EINEN Raum oder braucht jede ihre eigene Zone?
-
-    **Vorerst abgeschaltet** (`ARTWORK_SZENE=eins` schaltet ihn an). Gemessen an vier Läufen der
-    151er-Seite am 04.09.: der gemeinsame Raum verbindet die Karten sichtbar besser — eine
-    durchgehende Lichtung mit Bach, Tiefe von vorn nach hinten. Er verleitet das Bildmodell aber
-    zuverlässig dazu, die Pokémon der Karten ein zweites Mal mitten in die Szene zu malen; drei
-    von vier Läufen endeten so. Weder die Zählangabe („0 Kreaturen") noch das Herausretuschieren
-    haben das gehalten. Ein doppeltes Pokémon ist ein harter Fehler, drei getrennte Vignetten sind
-    nur mittelmäßig — deshalb bleibt bis zur Lösung der zurückhaltende Weg der Standard.
-
-    Die Zonen-Regel („jede Karte behält ihre eigene Umgebung") stammt vom 28.08. und war
-    richtig gegen den Matsch, der beim Verschmelzen dreier Szenen entstand. Sie ist aber der
-    Grund, warum drei Dschungelkarten als drei getrennte Vignetten enden statt als ein Bild:
-    sie verbietet die gemeinsame Szene ausdrücklich. Seit Maßstab und Maltechnik im Auftrag
-    stehen, entsteht der Matsch nicht mehr aus dem Verschmelzen, sondern kam aus den fehlenden
-    Ankern. Also: gleicher Lebensraum → ein Raum mit Tiefe. Sturmsee neben Vulkan → Zonen."""
-    if (_dep["env"]().get("ARTWORK_SZENE") or "zonen") != "eins":
-        return False
-    if not passung or passung.get("wert") is None:
-        return False
-    return passung["wert"] >= 70 and not passung.get("gruppen_konflikt")
-
-
-def _zonen_regeln(cols, rows, anker, namen, regie, eine_szene=False):
-    """Regeln für Seiten mit mehreren Karten.
-
-    `eine_szene=True`: ein durchgehender Raum, gestaffelt in die Tiefe (siehe `_tiefen`).
-    Sonst: jede Karte behält ihre eigene Umgebung, überblendet wird nur an den Grenzen —
-    das ist der Fall für Karten aus unvereinbaren Lebensräumen."""
-    if eine_szene:
-        text = (
-            "- SEVERAL SOURCES, ONE SCENE: these illustrations show the same kind of place. Do not give "
-            "each of them its own separate little world with a border between them. Paint ONE single "
-            "continuous location that all of them are part of, seen from one viewpoint, with one light "
-            "direction and one weather. The ground, the water, the canopy and the light run without "
-            "interruption from one source to the next.\n"
-            "- Where the space between two sources is wide, fill it with the scene itself – a path, a "
-            "bank, a slope, a stream, a fallen trunk, open ground – so the eye travels from one source "
-            "to the other through the place, not across a gap.\n"
-            "- Keep one consistent perspective for the whole page. The sources sit at different depths "
-            "in it (see the staging below); everything you paint has to agree with that depth.\n"
-            "- What you paint is the LOCATION only: plants, water, ground, rock, wood, sky, light and "
-            "weather. One scene does not mean the creatures step out into it – everything alive on this "
-            "page is already inside the rectangles, and the gray areas receive 0 of them.\n")
-        if regie:
-            text += "- Follow this composition plan for the new areas:\n" + regie.strip() + "\n"
-        return text
+def _zonen_regeln(cols, rows, anker, namen, regie):
+    """Regeln für Seiten mit mehreren Karten: jede Karte behält ihre eigene Umgebung, überblendet wird
+    nur an den Grenzen. Der Versuch, alle Szenen zu einer zu verschmelzen, ergab Matsch."""
     zone, _ = _zonen(cols, rows, anker)
     orte = {}
     for slot, cid in zone.items():
@@ -1169,62 +599,42 @@ def _zonen_regeln(cols, rows, anker, namen, regie, eine_szene=False):
 # Die Nachkontrolle sucht bisher nach Gitterlinien und doppelten Kreaturen; der zweite
 # Kartenrahmen gehoert in dieselbe Liste.
 PRUEF_PROMPT = (
-    "You are a strict art director checking an 'extended art' page for a card collector.\n"
-    "IMAGE 1 is the TEMPLATE: it shows the finished source illustrations at exactly the positions they "
-    "occupy on the page; every gray area was still unpainted. IMAGE 2 is the finished page: the gray areas "
-    "were painted so that each source continues seamlessly into its own surroundings.\n"
-    "The sources are scans of printed trading cards. Their frames, name plates, HP numbers, attack text, "
-    "symbols, holo overlay and straight rectangular edges are EXPECTED and are never a problem. Judge ONLY "
-    "the areas that are gray in IMAGE 1.\n"
-    "Check strictly, in the painted areas only:\n"
-    "1. EDGES: at every edge of every source, do the background elements continue consistently – same lines, "
-    "angles and heights (a shoreline, horizon, branch, wall, beam of light continuing exactly where it leaves "
-    "the source)? Name every element that breaks, bends, jumps or ends abruptly, and say at which source.\n"
-    "2. SCALE: are objects painted at the same real-world size as objects of the same kind inside the sources? "
-    "A leaf, stone, flower or trunk outside must not be several times larger or smaller than inside.\n"
-    "3. CREATURE – the worst failure, look hardest here: take each source's creature and follow its outline "
-    "to the edge of its rectangle. Does any part of its body carry on beyond that edge into the painted "
-    "area – ears, horns, wings, tail, limbs, claws, fur, spikes, ribbons, energy aura or glow – as if the "
-    "creature were bigger than its rectangle? Is it painted a second time anywhere, at any size, whole or "
-    "partial, as shadow, reflection, silhouette or abstract shape in its colours? Any of this is always "
-    "ok=false and always schwer=true, even when it looks beautiful.\n"
-    "4. CARD ELEMENTS – count them: IMAGE 1 shows a fixed number of source rectangles. Count the "
-    "card-like rectangles in IMAGE 2 (anything with a border and a name, a number or a text box). If "
-    "IMAGE 2 has MORE of them than IMAGE 1, a second card was painted into a gray area – say how many "
-    "and where. Also report a single new name plate, HP number, attack text box, energy/set/rarity "
-    "symbol or illustrator credit in a formerly gray area. The sources themselves never count here.\n"
-    "5. LOOK: do technique, palette, level of detail and light direction of the painted areas match the "
-    "sources, or did they become more photorealistic, deeper, darker or softer?\n"
-    "6. Are there frames, straight seams, tiles, panels, text, or remaining gray areas?\n"
-    'Answer with JSON only: {"ok": true|false, "schwer": true|false, "probleme": ["concrete problem with '
-    'location", ...]}.\n'
-    '"ok" is false as soon as you find anything from 1-6. "schwer" is true ONLY for something that can '
-    "be removed or that ruins the page: a duplicated or continued creature, an extra card-like "
-    "rectangle or any newly painted card element, or remaining gray areas. Broken edges, mismatched "
-    "scale, technique, palette or softness are reported but are NEVER schwer – repainting does not "
-    "reliably fix them and only costs money."
+    "You are a strict art director checking an 'extended art' painting. IMAGE 1 is the source: the illustration of "
+    "a trading card (it may include the card's frame, name, text boxes and symbols – that is expected and NOT a "
+    "problem; a real card will cover that area later). IMAGE 2 is a larger painting into which the source was "
+    "embedded (at its center); everything around it was painted to continue the source's SCENE. Judge only the "
+    "painted surroundings, never the card itself, its frame, its text or the straight edges of the card rectangle.\n"
+    "Check strictly:\n"
+    "1. At every edge of the embedded source, do the background elements continue consistently – same lines, angles "
+    "and heights (e.g. a pool edge, horizon, wall, railing, shoreline, beam of light continuing exactly where it "
+    "leaves the source)? Name every element that breaks, bends, jumps or ends abruptly.\n"
+    "2. Is the source's creature painted again or CONTINUED outside the source? Look especially for its body "
+    "carrying on past the card edge (ears, horns, wings, tail, limbs, fur, spikes, aura) as if the creature were "
+    "bigger than the card – that is the worst failure and always means ok=false. Also check for a second copy at "
+    "any size, as shadow, reflection, silhouette or abstract shape in its colours.\n"
+    "3. Are there frames, borders, straight seams, tiles, panels, text, or gray areas?\n"
+    "4. Is any CARD element repeated in the painted area – a second card frame or rounded rectangle, another name "
+    "plate, HP number, attack or rules text, energy/set/rarity symbol, illustrator credit? The source card's own "
+    "print is fine; a copy of it anywhere in the surroundings always means ok=false.\n"
+    "5. Does the extension keep perspective, light direction, palette and painting technique of the source?\n"
+    'Answer with JSON only: {"ok": true|false, "probleme": ["concrete problem with location", ...]}. '
+    "ok is true unless the surroundings clearly fail to continue the scene (minor softness, the card's own frame, "
+    "text or rectangular edge are never problems)."
 )
 
 
-def _pruefen(vorlage: Image.Image, ergebnis: Image.Image):
-    """→ (ok, schwer, probleme, kosten) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht).
-
-    `vorlage` ist die Vorlage der ganzen Seite: alle Illustrationen an ihrer echten Position,
-    alles Übrige grau. Bis zum 04.09.2026 bekam der Prüfer stattdessen EINE einzelne
-    Kartenillustration und den Satz, sie sitze in der Mitte — die übrigen echten Karten der Seite
-    hielt er folglich für hineingemalte Kartenrahmen. Gemessen über alle Läufe: 25 von 29
-    Beanstandungen bei Mehrkarten-Seiten waren genau dieser Fehlalarm, und jede davon hat die
-    Seite ein zweites Mal malen lassen (0,27 $ statt 0,13 $)."""
+def _pruefen(quelle: Image.Image, ergebnis: Image.Image):
+    """→ (ok, probleme) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht)."""
     try:
-        v = vorlage.copy(); v.thumbnail((1024, 1024))
+        q = quelle.copy(); q.thumbnail((768, 768))
         e = ergebnis.copy(); e.thumbnail((1024, 1024))
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
             "messages": [{"role": "user", "content": [
                 {"type": "text", "text": PRUEF_PROMPT},
-                {"type": "text", "text": "IMAGE 1 – template (gray = was unpainted):"},
-                {"type": "image_url", "image_url": {"url": _data_url(v, "JPEG")}},
-                {"type": "text", "text": "IMAGE 2 – finished page:"},
+                {"type": "text", "text": "IMAGE 1 – source:"},
+                {"type": "image_url", "image_url": {"url": _data_url(q, "JPEG")}},
+                {"type": "text", "text": "IMAGE 2 – extended painting:"},
                 {"type": "image_url", "image_url": {"url": _data_url(e, "JPEG")}},
             ]}],
             "response_format": {"type": "json_object"},
@@ -1234,10 +644,9 @@ def _pruefen(vorlage: Image.Image, ergebnis: Image.Image):
         text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
         j = json.loads(text)
         probleme = [str(x)[:200] for x in (j.get("probleme") or [])][:6]
-        ok = bool(j.get("ok")) or not probleme
-        return ok, (not ok and bool(j.get("schwer"))), probleme, float((d.get("usage") or {}).get("cost") or 0)
+        return bool(j.get("ok")) or not probleme, probleme, float((d.get("usage") or {}).get("cost") or 0)
     except Exception:
-        return True, False, [], 0.0
+        return True, [], 0.0
 
 
 # --- Stufe C: Wunsch-Pokémon als Bearbeitung des fertigen Bilds ------------------------------------
@@ -1275,44 +684,6 @@ def _pokemon_teile(seite_canvas: Image.Image, pokemon, regionen, stil, namen_kre
 
 
 # --- Geometrie-Helfer für die Stufen ---------------------------------------------------------------
-
-REPARATUR_PROMPT = (
-    "Retouch this finished painting. Keep EVERYTHING exactly as it is – same composition, same "
-    "colours, same brushwork, same light, same level of detail, the same rectangular card scans "
-    "untouched and in the same place. Change only the spots listed below, and change nothing else. "
-    "At each of those spots, paint over the offending object with the surroundings it stands in: "
-    "continue the plants, water, ground, rock or sky that are already around it, in the same "
-    "technique and the same scale, so that afterwards nothing is there but the location itself and "
-    "nobody can tell that something was removed.\n"
-    "Spots to fix:\n{probleme}\n"
-    "Output the same image at the same dimensions, with only those spots changed."
-)
-
-
-def _reparatur_teile(seite: Image.Image, probleme):
-    """Einen benannten Fehler aus dem fertigen Bild herausretuschieren, statt neu zu würfeln.
-
-    Ein zweiter vollständiger Lauf kostet dasselbe wie diese Bearbeitung, wirft aber die gelungene
-    Komposition weg und beginnt von vorn — gemessen an drei Läufen der 151er-Seite: der Aufbau war
-    jedes Mal gut, verdorben hat ihn ein zweites Exemplar einer Kreatur. Das lässt sich gezielt
-    übermalen."""
-    liste = "\n".join(f"- {p}" for p in probleme[:4])
-    return [
-        {"type": "text", "text": REPARATUR_PROMPT.replace("{probleme}", liste)},
-        {"type": "image_url", "image_url": {"url": _data_url(seite)}},
-    ]
-
-
-def _reparierbar(probleme):
-    """Lässt sich der Mangel wegretuschieren? Ein doppeltes Wesen oder ein gemalter Kartenrahmen ja;
-    ein falscher Maßstab über die halbe Seite nicht — dafür braucht es einen neuen Lauf."""
-    text = " ".join(probleme).lower()
-    treffer = ("painted a second time", "second copy", "duplicat", "again in the", "added in the",
-               "extra card", "another card", "second card", "card frame", "name plate", "text box",
-               "a painted", "is painted", "continues into", "continues directly", "continued",
-               "extends into", "extending", "spans across", "sweeping across", "giant ")
-    return any(t in text for t in treffer)
-
 
 def _canvas_fuer(w, h, groesse):
     """Leinwand im nächstgelegenen Modell-Seitenverhältnis für eine Region w×h → (cw, ch, skala, box)."""
@@ -1393,18 +764,6 @@ def kachel_reader(artwork_id, slot):
     return ImageReader(buf)
 
 
-def _modell_fuer(anker, e=None):
-    """Welches Bildmodell für diese Seite? Mehrere Karten → das stärkere.
-
-    `ARTWORK_MODELL` überschreibt beides, `ARTWORK_MEHRKARTEN_MODELL` nur den Mehrkarten-Fall."""
-    e = e if e is not None else _dep["env"]()
-    if e.get("ARTWORK_MODELL"):
-        return e["ARTWORK_MODELL"]
-    if len(set((anker or {}).values())) > 1:
-        return e.get("ARTWORK_MEHRKARTEN_MODELL") or MEHRKARTEN_MODELL
-    return STANDARD_MODELL
-
-
 def _modell_aufruf(teile, modell, ar, groesse):
     d = _openrouter({
         "model": modell,
@@ -1453,11 +812,6 @@ def _job(artwork_id):
             if r:
                 namen[cid] = r["name_en"] or r["name_de"]
             a = _analyse(cid, lang)
-            # Maßstab: je Karte einmal gemessen (≈ 0,8 ct) und dauerhaft gespeichert. Ohne ihn
-            # malt das Modell die Umgebung in einem beliebigen Zoom — der häufigste Grund dafür,
-            # dass eine Seite auseinanderfällt.
-            a, km = _massstab(cid, lang, a)
-            kosten += km
             analysen[cid] = a
             kosten += float((a or {}).get("_kosten") or 0)
             crop, _ = _illustration(cid, lang, a)
@@ -1465,36 +819,15 @@ def _job(artwork_id):
                 crop = crop.copy(); crop.thumbnail((1024, 1024))
                 bilder[cid] = crop
         con.close()
-        # Passt die Auswahl zusammen? Die Antwort steht in den Bildmotiv-Daten und geht in
-        # den Regie-Plan; der Nutzer sieht sie schon vor dem Start (/api/artwork/passung).
-        passung = _passung(list(anker.values()), namen, slots=list(anker.keys()), cols=cols, rows=rows)
-        if passung.get("wert") is not None:
-            schritte.append({"passung": passung["wert"], "gemeinsam": passung["gemeinsam"],
-                             "konflikte": passung["konflikte"], "hinweise": passung.get("hinweise") or []})
-        # Den Wunsch des Sammlers vor dem Bildmodell schärfen
-        if wunsch:
-            wunsch_roh = wunsch
-            wunsch, kw = _wunsch_scharf(wunsch, passung.get("gemeinsam") or "")
-            kosten += kw
-            if wunsch != wunsch_roh:
-                schritte.append({"wunsch_roh": wunsch_roh, "wunsch": wunsch})
-        # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten.
-        # Sie entsteht vor dem Regie-Plan, weil der Plan sie sehen soll.
-        vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
-        # Gehören die Karten in EINEN Raum (gleicher Lebensraum) oder braucht jede ihre eigene
-        # Zone? Davon hängt ab, ob die Seite als eine Szene mit Tiefe geplant wird.
-        eine_szene = _eine_szene(passung)
-        material = _material(list(anker.values()))
-        if material:
-            schritte.append({"material": material})
-        # Regie-Plan bei mehreren Karten (billiger Schritt, jetzt mit Blick auf die Seite)
-        regie = None
+        # Regie-Plan bei mehreren Karten (billiger Textschritt, verhindert den „alles-verschmolzen“-Matsch)
+        regie = ""
         if len(dict.fromkeys(anker.values())) > 1:
-            regie, kr = _regie(cols, rows, anker, namen, analysen, passung,
-                               vorlage=vorlage.crop(geo["seite"]), bilder=bilder)
+            regie, kr = _regie(cols, rows, anker, namen, analysen)
             kosten += kr
             if regie:
-                schritte.append({"drehbuch": regie})
+                schritte.append({"regie": regie})
+        # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten
+        vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
         px0, py0, px1, py1 = geo["seite"]
         sw, sh = px1 - px0, py1 - py0
         fenster_seite = {k: (v[0] - px0, v[1] - py0, v[2] - px0, v[3] - py0) for k, v in fenster.items()}
@@ -1521,20 +854,19 @@ def _job(artwork_id):
                     bx1 = ax0 + round((box[2] - R[0]) * k); by1 = ay0 + round((box[3] - R[1]) * k)
                     canvas_a.paste(crop.resize((max(1, bx1 - bx0), max(1, by1 - by0)), Image.LANCZOS), (bx0, by0))
                 feedback = ""
-                vorlage_a = canvas_a.crop(geo_a["seite"]).resize((rw, rh), Image.LANCZOS)
+                quelle = next(iter(bilder.values()))
                 for versuch in range(2):
                     teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_a, bilder, [],
-                                          feedback, regie, eine_szene, material)
+                                          feedback, regie)
                     erg, kk, modell_a = _modell_aufruf(teile, modell, geo_a["ar"], groesse)
                     kosten += kk
                     if erg.size != (geo_a["cw"], geo_a["ch"]):
                         erg = erg.resize((geo_a["cw"], geo_a["ch"]), Image.LANCZOS)
                     stufe_a = erg.crop(geo_a["seite"]).resize((rw, rh), Image.LANCZOS)
-                    ok, schwer, probleme, kp = _pruefen(vorlage_a, stufe_a)
+                    ok, probleme, kp = _pruefen(quelle, stufe_a)
                     kosten += kp
-                    schritte.append({"stufe": "A", "versuch": versuch + 1, "ok": ok, "schwer": schwer,
-                                     "probleme": probleme})
-                    if ok or not schwer or versuch == 1:
+                    schritte.append({"stufe": "A", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
+                    if ok or versuch == 1:
                         break
                     feedback = "; ".join(probleme)
                 stufe_a_box = R
@@ -1554,63 +886,24 @@ def _job(artwork_id):
         # Fall ausdrücklich (Regel 2 im Prüf-Prompt) und kostet rund 0,5 ct. Eine einzige
         # Wiederholung, und nur wenn die Prüfung wirklich etwas findet — sonst würde ein
         # Fehlurteil jede Seite verdoppeln.
-        # Geprüft wird gegen die Vorlage der ganzen Seite, und wiederholt nur bei schweren Mängeln
-        # (verdoppelte Kreatur, neu gemalte Kartenelemente, graue Reste, harte Naht). Stil und
-        # Weichzeichnung allein lösen keinen zweiten Lauf mehr aus: er behebt sie nicht, er würfelt
-        # neu — und kostet 13 Cent. Der zweite Versuch wird selbst geprüft; ist er nicht besser,
-        # bleibt der erste.
-        vorlage_seite = canvas_b.crop(geo["seite"])
-
-        def _geprueft(bild):
-            """Vor der Kontrolle die echten Kartenscans einsetzen.
-
-            Ohne sie beurteilt der Prüfer die vom Modell übermalten Karten und meldet, die
-            Kreaturen seien „verschwunden" oder verändert — beides trifft auf das fertige Bild
-            nicht zu, weil die Scans darübergelegt werden. Der Lauf mit Nano Banana Pro am
-            04.09. bestand fast nur aus solchen Scheinmängeln."""
-            k = bild.copy()
-            _karten_einsetzen(k, anker, cols, geo, lang, offset=(px0, py0))
-            return k
-        feedback_b, seite, bester = "", None, None
+        feedback_b, seite = "", None
         for versuch in range(2):
             teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
-                                  [] if stufen else pokemon, feedback_b, regie, eine_szene, material)
+                                  [] if stufen else pokemon, feedback_b, regie)
             erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
             kosten += kk
             if erg.size != (geo["cw"], geo["ch"]):
                 erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
             seite = erg.crop(geo["seite"])
-            if stufen or not bilder:
+            if stufen or versuch or not bilder:
                 schritte.append({"stufe": "B", "versuch": versuch + 1})
                 break
-            ok, schwer, probleme, kp = _pruefen(vorlage_seite, _geprueft(seite))
+            ok, probleme, kp = _pruefen(next(iter(bilder.values())), seite)
             kosten += kp
-            schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "schwer": schwer,
-                             "probleme": probleme})
-            if bester is None or ok or len(probleme) < len(bester[1]):
-                bester = (seite, probleme, ok)
-            if ok or not schwer or versuch == 1:
-                break
-            # Ein benanntes Objekt zu viel — ein zweites Exemplar, ein über die Kante fortgesetztes
-            # Körperteil, ein gemalter Kartenrahmen — wird herausretuschiert statt die ganze Seite
-            # neu zu würfeln. Der Aufbau war in den Vergleichsläufen jedes Mal gut; verdorben hat
-            # ihn genau dieses eine Objekt. Kostet denselben einen Bildaufruf, behält aber die
-            # gelungene Komposition. Danach ist Schluss: höchstens zwei Bildaufrufe je Seite,
-            # entweder Reparatur oder ein zweiter Lauf, nie beides.
-            if _reparierbar(probleme):
-                erg, kk, _ = _modell_aufruf(_reparatur_teile(seite, probleme), modell, geo["ar"], groesse)
-                kosten += kk
-                if erg.size != seite.size:
-                    erg = erg.resize(seite.size, Image.LANCZOS)
-                ok2, schwer2, probleme2, kp2 = _pruefen(vorlage_seite, _geprueft(erg))
-                kosten += kp2
-                schritte.append({"stufe": "R", "ok": ok2, "schwer": schwer2, "probleme": probleme2})
-                if ok2 or len(probleme2) < len(probleme):
-                    bester = (erg, probleme2, ok2)
+            schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
+            if ok:
                 break
             feedback_b = "; ".join(probleme)
-        if bester is not None:
-            seite = bester[0]
         if stufe_a is not None:   # Stufe A weich zurücksetzen – sie ist die geometrisch genauere Fassung
             referenz = seite.crop(stufe_a_box)
             angeglichen = _farben_angleichen(stufe_a, referenz)
@@ -1816,27 +1109,6 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "preis_max": _dep["abo"].ARTWORK_MAX,
                 "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
 
-    @app.get("/api/artwork/passung")
-    def artwork_passung(request: Request, ids: str = "", slots: str = "", layout: str = "3x3"):
-        """Passen diese Karten auf eine Seite? Antwort vor dem Ausgeben der Credits.
-
-        Grundlage sind die Bildmotiv-Daten (Ort, Tageszeit, Wasser) aus `card_art_tags`, dazu der
-        gespeicherte Maßstab je Karte und die Lage der Fächer. Kostet nichts: es wird nur gelesen."""
-        liste = [x.strip() for x in ids.split(",") if x.strip()][:12]
-        faecher = [x.strip() for x in slots.split(",") if x.strip().isdigit()][:12]
-        try:
-            sp, ze = [int(v) for v in str(layout).split("x")]
-        except Exception:
-            sp, ze = 3, 3
-        if len(liste) < 2:
-            return {"wert": None, "gemeinsam": "", "konflikte": [], "karten": []}
-        con = get_db()
-        marken = ",".join("?" * len(liste))
-        namen = {r["id"]: (r["name_de"] or r["name_en"] or r["id"]) for r in con.execute(
-            f"SELECT id, name_de, name_en FROM cards WHERE id IN ({marken})", liste)}
-        con.close()
-        return _passung(liste, namen, slots=faecher, cols=sp, rows=ze)
-
     @app.post("/api/artwork")
     async def artwork_start(request: Request):
         user = require_user(request)
@@ -1898,7 +1170,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "sprache,modell,groesse,status,credits)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft',?)",
                 (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch,
-                 json.dumps(pokemon), sprache, _modell_fuer(anker, e),
+                 json.dumps(pokemon), sprache, e.get("ARTWORK_MODELL") or STANDARD_MODELL,
                  groesse, kosten_credits),
             )
             con.commit()
@@ -1981,7 +1253,8 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
         con = get_db()
         # Der Titel bleibt, wenn keiner mitkommt: Zurückziehen schickt nur `oeffentlich:
         # false` — vorher löschte das den Titel, und beim nächsten Freigeben stand das Feld
-        # wieder leer da.
+        # wieder leer da. (Einzige Änderung, die aus der Runde vom 04.09. erhalten bleibt —
+        # sie betrifft die Freigabe, nicht das Malen.)
         con.execute("UPDATE artworks SET oeffentlich = ?, titel = COALESCE(?, titel),"
                     " veroeffentlicht_at = COALESCE(veroeffentlicht_at, datetime('now'))"
                     " WHERE id = ?", (1 if an else 0, titel or None, artwork_id))
