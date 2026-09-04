@@ -8,3 +8,6 @@ backups/
 wacht.log
 backup.log
 cardmarket/
+
+# Sicherungskopien der .env enthalten Schlüssel und gehören nie ins Repo
+.env.bak*

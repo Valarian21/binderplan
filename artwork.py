@@ -50,6 +50,12 @@ MAX_POKEMON = 3
 TAGESLIMIT_USD = 25.0
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
+# Seiten mit mehreren Karten sind der schwere Fall: dort muss eine Landschaft mehrere Fenster
+# verbinden, ohne eine Kreatur zu verdoppeln. Gemessen am 04.09. an derselben Seite in der
+# ungünstigen Anordnung: Flash brauchte beide Male einen Reparaturlauf (0,32 $), Pro lief auf
+# Anhieb sauber durch (0,26 $). Bei einer einzelnen Karte bleibt Flash — dort genügt es und
+# kostet die Hälfte. Preis je Bild-Token: Flash 0,00006 $, Pro 0,00012 $.
+MEHRKARTEN_MODELL = "google/gemini-3-pro-image"       # Nano Banana Pro
 STANDARD_GROESSE = "2K"
 # Modus: "schnell" = Analyse + ein Malschritt (~0,12 $), "stufen" = Ring → Kontrolle → Seite → Pokémon-Edit
 # (~0,33–0,46 $). Die Stufen brachten im Vergleich keinen sichtbaren Mehrwert (28.08.) – Standard ist "schnell";
@@ -1192,11 +1198,11 @@ PRUEF_PROMPT = (
     "6. Are there frames, straight seams, tiles, panels, text, or remaining gray areas?\n"
     'Answer with JSON only: {"ok": true|false, "schwer": true|false, "probleme": ["concrete problem with '
     'location", ...]}.\n'
-    '"ok" is false as soon as you find anything from 1-6. "schwer" is true ONLY for: a duplicated or '
-    "continued creature, an extra card-like rectangle or any newly painted card element, remaining gray "
-    "areas, or a hard seam / broken edge – "
-    "those are worth painting the page again. Mismatched technique, palette or softness alone are NOT "
-    "schwer: repainting does not reliably fix them and only costs money."
+    '"ok" is false as soon as you find anything from 1-6. "schwer" is true ONLY for something that can '
+    "be removed or that ruins the page: a duplicated or continued creature, an extra card-like "
+    "rectangle or any newly painted card element, or remaining gray areas. Broken edges, mismatched "
+    "scale, technique, palette or softness are reported but are NEVER schwer – repainting does not "
+    "reliably fix them and only costs money."
 )
 
 
@@ -1387,6 +1393,18 @@ def kachel_reader(artwork_id, slot):
     return ImageReader(buf)
 
 
+def _modell_fuer(anker, e=None):
+    """Welches Bildmodell für diese Seite? Mehrere Karten → das stärkere.
+
+    `ARTWORK_MODELL` überschreibt beides, `ARTWORK_MEHRKARTEN_MODELL` nur den Mehrkarten-Fall."""
+    e = e if e is not None else _dep["env"]()
+    if e.get("ARTWORK_MODELL"):
+        return e["ARTWORK_MODELL"]
+    if len(set((anker or {}).values())) > 1:
+        return e.get("ARTWORK_MEHRKARTEN_MODELL") or MEHRKARTEN_MODELL
+    return STANDARD_MODELL
+
+
 def _modell_aufruf(teile, modell, ar, groesse):
     d = _openrouter({
         "model": modell,
@@ -1542,6 +1560,17 @@ def _job(artwork_id):
         # neu — und kostet 13 Cent. Der zweite Versuch wird selbst geprüft; ist er nicht besser,
         # bleibt der erste.
         vorlage_seite = canvas_b.crop(geo["seite"])
+
+        def _geprueft(bild):
+            """Vor der Kontrolle die echten Kartenscans einsetzen.
+
+            Ohne sie beurteilt der Prüfer die vom Modell übermalten Karten und meldet, die
+            Kreaturen seien „verschwunden" oder verändert — beides trifft auf das fertige Bild
+            nicht zu, weil die Scans darübergelegt werden. Der Lauf mit Nano Banana Pro am
+            04.09. bestand fast nur aus solchen Scheinmängeln."""
+            k = bild.copy()
+            _karten_einsetzen(k, anker, cols, geo, lang, offset=(px0, py0))
+            return k
         feedback_b, seite, bester = "", None, None
         for versuch in range(2):
             teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
@@ -1554,7 +1583,7 @@ def _job(artwork_id):
             if stufen or not bilder:
                 schritte.append({"stufe": "B", "versuch": versuch + 1})
                 break
-            ok, schwer, probleme, kp = _pruefen(vorlage_seite, seite)
+            ok, schwer, probleme, kp = _pruefen(vorlage_seite, _geprueft(seite))
             kosten += kp
             schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "schwer": schwer,
                              "probleme": probleme})
@@ -1573,7 +1602,7 @@ def _job(artwork_id):
                 kosten += kk
                 if erg.size != seite.size:
                     erg = erg.resize(seite.size, Image.LANCZOS)
-                ok2, schwer2, probleme2, kp2 = _pruefen(vorlage_seite, erg)
+                ok2, schwer2, probleme2, kp2 = _pruefen(vorlage_seite, _geprueft(erg))
                 kosten += kp2
                 schritte.append({"stufe": "R", "ok": ok2, "schwer": schwer2, "probleme": probleme2})
                 if ok2 or len(probleme2) < len(probleme):
@@ -1869,7 +1898,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "sprache,modell,groesse,status,credits)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft',?)",
                 (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch,
-                 json.dumps(pokemon), sprache, e.get("ARTWORK_MODELL") or STANDARD_MODELL,
+                 json.dumps(pokemon), sprache, _modell_fuer(anker, e),
                  groesse, kosten_credits),
             )
             con.commit()
