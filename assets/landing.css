@@ -178,7 +178,9 @@
     .kunst-band { grid-template-columns: 1fr; padding: 20px; box-shadow: 6px 6px 0 var(--kontur); gap: 18px; }
     .kb-album { max-width: 100%; margin: 0; }
     .album.kb { gap: 6px; }
-    .kb-stand { padding: 0 40px; }
+    /* Stand und Titel untereinander: nebeneinander brachen beide auf je zwei Zeilen um. */
+    .kb-stand { padding: 0 40px; flex-direction: column; gap: 2px; text-align: center; }
+    .kb-stand #kb-titel { text-align: center; }
   }
   /* Handy: die Kunstseiten bleiben zu zweit nebeneinander — die Album-Regel weiter oben
      stapelt am Handy nur das Binder-Album auf eine Seite. */
@@ -187,28 +189,33 @@
     .album-seiten.kb .s-seite { padding: 3px; }
   }
 
-  /* ================= Hero-Fächer: drei gleich große Blätter =================
-     Drei Binderseiten im selben Maß (215×290 Einheiten, dunkler Rahmen), wie eine Hand
-     Karten aufgefächert: außen leicht gedreht und tiefer, die Kunstseite mittig obenauf. */
-  .hero { grid-template-columns: 1.25fr 1fr; }
-  .hero-fan-wrap { width: 100%; max-width: 520px; margin: 0 auto; }
-  .hero-fan { position: relative; width: 100%; padding-top: 92%; }
-  .hero { overflow: hidden; }
-  .hero-fan .fan { position: absolute; display: block; width: 52%; height: auto; border-radius: 12px;
-                   border: 2.5px solid var(--kontur); box-shadow: 6px 6px 0 var(--kontur); background: #14161a;
-                   transform-origin: 50% 100%; }
-  .hero-fan .links { left: 0; top: 12%; transform: rotate(-9deg); z-index: 1; }
-  .hero-fan .rechts { right: 0; top: 12%; transform: rotate(9deg); z-index: 2; background: #fff; }
-  .hero-fan .mitte { left: 24%; top: 0; z-index: 3; box-shadow: 8px 8px 0 var(--gelb); }
-  .hero-fan-lbl { display: flex; justify-content: space-between; gap: 6px; margin-top: 12px; }
-  .hero-fan-lbl span { font-size: 11.5px; font-weight: 800; letter-spacing: .02em; color: var(--kontur); background: #fff;
-                       border: 2px solid var(--kontur); border-radius: 999px; padding: 5px 10px; box-shadow: 2px 2px 0 var(--kontur);
-                       white-space: nowrap; }
+  /* ================= Hero-Fächer: drei gleich große Binderseiten =================
+     Eine Reihe aus drei gleich breiten Blättern, die sich an den Rändern überlappen — wie
+     eine Hand aufgefächerter Karten. Breiten sind Anteile der Reihe, die Überlappung ist
+     negativer Abstand: so passt der Fächer immer genau in seine Spalte, egal wie breit das
+     Fenster ist. Absolut positioniert stand er vorher im Text und wurde rechts abgeschnitten.
+     Vorrang bekommt die Mitte über Drehung und Schatten, nicht über die Größe — alle drei
+     Seiten sind gleich groß, weil sie dasselbe zeigen: eine Binderseite. */
+  .hero { grid-template-columns: 1.1fr 1fr; align-items: center; }
+  .hero h1 { text-wrap: balance; }
+  .hero-fan-wrap { width: 100%; max-width: 560px; margin: 0 auto; }
+  .hero-fan { display: flex; align-items: flex-start; justify-content: center; padding-top: 5%; }
+  .hero-fan .fan { position: relative; display: block; height: auto; flex: 0 0 44%; width: 44%;
+                   border-radius: 11px; border: 2.5px solid var(--kontur); background: #14161a; }
+  .hero-fan .links, .hero-fan .rechts { margin-top: 7%; box-shadow: 5px 5px 0 var(--kontur); z-index: 1; }
+  .hero-fan .links { transform: rotate(-7deg); margin-right: -16%; }
+  .hero-fan .rechts { transform: rotate(7deg); margin-left: -16%; background: #fff; }
+  .hero-fan .mitte { z-index: 3; box-shadow: 7px 7px 0 var(--gelb); }
+  /* Je Blatt eine Beschriftung, in denselben drei Spalten wie die Bilder darüber. */
+  .hero-fan-lbl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 14px; }
+  .hero-fan-lbl span { font-size: 11.5px; font-weight: 800; text-align: center; color: var(--kontur);
+                       background: #fff; border: 2px solid var(--kontur); border-radius: 999px;
+                       padding: 5px 6px; box-shadow: 2px 2px 0 var(--kontur); }
   .hero-fan-lbl span.m { background: var(--gelb); }
+  @media (max-width: 900px) {
+    .hero-fan-lbl span { font-size: 10.5px; padding: 4px 5px; }
+  }
   @media (max-width: 800px) {
     .hero { grid-template-columns: 1fr; }
-    .hero-fan-wrap { max-width: 360px; }
-    .hero-fan { padding-top: 96%; }
-    .hero-fan-lbl { flex-wrap: wrap; justify-content: center; }
-    .hero-fan-lbl span { font-size: 10.5px; padding: 4px 8px; }
+    .hero-fan-wrap { max-width: 430px; }
   }
