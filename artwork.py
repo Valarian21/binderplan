@@ -623,15 +623,29 @@ PRUEF_PROMPT = (
 )
 
 
-def _pruefen(quelle: Image.Image, ergebnis: Image.Image):
-    """→ (ok, probleme) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht)."""
+# Mehrkarten-Seiten: Quelle ist die ganze Vorlage (alle Fenster an ihrer Position), nicht eine
+# einzelne Illustration. Mit einer Einzelquelle hielt der Prüfer die übrigen echten Karten für
+# hineingemalte Kartenrahmen – 65 % der Mehrkarten-Läufe wurden beanstandet und noch einmal
+# gemalt (gemessen 06.09.2026 über 51 Läufe), gegen 25 % bei einer Karte.
+PRUEF_MEHRERE = (
+    "\nNOTE FOR THIS PAGE: IMAGE 1 shows the layout of the page: {n} finished source illustrations at their "
+    "positions on gray. In IMAGE 2 each of these {n} positions now shows the COMPLETE printed trading card "
+    "(frame, name plate, text boxes, symbols) – that is expected and never a problem. Only a card frame, text "
+    "or rounded rectangle OUTSIDE these {n} positions counts as a problem. Judge only the painted areas "
+    "between and around the {n} cards."
+)
+
+
+def _pruefen(quelle: Image.Image, ergebnis: Image.Image, anzahl=1):
+    """→ (ok, probleme, kosten) – bei Modellfehlern gilt das Bild als ok (kein Retry auf Verdacht)."""
     try:
         q = quelle.copy(); q.thumbnail((768, 768))
         e = ergebnis.copy(); e.thumbnail((1024, 1024))
+        prompt = PRUEF_PROMPT + (PRUEF_MEHRERE.format(n=anzahl) if anzahl > 1 else "")
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_ANALYSE_MODELL") or ANALYSE_MODELL,
             "messages": [{"role": "user", "content": [
-                {"type": "text", "text": PRUEF_PROMPT},
+                {"type": "text", "text": prompt},
                 {"type": "text", "text": "IMAGE 1 – source:"},
                 {"type": "image_url", "image_url": {"url": _data_url(q, "JPEG")}},
                 {"type": "text", "text": "IMAGE 2 – extended painting:"},
@@ -898,7 +912,14 @@ def _job(artwork_id):
             if stufen or versuch or not bilder:
                 schritte.append({"stufe": "B", "versuch": versuch + 1})
                 break
-            ok, probleme, kp = _pruefen(next(iter(bilder.values())), seite)
+            # Geprüft wird die Seite MIT eingesetzten Kartenscans gegen die Vorlage der ganzen
+            # Seite – so sieht der Prüfer, wo Karten hingehören, statt sie zu beanstanden.
+            if len(dict.fromkeys(anker.values())) > 1:
+                zum_pruefen = seite.copy()
+                _karten_einsetzen(zum_pruefen, anker, cols, geo, lang, offset=(px0, py0))
+                ok, probleme, kp = _pruefen(vorlage.crop(geo["seite"]), zum_pruefen, len(dict.fromkeys(anker.values())))
+            else:
+                ok, probleme, kp = _pruefen(next(iter(bilder.values())), seite)
             kosten += kp
             schritte.append({"stufe": "B", "versuch": versuch + 1, "ok": ok, "probleme": probleme})
             if ok:
