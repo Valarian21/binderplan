@@ -5300,12 +5300,27 @@ def datetime_str_vor(stunden):
 
 # --- Bild-Cache -------------------------------------------------------------
 
+# Ein gemeinsamer Client für alle Bildabrufe: hält die TLS-Verbindung offen (eine Seite
+# lädt bis zu 60 Bilder) und erzwingt IPv4. Grund: assets.tcgdex.net hat einen
+# AAAA-Eintrag, der auf diesem Server keine TLS-Verbindung annimmt. Der synchrone
+# httpx-Client probiert die Adressen der Reihe nach und wartet die volle Zeitgrenze ab —
+# jedes noch nicht zwischengespeicherte Kartenbild kostete dadurch 30 s, und ab 40
+# gleichzeitigen Abrufen stand die ganze App (Threadpool voll). Zusätzlich steht die
+# Reihenfolge systemweit in /etc/gai.conf; hier noch einmal, damit es einen Serverumzug
+# überlebt.
+_BILD_CLIENT = httpx.Client(
+    transport=httpx.HTTPTransport(local_address="0.0.0.0", retries=1),
+    timeout=12, headers=UA, follow_redirects=True,
+    limits=httpx.Limits(max_connections=24, max_keepalive_connections=12),
+)
+
+
 def _fetch_asset(urls, target: Path):
     for url in urls:
         if not url:
             continue
         try:
-            r = httpx.get(url, timeout=30, headers=UA, follow_redirects=True)
+            r = _BILD_CLIENT.get(url)
             if r.status_code == 200 and r.content:
                 # Erst daneben schreiben, dann umbenennen: ein Abbruch mittendrin hinterließ
                 # sonst eine kaputte Datei, die wegen des immutable-Headers ewig ausgeliefert wird.
