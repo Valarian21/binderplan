@@ -3380,7 +3380,10 @@ def _aufraeumen_job():
 # Obergrenzen für den Bild-Cache (MB). Karten-/Sprite-Bilder sind jederzeit nachladbar,
 # deshalb dürfen die ältesten weg, sobald es eng wird. Artwork-Bilder gehören Nutzern und
 # werden hier nie angefasst — die verschwinden nur mit dem Artwork oder dem Konto.
-CACHE_GRENZEN = {"cards/low": 400, "cards/high": 600, "cards/print": 400, "dex": 200, "sym": 50}
+# Seit 06.09.2026 so bemessen, dass der ganze Katalog in beiden Sprachen hineinpasst
+# (33.746 Karten: low ≈ 25 KB, high ≈ 85 KB je Bild) — bei 144 GB freier Platte gab es
+# keinen Grund, bei 400 MB die ältesten Bilder wieder wegzuwerfen und neu zu holen.
+CACHE_GRENZEN = {"cards/low": 2500, "cards/high": 6500, "cards/print": 2000, "dex": 200, "sym": 50}
 
 
 def _cache_job():
