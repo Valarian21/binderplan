@@ -328,6 +328,22 @@ def _vorlage(anker, cols, rows, geo, lang, analysen):
             bx0, by0, bx1, by1 = x0, y0, x1, y1
         img.paste(crop.resize((max(1, bx1 - bx0), max(1, by1 - by0)), Image.LANCZOS), (bx0, by0))
         fenster[slot] = (bx0, by0, bx1, by1)
+        # Vollbildkarten tragen Namensleiste, Attackentext und Fußzeile IM Fenster. Bleiben sie
+        # stehen, hält das Modell die Karte für einen Gegenstand und malt Rahmen, falschen Maßstab
+        # und Figuren (Messung 08.09.: dieselbe Seite mit grauen Aufdrucken war klar besser).
+        # Die Kästen kommen knapp aus der Vision-Erkennung des Masken-Moduls (gecacht je Karte);
+        # der echte Scan deckt sie am Ende sowieso wieder ab.
+        try:
+            import artwork_maske
+            if artwork_maske._hat_aufdrucke(analysen.get(card_id)):
+                boxen, _ = artwork_maske.aufdruck_boxen(card_id, lang)
+                fw, fh = x1 - x0, y1 - y0
+                for ymin, xmin, ymax, xmax in boxen:
+                    rand = 0.003
+                    img.paste((128, 128, 128), (x0 + round((xmin / 1000 - rand) * fw), y0 + round((ymin / 1000 - rand) * fh),
+                                                x0 + round((xmax / 1000 + rand) * fw), y0 + round((ymax / 1000 + rand) * fh)))
+        except Exception:
+            pass
     return img, fenster
 
 
@@ -528,6 +544,11 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
         + ("s" if mehrere else "") + ". "
         f"Creatures allowed in the new areas: {erlaubt}. Everything else outside is only the world the scene lives in.\n"
+        # Maßstab: ohne diesen Satz malt das Modell bei Einzelkarten die Kartenszene als Nahaufnahme
+        # nach (Mew-Seite 07./08.09.); mit ihm stimmten die Größen im Test auf Anhieb.
+        "- Keep the world at the same size as inside the finished part" + ("s" if mehrere else "") + ": a house, "
+        "a leaf, a pond, a rock or a wave outside is exactly as big as the same thing inside. Never zoom in or out, "
+        "never repaint the finished part's own scene larger next to it.\n"
         "- Continue the surroundings: what is cut off at the edges of the finished part continues exactly there, at the "
         "same height and angle; then more of the same landscape / sky / water / ground, atmosphere and depth. Keep it "
         "calm – the source stays the most detailed and most important area.\n"
@@ -900,11 +921,19 @@ def _job(artwork_id):
         # Fall ausdrücklich (Regel 2 im Prüf-Prompt) und kostet rund 0,5 ct. Eine einzige
         # Wiederholung, und nur wenn die Prüfung wirklich etwas findet — sonst würde ein
         # Fehlurteil jede Seite verdoppeln.
+        # Genau EIN Malversuch (Marcel, 08.09.): der zweite Lauf hat in 62 von 77 Fällen die Kosten
+        # verdoppelt und nie ein nachweislich besseres Bild gebracht. Die Kontrolle läuft weiter,
+        # aber nur noch als Protokoll. Wiederholt wird ausschließlich, wenn das Modell gar kein
+        # Bild geliefert hat (Textantwort) – das ist ein technischer Aussetzer, kein Qualitätsurteil.
         feedback_b, seite = "", None
-        for versuch in range(2):
+        for versuch in range(1):
             teile = _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, canvas_b, bilder,
                                   [] if stufen else pokemon, feedback_b, regie)
-            erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
+            try:
+                erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
+            except ModellBezahlt:
+                schritte.append({"stufe": "B", "hinweis": "kein Bild geliefert, einmal wiederholt"})
+                erg, kk, modell_b = _modell_aufruf(teile, modell, geo["ar"], groesse)
             kosten += kk
             if erg.size != (geo["cw"], geo["ch"]):
                 erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)

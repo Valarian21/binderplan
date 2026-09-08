@@ -35,8 +35,10 @@ STABILITY_URL = "https://api.stability.ai/v2beta/stable-image/edit/inpaint"
 # Innenring des Fensters, der mitgemalt wird (Anteil der Fensterkante). Bei Vollbildkarten
 # liegen Namensleiste, HP und Attackentext IM Bild bis an den Rand – ohne Innenring zieht
 # das Modell die Textleiste nach außen weiter. Der Ring wird später vom Scan bedeckt.
-INNENRING_VOLLBILD = 0.045
-INNENRING_NORMAL = 0.012
+# 06.09.: von 4,5 % auf 0,6 % – der Kartenrand ist im Fensterausschnitt schon abgezogen, und
+# die äußersten Artwork-Pixel sind genau die, an denen die Fortsetzung ansetzen muss.
+INNENRING_VOLLBILD = 0.006
+INNENRING_NORMAL = 0.006
 
 SZENE_PROMPT = (
     "You write the prompt for an inpainting model that will paint the surroundings of finished card "
@@ -78,8 +80,9 @@ AUFDRUCK_PROMPT = (
     "element lying on top of the artwork as rectangles: the name plate with stage and HP at the top, ability "
     "and attack boxes with their text, the footer line (weakness, resistance, retreat cost), rule boxes "
     "(ex / V / VSTAR rule), set number, rarity mark, illustrator credit, energy symbols. Merge touching "
-    "elements into as few rectangles as possible and make each rectangle slightly larger than the print so "
-    "that no letter stays outside. Do NOT include the creature or the scenery. Answer with JSON only: "
+    "elements into as few rectangles as possible. Make each rectangle TIGHT: exactly the printed plate or "
+    "text band, not a pixel of artwork above or below it – when unsure, smaller. The name plate ends where "
+    "its background band ends. Do NOT include the creature or the scenery. Answer with JSON only: "
     '{"boxen": [[ymin, xmin, ymax, xmax], ...]} in 0-1000 normalized coordinates of the whole card image.'
 )
 # Rückfall, wenn das Modell keine brauchbaren Kästen liefert: Namensleiste oben, Textblock unten –
@@ -151,7 +154,7 @@ def maske_bauen(geo, fenster, analysen, anker, cols, lang, aufdrucke_mit=True):
             fx0, fy0, fx1, fy1 = A._fach_box(int(slot), cols, geo)     # Kästen sind Kartenkoordinaten
             fw, fh = fx1 - fx0, fy1 - fy0
             for ymin, xmin, ymax, xmax in boxen:
-                rand = 0.012
+                rand = 0.004
                 d.rectangle((fx0 + round((xmin / 1000 - rand) * fw), fy0 + round((ymin / 1000 - rand) * fh),
                              fx0 + round((xmax / 1000 + rand) * fw), fy0 + round((ymax / 1000 + rand) * fh)), fill=255)
     return m, kosten, boxen_je_karte
