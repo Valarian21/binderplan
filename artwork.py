@@ -281,7 +281,8 @@ ANALYSE_PROMPT = (
     "artwork box is clean illustration only,\n"
     '"subject": the main subject – species, pose, size within the frame, facing/moving direction,\n'
     '"scene": setting and background elements with their placement (e.g. "volcano on the left, lava lake below"),\n'
-    '"edges": {"left": which BACKGROUND/scenery elements (never the creature) touch or are cut off at the left edge '
+    '"edges": {"left": which SCENERY elements (ground, water, walls, plants, sky – never any creature, person, '
+    'animal or their body parts) touch or are cut off at the left edge '
     'and how they would continue beyond it, "right": ..., "top": ..., "bottom": ...},\n'
     '"subject_cut": {"left": which parts of the main creature/figure are cut off by the LEFT edge of the window '
     '(e.g. "legs below the knee", "tail tip", "none"), "right": ..., "top": ..., "bottom": ...},\n'
@@ -309,7 +310,7 @@ def _analyse(card_id, lang):
     if row:
         try:
             daten = json.loads(row["daten"])
-            if daten.get("typ"):    # Analysen vor dem 08.09. kennen Kartentyp, Maßstab und Schnitt noch nicht
+            if daten.get("v") == 2:    # ältere Analysen werden einmal erneuert (Kartentyp, Maßstab, Schnitt, Kanten ohne Figuren)
                 return daten
         except Exception:
             pass
@@ -343,6 +344,7 @@ def _analyse(card_id, lang):
             else:
                 daten["box"] = [ymin, xmin, ymax, xmax]
         daten["_kosten"] = float((d.get("usage") or {}).get("cost") or 0)
+        daten["v"] = 2
     except Exception as e:
         return {"fehler": str(e)[:200], "box": None}
     con = get_db()
@@ -434,12 +436,23 @@ def _vorlage(anker, cols, rows, geo, lang, analysen):
             if voll:
                 boxen, _ = artwork_maske.aufdruck_boxen(card_id, lang)
                 fw, fh = x1 - x0, y1 - y0
+                flaechen = []
                 for ymin, xmin, ymax, xmax in boxen:
                     rand = 0.003
                     gx0 = max(bx0, x0 + round((xmin / 1000 - rand) * fw)); gy0 = max(by0, y0 + round((ymin / 1000 - rand) * fh))
                     gx1 = min(bx1, x0 + round((xmax / 1000 + rand) * fw)); gy1 = min(by1, y0 + round((ymax / 1000 + rand) * fh))
                     if gx1 > gx0 and gy1 > gy0:      # nur innerhalb des Fensters – außerhalb ist ohnehin grau
                         _weich_fuellen(img, (gx0, gy0, gx1, gy1), (bx0, by0, bx1, by1))
+                        flaechen.append((gx0, gy0, gx1, gy1))
+                # Aufdruck-Flächen nachträglich verwischen: die gestreckten Streifen sahen wie beige
+                # Textplatten aus, und das Modell malte daraus ganze Karten (Pixi-Seite 08.09.).
+                # Eine großflächige Unschärfe des Fensters liefert dort nur Farbe und Licht.
+                if flaechen:
+                    from PIL import ImageFilter
+                    fenster_img = img.crop((bx0, by0, bx1, by1))
+                    unscharf = fenster_img.filter(ImageFilter.GaussianBlur(max(12, (bx1 - bx0) // 12)))
+                    for gx0, gy0, gx1, gy1 in flaechen:
+                        img.paste(unscharf.crop((gx0 - bx0, gy0 - by0, gx1 - bx0, gy1 - by0)), (gx0, gy0))
         # Der Streifen zwischen Fenster und Fachkante (Kartenrand) bekommt ebenfalls eine weiche
         # Fortsetzung statt Grau: ein hartes graues Rechteck um das Bild las das Modell als
         # Rahmen und malte einen hellen Saum um die Karte. Der Scan deckt den Streifen später ab.
@@ -1082,6 +1095,13 @@ def _job(artwork_id):
                 schritte.append({"drehbuch": regie})
         # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten
         vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
+        # Die Nahaufnahmen fürs Modell kommen aus der Vorlage, nicht aus dem rohen Scan: dort sind
+        # Namensleiste und Attackentext schon weich gefüllt. Mit dem Scan als Referenz malte das
+        # Modell ganze Karten samt Text ins Bild (drei Kopien auf der Pixi-Seite, 08.09.).
+        for slot, cid in anker.items():
+            if slot in fenster:
+                fx0, fy0, fx1, fy1 = fenster[slot]
+                ref = vorlage.crop((fx0, fy0, fx1, fy1)).copy(); ref.thumbnail((1024, 1024)); bilder[cid] = ref
         px0, py0, px1, py1 = geo["seite"]
         sw, sh = px1 - px0, py1 - py0
         fenster_seite = {k: (v[0] - px0, v[1] - py0, v[2] - px0, v[3] - py0) for k, v in fenster.items()}
