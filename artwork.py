@@ -209,15 +209,37 @@ def _kartenbild(card_id, lang):
     return bg
 
 
+def _kartenbild_alpha(card_id, lang):
+    """Wie `_kartenbild`, aber mit erhaltener Transparenz.
+
+    Kartenscans sind an den vier Ecken durchsichtig – die Karte ist abgerundet,
+    das Bild rechteckig. `_kartenbild` legt sie auf Weiß, was für die
+    Vision-Analyse richtig ist (das Modell soll die Karte sehen, nicht den
+    Hintergrund), auf der fertigen Seite aber vier weiße Zipfel um jede Karte
+    hinterließ. Sichtbar wurde das erst, als die Seiten in Beiträgen groß
+    gezeigt wurden.
+    """
+    pfad = _dep["card_image_path"](card_id, lang)
+    if not pfad:
+        return None
+    try:
+        return Image.open(pfad).convert("RGBA")
+    except Exception:
+        return None
+
+
 def _karten_einsetzen(seite_img, anker, cols, geo, lang, offset=(0, 0)):
     """Kartenscans exakt in ihre Fächer setzen (auf dem Ergebnis, damit die Karte unangetastet bleibt)."""
     for slot, card_id in anker.items():
-        bild = _kartenbild(card_id, lang)
+        bild = _kartenbild_alpha(card_id, lang)
         if not bild:
             continue
         x0, y0, x1, y1 = _fach_box(int(slot), cols, geo)
         x0, y0, x1, y1 = x0 - offset[0], y0 - offset[1], x1 - offset[0], y1 - offset[1]
-        seite_img.paste(bild.resize((x1 - x0, y1 - y0), Image.LANCZOS), (x0, y0))
+        # Die Alphamaske als dritter Parameter: die runden Ecken lassen das
+        # gemalte Bild darunter durch, statt es mit Weiß zu überdecken.
+        skaliert = bild.resize((x1 - x0, y1 - y0), Image.LANCZOS)
+        seite_img.paste(skaliert, (x0, y0), skaliert)
 
 
 # --- Karten-Analyse (Vision-Modell, gecacht) ---------------------------------------
@@ -335,13 +357,19 @@ def _vorlage(anker, cols, rows, geo, lang, analysen):
         # der echte Scan deckt sie am Ende sowieso wieder ab.
         try:
             import artwork_maske
-            if artwork_maske._hat_aufdrucke(analysen.get(card_id)):
+            # Vollbild heißt: das Fenster ist mindestens 80 % der Kartenbreite. Die alte Regel
+            # (≥ 88 % in BEIDEN Richtungen) übersah Trainer-Vollbildkarten wie Mistys Vitalität,
+            # deren Fenster unter der Namensleiste beginnt — der Attackentext blieb im Bild.
+            voll = artwork_maske._hat_aufdrucke(analysen.get(card_id)) or (bool(rel) and (rel[2] - rel[0]) >= 0.8)
+            if voll:
                 boxen, _ = artwork_maske.aufdruck_boxen(card_id, lang)
                 fw, fh = x1 - x0, y1 - y0
                 for ymin, xmin, ymax, xmax in boxen:
                     rand = 0.003
-                    img.paste((128, 128, 128), (x0 + round((xmin / 1000 - rand) * fw), y0 + round((ymin / 1000 - rand) * fh),
-                                                x0 + round((xmax / 1000 + rand) * fw), y0 + round((ymax / 1000 + rand) * fh)))
+                    gx0 = max(bx0, x0 + round((xmin / 1000 - rand) * fw)); gy0 = max(by0, y0 + round((ymin / 1000 - rand) * fh))
+                    gx1 = min(bx1, x0 + round((xmax / 1000 + rand) * fw)); gy1 = min(by1, y0 + round((ymax / 1000 + rand) * fh))
+                    if gx1 > gx0 and gy1 > gy0:      # nur innerhalb des Fensters – außerhalb ist ohnehin grau
+                        img.paste((128, 128, 128), (gx0, gy0, gx1, gy1))
         except Exception:
             pass
     return img, fenster
@@ -539,7 +567,16 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         "do NOT continue its body, head, ears, horns, wings, tail, limbs, fur, spikes, energy aura or glow "
         "outside. Do not repeat it at any size, not partially, not as shadow, reflection, silhouette, "
         "outline or abstract shape in its colours. Where the creature meets the edge, hide the cut behind "
-        "scenery – mist, smoke, foliage, rock, water, light – so that outside there is only the world.\n"
+        "scenery – mist, smoke, foliage, rock, water, light – so that outside there is only the world, "
+        "unless the next rule applies.\n"
+        # Ausnahme (Marcel, 08.09., Mistys Vitalität): Ist die Figur an einer Fensterkante vom
+        # Bildrand ABGESCHNITTEN (Beine laufen unten aus dem Bild), soll genau dieser Teil
+        # draußen zu Ende gezeichnet werden – nicht versteckt. Die Kantenanalyse sagt, wo das
+        # der Fall ist; die Maßstab-Regel hält die Größe.
+        "- The one exception: where the edge notes of a finished part say the creature's or character's body "
+        "is CUT OFF by that edge (legs, feet, tail, arm, wing running out of the picture), complete exactly "
+        "that cut part directly outside the edge, same size, same pose, same technique, so the figure ends "
+        "naturally – and nothing else of the figure, never a second one, never larger.\n"
         f"- {wer} appear"
         f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
         + ("s" if mehrere else "") + ". "

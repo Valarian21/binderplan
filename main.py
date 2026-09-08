@@ -6496,6 +6496,15 @@ except Exception as _e:  # pragma: no cover
     print("Kunstseiten-Prüfung nicht verbunden:", _e)
 
 
+# --- Betreiber-Übersicht fürs Empire-Dashboard (Modul admin_uebersicht.py) ----
+
+try:
+    import admin_uebersicht as _admin_uebersicht  # noqa: E402
+    _admin_uebersicht.register(app, get_db=get_db, env=_env, admin_key=_admin_key, abo=abo)
+except Exception as _e:  # pragma: no cover
+    print("Betreiber-Übersicht nicht geladen:", _e)
+
+
 # --- Sammlung: was wirklich besessen wird (Modul sammlung.py) ---------------
 
 try:
