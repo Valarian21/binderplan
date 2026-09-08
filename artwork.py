@@ -332,6 +332,40 @@ def _illustration(card_id, lang, analyse):
     return crop, (xmin, ymin, xmax, ymax)
 
 
+def _weich_fuellen(img, box, quelle):
+    """Ein Rechteck `box` mit einer weichen Fortsetzung der angrenzenden Bildpixel aus `quelle`
+    füllen (Kantenpixel gestreckt und verwischt) statt mit Grau. Grau heißt für das Modell
+    „hier fehlt etwas, erfinde es" – und es erfindet dann die Figuren der Karte noch einmal,
+    größer (Mew-Seite 08.09.). Eine weiche Farbfortsetzung heißt „hier geht das Bild weiter"."""
+    from PIL import ImageFilter
+    x0, y0, x1, y1 = box
+    if x1 <= x0 or y1 <= y0:
+        return
+    qx0, qy0, qx1, qy1 = quelle
+    # Kantenstreifen der Quelle, die an die Box grenzen, auf die Box strecken und mischen
+    teile = []
+    if y0 >= qy1:      # Box liegt unter der Quelle → unterste Zeilen strecken
+        teile.append(img.crop((max(qx0, x0), qy1 - 6, min(qx1, x1), qy1)))
+    if y1 <= qy0:      # über der Quelle
+        teile.append(img.crop((max(qx0, x0), qy0, min(qx1, x1), qy0 + 6)))
+    if x0 >= qx1:      # rechts
+        teile.append(img.crop((qx1 - 6, max(qy0, y0), qx1, min(qy1, y1))))
+    if x1 <= qx0:      # links
+        teile.append(img.crop((qx0, max(qy0, y0), qx0 + 6, min(qy1, y1))))
+    if not teile:      # Box liegt IN der Quelle (Aufdruck): Zeile darüber und darunter mischen
+        oben = img.crop((x0, max(qy0, y0 - 6), x1, max(qy0 + 1, y0))) if y0 > qy0 else None
+        unten = img.crop((x0, min(qy1 - 1, y1), x1, min(qy1, y1 + 6))) if y1 < qy1 else None
+        teile = [t for t in (oben, unten) if t is not None and t.width > 0 and t.height > 0]
+    if not teile:
+        return
+    w, h = x1 - x0, y1 - y0
+    flaeche = teile[0].resize((w, h), Image.BILINEAR)
+    for t in teile[1:]:
+        flaeche = Image.blend(flaeche, t.resize((w, h), Image.BILINEAR), 0.5)
+    flaeche = flaeche.filter(ImageFilter.GaussianBlur(max(3, min(w, h) // 8)))
+    img.paste(flaeche, (x0, y0))
+
+
 def _vorlage(anker, cols, rows, geo, lang, analysen):
     """Seite: NUR die Illustrationsfenster an ihrer echten Position, alles andere grau (= malen).
     Der Kartenrahmen wird bewusst mitgemalt – die echte Karte deckt ihn später wieder ab, sodass die
@@ -369,7 +403,12 @@ def _vorlage(anker, cols, rows, geo, lang, analysen):
                     gx0 = max(bx0, x0 + round((xmin / 1000 - rand) * fw)); gy0 = max(by0, y0 + round((ymin / 1000 - rand) * fh))
                     gx1 = min(bx1, x0 + round((xmax / 1000 + rand) * fw)); gy1 = min(by1, y0 + round((ymax / 1000 + rand) * fh))
                     if gx1 > gx0 and gy1 > gy0:      # nur innerhalb des Fensters – außerhalb ist ohnehin grau
-                        img.paste((128, 128, 128), (gx0, gy0, gx1, gy1))
+                        _weich_fuellen(img, (gx0, gy0, gx1, gy1), (bx0, by0, bx1, by1))
+        # Der Streifen zwischen Fenster und Fachkante (Kartenrand) bekommt ebenfalls eine weiche
+        # Fortsetzung statt Grau: ein hartes graues Rechteck um das Bild las das Modell als
+        # Rahmen und malte einen hellen Saum um die Karte. Der Scan deckt den Streifen später ab.
+            for strip in ((x0, y0, x1, by0), (x0, by1, x1, y1), (x0, by0, bx0, by1), (bx1, by0, x1, by1)):
+                _weich_fuellen(img, strip, (bx0, by0, bx1, by1))
         except Exception:
             pass
     return img, fenster
@@ -577,6 +616,13 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
         "is CUT OFF by that edge (legs, feet, tail, arm, wing running out of the picture), complete exactly "
         "that cut part directly outside the edge, same size, same pose, same technique, so the figure ends "
         "naturally – and nothing else of the figure, never a second one, never larger.\n"
+        # Die Verdopplungsregel nannte nur das Pokémon der Karte. Bei Szenenkarten (Mew ex: Stadt
+        # mit Kindern, Frau im Fenster) malte das Modell alle NEBENFIGUREN noch einmal, doppelt so
+        # groß, weil sie von keiner Regel erfasst waren (Messung 08.09., fünf Läufe).
+        "- The same holds for EVERY person, character, animal, vehicle, shop front, sign and distinctive object "
+        "visible inside the finished part" + ("s" if mehrere else "") + ": each exists exactly once, inside. "
+        "Outside there are only new, different things of the same world, at the same scale – never a copy, "
+        "an enlarged version or a re-drawing of what the card already shows.\n"
         f"- {wer} appear"
         f"{'s' if len(kreaturen) <= 1 else ''} nowhere outside the finished part"
         + ("s" if mehrere else "") + ". "
