@@ -283,6 +283,13 @@ ANALYSE_PROMPT = (
     '"scene": setting and background elements with their placement (e.g. "volcano on the left, lava lake below"),\n'
     '"edges": {"left": which BACKGROUND/scenery elements (never the creature) touch or are cut off at the left edge '
     'and how they would continue beyond it, "right": ..., "top": ..., "bottom": ...},\n'
+    '"subject_cut": {"left": which parts of the main creature/figure are cut off by the LEFT edge of the window '
+    '(e.g. "legs below the knee", "tail tip", "none"), "right": ..., "top": ..., "bottom": ...},\n'
+    '"typ": one of "portrait" (one creature or figure dominates, simple background), "landscape" (scenery dominates, '
+    'creature small or absent), "scene" (a complete composition with several figures, buildings or objects at small scale),\n'
+    '"massstab": {"breite_m": approximate real-world width shown in the window in metres (a face: 0.5, a room: 5, '
+    'a street: 20, a mountain range: 5000), "figur_anteil": height of the main creature/figure as a fraction of the '
+    'window height (0-1)},\n'
     '"horizon": horizon height as a fraction of the illustration height from the top, or "none",\n'
     '"perspective": camera angle (eye level / low angle / bird view) and depth cues,\n'
     '"light": light direction, time of day, weather,\n'
@@ -301,7 +308,9 @@ def _analyse(card_id, lang):
     con.close()
     if row:
         try:
-            return json.loads(row["daten"])
+            daten = json.loads(row["daten"])
+            if daten.get("typ"):    # Analysen vor dem 08.09. kennen Kartentyp, Maßstab und Schnitt noch nicht
+                return daten
         except Exception:
             pass
     bild = _kartenbild(card_id, lang)
@@ -487,7 +496,8 @@ def _analyse_text(a):
     if not a or a.get("fehler"):
         return "(no analysis available – study the illustration yourself)"
     teile = []
-    for k in ("subject", "scene", "edges", "horizon", "perspective", "light", "palette", "technique", "mood"):
+    for k in ("typ", "subject", "subject_cut", "massstab", "scene", "edges", "horizon", "perspective", "light",
+              "palette", "technique", "mood"):
         v = a.get(k)
         if v:
             lbl = ("subject (this creature stays INSIDE the illustration; outside it does not exist – "
@@ -579,36 +589,94 @@ def _regie(cols, rows, anker, namen, analysen):
         return "", 0.0
 
 
-def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder):
-    """Kurzer Auftrag für Einzelkarten. Der lange Auftrag mit Drehbuch und 14 Regeln ließ das
-    Modell bei Szenenkarten (Mew ex) fünfmal hintereinander die Kartenszene doppelt so groß
-    nachmalen; derselbe Inhalt in sechs Sätzen traf im Test Maßstab und Motiv auf Anhieb
-    (gemini_frei_test.py, Variante I, 08.09.). Verneinungen häufen hilft nicht – kurz hilft."""
+DREHBUCH_EINZEL_PROMPT = (
+    "You plan the surroundings of ONE finished illustration that lies on a larger page; a painter will fill "
+    "everything around it. Write what the painter paints in each direction – concrete, visual, present tense, "
+    "English – as a JSON object {\"above\": ..., \"below\": ..., \"left\": ..., \"right\": ..., \"corners\": ...}, "
+    "one sentence each. Rules for the content: it is the SAME place seen from the SAME spot, continuing what "
+    "the edge notes describe, at the same scale; it consists only of scenery and of new, different things of "
+    "that world (sky, ground, walls, water, plants, distant buildings, weather, light). The creature, every person "
+    "and every object the illustration already shows belong to the illustration alone – the surroundings are "
+    "quieter and emptier than the picture. For a 'scene' type illustration that means: no additional people, no "
+    "repeated shop fronts or balconies, mostly sky, walls, pavement and distance. Name colours and light. "
+    "Never mention cards, frames, grids, pockets or the word 'copy'. JSON only."
+)
+
+
+def _drehbuch_einzel(cols, rows, anker, namen, analysen):
+    """Positiver Plan je Richtung für eine Einzelkarte (Textmodell, ≈ 0,5 ct). Der lange Auftrag hat
+    dem Modell nur gesagt, was es NICHT malen soll; das Drehbuch sagt, was draußen IST. Bei
+    Mehrkartenseiten hat genau das am 04.09. den Unterschied gemacht."""
+    slot, cid = next(iter(anker.items()))
+    col, row = int(slot) % cols, int(slot) // cols
+    lage = (f"The illustration sits at row {row + 1} of {rows}, column {col + 1} of {cols}: "
+            f"{row} row(s) of space above, {rows - 1 - row} below, {col} column(s) left, {cols - 1 - col} right.")
+    text = (DREHBUCH_EINZEL_PROMPT + "\n\n" + lage + "\nILLUSTRATION (" + (namen.get(cid) or cid) + "):\n"
+            + _analyse_text(analysen.get(cid)))
+    try:
+        d = _openrouter({
+            "model": _dep["env"]().get("ARTWORK_REGIE_MODELL") or ANALYSE_MODELL,
+            "messages": [{"role": "user", "content": text}],
+            "response_format": {"type": "json_object"},
+            "usage": {"include": True},
+        }, timeout=90)
+        roh = ((d.get("choices") or [{}])[0].get("message", {}).get("content") or "").strip()
+        roh = re.sub(r"^```(?:json)?|```$", "", roh, flags=re.M).strip()
+        j = json.loads(roh)
+        plan = "; ".join(f"{k}: {str(j[k]).strip()}" for k in ("above", "below", "left", "right", "corners") if j.get(k))
+        return plan[:1400], float((d.get("usage") or {}).get("cost") or 0)
+    except Exception:
+        return "", 0.0
+
+
+def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie=""):
+    """Kurzer Auftrag für Einzelkarten: Kantenbeschreibung, Maßstab in Worten, abgeschnittene Körperteile
+    und ein positives Drehbuch je Richtung aus der Analyse. Die Nahaufnahme gibt es nur bei Porträt- und
+    Landschaftskarten, und nur so groß wie das Fenster in der Vorlage – bei Szenenkarten (Straße mit
+    Figuren) hat die große zweite Kopie des Bildes das Modell dazu gebracht, die Szene vergrößert
+    nachzumalen (acht Läufe am 08.09.)."""
     cid = next(iter(anker.values()))
     a = analysen.get(cid) or {}
+    typ = str(a.get("typ") or "").lower()
     kante = a.get("edges") or {}
     kanten = "; ".join(f"{k}: {v}" for k, v in kante.items() if v)
+    schnitt = {k: v for k, v in (a.get("subject_cut") or {}).items()
+               if v and str(v).strip().lower() not in ("none", "nothing", "no", "null", "-")}
+    ms = a.get("massstab") or {}
     text = (
         "IMAGE 1 is a large painting of which only one rectangular part is finished; everything flat gray is "
         "still unpainted. Paint all gray areas so that the finished part continues outward in every direction "
         "as ONE picture: the same place, seen from the same spot, same horizon height, same light, same colours, "
-        f"same painting technique. What leaves the edges of the finished part: {kanten or 'see the picture'}. "
-        "Keep the world at the same size as inside the finished part: a house, a leaf, a pond or a person outside "
-        "is exactly as big as the same thing inside. Everything shown inside the finished part exists exactly "
-        "once, inside it – outside there are only new, different things of the same world. If a figure is cut off "
-        "by an edge of the finished part (legs, tail, arm running out of the picture), complete just that cut part "
-        "directly outside the edge, same size, same pose, so the figure ends naturally. Do not change the finished "
-        "part. No text, no frames, no borders, no lines, not a single gray pixel left."
+        f"same painting technique.\nWhat leaves the edges of the finished part: {kanten or 'see the picture'}.\n"
     )
+    if ms.get("breite_m"):
+        text += (f"Scale: the finished part shows roughly {ms.get('breite_m')} metres of the world"
+                 + (f"; its main figure is about {round(float(ms.get('figur_anteil') or 0) * 100)} % of the part's height"
+                    if ms.get("figur_anteil") else "")
+                 + ". Keep exactly this scale everywhere outside: a house, a leaf, a pond or a person outside is as big "
+                 "as the same thing inside.\n")
+    else:
+        text += ("Keep the world at the same size as inside the finished part: a house, a leaf, a pond or a person "
+                 "outside is exactly as big as the same thing inside.\n")
+    if regie:
+        text += f"What the new areas show – {regie}\n"
+    if schnitt:
+        text += ("The main figure is cut off by the edge of the finished part: "
+                 + "; ".join(f"{k}: {v}" for k, v in schnitt.items())
+                 + ". Complete just those cut parts directly outside the edge, same size, same pose, so the figure "
+                 "ends naturally; the rest of the figure stays inside.\n")
+    text += ("Everything else the finished part shows exists once, inside it. Do not change the finished part. "
+             "No text, no frames, no borders, no lines, not a single gray pixel left.")
     if stil and stil != "karte":
         text += f"\nTechnique for the new areas: {STILE.get(stil, STILE['karte'])}"
     if wunsch:
         text += f"\nThe collector wishes: {wunsch[:300]}"
     teile = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     crop = bilder.get(cid)
-    if crop is not None:
-        teile.append({"type": "text", "text": f"IMAGE 2 – the finished part in close-up, for reference of details, technique and colours. Its creature is {namen.get(cid) or 'the main creature'}."})
-        teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
+    if crop is not None and typ != "scene":
+        klein = crop.copy(); klein.thumbnail((640, 640))
+        teile.append({"type": "text", "text": f"IMAGE 2 – the finished part once more, for reference of technique and colours only. Its creature is {namen.get(cid) or 'the main creature'}."})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(klein, 'JPEG')}})
     return teile
 
 
@@ -620,7 +688,7 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
     mehrere = len(anker) > 1
     # Einzelkarten ohne Wunsch-Pokémon bekommen den kurzen Auftrag (Umschalter ARTWORK_EINZEL_KURZ=0).
     if not mehrere and not pokemon and not feedback and (_dep["env"]().get("ARTWORK_EINZEL_KURZ", "1") != "0"):
-        return _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder)
+        return _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie)
     kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
     intro = (
         "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
@@ -1007,6 +1075,11 @@ def _job(artwork_id):
             kosten += kr
             if regie:
                 schritte.append({"regie": regie})
+        elif not pokemon and (_dep["env"]().get("ARTWORK_EINZEL_KURZ", "1") != "0"):
+            regie, kr = _drehbuch_einzel(cols, rows, anker, namen, analysen)
+            kosten += kr
+            if regie:
+                schritte.append({"drehbuch": regie})
         # Vorlage der ganzen Seite (nur Illustrationsfenster) + Fensterpositionen in Seitenkoordinaten
         vorlage, fenster = _vorlage(anker, cols, rows, geo, lang, analysen)
         px0, py0, px1, py1 = geo["seite"]
