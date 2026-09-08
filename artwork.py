@@ -1084,7 +1084,10 @@ def _job(artwork_id):
             if erg.size != (geo["cw"], geo["ch"]):
                 erg = erg.resize((geo["cw"], geo["ch"]), Image.LANCZOS)
             seite = erg.crop(geo["seite"])
-            if stufen or versuch or not bilder:
+            # Nachkontrolle nur noch auf Wunsch (ARTWORK_KONTROLLE=1 in der .env, für Messreihen).
+            # Im Betrieb ist sie seit 08.09. aus: sie löst keinen zweiten Lauf mehr aus, kostet
+            # 1,2–1,7 ct je Seite und urteilt schwankend (dieselbe Mew-Seite einmal ok, einmal nicht).
+            if stufen or versuch or not bilder or (_dep["env"]().get("ARTWORK_KONTROLLE") or "0") == "0":
                 schritte.append({"stufe": "B", "versuch": versuch + 1})
                 break
             # Geprüft wird die Seite MIT eingesetzten Kartenscans gegen die Vorlage der ganzen
