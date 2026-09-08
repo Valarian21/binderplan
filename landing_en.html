@@ -49,8 +49,7 @@
     <a class="logo" href="/en"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg> Binderplan</a>
     <nav>
       <a class="sprache" href="/?lang=de" hreflang="de" title="Deutsche Version">DE</a>
-      <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Sample binder</a>
-      <a class="btn" href="/app">Plan a binder – free</a>
+      <a class="btn" href="/app"><span class="lang">Plan a binder – free</span><span class="kurz">Start</span></a>
     </nav>
   </header>
 
@@ -60,7 +59,6 @@
       <p class="lead">Master set, Pokédex or every card of your favourite Pokémon: Binderplan lays out the slots, shows Cardmarket prices in euros, builds the buy list and prints black-and-white placeholders labelled “page · slot” – until the real card takes its place.</p>
       <div class="cta">
         <a class="btn" href="/app">Plan a binder now</a>
-        <a class="btn gelb" href="#kunst-band">Artwork pages</a>
         <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">See an example</a>
       </div>
       <div class="klein">Free, no sign-up needed · 33,000+ cards, every era, English &amp; German · Japanese sets included</div>
@@ -76,30 +74,6 @@
       </div>
     </div>
   </div>
-
-  <section class="kunst-band" id="kunst-band">
-    <div class="kb-text">
-      <div class="kb-eyebrow">Artwork pages</div>
-      <h2>Create matching artwork pages</h2>
-      <p>One card in its slot, and the AI paints its scene across the whole binder page – like the card, as watercolour, comic or photo. Print it, slide it into the empty sleeves. Or take a finished page from the showcase.</p>
-      <div class="cta">
-        <a class="btn" href="/app#vitrine/kunst">See art pages</a>
-        <a class="btn sek" href="/app">Make your own</a>
-      </div>
-      <div class="klein">Flip through the most popular pages from the showcase · one trial page free, then from 10 credits</div>
-    </div>
-    <div class="kb-album" id="kb-album">
-      <div class="album kb">
-        <button class="album-pfeil" id="kb-zurueck" aria-label="Previous" hidden>‹</button>
-        <div class="album-seiten kb" id="kb-seiten">
-          <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork page: Crown Zenith Golds" width="736" height="1016">
-          <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork page: Kyogre and Groudon" width="736" height="1016">
-        </div>
-        <button class="album-pfeil" id="kb-vor" aria-label="Next" hidden>›</button>
-      </div>
-      <div class="kb-stand"><span id="kb-stand"></span><span id="kb-titel"></span></div>
-    </div>
-  </section>
 
   <section class="schau" id="schau" data-lang="en" hidden>
     <h2>From the Showcase</h2>
@@ -129,7 +103,7 @@
         <h3>Photo in, binder out</h3>
         <p>Photograph your binder pages. Binderplan recognises the cards from the <em>picture</em> —
         not from text — and builds the binder from them, page by page in the order of your photos.
-        In our test 8 of 9 cards were right, and the ninth flagged itself as uncertain.</p>
+</p>
       </div>
       <div>
         <h3>Pages by motif</h3>
@@ -155,6 +129,30 @@
     </div>
   </section>
 
+  <section class="kunst-band" id="kunst-band">
+    <div class="kb-text">
+      <div class="kb-eyebrow">Artwork pages</div>
+      <h2>Create matching artwork pages</h2>
+      <p>One card in its slot, and the AI paints its scene across the whole binder page – like the card, as watercolour, comic or photo. Print it, slide it into the empty sleeves. Or take a finished page from the showcase.</p>
+      <div class="cta">
+        <a class="btn" href="/app#vitrine/kunst">See art pages</a>
+        <a class="btn sek" href="/app">Make your own</a>
+      </div>
+      <div class="klein">Flip through the most popular pages from the showcase · one trial page free, then from 10 credits</div>
+    </div>
+    <div class="kb-album" id="kb-album">
+      <div class="album kb">
+        <button class="album-pfeil" id="kb-zurueck" aria-label="Previous" hidden>‹</button>
+        <div class="album-seiten kb" id="kb-seiten">
+          <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork page: Crown Zenith Golds" width="736" height="1016">
+          <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork page: Kyogre and Groudon" width="736" height="1016">
+        </div>
+        <button class="album-pfeil" id="kb-vor" aria-label="Next" hidden>›</button>
+      </div>
+      <div class="kb-stand"><span id="kb-stand"></span><span id="kb-titel"></span></div>
+    </div>
+  </section>
+
   <section>
     <div class="shot"><img src="assets/planer_en.png" alt="Binderplan planner: binder pages side by side, cards with prices" width="1920" height="940" loading="lazy"></div>
   </section>
@@ -163,16 +161,12 @@
     <h2>What Binderplan does</h2>
     <p class="sub">Everything between “I want that set” and “the binder is full”.</p>
     <div class="feat">
-      <div><h3>Art page showcase</h3><p>Take pages designed by other collectors instead of painting your own — and earn credits back every time someone takes one of yours.</p></div>
       <div><h3>Cardmarket prices in euros</h3><p>Trend price per card, holo prices, total value of the binder and price history – updated daily.</p></div>
       <div><h3>A buy list that thinks along</h3><p>Only the cards still missing – with price and total, as CSV for Cardmarket wants or your local card shop.</p></div>
       <div><h3>Printable placeholders</h3><p>Black and white, true to size, with watermark and slot label. Or the checklist without images – page by page for ticking off.</p></div>
       <div><h3>Templates &amp; import</h3><p>Master set (with reverse holos), Pokédex Gen 1–9, every card of one Pokémon, rainbow sorting. Paste lists from TCG Collector, Collectr or Cardmarket.</p></div>
       <div><h3>English, German, Japan</h3><p>English catalogue, German names and images, and the Japanese sets with euro prices – as their own set tree.</p></div>
-      <div><h3>AI artwork pages</h3><p>One card in a slot, and the AI continues its artwork across the whole binder page – like the card, as a comic, watercolour or photo-real. As a print sheet at 63 × 88 mm for the empty sleeves.</p></div>
       <div><h3>Your collection</h3><p>What you actually own – kept apart from the plan. Value by Cardmarket, duplicates as trade material, and the buy list across all binders.</p></div>
-      <div><h3>Flip through like a real album</h3><p>Two pages side by side, rings in the middle, the sheet really turns. Black pages so the cards stand out.</p></div>
-      <div><h3>Share &amp; use on any device</h3><p>Share a binder as a link (view only), keep planning on your phone, light or dark.</p></div>
     </div>
   </section>
 
@@ -195,6 +189,7 @@
     <details><summary>Can I use German card names and images?</summary><p>Yes. The card language (DE/EN) is switched in the filter column and applies to names, images, set names and the PDF. For the old WotC sets (Base Set, Jungle, Fossil …) there are no German scans in the database; those cards are marked “EN”.</p></details>
     <details><summary>What are credits?</summary><p>Credits are the unit for the AI artwork pages – only for those, everything else is included in the plan. An artwork page costs 10 credits; with more than two cards on the page, 2 more per card (30 at most). You see the cost of a page before you start. If a generation fails technically, the credits come back automatically. Credits bought on their own never expire.</p></details>
     <details><summary>How do I cancel?</summary><p>With two clicks at <a href="/kuendigen">binderplan.app/kuendigen</a> – no login required. Your access stays until the end of the paid term, after that your account continues for free. Purchased credits are yours to keep.</p></details>
+    <details><summary>How accurate is photo recognition?</summary><p>In our test 8 of 9 cards were recognised correctly; the ninth flagged itself as uncertain and can be fixed with one click. Shoot straight from above, even light, the whole page in frame.</p></details>
     <details><summary>Do I need an account?</summary><p>Not for planning. You need a free account for the card PDF export and to see your binders on several devices.</p></details>
     <details><summary>Why are the legal pages in German?</summary><p>Binderplan is run from Germany. Legal notice, terms, withdrawal policy and privacy policy are therefore provided in German, as required by German law. The app itself and this page are fully available in English.</p></details>
   </section>

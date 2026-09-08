@@ -50,8 +50,7 @@
     <a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg> Binderplan</a>
     <nav>
       <a class="sprache" href="/en?lang=en" hreflang="en" title="English version">EN</a>
-      <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel-Binder</a>
-      <a class="btn" href="/app">Binder planen – kostenlos</a>
+      <a class="btn" href="/app"><span class="lang">Binder planen – kostenlos</span><span class="kurz">Loslegen</span></a>
     </nav>
   </header>
 
@@ -61,7 +60,6 @@
       <p class="lead">Master Set, Pokédex oder alle Karten deines Lieblings-Pokémon: Binderplan legt die Fächer an, zeigt Cardmarket-Preise in Euro, erstellt die Kaufliste und druckt Schwarz-Weiß-Platzhalter mit „Seite · Fach“-Beschriftung – bis die echte Karte drin liegt.</p>
       <div class="cta">
         <a class="btn" href="/app">Jetzt Binder planen</a>
-        <a class="btn gelb" href="#kunst-band">Artwork-Seiten</a>
         <a class="btn sek" href="/app#ansicht/0Ujx6M1xTWw">Beispiel ansehen</a>
       </div>
       <div class="klein">Kostenlos, ohne Anmeldung starten · 33.000+ Karten, alle Ären, deutsch &amp; englisch · Japan-Sets inklusive</div>
@@ -80,33 +78,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Artwork-Seiten direkt unter dem Aufmacher: sie sind das, was es sonst nirgends gibt,
-       standen aber erst weit unten als Textkachel. Die Seiten rechts sind echte Kunstseiten
-       aus der Vitrine (assets/schaufenster.js tauscht sie gegen die beliebtesten). -->
-  <section class="kunst-band" id="kunst-band">
-    <div class="kb-text">
-      <div class="kb-eyebrow">Artwork-Seiten</div>
-      <h2>Erstell dir passende Artwork-Seiten</h2>
-      <p>Eine Karte ins Fach, die KI malt ihr Motiv über die ganze Binderseite weiter – wie die Karte, als Aquarell, Comic oder Foto. Ausdrucken, in die leeren Hüllen stecken. Oder eine fertige Seite aus der Vitrine übernehmen.</p>
-      <div class="cta">
-        <a class="btn" href="/app#vitrine/kunst">Kunstseiten ansehen</a>
-        <a class="btn sek" href="/app">Selbst gestalten</a>
-      </div>
-      <div class="klein">Zum Durchblättern: die beliebtesten Seiten aus der Vitrine · eine Probeseite gratis, danach ab 10 Credits</div>
-    </div>
-    <div class="kb-album" id="kb-album">
-      <div class="album kb">
-        <button class="album-pfeil" id="kb-zurueck" aria-label="Zurückblättern" hidden>‹</button>
-        <div class="album-seiten kb" id="kb-seiten">
-          <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork-Seite: Crown Zenith Golds" width="736" height="1016">
-          <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork-Seite: Kyogre und Groudon" width="736" height="1016">
-        </div>
-        <button class="album-pfeil" id="kb-vor" aria-label="Weiterblättern" hidden>›</button>
-      </div>
-      <div class="kb-stand"><span id="kb-stand"></span><span id="kb-titel"></span></div>
-    </div>
-  </section>
 
   <!-- Aus der Vitrine: echte Binder und Kunstseiten statt Text darüber. Besucher blättern
        den beliebtesten Binder direkt hier durch. Gefüllt von assets/schaufenster.js;
@@ -139,7 +110,7 @@
         <h3>Foto rein, Binder raus</h3>
         <p>Fotografiere deine Binderseiten ab. Binderplan erkennt die Karten am <em>Bild</em> —
         nicht am Text — und legt daraus den Binder an, Seite für Seite in der Reihenfolge
-        deiner Fotos. Im Test 8 von 9 Karten richtig, und die neunte meldet sich selbst als unsicher.</p>
+        deiner Fotos.</p>
       </div>
       <div>
         <h3>Seiten nach dem Motiv</h3>
@@ -165,6 +136,34 @@
     </div>
   </section>
 
+  <!-- Artwork-Seiten als eigene Sektion nach dem Ablauf: direkt unter dem Aufmacher war es
+       ein zweiter Hero mit zwei weiteren Knöpfen, bevor der Besucher das Werkzeug gesehen
+       hatte. Die Seiten rechts sind echte Kunstseiten aus der Vitrine
+       (assets/schaufenster.js tauscht sie gegen die beliebtesten). -->
+  <section class="kunst-band" id="kunst-band">
+    <div class="kb-text">
+      <div class="kb-eyebrow">Artwork-Seiten</div>
+      <h2>Erstell dir passende Artwork-Seiten</h2>
+      <p>Eine Karte ins Fach, die KI malt ihr Motiv über die ganze Binderseite weiter – wie die Karte, als Aquarell, Comic oder Foto. Ausdrucken, in die leeren Hüllen stecken. Oder eine fertige Seite aus der Vitrine übernehmen.</p>
+      <div class="cta">
+        <a class="btn" href="/app#vitrine/kunst">Kunstseiten ansehen</a>
+        <a class="btn sek" href="/app">Selbst gestalten</a>
+      </div>
+      <div class="klein">Zum Durchblättern: die beliebtesten Seiten aus der Vitrine · eine Probeseite gratis, danach ab 10 Credits</div>
+    </div>
+    <div class="kb-album" id="kb-album">
+      <div class="album kb">
+        <button class="album-pfeil" id="kb-zurueck" aria-label="Zurückblättern" hidden>‹</button>
+        <div class="album-seiten kb" id="kb-seiten">
+          <img src="/api/artwork/PpZCgFMZ6SIK/bild?v=vorschau" alt="Artwork-Seite: Crown Zenith Golds" width="736" height="1016">
+          <img src="/api/artwork/CREzGGcCnL_7/bild?v=vorschau" alt="Artwork-Seite: Kyogre und Groudon" width="736" height="1016">
+        </div>
+        <button class="album-pfeil" id="kb-vor" aria-label="Weiterblättern" hidden>›</button>
+      </div>
+      <div class="kb-stand"><span id="kb-stand"></span><span id="kb-titel"></span></div>
+    </div>
+  </section>
+
   <section>
     <div class="shot"><img src="assets/planer.png" alt="Binderplan-Planer: fünf volle Binderseiten nebeneinander, jede Karte mit ihrem Cardmarket-Preis" width="1620" height="510" loading="lazy"></div>
     <p class="sub" style="margin-top:14px"><a class="btn" href="/app">Jetzt Binder planen</a></p>
@@ -182,10 +181,6 @@
       <div><h3>Kaufliste, die mitdenkt</h3><p>Nur die Karten, die noch fehlen – mit Preis und Summe, als CSV für Cardmarket-Wants oder den Kartenladen.</p></div>
       <div><h3>Vorlagen &amp; Import</h3><p>Master Set (mit Reverse Holos), Pokédex Gen 1–9, alle Karten eines Pokémon, Regenbogen-Sortierung. Listen aus TCG Collector, Collectr oder Cardmarket einfügen.</p></div>
       <div><h3>Deutsch, Englisch, Japan</h3><p>Deutsche Namen und Bilder, englischer Katalog und die japanischen Sets mit Euro-Preisen – als eigener Set-Baum.</p></div>
-      <div><h3>Artwork-Seiten mit KI</h3><p>Eine Karte ins Fach, die KI malt ihr Motiv über die ganze Binder-Seite weiter – wie die Karte, als Comic, Aquarell oder fotorealistisch. Als Druckbogen in 63 × 88 mm für die leeren Hüllen.</p></div>
-      <div><h3>Kunstseiten-Vitrine</h3><p>Von anderen gestaltete Seiten übernehmen, statt selbst zu malen – und für jede Übernahme deiner eigenen Seiten Credits zurückbekommen.</p></div>
-      <div><h3>Durchblättern wie im echten Album</h3><p>Zwei Seiten nebeneinander, Ringe in der Mitte, das Blatt dreht sich wirklich um. Schwarze Seiten, damit die Karten vorne stehen.</p></div>
-      <div><h3>Teilen &amp; auf jedem Gerät</h3><p>Binder als Link teilen (nur Ansicht), am Handy weiterplanen, hell oder dunkel.</p></div>
     </div>
   </section>
 
@@ -208,6 +203,7 @@
     <details><summary>Warum sind manche Karten auf Englisch abgebildet?</summary><p>Für die alten WotC-Sets (Base Set, Jungle, Fossil …) gibt es keine deutschen Scans in der Datenbank. Diese Karten sind mit „EN“ gekennzeichnet; Name und Setnummer sind trotzdem deutsch.</p></details>
     <details><summary>Was sind Credits?</summary><p>Credits sind die Verrechnungseinheit für die KI-Artwork-Seiten – nur dafür, alles andere ist im Tarif enthalten. Eine Artwork-Seite kostet 10 Credits; liegen mehr als zwei Karten auf der Seite, kommen je Karte 2 dazu (höchstens 30). Was eine Seite kostet, siehst du vor dem Start. Klappt eine Erzeugung technisch nicht, bekommst du die Credits automatisch zurück. Einzeln gekaufte Credits verfallen nie.</p></details>
     <details><summary>Wie kündige ich?</summary><p>Mit zwei Klicks unter <a href="/kuendigen">binderplan.app/kuendigen</a> – ohne Anmeldung. Dein Zugang bleibt bis zum Ende der bezahlten Laufzeit, danach läuft dein Konto kostenlos weiter. Gekaufte Credits behältst du.</p></details>
+    <details><summary>Wie genau ist die Fotoerkennung?</summary><p>Im Test wurden 8 von 9 Karten richtig erkannt; die neunte meldet sich selbst als unsicher und lässt sich mit einem Klick korrigieren. Am besten gerade von oben fotografieren, gleichmäßiges Licht, die ganze Seite im Bild.</p></details>
     <details><summary>Brauche ich ein Konto?</summary><p>Zum Planen nicht. Ein kostenloses Konto brauchst du für den Karten-PDF-Export und um Binder auf mehreren Geräten zu sehen.</p></details>
   </section>
 

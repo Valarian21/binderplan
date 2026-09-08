@@ -5562,9 +5562,11 @@ def _items_saeubern(items):
 
 @app.get("/api/binders/{binder_id}/wert")
 def binder_wert(binder_id: str, request: Request, tage: int = 30):
-    user = _current_user(request)
+    # Wer den Binder lesen kann (die IDs sind unratbar und werden als Link geteilt), darf
+    # auch seinen Wert sehen: die geteilte Ansicht fragte ihn ab und bekam 403, obwohl
+    # dieselben Karten samt Preisen bereits auf dem Bildschirm standen. Der Wert kommt aus
+    # der Datenbank, nicht aus dem Bild-Cache – die Export-Sperre ist hier nicht nötig.
     binder = _load_binder(binder_id)
-    _binder_lesen_erlaubt(binder_id, user)
     ids = list({i.get("id") for i in binder["items"] if i.get("type") == "card" and i.get("id")})
     if not ids:
         return {"punkte": [], "karten": 0, "aktuell": None, "veraenderung": None}
@@ -6695,7 +6697,9 @@ def binder_teilen_seite(binder_id: str, request: Request):
         binder = _load_binder(binder_id)
         _binder_lesen_erlaubt(binder_id, None)
     except HTTPException:
-        return RedirectResponse("/", status_code=302)
+        # Stumm auf die Startseite zu leiten ließ den Besucher rätseln, ob der Link kaputt
+        # ist. Die App zeigt zu diesem Parameter einen Hinweis.
+        return RedirectResponse("/app?hinweis=privat", status_code=302)
     basis = (_env().get("APP_URL") or "https://binderplan.app").rstrip("/")
     name = html.escape((binder.get("name") or "Binder")[:80])
     karten = sum(1 for i in binder["items"] if i.get("type") == "card")
