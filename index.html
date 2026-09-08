@@ -727,6 +727,25 @@
   .st-zahl .l { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 2px; }
   .st-zahl.gruen .z { color: var(--gruen); }
 
+  /* Creator-Übersicht: Karte auf der Startseite nur bei Ereignissen, Block im Profil */
+  .st-neu { display: flex; align-items: center; gap: 12px; border: 2px solid var(--kontur); border-radius: 14px;
+            padding: 11px 14px; background: var(--card); box-shadow: 4px 4px 0 var(--akzent); margin-bottom: 22px; flex-wrap: wrap; }
+  .st-neu .herz { color: var(--akzent); font-size: 22px; line-height: 1; }
+  .st-neu .txt { flex: 1; min-width: 200px; }
+  .st-neu .txt strong { display: block; font-size: 14px; }
+  .st-neu .txt span { font-size: 12.5px; color: var(--mut); }
+  .st-neu .txt b { color: var(--gruen); }
+  .cr-zahlen { display: flex; gap: 20px; flex-wrap: wrap; margin: 2px 0 8px; }
+  .cr-zahl b { display: block; font-size: 21px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .cr-zahl span { font-size: 11.5px; color: var(--mut); }
+  .cr-seite { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center;
+              padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; }
+  .cr-seite:last-child { border-bottom: none; }
+  .cr-seite img { width: 40px; aspect-ratio: 63/88; object-fit: cover; border-radius: 5px; background: var(--panel2); }
+  .cr-seite .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-seite .u { color: var(--mut); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-seite .k { display: flex; gap: 10px; font-size: 12.5px; color: var(--mut); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cr-seite .k b { color: var(--ink); }
   .st-abschnitt { margin-bottom: 30px; }
   .st-titel { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
   .st-titel h2 { margin: 0; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
@@ -2305,6 +2324,8 @@
       <button class="btn sekundaer" style="font-size:12.5px;margin-left:auto" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button></div>
     <div class="st-unter" id="st-unter"></div>
 
+    <div class="st-neu hidden" id="st-creator-neu"></div>
+
     <div class="st-band" id="st-band"></div>
 
     <div class="st-abschnitt" id="st-weiter-block" hidden>
@@ -2377,6 +2398,15 @@
             <button class="btn sekundaer" style="font-size:13px" onclick="profilSchliessen();ansicht('vitrine')" data-i18n="vt_t">Vitrine</button>
             <button class="btn sekundaer hidden" style="font-size:13px" id="pf-meinprofil" data-i18n="pf_mein_profil">Mein öffentliches Profil ansehen</button>
           </div>
+        </div>
+
+        <!-- Creator-Übersicht: erscheint erst, wenn mindestens eine Kunstseite fertig ist.
+             Zählt nur, was da ist — Kacheln mit 0 werden nicht gezeichnet. -->
+        <div class="pf-block hidden" id="pf-creator">
+          <h3 data-i18n="cr_t">Deine Kunstseiten</h3>
+          <div class="cr-zahlen" id="cr-zahlen"></div>
+          <div class="pf-hinweis" id="cr-hinweis"></div>
+          <div id="cr-seiten"></div>
         </div>
       </div>
 
@@ -2739,6 +2769,14 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    // Creator-Übersicht: nur zeigen, was passiert ist — keine Nullen, keine Rangliste
+    j_artwork_anteil: 'Anteil aus Übernahme', j_artwork_uebernahme: 'Kunstseite übernommen',
+    cr_neu_t: 'Seit deinem letzten Besuch', cr_neu_ueb1: 'Ein Sammler hat eine deiner Seiten übernommen',
+    cr_neu_ueb: '{n}× wurden deine Seiten übernommen', cr_neu_credits: '+{n} Credits', cr_neu_herz1: '1 neues Herz',
+    cr_neu_herzen: '{n} neue Herzen', cr_ansehen: 'Ansehen', cr_t: 'Deine Kunstseiten',
+    cr_seiten: 'Seiten', cr_vitrine: 'in der Vitrine', cr_uebernahmen: 'Übernahmen', cr_verdient: 'Credits verdient',
+    cr_herzen: 'Herzen', cr_privat: 'privat', cr_uebernommen: '{n}× übernommen', cr_in_vitrine: 'In der Vitrine',
+    cr_freigeben: 'In die Vitrine', cr_hinweis: 'Jede Übernahme bringt dir {a} Credits. Wer nichts übernimmt, zahlt auch nichts — hier steht nur, was passiert ist.',
     aw_t: 'Artwork-Seite gestalten', aw_menu: 'Artwork-Seite gestalten …',
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
@@ -3118,6 +3156,14 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    // Creator overview: shows only what happened — no zeros, no ranking
+    j_artwork_anteil: 'Share from a download', j_artwork_uebernahme: 'Art page taken',
+    cr_neu_t: 'Since your last visit', cr_neu_ueb1: 'A collector took one of your pages',
+    cr_neu_ueb: 'Your pages were taken {n} times', cr_neu_credits: '+{n} credits', cr_neu_herz1: '1 new heart',
+    cr_neu_herzen: '{n} new hearts', cr_ansehen: 'See', cr_t: 'Your art pages',
+    cr_seiten: 'pages', cr_vitrine: 'in the showcase', cr_uebernahmen: 'downloads', cr_verdient: 'credits earned',
+    cr_herzen: 'hearts', cr_privat: 'private', cr_uebernommen: 'taken {n}×', cr_in_vitrine: 'In the showcase',
+    cr_freigeben: 'Share', cr_hinweis: 'Every download earns you {a} credits. Only what actually happened is listed here.',
     aw_t: 'Design an artwork page', aw_menu: 'Design an artwork page …',
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
@@ -4180,6 +4226,8 @@ async function startLaden() {
   $('st-plan').classList.toggle('bezahlt', !!bezahlt);
   $('st-unter').textContent = liste.length ? t('st_unter_voll') : t('st_unter_leer');
 
+  creatorNeuLaden();
+
   // Zahlenband — jede Kachel führt irgendwohin
   let sm = null;
   if (S.user) { try { sm = await api('api/sammlung/uebersicht'); } catch (e) {} }
@@ -4321,6 +4369,7 @@ function profilFuellen() {
   }
   journalLaden();
   vitrineProfilLaden();
+  creatorLaden();
   $('pf-binder').textContent = u.binder_anzahl + ' / ' + (u.binder_limit == null ? '∞' : u.binder_limit);
   $('pf-exporte').textContent = u.exporte_limit == null ? '∞' : Math.max(0, u.exporte_limit - u.exporte_benutzt) + ' / ' + u.exporte_limit;
   $('pf-upgrade').classList.toggle('hidden', false);
@@ -4330,6 +4379,74 @@ function profilFuellen() {
   $('pf-lang-de').classList.toggle('on', LANG === 'de');
   $('pf-lang-en').classList.toggle('on', LANG === 'en');
   themeAnwenden();
+}
+// --- Creator-Übersicht -----------------------------------------------------
+// Startseiten-Karte: nur, wenn seit dem letzten Wegklicken etwas passiert ist.
+async function creatorNeuLaden() {
+  const box = $('st-creator-neu'); if (!box || !S.user) return;
+  try {
+    const d = await api('api/creator?nur=neu');
+    const n = d.neu || {};
+    const teile = [];
+    if (n.uebernahmen === 1) teile.push(t('cr_neu_ueb1'));
+    else if (n.uebernahmen > 1) teile.push(t('cr_neu_ueb').replace('{n}', n.uebernahmen));
+    if (n.credits > 0) teile.push('<b>' + t('cr_neu_credits').replace('{n}', n.credits) + '</b>');
+    if (n.herzen === 1) teile.push(t('cr_neu_herz1'));
+    else if (n.herzen > 1) teile.push(t('cr_neu_herzen').replace('{n}', n.herzen));
+    box.classList.toggle('hidden', !teile.length);
+    if (!teile.length) return;
+    box.innerHTML = `<span class="herz">♥</span><div class="txt"><strong>${t('cr_neu_t')}</strong><span>${teile.join(' · ')}</span></div>
+      <button class="btn sekundaer" style="font-size:12.5px" onclick="creatorGesehen(true)">${t('cr_ansehen')}</button>`;
+  } catch (e) { box.classList.add('hidden'); }
+}
+async function creatorGesehen(oeffnen) {
+  $('st-creator-neu').classList.add('hidden');
+  try { await api('api/creator/gesehen', { method: 'POST' }); } catch (e) {}
+  if (oeffnen) { profilOeffnen(); setTimeout(() => { const b = $('pf-creator'); if (b && !b.classList.contains('hidden')) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); }
+}
+// Profilblock: Summen und eine Zeile je Seite. Nur Zahlen > 0 werden gezeigt; eine Seite ohne
+// Reaktion steht einfach mit ihrem Titel da. Keine Sortierung nach Beliebtheit.
+async function creatorLaden() {
+  const block = $('pf-creator'); if (!block || !S.user) return;
+  let d;
+  try { d = await api('api/creator'); } catch (e) { block.classList.add('hidden'); return; }
+  const seiten = d.seiten || [];
+  block.classList.toggle('hidden', !seiten.length);
+  if (!seiten.length) return;
+  const su = d.summe || {};
+  const zahlen = [[su.seiten, 'cr_seiten'], [su.vitrine, 'cr_vitrine'], [su.uebernahmen, 'cr_uebernahmen'],
+                  [su.verdient, 'cr_verdient'], [su.herzen, 'cr_herzen']].filter(([z]) => z > 0);
+  $('cr-zahlen').innerHTML = zahlen.map(([z, k]) => `<div class="cr-zahl"><b>${z}</b><span>${t(k)}</span></div>`).join('');
+  $('cr-hinweis').textContent = t('cr_hinweis').replace('{a}', VT.anteil || 2);
+  const pn = (p) => (LANG === 'en' ? (p.name_en || p.name_de) : (p.name_de || p.name_en)) || '';
+  $('cr-seiten').innerHTML = seiten.map((a) => {
+    const k = [];
+    if (a.herzen > 0) k.push(`<span><b>${a.herzen}</b> ♥</span>`);
+    if (a.uebernahmen > 0) k.push(`<span>${t('cr_uebernommen').replace('{n}', '<b>' + a.uebernahmen + '</b>')}</span>`);
+    if (a.verdient > 0) k.push(`<span><b>+${a.verdient}</b></span>`);
+    if (!k.length) k.push(a.oeffentlich ? `<span>${t('cr_in_vitrine')}</span>`
+      : `<span class="btn sekundaer" style="font-size:12px;padding:4px 10px">${t('cr_freigeben')}</span>`);
+    const titel = a.titel || (t('seite') + ' ' + (a.seite + 1));
+    const unter = [t('seite') + ' ' + (a.seite + 1), a.pokemon.map(pn).filter(Boolean).join(', ') || null, a.oeffentlich ? null : t('cr_privat')].filter(Boolean).join(' · ');
+    return `<div class="cr-seite" onclick="creatorSeiteOeffnen('${a.id}', ${a.oeffentlich ? 'true' : 'false'}, ${JSON.stringify(a.titel || '').replace(/"/g, '&quot;')})"><img loading="lazy" src="${a.vorschau}" alt="">
+      <div><div class="t">${esc(titel)}</div><div class="u">${esc(unter)}</div></div><div class="k">${k.join('')}</div></div>`;
+  }).join('');
+}
+function creatorSeiteOeffnen(id, oeffentlich, titel) {
+  // Öffentliche Seite: in der Kunstseiten-Vitrine groß zeigen. Private: Freigabe anbieten.
+  if (!oeffentlich) return creatorFreigeben(id, titel);
+  profilSchliessen();
+  ansicht('vitrine');
+  vitrineBereich('kunst');
+  let n = 0;
+  const warte = setInterval(() => {
+    n += 1;
+    if ((VT.kunst || []).some((a) => a.id === id)) { clearInterval(warte); kunstGross(id); }
+    else if (n > 20) clearInterval(warte);
+  }, 150);
+}
+function creatorFreigeben(id, titel) {
+  awTeilenFragen({ id, titel: titel || '' });
 }
 async function datenExport() {
   // Auskunft nach Art. 15/20 DSGVO als JSON-Datei
@@ -4348,7 +4465,7 @@ async function journalLaden() {
     const d = await api('api/credits');
     S.user = { ...S.user, ...d.konto };
     box.innerHTML = d.buchungen.length ? d.buchungen.map((b) => `<div>
-        <span>${(T[LANG] && T[LANG]['j_' + b.grund]) || b.grund}<br><span style="color:var(--mut);font-size:11px">${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
+        <span>${(T[LANG] && T[LANG]['j_' + b.grund]) || b.grund}<br><span style="color:var(--mut);font-size:11px">${b.titel ? esc(b.titel) + ' · ' : ''}${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
         <span class="${b.delta > 0 ? 'plus' : 'minus'}">${b.delta > 0 ? '+' : ''}${b.delta}</span></div>`).join('')
       : `<div style="color:var(--mut)">–</div>`;
   } catch (e) { box.innerHTML = ''; }
@@ -9727,7 +9844,7 @@ async function artworkGalerieLaden() {
   // Freigeben ging bisher nur an der geöffneten Seite. Wer zehn fertige Seiten hat,
   // musste jede einzeln aufrufen — deshalb steht der Schalter jetzt an jeder Kachel.
   $('aw-galerie').innerHTML = AW.liste.map((a) => `<div class="aw-mini ${AW.aktuell && AW.aktuell.id === a.id ? 'on' : ''}" data-id="${a.id}" onclick="artworkZeigen(AW.liste.find((x) => x.id === '${a.id}'))">
-    <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}${artworkImBinder(a.id) ? ' · ✓ ' + t('aw_im_binder') : ''}${a.oeffentlich ? ' · ' + t('aw_oeffentlich') + (a.verdient ? ' (+' + a.verdient + ')' : '') : ''}
+    <img src="${a.vorschau}" alt="" loading="lazy">${t('seite')} ${a.seite + 1} · ${t('stil_' + a.stil)}${artworkImBinder(a.id) ? ' · ✓ ' + t('aw_im_binder') : ''}${a.oeffentlich ? ' · ' + t('aw_oeffentlich') + (a.downloads ? ' · ' + t('cr_uebernommen').replace('{n}', a.downloads) : '') + (a.verdient ? ' · +' + a.verdient : '') : ''}
     ${S.user ? `<button class="aw-mini-teilen ${a.oeffentlich ? 'an' : ''}" title="${t(a.oeffentlich ? 'vt_zurueckziehen' : 'awt_ja_kurz')}"
         onclick="event.stopPropagation();awGalerieTeilen('${a.id}')">${a.oeffentlich ? '★ ' + t('aw_oeffentlich') : '☆ ' + t('awt_frei_kurz')}</button>` : ''}</div>`).join('');
 }
@@ -9852,6 +9969,7 @@ async function awTeilenSpeichern() {
     toast(t('awt_frei'));
     if (zurueck) dialogWechsel(() => { modalOeffnen('modal-artwork'); artworkGalerieLaden(); });
     else { modalSchliessen(); if (typeof artworkGalerieLaden === 'function') artworkGalerieLaden(); }
+    if (!$('profilseite').classList.contains('hidden')) creatorLaden();
   } catch (e) {
     const f = e && e.detail && e.detail.text ? e.detail.text : (e.message || '');
     $('awt-fehler').textContent = f;

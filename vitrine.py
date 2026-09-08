@@ -128,7 +128,8 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 admin_key=admin_key, load_binder=load_binder, abo=abo, drossel=drossel)
 
     con = get_db()
-    for befehl in ("ALTER TABLE profile ADD COLUMN tauschliste INTEGER DEFAULT 0",):
+    for befehl in ("ALTER TABLE profile ADD COLUMN tauschliste INTEGER DEFAULT 0",
+                   "ALTER TABLE users ADD COLUMN creator_gesehen_am TEXT"):
         try:
             con.execute(befehl)
         except Exception:
@@ -887,6 +888,78 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             bezahlt += out["bezahlt"]
         return {"ok": True, "seiten": gekauft, "bezahlt": bezahlt,
                 "konto": _konto_frisch(user["id"])}
+
+    # --- Creator-Übersicht ---------------------------------------------------
+    # Was die eigenen Kunstseiten bei anderen auslösen: Übernahmen, verdiente Credits,
+    # Herzen. Bewusst ohne Nullen, Rangliste oder Vergleich — die Oberfläche zeigt nur,
+    # was passiert ist. „Neu" ist alles seit dem letzten Wegklicken der Startseiten-Karte
+    # (users.creator_gesehen_am); vorher: alles seit Bestehen des Kontos.
+
+    def _creator_daten(user, nur_neu=False):
+        con = get_db()
+        uid = user["id"]
+        seit = con.execute("SELECT creator_gesehen_am FROM users WHERE id = ?", (uid,)).fetchone()
+        seit = (seit["creator_gesehen_am"] if seit else None) or ""
+        neu = {
+            "uebernahmen": con.execute(
+                "SELECT COUNT(*) c FROM artwork_freigaben f JOIN artworks a ON a.id = f.artwork_id"
+                " WHERE a.user_id = ? AND f.user_id != ? AND f.created_at > ?", (uid, uid, seit)).fetchone()["c"],
+            "credits": con.execute(
+                "SELECT COALESCE(SUM(delta),0) s FROM credit_buchungen WHERE user_id = ?"
+                " AND grund = 'artwork_anteil' AND created_at > ?", (uid, seit)).fetchone()["s"],
+            "herzen": con.execute(
+                "SELECT COUNT(*) c FROM artwork_stimmen s JOIN artworks a ON a.id = s.artwork_id"
+                " WHERE a.user_id = ? AND s.user_id != ? AND s.created_at > ?", (uid, uid, seit)).fetchone()["c"],
+        }
+        out = {"neu": neu, "gesehen_am": seit}
+        if nur_neu:
+            con.close()
+            return out
+        rows = con.execute(
+            "SELECT a.id, a.seite, a.layout, a.titel, a.pokemon, a.anker, a.oeffentlich, a.downloads, a.verdient,"
+            " a.created_at, a.veroeffentlicht_at,"
+            " (SELECT COUNT(*) FROM artwork_stimmen s WHERE s.artwork_id = a.id AND s.user_id != a.user_id) AS stimmen"
+            " FROM artworks a WHERE a.user_id = ? AND a.status = 'fertig' ORDER BY a.created_at DESC LIMIT 200",
+            (uid,)).fetchall()
+        con.close()
+        seiten = []
+        for r in rows:
+            try:
+                pokemon = [{"name_de": q.get("name_de"), "name_en": q.get("name_en")}
+                           for q in json.loads(r["pokemon"] or "[]")]
+            except Exception:
+                pokemon = []
+            seiten.append({
+                "id": r["id"], "seite": r["seite"], "layout": r["layout"], "titel": r["titel"] or "",
+                "pokemon": pokemon, "anker": len(json.loads(r["anker"] or "{}")),
+                "oeffentlich": bool(r["oeffentlich"]), "uebernahmen": r["downloads"] or 0,
+                "verdient": r["verdient"] or 0, "herzen": r["stimmen"] or 0,
+                "created_at": r["created_at"], "vorschau": f"api/artwork/{r['id']}/bild?v=vorschau",
+            })
+        out["seiten"] = seiten
+        out["summe"] = {
+            "seiten": len(seiten),
+            "vitrine": sum(1 for x in seiten if x["oeffentlich"]),
+            "uebernahmen": sum(x["uebernahmen"] for x in seiten),
+            "verdient": sum(x["verdient"] for x in seiten),
+            "herzen": sum(x["herzen"] for x in seiten),
+        }
+        return out
+
+    @app.get("/api/creator")
+    def creator_uebersicht(request: Request, nur: str = ""):
+        user = require_user(request)
+        return _creator_daten(user, nur_neu=(nur == "neu"))
+
+    @app.post("/api/creator/gesehen")
+    def creator_gesehen(request: Request):
+        """Die Startseiten-Karte wurde weggeklickt: ab jetzt zählt nur noch, was danach kommt."""
+        user = require_user(request)
+        con = get_db()
+        con.execute("UPDATE users SET creator_gesehen_am = ? WHERE id = ?", (_now(), user["id"]))
+        con.commit()
+        con.close()
+        return {"ok": True}
 
     @app.post("/api/vitrine/meldung")
     async def meldung(request: Request):

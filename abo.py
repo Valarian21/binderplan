@@ -542,8 +542,21 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         rows = con.execute(
             "SELECT delta, grund, ref, saldo_danach, created_at FROM credit_buchungen"
             " WHERE user_id = ? ORDER BY id DESC LIMIT 50", (user["id"],)).fetchall()
+        # Seitentitel zu den Artwork-Buchungen — „Anteil aus Übernahme · Lucia Flower Garden"
+        # erzählt etwas, „artwork_anteil PuXX18XATHs5" nicht.
+        refs = {r["ref"] for r in rows if r["ref"] and (r["grund"] or "").startswith("artwork")}
+        titel = {}
+        if refs:
+            q = ",".join("?" * len(refs))
+            titel = {t["id"]: (t["titel"] or "") for t in con.execute(
+                f"SELECT id, titel FROM artworks WHERE id IN ({q})", tuple(refs)).fetchall()}
         con.close()
-        return {"konto": konto_info(user), "buchungen": [dict(r) for r in rows]}
+        buchungen = []
+        for r in rows:
+            d = dict(r)
+            d["titel"] = titel.get(d.get("ref") or "", "")
+            buchungen.append(d)
+        return {"konto": konto_info(user), "buchungen": buchungen}
 
     # --- Checkout ---------------------------------------------------------------
     @app.post("/api/stripe/checkout")
