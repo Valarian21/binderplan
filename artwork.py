@@ -451,8 +451,13 @@ def _vorlage(anker, cols, rows, geo, lang, analysen):
                     from PIL import ImageFilter
                     fenster_img = img.crop((bx0, by0, bx1, by1))
                     unscharf = fenster_img.filter(ImageFilter.GaussianBlur(max(12, (bx1 - bx0) // 12)))
+                    # Mit weicher Maske einsetzen, damit die Fläche keine harte Rechteckkante hat
+                    maske = Image.new("L", fenster_img.size, 0)
+                    md = ImageDraw.Draw(maske)
                     for gx0, gy0, gx1, gy1 in flaechen:
-                        img.paste(unscharf.crop((gx0 - bx0, gy0 - by0, gx1 - bx0, gy1 - by0)), (gx0, gy0))
+                        md.rectangle((gx0 - bx0, gy0 - by0, gx1 - bx0 - 1, gy1 - by0 - 1), fill=255)
+                    maske = maske.filter(ImageFilter.GaussianBlur(6))
+                    img.paste(unscharf, (bx0, by0), maske)
         # Der Streifen zwischen Fenster und Fachkante (Kartenrand) bekommt ebenfalls eine weiche
         # Fortsetzung statt Grau: ein hartes graues Rechteck um das Bild las das Modell als
         # Rahmen und malte einen hellen Saum um die Karte. Der Scan deckt den Streifen später ab.
