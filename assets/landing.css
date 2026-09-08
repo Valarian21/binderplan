@@ -75,12 +75,14 @@
   .btn.sek { background:var(--card); color:var(--ink); }
   .btn.sek:hover { background:var(--gelb); }
 
-  .hero { background:var(--blau); color:#fff; border:3px solid var(--kontur); border-radius:20px;
+  /* Feste Markenfarbe statt --blau: im dunklen Design wird das Token aufgehellt, dann
+     stand weißer Text auf Hellblau (Lead 1,85:1). Der Hero ist Marke, kein Thema. */
+  .hero { background:#2A4B9B; color:#fff; border:3px solid var(--kontur); border-radius:20px;
           box-shadow:9px 9px 0 var(--kontur); padding:32px; margin:10px 0 30px; gap:32px; }
   .hero h1 { font-size:clamp(25px,3.4vw,37px); line-height:1.16; margin-bottom:16px; }
-  .hero h1 em { color:var(--gelb); }
-  .hero p.lead { color:#CBD6F2; }
-  .hero .klein { color:#A9B8E0; }
+  .hero h1 em { color:#F5C518; }
+  .hero p.lead { color:#E4EAF8; }
+  .hero .klein { color:#C7D3EE; }
   .hero .shot { box-shadow:6px 6px 0 var(--kontur); border-color:var(--kontur); }
 
   .step, .feat div, .tarif, .faq details, .shot {

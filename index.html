@@ -16,25 +16,41 @@
 <meta name="theme-color" content="#2A4B9B">
 <style>
   :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518;
-          --d1:#E4322B; --d2:#2A4B9B; --d3:#2F8F5B; --d-gitter:rgba(20,22,28,.09); }
+          --d1:#E4322B; --d2:#2A4B9B; --d3:#2F8F5B; --d-gitter:rgba(20,22,28,.09);
+          --aktiv-bg:#14161C; --aktiv-fg:#FFFFFF;
+          --blau-flaeche:#2A4B9B; --blau-fg:#FFFFFF;
+          --akzent-flaeche:#DC2C25; --akzent-flaeche-hover:#B8211B; --akzent-fg:#FFFFFF;
+          --link:#2A4B9B; --gruen-text:#24704A;
+          --gruen-flaeche:#2A8051; --gruen-fg:#FFFFFF; --akzent-text:#CF2A23; }
   /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
-                                          --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11); }
+                                          --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11);
+                                          --aktiv-bg:#ECEEF2; --aktiv-fg:#14161C;
+                                          --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
+                                          --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
+                                          --link:#7C9BF0; --gruen-text:#5CC48F;
+                                          --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }
   }
   :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
-                              --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11); }
+                              --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11);
+                              --aktiv-bg:#ECEEF2; --aktiv-fg:#14161C;
+                              --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
+                              --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
+                              --link:#7C9BF0; --gruen-text:#5CC48F;
+                              --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Archivo', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  a { color: var(--link); }
   input, select { font-family: inherit; font-size: 13.5px; color: var(--ink); }
   .hidden { display: none !important; }
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
           border: 1.5px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; color: var(--mut); }
-  .chip.on { border-color: var(--akzent); background: var(--akzent); color: #fff; }
+  .chip.on { border-color: var(--akzent-text); background: var(--akzent-flaeche); color: var(--akzent-fg); }
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
-         background: var(--akzent); color: #fff; font-size: 14px; font-weight: 700; }
-  .btn:hover { background: var(--akzent-dunkel); }
+         background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: 14px; font-weight: 700; }
+  .btn:hover { background: var(--akzent-flaeche-hover); }
   .btn.sekundaer { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
   .btn.sekundaer:hover { background: var(--panel2); }
   .btn:disabled { opacity: 1; background: var(--panel2); color: var(--mut); border-color: var(--line); cursor: default; }
@@ -60,7 +76,7 @@
   .imp-tab td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .imp-tab .imp-roh { color: var(--mut); font-family: ui-monospace, monospace; font-size: 11.5px; max-width: 190px; overflow-wrap: anywhere; }
   .imp-tab .imp-set { color: var(--mut); font-size: 11.5px; }
-  .imp-tab .imp-ok { text-align: right; font-weight: 700; color: var(--gruen); width: 26px; }
+  .imp-tab .imp-ok { text-align: right; font-weight: 700; color: var(--gruen-text); width: 26px; }
   .imp-tab tr.unsicher .imp-ok { color: var(--gelb); }
   .imp-tab tr.fehlt .imp-ok { color: var(--mut); }
   .imp-tab tr.fehlt td { opacity: .65; }
@@ -203,7 +219,7 @@
 
 
   .f-art-hinweis { font-size: 11px; color: var(--mut); line-height: 1.35; }
-  .f-art-hinweis.warn { color: var(--akzent); }
+  .f-art-hinweis.warn { color: var(--akzent-text); }
 
 
   /* ---------- Binder aus Fotos ---------- */
@@ -226,7 +242,7 @@
   .fi-karte .fi-txt { padding: 5px 6px 6px; }
   .fi-karte .fi-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
   .fi-karte .fi-set { font-size: 10px; color: var(--mut); }
-  .fi-karte .fi-warn { font-size: 10px; color: var(--akzent); font-weight: 700; margin-top: 2px; }
+  .fi-karte .fi-warn { font-size: 10px; color: var(--akzent-text); font-weight: 700; margin-top: 2px; }
   .fi-fort { height: 6px; border-radius: 999px; background: var(--panel2); overflow: hidden; margin: 12px 0; }
   .fi-fort i { display: block; height: 100%; background: var(--akzent); transition: width .25s; }
   .fi-tip { font-size: 12.5px; color: var(--mut); line-height: 1.45; }
@@ -298,8 +314,8 @@
   .vt-marke.dex { background: #E8EDF9; color: #2A4B9B; }
   .vt-marke.artwork { background: #F3E8FB; color: #7B3FA8; }
   .vt-marke.kuenstler { background: #FFF4D6; color: #8a6d00; }
-  .vt-marke.master { background: #E3F3EA; color: var(--gruen); }
-  .vt-marke.pokemon { background: #FDE7E5; color: var(--akzent); }
+  .vt-marke.master { background: #E3F3EA; color: var(--gruen-text); }
+  .vt-marke.pokemon { background: #FDE7E5; color: var(--akzent-text); }
   body.dunkel .vt-marke.dex, :root[data-theme="dark"] .vt-marke.dex { background: #1E2740; color: #9DB4F5; }
   body.dunkel .vt-marke.artwork, :root[data-theme="dark"] .vt-marke.artwork { background: #2E2140; color: #C79BE8; }
   body.dunkel .vt-marke.kuenstler, :root[data-theme="dark"] .vt-marke.kuenstler { background: #3A3112; color: var(--gelb); }
@@ -363,7 +379,7 @@
   .kk .km { font-size: 11.5px; color: var(--mut); }
   .kk .kf { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
   .kk .kf .btn { font-size: 12px; padding: 6px 11px; }
-  .kk .habe { font-size: 12px; font-weight: 700; color: var(--gruen); }
+  .kk .habe { font-size: 12px; font-weight: 700; color: var(--gruen-text); }
   @media (max-width: 700px) {
     /* Diese Regel steht bewusst NACH der Grundregel: die alte Fassung weiter oben wurde
        von `.kopfzeile { flex-wrap: wrap }` überschrieben, und die Zeile brach doch um. */
@@ -426,7 +442,7 @@
   .bp-titel { font-size: 14px; font-weight: 800; letter-spacing: -.01em; cursor: pointer;
     display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
   .bp-titel::after { content: "▾"; font-size: 10px; color: var(--mut); font-weight: 400; }
-  .bp-titel:hover { color: var(--akzent); }
+  .bp-titel:hover { color: var(--akzent-text); }
   .bp-nowants { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
     color: var(--mut); border: 1.5px solid var(--line); border-radius: 999px; padding: 1px 7px; }
   .bp-nowants.an { color: #B8860B; border-color: #E0A21B; }
@@ -522,7 +538,7 @@
   .tausch-karte { position: relative; aspect-ratio: 63/88; border-radius: 6px; overflow: hidden;
                   border: 1.5px solid var(--line); background: var(--panel2); }
   .tausch-karte img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .tausch-n { position: absolute; right: 3px; bottom: 3px; background: var(--gruen); color: #fff;
+  .tausch-n { position: absolute; right: 3px; bottom: 3px; background: var(--gruen-flaeche); color: var(--gruen-fg);
               font-size: 10.5px; font-weight: 800; padding: 1px 5px; border-radius: 999px; }
   .slot.wird-gezogen { opacity: .3; }
   .fach-geist { transition: none; }
@@ -544,8 +560,8 @@
   @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
   .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;
              padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
-  .vt-herz.an { border-color: var(--akzent); color: var(--akzent); }
-  .vt-herz:hover { border-color: var(--akzent); }
+  .vt-herz.an { border-color: var(--akzent-text); color: var(--akzent-text); }
+  .vt-herz:hover { border-color: var(--akzent-text); }
   .vt-leer { grid-column: 1/-1; padding: 40px 0; text-align: center; color: var(--mut); font-size: 14px; }
   .vt-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--line); }
   .vt-band { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--line);
@@ -553,7 +569,7 @@
 
 
   /* Leiste über einem fremden, öffentlichen Binder */
-  .vt-hab { font-size: 12.5px; color: var(--gruen); font-weight: 700; }
+  .vt-hab { font-size: 12.5px; color: var(--gruen-text); font-weight: 700; }
   .vt-ansichtleiste { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
                       padding: 10px 14px; margin: 0 auto 12px; max-width: min(700px, 100%);
                       border: 2px solid var(--line); border-radius: 12px; background: var(--card); }
@@ -616,14 +632,14 @@
   .sm-kopf h2 { margin: 0; font-size: 20px; }
   .sm-zahlenzeile { font-size: 12.5px; color: var(--mut); line-height: 1.5; }
   .sm-zahlenzeile b { color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
-  .sm-zahlenzeile b.gruen { color: var(--gruen); }
+  .sm-zahlenzeile b.gruen { color: var(--gruen-text); }
   .sm-zahlenzeile a { color: var(--blau); cursor: pointer; font-weight: 700; }
   .sm-zahlen { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 16px; }
   .sm-kachel { border: 2px solid var(--line); border-radius: 12px; padding: 10px 16px; min-width: 116px; }
   .sm-kachel .zahl { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .sm-kachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; }
-  .sm-kachel.wert { border-color: var(--gruen); }
-  .sm-kachel.wert .zahl { color: var(--gruen); }
+  .sm-kachel.wert { border-color: var(--gruen-flaeche); }
+  .sm-kachel.wert .zahl { color: var(--gruen-text); }
   .sm-leiste { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
   .sm-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
   .sm-karte { position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
@@ -632,22 +648,22 @@
   .sm-karte .sm-txt { padding: 6px 7px 7px; }
   .sm-karte .sm-name { font-size: 11.5px; font-weight: 700; line-height: 1.2; }
   .sm-karte .sm-meta { font-size: 10px; color: var(--mut); margin-top: 1px; }
-  .sm-karte .sm-wert { font-size: 11px; font-weight: 800; color: var(--gruen); margin-top: 3px; }
+  .sm-karte .sm-wert { font-size: 11px; font-weight: 800; color: var(--gruen-text); margin-top: 3px; }
   /* Ein Zeichen, keine Fußnote: „≈" heißt, die Zahl stammt nicht direkt aus dem
      Cardmarket-Trend. Was genau, sagt der Tooltip. */
   .sm-karte .sm-quelle { color: var(--mut); font-weight: 700; margin-left: 4px; cursor: help; }
   .sm-posten { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
   .sm-pchip { font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 999px;
               border: 1.5px solid var(--line); background: var(--card); color: var(--mut); line-height: 1.4; }
-  .sm-pchip:hover { border-color: var(--akzent); color: var(--akzent); }
+  .sm-pchip:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
   /* Der Knopf für einen weiteren Posten erscheint erst, wenn man die Karte anfasst —
      auf jeder Kachel dauerhaft war er nur Rauschen. */
-  .sm-pchip.neu { color: var(--gruen); opacity: 0; transition: opacity .15s; }
+  .sm-pchip.neu { color: var(--gruen-text); opacity: 0; transition: opacity .15s; }
   .sm-karte:hover .sm-pchip.neu { opacity: 1; }
   @media (pointer: coarse) { .sm-pchip.neu { opacity: .8; } }
   /* Der Wert steht am Posten, nicht nur im Tooltip: eine Poor-Karte ist etwas anderes wert
      als dieselbe Karte in Near Mint, und genau dafür gibt es die Posten. */
-  .sm-pchip b { color: var(--gruen); font-weight: 800; }
+  .sm-pchip b { color: var(--gruen-text); font-weight: 800; }
   .sm-karte .sm-anz { position: absolute; top: 4px; left: 4px; background: var(--kontur); color: #fff;
                       font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
   .sm-karte .sm-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
@@ -666,7 +682,7 @@
   .aw-mini-teilen:hover { border-color: var(--blau); color: var(--blau); }
   .aw-passung { margin-top: 8px; font-size: 11.5px; line-height: 1.55; border: 1.5px solid var(--line);
     border-radius: 10px; padding: 8px 10px; background: var(--panel2); }
-  .aw-passung.gut { border-color: var(--gruen); }
+  .aw-passung.gut { border-color: var(--gruen-flaeche); }
   .aw-passung.mittel { border-color: #E0A21B; }
   .aw-passung strong { font-size: 12px; }
   .tk-hab .wunsch { flex: 0 0 auto; padding: 0 8px; color: var(--mut); }
@@ -726,16 +742,16 @@
   .st-zahl:hover { border-color: var(--kontur); }
   .st-zahl .z { font-size: 25px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
   .st-zahl .l { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 2px; }
-  .st-zahl.gruen .z { color: var(--gruen); }
+  .st-zahl.gruen .z { color: var(--gruen-text); }
 
   /* Creator-Übersicht: Karte auf der Startseite nur bei Ereignissen, Block im Profil */
   .st-neu { display: flex; align-items: center; gap: 12px; border: 2px solid var(--kontur); border-radius: 14px;
             padding: 11px 14px; background: var(--card); box-shadow: 4px 4px 0 var(--akzent); margin-bottom: 22px; flex-wrap: wrap; }
-  .st-neu .herz { color: var(--akzent); font-size: 22px; line-height: 1; }
+  .st-neu .herz { color: var(--akzent-text); font-size: 22px; line-height: 1; }
   .st-neu .txt { flex: 1; min-width: 200px; }
   .st-neu .txt strong { display: block; font-size: 14px; }
   .st-neu .txt span { font-size: 12.5px; color: var(--mut); }
-  .st-neu .txt b { color: var(--gruen); }
+  .st-neu .txt b { color: var(--gruen-text); }
   .cr-zahlen { display: flex; gap: 20px; flex-wrap: wrap; margin: 2px 0 8px; }
   .cr-zahl b { display: block; font-size: 21px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .cr-zahl span { font-size: 11.5px; color: var(--mut); }
@@ -819,7 +835,7 @@
   .menu .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
   .lang-toggle { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; }
   .lang-toggle button { padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--mut); }
-  .lang-toggle button.on { background: var(--ink); color: #fff; }
+  .lang-toggle button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
 
   .rumpf { display: flex; flex: 1; min-height: 0; }
   .spalte-filter { width: 288px; flex-shrink: 0; background: var(--card); border-right: 1.5px solid var(--line);
@@ -836,7 +852,7 @@
                 grid-auto-rows: max-content; gap: 9px; align-content: start; padding-bottom: 10px; }
   .tk { position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
         text-align: left; padding: 0; display: flex; flex-direction: column; cursor: pointer; }
-  .tk:hover { border-color: var(--akzent); }
+  .tk:hover { border-color: var(--akzent-text); }
   .tk .bildbox { position: relative; width: 100%; padding-top: 139.7%; background: var(--panel2); }
   .tk .bildbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
   .tk .kein-bild { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -848,12 +864,12 @@
     font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; z-index: 2; }
   .tk .tk-preis.leer, .plk .tk-preis.leer { background: var(--mut); }
   .plk { position: relative; }
-  .tk .anz { position: absolute; top: 5px; right: 5px; background: var(--gruen); color: #fff; font-size: 10.5px;
+  .tk .anz { position: absolute; top: 5px; right: 5px; background: var(--gruen-flaeche); color: var(--gruen-fg); font-size: 10.5px;
              font-weight: 700; min-width: 19px; height: 19px; border-radius: 999px; display: flex; align-items: center;
              justify-content: center; padding: 0 5px; }
   .tk .rbtn { position: absolute; top: 5px; left: 5px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
               color: var(--mut); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; }
-  .tk .rbtn:hover { border-color: var(--akzent); color: var(--akzent); }
+  .tk .rbtn:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
   /* Sammlung: direkt aufnehmen, ohne Umweg über einen Binder */
   /* Ein Klick auf die Kachel legt die Karte ins Fach — das ist die Arbeit dieser Seite.
      Für alles andere sitzen zwei kleine Knöpfe in den Ecken, beschriftet und getrennt. */
@@ -861,7 +877,7 @@
     background: rgba(255,255,255,.92); border: 1.5px solid var(--line); color: var(--mut);
     font-size: 13px; font-weight: 700; line-height: 1; display: flex; align-items: center;
     justify-content: center; cursor: pointer; z-index: 3; }
-  .tk .info:hover { border-color: var(--akzent); color: var(--akzent); }
+  .tk .info:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
   :root[data-theme="dark"] .tk .info { background: rgba(25,28,35,.92); }
   .zst-auf { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent;
     border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 11px; cursor: pointer;
@@ -876,15 +892,15 @@
   .tk-hab button { flex: 1; font-size: 10.5px; font-weight: 700; border: 1.5px solid var(--line);
     background: transparent; color: var(--mut); border-radius: 7px; padding: 4px 6px; cursor: pointer;
     min-height: 28px; }
-  .tk-hab button:hover { border-color: var(--gruen); color: var(--gruen); }
-  .tk-hab button.hat { background: var(--gruen); border-color: var(--gruen); color: #fff; }
+  .tk-hab button:hover { border-color: var(--gruen-flaeche); color: var(--gruen-text); }
+  .tk-hab button.hat { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
   .tk-hab .rev { flex: 0 0 auto; }
   .tk .sbtn { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 999px;
               background: rgba(255,255,255,.92); border: 1.5px solid var(--line); color: var(--mut);
               font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
               padding: 0 4px; min-width: 28px; width: auto; }
-  .tk .sbtn:hover { border-color: var(--gruen); color: var(--gruen); }
-  .tk .sbtn.hat { background: var(--gruen); border-color: var(--gruen); color: #fff; }
+  .tk .sbtn:hover { border-color: var(--gruen-flaeche); color: var(--gruen-text); }
+  .tk .sbtn.hat { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
   :root[data-theme="dark"] .tk .sbtn { background: rgba(25,28,35,.92); }
 
   .spalte-binder { width: var(--binder-w, 486px); flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
@@ -895,7 +911,7 @@
      (rund 130 px) und schrumpft ohne diese Zeile nicht darunter, egal was `flex` sagt. In der
      schmalen Kopfzeile des Planers ragte er deshalb 40 px aus seinem Kasten und lag unter dem
      Knopf „Karte suchen". */
-  .binder-groesse input[type=range] { flex: 1; min-width: 0; accent-color: var(--gruen); cursor: pointer; }
+  .binder-groesse input[type=range] { flex: 1; min-width: 0; accent-color: var(--gruen-text); cursor: pointer; }
   /* Binderseiten haben eine eigene kleine Palette: echte Sammelalben sind fast immer
      schwarz, weil die Karten davor stehen. `body.dunkle-seiten` schaltet Werkbank,
      Planer und Durchblättern gemeinsam um — der Druck bleibt davon unberührt. */
@@ -918,21 +934,21 @@
   .slot .raus { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
                 color: #fff; font-size: 10px; line-height: 17px; text-align: center; opacity: 0; z-index: 3; }
   .slot:hover .raus { opacity: 1; }
-  .slot .rmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent); color: #fff; font-size: 7.5px;
+  .slot .rmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: 7.5px;
                  font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
   .slot .preis { position: absolute; bottom: 2px; right: 2px; background: rgba(58,50,39,.82); color: #fff; font-size: 8px;
                  font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
-  .slot.dragover { border-color: var(--akzent); border-style: solid; }
+  .slot.dragover { border-color: var(--akzent-text); border-style: solid; }
   .slots.dragover { outline: 2px dashed var(--akzent); outline-offset: -3px; }
   .tk { cursor: grab; }
-  body.zieht-karte .slot { border-color: var(--akzent); }
+  body.zieht-karte .slot { border-color: var(--akzent-text); }
   body.zieht-karte .slot.frei { background: color-mix(in srgb, var(--akzent) 12%, transparent); }
   .slot.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -2px; }
   .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 7px;
     flex-wrap: wrap; font-size: 12.5px; color: var(--mut); }
   .seiten-nav strong { color: var(--ink); }
   .schalter { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; }
-  .schalter input { width: 15px; height: 15px; accent-color: var(--akzent); }
+  .schalter input { width: 15px; height: 15px; accent-color: var(--akzent-text); }
 
   /* ---------- Modale & Planer ---------- */
   .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: 80; display: flex; align-items: center; justify-content: center; }
@@ -979,7 +995,7 @@
   .pl-treffer .plk .plk-n { font-size: 10.5px; line-height: 1.2; margin-top: 3px; color: var(--mut);
                             overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .pl-treffer .plk:hover img { outline: 2px solid var(--akzent); outline-offset: 1px; }
-  .pl-treffer .plk .plk-anz { position: absolute; top: 3px; right: 3px; background: var(--akzent); color: #fff;
+  .pl-treffer .plk .plk-anz { position: absolute; top: 3px; right: 3px; background: var(--akzent-flaeche); color: var(--akzent-fg);
                               font-size: 10px; font-weight: 700; border-radius: 99px; padding: 0 5px; }
   .pl-treffer-leer { padding: 4px 14px 14px; font-size: 12.5px; color: var(--mut); }
   .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px;
@@ -993,20 +1009,20 @@
                    font-size: 10px; line-height: 14px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
   .slot:hover .hat-btn { opacity: 1; }
   .slot.hat img { opacity: .4; }
-  .slot.hat { border-color: var(--gruen); }
-  .slot.hat .hat-btn { opacity: 1; background: var(--gruen); border-color: var(--gruen); color: #fff; }
+  .slot.hat { border-color: var(--gruen-flaeche); }
+  .slot.hat .hat-btn { opacity: 1; background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
   .tab-leiste { display: flex; gap: 6px; margin-bottom: 16px; }
   .tab-leiste button { flex: 1; padding: 9px; border-radius: 10px; border: 1.5px solid var(--line); font-weight: 700; font-size: 13.5px; color: var(--mut); }
-  .tab-leiste button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .tab-leiste button.on { background: var(--aktiv-bg); border-color: var(--aktiv-bg); color: var(--aktiv-fg); }
   .tarife { display: flex; gap: 12px; flex-wrap: wrap; }
   .tarif { flex: 1 1 160px; border: 2px solid var(--line); border-radius: 14px; padding: 16px 14px; text-align: center; cursor: pointer; background: var(--card); }
-  .tarif:hover { border-color: var(--akzent); }
+  .tarif:hover { border-color: var(--akzent-text); }
   .tarif .preis-gross { font-size: 22px; font-weight: 700; margin: 6px 0 2px; }
   .tarif .klein { font-size: 11.5px; color: var(--mut); }
-  .tarif .empf { display: inline-block; background: var(--akzent); color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; margin-bottom: 4px; }
+  .tarif .empf { display: inline-block; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; margin-bottom: 4px; }
   .feld-lbl { font-size: 12px; font-weight: 700; margin: 12px 0 5px; }
   .ansicht-banner { background: var(--hover); border-bottom: 1.5px solid var(--line); text-align: center; font-size: 13px; padding: 8px; font-weight: 600; }
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff;
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--aktiv-bg); color: var(--aktiv-fg);
            font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 90; }
   .toast.zeig { opacity: 1; }
   .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
@@ -1037,7 +1053,7 @@
   .an-kachel .zahl { font-size: 24px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
   .an-kachel .lbl { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-bottom: 3px; }
   .an-kachel .neben { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 3px; }
-  .an-kachel .zahl.plus { color: var(--gruen); } .an-kachel .zahl.minus { color: var(--akzent); }
+  .an-kachel .zahl.plus { color: var(--gruen-text); } .an-kachel .zahl.minus { color: var(--akzent-text); }
   .an-tafel { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px;
               padding: 16px 18px 18px; margin-bottom: 16px; }
   .an-tafel > h3 { margin: 0 0 3px; font-size: 15.5px; }
@@ -1071,7 +1087,7 @@
   .an-tab .nm { font-weight: 600; }
   .an-tab .set { font-size: 11px; color: var(--mut); }
   .an-tab img { width: 30px; border-radius: 3px; display: block; background: var(--panel2); }
-  .an-plus { color: var(--gruen); font-weight: 700; } .an-minus { color: var(--akzent); font-weight: 700; }
+  .an-plus { color: var(--gruen-text); font-weight: 700; } .an-minus { color: var(--akzent-text); font-weight: 700; }
   /* Kartenraster für „teuerste Karten“ */
   .an-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 11px; }
   .an-karte { text-align: left; }
@@ -1120,20 +1136,20 @@
   .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding-bottom: 20px; }
   .bcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; cursor: pointer;
            display: flex; flex-direction: column; gap: 8px; text-align: left; }
-  .bcard:hover { border-color: var(--akzent); }
+  .bcard:hover { border-color: var(--akzent-text); }
   .bcard .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--panel2);
                   color: var(--mut); align-self: flex-start; letter-spacing: .05em; text-transform: uppercase; }
   .bcard .bname { font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
   .bcard .bmeta { font-size: 12px; color: var(--mut); }
   .bcard.neu { border-style: dashed; align-items: center; justify-content: center; color: var(--mut); min-height: 130px; }
-  .bcard.neu:hover { color: var(--akzent); }
+  .bcard.neu:hover { color: var(--akzent-text); }
   .pf-block { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
   .pf-block h3 { margin: 0 0 12px; font-size: 14px; }
   .pf-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
   .pf-zeile:last-child { border-bottom: none; }
   .pf-zeile .wert { font-weight: 700; }
   .pf-block.gefahr { border-color: #d9847360; }
-  .pf-block.gefahr h3 { color: var(--akzent); }
+  .pf-block.gefahr h3 { color: var(--akzent-text); }
   /* Touch-Geräte: Aktions-Knöpfe auf den Slots ohne Hover immer zeigen */
   @media (hover: none) {
     .slot .raus, .slot .hat-btn { opacity: .95; }
@@ -1173,9 +1189,9 @@
       background: var(--card); border-top: 1.5px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
     .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
       font-size: 11px; font-weight: 700; color: var(--mut); padding: 5px 2px; border-radius: 10px; min-height: 44px; }
-    .mnav button.on { color: var(--akzent); background: var(--hover); }
-    .mnav .mzahl { position: absolute; margin-left: 34px; margin-top: -4px; background: var(--akzent); color: #fff;
-      font-size: 9.5px; min-width: 16px; border-radius: 999px; padding: 1px 4px; }
+    .mnav button.on { color: var(--akzent-text); background: var(--hover); }
+    .mnav .mzahl { position: absolute; margin-left: 32px; margin-top: -5px; background: var(--akzent-flaeche); color: var(--akzent-fg);
+      font-size: 11px; font-weight: 700; min-width: 18px; border-radius: 999px; padding: 1px 5px; line-height: 1.4; }
     #mobil-mehr { position: fixed; left: 10px; right: 10px; top: 60px; bottom: auto; min-width: 0;
                   max-height: calc(100vh - 80px); overflow-y: auto; z-index: 70; }
     #mobil-mehr button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: 13.5px; padding: 10px 14px; }
@@ -1198,7 +1214,7 @@
   /* ---------- 2026-08-27 (2): Binder-Wechsler, Segment, Planer-Tab, Fach-Menü, Panel ---------- */
   .menu.links { right: auto; left: 0; }
   .menu-lbl { padding: 6px 12px 2px; font-size: 11px; color: var(--mut); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
-  .menu button.gefahr { color: var(--akzent); }
+  .menu button.gefahr { color: var(--akzent-text); }
   .bw-btn { max-width: 320px; gap: 6px; }
   .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bw-caret { color: var(--mut); font-size: 11px; }
@@ -1213,10 +1229,10 @@
   .bw-liste button.aktiv { background: var(--hover); }
   .bw-liste .bwl-meta { font-weight: 500; font-size: 11px; color: var(--mut); }
   .bw-liste .bwl-del { margin-left: auto; color: var(--mut); padding: 2px 6px; border-radius: 6px; }
-  .bw-liste .bwl-del:hover { color: var(--akzent); background: var(--panel2); }
+  .bw-liste .bwl-del:hover { color: var(--akzent-text); background: var(--panel2); }
   .segment { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
   .segment button { padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--mut); }
-  .segment button.on { background: var(--ink); color: #fff; }
+  .segment button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
   #menu-konto { min-width: 280px; }
   #menu-konto .konto-mail { padding: 9px 12px; font-size: 12px; color: var(--mut); word-break: break-all; }
   /* Binder-Panel: Kopf mit Stats und Werkzeugen */
@@ -1226,7 +1242,7 @@
   .bp-tools .menuwrap { margin-left: auto; }
   .bp-hilfe { font-size: 11px; color: var(--mut); line-height: 1.5; margin-top: auto; }
   .slot.frei { cursor: pointer; }
-  .slot.frei:hover { border-color: var(--akzent); color: var(--akzent); }
+  .slot.frei:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
   .slot .mehr { position: absolute; bottom: 2px; right: 2px; width: 22px; height: 17px; border-radius: 999px; background: rgba(58,50,39,.75); color: #fff; font-size: 12px; line-height: 15px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
   .slot:hover .mehr { opacity: 1; }
   .slot .preis { bottom: 21px; }
@@ -1255,7 +1271,7 @@
   .up-tab { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
   .up-tab th, .up-tab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
   .up-tab td:first-child, .up-tab th:first-child { text-align: left; }
-  .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent); font-weight: 700; }
+  .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent-text); font-weight: 700; }
   body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap { display: none !important; }
   body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: 13px; }
   /* Wer aus der Vitrine kommt, bekommt den Weg zurück; die untere Handy-Leiste (Planer, Mehr)
@@ -1288,14 +1304,14 @@
   .f-jahr span { color: var(--mut); }
   .spalte-filter select.feld { text-overflow: ellipsis; }
   .chip.klein { font-size: 11px; padding: 3px 8px; }
-  .d-illu { color: var(--akzent); cursor: pointer; font-weight: 700; }
+  .d-illu { color: var(--akzent-text); cursor: pointer; font-weight: 700; }
   .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
   .d-kein-bild small { font-weight: 500; color: var(--mut); font-size: 11.5px; }
   .slot .spmark { left: auto; right: 2px; bottom: 21px; background: var(--ink); }
   .slot .hat-mark { position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%;
                     border: 1.5px solid rgba(255,255,255,.5); background: rgba(20,22,28,.5); color: #fff;
                     font-size: 11px; line-height: 14px; text-align: center; font-weight: 700; }
-  .slot .hat-mark.ja { background: var(--gruen); border-color: var(--gruen); }
+  .slot .hat-mark.ja { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); }
   .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: 12.5px; }
   .detail .d-grid > div { min-width: 0; }
   .d-fam .btn { white-space: nowrap; }
@@ -1317,8 +1333,8 @@
   .f-zweispaltig { display: grid; grid-template-columns: 1fr; gap: 10px; }
   /* Was gerade filtert, steht sichtbar über der Liste und lässt sich einzeln wegklicken. */
   .f-aktiv { display: flex; flex-wrap: wrap; gap: 5px; }
-  .f-aktiv .chip { display: inline-flex; align-items: center; gap: 5px; border-color: var(--akzent);
-    color: var(--akzent); font-size: 11.5px; padding: 3px 8px; }
+  .f-aktiv .chip { display: inline-flex; align-items: center; gap: 5px; border-color: var(--akzent-text);
+    color: var(--akzent-text); font-size: 11.5px; padding: 3px 8px; }
   .f-aktiv .chip b { font-weight: 700; }
   .f-aktiv .chip span.w { opacity: .6; font-size: 13px; line-height: 1; }
   .f-kopf { display: none; }
@@ -1330,20 +1346,20 @@
   .onb ol { margin: 0 0 10px; padding-left: 18px; color: var(--mut); line-height: 1.5; }
   .onb-tpl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .onb-tpl button { background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; gap: 1px; }
-  .onb-tpl button:hover { border-color: var(--akzent); }
+  .onb-tpl button:hover { border-color: var(--akzent-text); }
   .onb-tpl strong { font-size: 12.5px; }
   .onb-tpl span { font-size: 10.5px; color: var(--mut); }
-  .tk .plus { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); background: var(--akzent); color: #fff; border-radius: 999px;
+  .tk .plus { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); background: var(--akzent-flaeche); color: var(--akzent-fg); border-radius: 999px;
               padding: 5px 12px; font-size: 12px; font-weight: 700; opacity: 0; transition: opacity .12s; z-index: 3; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
   .tk:hover .plus { opacity: 1; }
-  .tk .plus:hover { background: var(--akzent-dunkel); }
+  .tk .plus:hover { background: var(--akzent-flaeche-hover); }
   .tk .enb { position: absolute; bottom: 46px; right: 5px; background: rgba(58,50,39,.75); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
   .tk .jpb { position: absolute; top: 5px; left: 5px; background: #c0392b; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
   /* Am Handy deckte der rote Balken das untere Drittel jedes Kartenbildes zu — genau das,
      wonach man auswählt. Jetzt legt ein Tipp auf die Kachel die Karte ab, und der Knopf
      verschwindet. */
   @media (hover: none) { .tk .plus { display: none; } }
-  .slot .vmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent); color: #fff; font-size: 7.5px; font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  .slot .vmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: 7.5px; font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
   body.sammeln .slot .hat-btn { opacity: 1; width: 22px; height: 22px; font-size: 12px; line-height: 19px; }
   body.sammeln .slot.voll { cursor: pointer; }
   body.sammeln .slot .raus { display: none; }
@@ -1365,12 +1381,12 @@
   .detail .var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
   .detail .d-andere { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
   .detail .d-andere button { flex: 0 0 74px; padding: 0; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--line); background: var(--card); }
-  .detail .d-andere button:hover { border-color: var(--akzent); }
+  .detail .d-andere button:hover { border-color: var(--akzent-text); }
   .detail .d-andere img { width: 100%; display: block; aspect-ratio: 63/88; object-fit: contain; background: var(--panel2); }
   .detail .d-andere span { display: block; font-size: 9.5px; padding: 3px 4px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .imp-tab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .imp-tab td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
-  .imp-tab td.u { color: var(--akzent); }
+  .imp-tab td.u { color: var(--akzent-text); }
   .pl-akt:disabled { opacity: .4; }
   .bcard .bthumbs { display: flex; gap: 4px; margin-bottom: 4px; }
   .bcard .bthumbs img { width: 46px; aspect-ratio: 63/88; object-fit: contain; border-radius: 5px; background: var(--panel2); }
@@ -1419,10 +1435,10 @@
   .aw-poke-chips:empty { display: none; }
   .aw-poke-chips .chip { display: inline-flex; align-items: center; gap: 6px; }
   .aw-poke-chips .chip img { width: 22px; height: 22px; object-fit: contain; }
-  .aw-fehler { color: var(--akzent); font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 1em; }
+  .aw-fehler { color: var(--akzent-text); font-size: 12.5px; font-weight: 600; margin-top: 8px; min-height: 1em; }
   .aw-lauf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 0; text-align: center; font-weight: 600; }
   .aw-lauf .aw-mini-vorschau { display: grid; gap: 4px; width: 150px; }
-  .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent); border-radius: 50%; animation: dreh .9s linear infinite; }
+  .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent-text); border-radius: 50%; animation: dreh .9s linear infinite; }
   .aw-ergebnis { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
   .aw-vorschau { flex: 0 1 440px; max-width: 100%; }
   /* Nur die ganze Seite wird gedeckelt. Die neun Kachelbilder sind dasselbe Seitenbild,
@@ -1442,31 +1458,33 @@
   .aw-galerie { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .aw-galerie .aw-mini { width: 72px; cursor: pointer; text-align: center; font-size: 10px; color: var(--mut); line-height: 1.2; }
   .aw-galerie .aw-mini img { width: 100%; border-radius: 6px; border: 2px solid transparent; display: block; margin-bottom: 2px; }
-  .aw-galerie .aw-mini.on img { border-color: var(--akzent); }
+  .aw-galerie .aw-mini.on img { border-color: var(--akzent-text); }
   .aw-galerie-lbl { font-size: 12px; font-weight: 700; margin-top: 18px; }
   .btn.aw-cta { background: linear-gradient(120deg, var(--blau), #c04a9a); border: 0; }
   .btn.aw-cta:hover { filter: brightness(1.08); }
+  /* Der Verlauf blieb auch ohne Credits farbig – als einziger Knopf der App. */
+  .btn.aw-cta:disabled { background: var(--panel2); color: var(--mut); border: 1.5px solid var(--line); filter: none; }
   /* Tarife & Credits */
   .tarif-schalter { display: inline-flex; background: var(--panel2); border-radius: 99px; padding: 3px; margin: 0 auto 16px; }
   .tarif-schalter button { padding: 6px 16px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--mut); }
   .tarif-schalter button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-  .tarif-spar { font-size: 11px; color: var(--gruen); font-weight: 700; }
+  .tarif-spar { font-size: 11px; color: var(--gruen-text); font-weight: 700; }
   .tarif-karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .tk-tarif { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; }
-  .tk-tarif.empfohlen { border-color: var(--akzent); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+  .tk-tarif.empfohlen { border-color: var(--akzent-text); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
   .tk-tarif .tk-name { font-weight: 800; font-size: 15px; }
   .tk-tarif .tk-preis { font-size: 26px; font-weight: 800; line-height: 1.1; margin: 6px 0 0; }
   .tk-tarif .tk-preis small { font-size: 13px; font-weight: 600; color: var(--mut); }
   .tk-tarif .tk-credits { font-size: 12.5px; color: var(--blau); font-weight: 700; }
   .tk-tarif ul { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12.5px; display: flex; flex-direction: column; gap: 5px; }
-  .tk-tarif li::before { content: "✓ "; color: var(--gruen); font-weight: 800; }
+  .tk-tarif li::before { content: "✓ "; color: var(--gruen-text); font-weight: 800; }
   .tk-tarif li.aus { color: var(--mut); }
   .tk-tarif li.aus::before { content: "– "; color: var(--mut); }
   .tk-tarif .btn { margin-top: 12px; justify-content: center; }
-  .tk-tarif .empf-band { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--akzent); color: #fff; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+  .tk-tarif .empf-band { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
   .pakete { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
   .paket { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; }
-  .paket:hover { border-color: var(--akzent); }
+  .paket:hover { border-color: var(--akzent-text); }
   .paket .p-cr { font-weight: 800; font-size: 17px; color: var(--blau); }
   .paket .p-eur { font-weight: 700; margin-top: 2px; }
   .paket .p-je { font-size: 11px; color: var(--mut); }
@@ -1475,10 +1493,10 @@
   .bestell-zeile { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
   .bestell-zeile.gesamt { font-weight: 800; font-size: 15px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
   .zustimmung { display: flex; gap: 8px; align-items: flex-start; font-size: 11.5px; margin-top: 12px; line-height: 1.45; }
-  .zustimmung input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--akzent); flex-shrink: 0; }
+  .zustimmung input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--akzent-text); flex-shrink: 0; }
   .buchungen { max-height: 220px; overflow-y: auto; font-size: 12px; }
   .buchungen div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
-  .buchungen .plus { color: var(--gruen); font-weight: 700; }
+  .buchungen .plus { color: var(--gruen-text); font-weight: 700; }
   .buchungen .minus { color: var(--mut); font-weight: 700; }
   @media (max-width: 720px) {
     .tarif-karten, .pakete { grid-template-columns: 1fr; }
@@ -1509,7 +1527,7 @@
   .btn:disabled { box-shadow:none; transform:none; }
 
   .chip { border-radius:8px; border-width:2px; font-weight:700; }
-  .chip.on { background:var(--blau); border-color:var(--blau); color:#fff; }
+  .chip.on { background:var(--blau-flaeche); border-color:var(--blau-flaeche); color:var(--blau-fg); }
   .feld { border-radius:8px; border-width:2px; }
   .feld:focus { border-color:var(--blau); }
 
@@ -1532,7 +1550,7 @@
   /* ================= UX-Audit 08.09.2026 ================= */
   /* Konto-Knopf: Avatar + Name, der Name weicht zuerst */
   #btn-konto { gap: 7px; max-width: 240px; }
-  #btn-konto .avatar { width: 24px; height: 24px; border-radius: 999px; background: var(--blau); color: #fff;
+  #btn-konto .avatar { width: 24px; height: 24px; border-radius: 999px; background: var(--blau-flaeche); color: var(--blau-fg);
     display: inline-flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 800; flex: 0 0 auto; }
   #btn-konto .konto-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   #menu-konto .konto-mail { overflow-wrap: anywhere; word-break: normal; }
@@ -1551,8 +1569,8 @@
   .tk .info { position: static; width: 18px; height: 18px; font-size: 10px; line-height: 15px; flex: 0 0 auto; margin-top: 1px;
     padding: 0; border-width: 1.5px; }
   .tk-hab button { white-space: nowrap; }
-  .tk-hab .hinzu { flex: 1; background: var(--blau); border-color: var(--blau); color: #fff; }
-  .tk-hab .hinzu:hover { background: color-mix(in srgb, var(--blau) 85%, #000); border-color: var(--blau); color: #fff; }
+  .tk-hab .hinzu { flex: 1; background: var(--blau-flaeche); border-color: var(--blau-flaeche); color: var(--blau-fg); }
+  .tk-hab .hinzu:hover { background: color-mix(in srgb, var(--blau-flaeche) 85%, #000); border-color: var(--blau-flaeche); color: var(--blau-fg); }
   .tk-hab .hat-k { flex: 0 0 auto; min-width: 30px; padding: 4px 6px; }
   /* Planer: Seitenwerkzeuge treten zurück, bis die Seite überfahren wird */
   .planer-seite .ps-akt button { opacity: .4; transition: opacity .12s; }
@@ -1574,7 +1592,12 @@
     .detail .d-aktion .btn { padding: 8px 10px; font-size: 12.5px; }
     .detail .d-aktion .btn .txt, .detail .d-aktion #detail-anz { display: none; }
     .detail .d-aktion .btn:first-child { flex: 1; justify-content: center; }
-    .detail .d-bild { max-height: 38vh; width: auto; max-width: 100%; object-fit: contain; }
+    .detail .d-bild { max-height: 30vh; width: auto; max-width: 100%; object-fit: contain; }
+    /* Die Entwicklungsreihe schob den Trendpreis unter die klebende Leiste. Am Handy
+       läuft sie einzeilig und scrollt seitwärts. */
+    .detail .d-fam { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .detail .d-fam::-webkit-scrollbar { display: none; }
+    .detail .d-fam > * { flex-shrink: 0; }
     .sortwahl .richtung { font-size: 11.5px; padding: 6px 8px; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 1.4; }
     .kopfzeile { row-gap: 6px; }
     .pl-suche.zu { display: none; }
@@ -1590,7 +1613,7 @@
     body.nur-ansicht .spalte-binder { gap: 6px; }
     /* Umschalter im Handy-Menü: die Menüregel färbte den Text schwarz auf schwarz */
     #mobil-mehr .lang-toggle button { padding: 6px 10px; justify-content: center; min-height: 0; color: var(--mut); }
-    #mobil-mehr .lang-toggle button.on { color: #fff; }
+    #mobil-mehr .lang-toggle button.on { color: var(--aktiv-fg); }
   }
   @media (max-width: 600px) {
     .pf-zeile { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -1621,7 +1644,7 @@
       padding: 14px 4px; background: var(--card); border-right: 1.5px solid var(--line); color: var(--mut);
       font-size: 11px; font-weight: 700; cursor: pointer; position: relative; }
     .f-rail:hover { color: var(--ink); background: var(--panel2); }
-    .f-rail-zahl { position: absolute; top: 8px; right: 8px; background: var(--blau); color: #fff; font-size: 10px;
+    .f-rail-zahl { position: absolute; top: 8px; right: 8px; background: var(--blau-flaeche); color: var(--blau-fg); font-size: 10px;
       min-width: 16px; border-radius: 999px; padding: 1px 4px; text-align: center; }
     .spalte-filter { display: none; }
     .spalte-filter.offen { display: flex; position: fixed; left: 0; top: 54px; bottom: 0; width: 320px; z-index: 70;
@@ -1963,7 +1986,7 @@
         </div>
       </div>
       <div id="wb-sammel" class="hidden">
-        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen)"></strong></div>
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen-text)"></strong></div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
       </div>
       <div id="wb-rest" class="hidden wb-rest"></div>
@@ -2092,7 +2115,8 @@
       <div><div class="f-lbl" data-i18n="an_gekauft">Gekauft für</div>
         <input class="feld" id="smp-kaufpreis" inputmode="decimal" placeholder="z. B. 12,50"></div>
       <div><div class="f-lbl" data-i18n="sm_gekauft_am">Gekauft am</div>
-        <input class="feld" id="smp-gekauft" type="date"></div>
+        <input class="feld" id="smp-gekauft" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
+               placeholder="TT.MM.JJJJ" data-i18n-ph="geb_ph" oninput="gebTippen(this)"></div>
     </div>
     <div style="margin-top:10px"><div class="f-lbl" data-i18n="sm_notiz">Notiz</div>
       <input class="feld" id="smp-notiz" maxlength="200" placeholder="…" data-i18n-ph="sm_notiz_ph"></div>
@@ -2246,7 +2270,7 @@
       <span style="font-weight:500;font-size:12px" data-i18n="agb_text">Ich akzeptiere die AGB und die Datenschutzerklärung.</span>
     </label>
     <button id="auth-vergessen" onclick="passwortVergessen()" style="font-size:12px;color:var(--mut);text-decoration:underline;margin-top:10px;padding:0" data-i18n="pw_vergessen">Passwort vergessen?</button>
-    <div id="auth-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
+    <div id="auth-fehler" style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:10px"></div>
     <button class="btn" style="width:100%;justify-content:center;margin-top:14px" onclick="authAbsenden()" id="auth-senden" data-i18n="anmelden">Anmelden</button>
     <div style="font-size:11px;color:var(--mut);margin-top:12px;text-align:center">
       <a href="recht#agb" style="color:var(--mut)" data-i18n="agb_kurz">AGB</a> · <a href="recht#datenschutz" style="color:var(--mut)" data-i18n="ds_kurz">Datenschutz</a>
@@ -2289,7 +2313,7 @@
       <input type="checkbox" id="best-widerruf">
       <span id="best-widerruf-text"></span>
     </label>
-    <div id="best-fehler" style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px"></div>
+    <div id="best-fehler" style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:10px"></div>
     <button class="btn" id="best-senden" style="width:100%;justify-content:center;margin-top:14px;font-size:15px"
             onclick="bestellungAbsenden()" data-i18n="best_btn">Zahlungspflichtig bestellen</button>
     <div style="font-size:11px;color:var(--mut);margin-top:10px;text-align:center" data-i18n="best_hin">Weiterleitung zu Stripe. Wir speichern keine Zahlungsdaten.</div>
@@ -2348,7 +2372,7 @@
         <a class="btn sekundaer" id="aw-png" download data-i18n="aw_png">Ganze Seite als Bild</a>
         <button class="btn sekundaer" id="aw-teilen-btn" onclick="awTeilenKnopf()"></button>
         <button class="btn sekundaer" onclick="artworkNochmal()" data-i18n="aw_nochmal">Nochmal – anderer Stil</button>
-        <button class="btn sekundaer" style="color:var(--akzent)" onclick="artworkLoeschen()" data-i18n="aw_loeschen">Löschen</button>
+        <button class="btn sekundaer" style="color:var(--akzent-text)" onclick="artworkLoeschen()" data-i18n="aw_loeschen">Löschen</button>
         <div class="aw-privat" data-i18n="aw_druck_hint">Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.</div>
       </div>
     </div>
@@ -2473,7 +2497,7 @@
       <button class="btn" id="pf-upgrade" onclick="upgradeOeffnen('')" style="font-size:13px"><span data-i18n="upgrade">Tarif &amp; Credits</span></button>
       <button class="btn sekundaer hidden" id="pf-abo" onclick="aboVerwalten()" style="font-size:13px" data-i18n="abo_verwalten">Rechnungen &amp; Zahlungsmittel</button>
       <button class="btn sekundaer hidden" id="pf-kuend" onclick="aboKuendigen()" style="font-size:13px"></button>
-      <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
+      <span class="hidden" id="pf-life" style="font-size:13px;color:var(--gruen-text);font-weight:700;align-self:center">Lifetime — alles freigeschaltet ✓</span>
     </div>
 
     <div class="pf-spalten">
@@ -2500,7 +2524,7 @@
             <span class="wert"><label class="schalter"><input type="checkbox" id="pf-vtausch" onchange="vitrineProfilSpeichern()"></label></span></div>
           <div class="pf-zeile"><span data-i18n="pf_alter">Veröffentlichen</span><span class="wert" id="pf-alter"></span></div>
           <div class="pf-zeile"><span data-i18n="pf_oeff_binder">Öffentliche Binder</span><span class="wert" id="pf-oeffzahl"></span></div>
-          <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
+          <div style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:8px" id="pf-vfehler"></div>
           <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
             <!-- Ein Speichern für die ganze Karte statt eines Knopfes je Feld. -->
             <button class="btn" style="font-size:13px" onclick="vitrineProfilSpeichern()" data-i18n="speichern">Speichern</button>
@@ -2563,7 +2587,7 @@
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn sekundaer" style="font-size:13px" onclick="datenExport()" data-i18n="pf_export">Meine Daten herunterladen</button>
-            <button class="btn sekundaer" style="font-size:13px;color:var(--akzent)" onclick="kontoLoeschen()" data-i18n="pf_loeschen_btn">Konto endgültig löschen</button>
+            <button class="btn sekundaer" style="font-size:13px;color:var(--akzent-text)" onclick="kontoLoeschen()" data-i18n="pf_loeschen_btn">Konto endgültig löschen</button>
           </div>
         </div>
       </div>
@@ -2731,7 +2755,7 @@
     <div class="f-lbl" style="margin-top:12px" data-i18n="awt_titel">Titel in der Vitrine</div>
     <input class="feld" id="awt-titel" maxlength="60" placeholder="z. B. Glurak am Vulkan" data-i18n-ph="awt_ph">
     <div style="font-size:11.5px;color:var(--mut);margin-top:8px" data-i18n="awt_hin">Du kannst die Seite jederzeit wieder zurückziehen. Bereits geladene Seiten bleiben bei ihren Besitzern.</div>
-    <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:8px" id="awt-fehler"></div>
+    <div style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:8px" id="awt-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="awt_nein">Nein, privat lassen</button>
       <button class="btn" onclick="awTeilenSpeichern()" data-i18n="awt_ja">Ja, freigeben</button>
@@ -2752,7 +2776,7 @@
     <label class="schalter" style="margin-top:12px"><input type="checkbox" id="vpf-tausch"><span data-i18n="vpf_tausch">Doppelte Karten öffentlich zeigen</span></label>
     <div class="unter" style="font-size:11.5px;margin-top:2px" data-i18n="vpf_tausch_u">Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.</div>
     <div style="font-size:11.5px;color:var(--mut);margin-top:10px" data-i18n="vpf_hinweis">Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.</div>
-    <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="vpf-fehler"></div>
+    <div style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:10px" id="vpf-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="profilSpeichern()" data-i18n="speichern">Speichern</button>
@@ -2767,7 +2791,7 @@
     <h2 data-i18n="gb_t">Kurz noch dein Geburtsdatum</h2>
     <div class="unter" data-i18n="gb_u">Binder öffentlich zu zeigen ist ab 16 erlaubt. Das Datum steht nirgends öffentlich und lässt sich später nicht ändern.</div>
     <input class="feld" id="gb-datum" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="TT.MM.JJJJ" data-i18n-ph="geb_ph" oninput="gebTippen(this)">
-    <div style="color:var(--akzent);font-size:12.5px;font-weight:600;margin-top:10px" id="gb-fehler"></div>
+    <div style="color:var(--akzent-text);font-size:12.5px;font-weight:600;margin-top:10px" id="gb-fehler"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="geburtsdatumSpeichern()" data-i18n="speichern">Speichern</button>
@@ -4446,7 +4470,7 @@ function zeichneStartBinder(liste) {
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
       <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
       ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
-      <div class="bmeta" style="color:var(--gruen);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
+      <div class="bmeta" style="color:var(--gruen-text);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
   }).join('') + `
     <div class="bcard neu" onclick="vorlagenOeffnen()">
@@ -4942,7 +4966,7 @@ async function wechslerOeffnen() {
     const d = await api('api/binders?ids=' + binderIds().join(','));
     box.innerHTML = d.binder.map((b) => `
       <button class="${S.binder && S.binder.id === b.id ? 'aktiv' : ''}" onclick="binderOeffnen('${b.id}')">
-        <span style="min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span><span class="bwl-meta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gesammelt ? ` · <span style=\"color:var(--gruen)\">${b.gesammelt} ✓</span>` : ''}</span></span>
+        <span style="min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(b.name)}</span><span class="bwl-meta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gesammelt ? ` · <span style=\"color:var(--gruen-text)\">${b.gesammelt} ✓</span>` : ''}</span></span>
         <span class="bwl-del" onclick="event.stopPropagation();binderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}">✕</span>
       </button>`).join('') || `<div style="padding:6px 12px;font-size:12px;color:var(--mut)">–</div>`;
   } catch (e) { box.innerHTML = ''; }
@@ -6658,6 +6682,11 @@ function gebTippen(el) {
   if (z.length > 4) s += '.' + z.slice(4);
   el.value = s;
 }
+/** ISO-Datum aus der Datenbank in die Anzeige TT.MM.JJJJ. */
+function isoZuDatum(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+}
 function gebIso(v) {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec((v || '').trim());
   if (!m) return '';
@@ -7104,8 +7133,8 @@ async function vitrineProfilLaden() {
   $('pf-alter').innerHTML = jahre == null
     ? `<span style="color:var(--mut)">${t('pf_alter_offen')}</span>`
     : (jahre >= d.mindestalter
-        ? `<span style="color:var(--gruen);font-weight:700">${t('pf_alter_ok')}</span>`
-        : `<span style="color:var(--akzent);font-weight:700">${t('pf_alter_zu_jung').replace('{a}', d.mindestalter)}</span>`);
+        ? `<span style="color:var(--gruen-text);font-weight:700">${t('pf_alter_ok')}</span>`
+        : `<span style="color:var(--akzent-text);font-weight:700">${t('pf_alter_zu_jung').replace('{a}', d.mindestalter)}</span>`);
   const knopf = $('pf-meinprofil');
   knopf.classList.toggle('hidden', !name);
   if (name) knopf.onclick = () => { profilSchliessen(); profilseiteOeffnen(name); };
@@ -7410,7 +7439,7 @@ function smPostenOeffnen(cardId, posten) {
   $('smp-sprache').value = p.sprache || '';
   $('smp-anzahl').value = p.anzahl || 1;
   $('smp-kaufpreis').value = p.kaufpreis != null ? p.kaufpreis : '';
-  $('smp-gekauft').value = p.gekauft_am || '';
+  $('smp-gekauft').value = isoZuDatum(p.gekauft_am);
   $('smp-notiz').value = p.notiz || '';
   $('smp-loeschen').classList.toggle('hidden', !posten);
   smPostenWert();
@@ -7445,7 +7474,7 @@ async function smPostenSpeichern(loeschen) {
     alt_sprache: SM.postenAlt.sprache,
     anzahl: loeschen ? 0 : Math.max(1, parseInt($('smp-anzahl').value, 10) || 1),
     kaufpreis: $('smp-kaufpreis').value.trim().replace(',', '.') || null,
-    gekauft_am: $('smp-gekauft').value || null,
+    gekauft_am: gebIso($('smp-gekauft').value) || null,
     notiz: $('smp-notiz').value.trim(),
   };
   try {
@@ -8503,8 +8532,8 @@ function zeichneMarkt() {
   const bw = d.bewegung || {};
   const bewegTafel = (bw.hoch || []).length || (bw.runter || []).length
     ? `<div class="an-zwei">
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--gruen)">${t('an_gewinner')}</div>${anBewegTabelle(bw.hoch, 'mk-hoch')}</div>
-        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--akzent)">${t('an_verlierer')}</div>${anBewegTabelle(bw.runter, 'mk-runter')}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--gruen-text)">${t('an_gewinner')}</div>${anBewegTabelle(bw.hoch, 'mk-hoch')}</div>
+        <div><div class="unter" style="margin-bottom:8px;font-weight:700;color:var(--akzent-text)">${t('an_verlierer')}</div>${anBewegTabelle(bw.runter, 'mk-runter')}</div>
        </div>
        <div class="unter" style="margin:12px 0 0;font-size:11.5px">${t('an_beweg_basis')
           .replace('{n}', anZahl(bw.basis || 0)).replace('{v}', bw.von ? anTag(bw.von) : '?').replace('{b}', bw.bis ? anTag(bw.bis) : '?')}</div>`
@@ -9496,7 +9525,7 @@ async function detailOeffnen(idOrIdx) {
         <h2>${esc(nm(k))}</h2>
         <div class="d-meta">${k.name_ja && k.name_ja !== nm(k) ? `<span title="${t('d_name_ja')}">${esc(k.name_ja)}</span> · ` : ''}${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · JP' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
         ${k.illustrator ? `<div class="d-meta" style="margin-top:-8px">${t('d_illu')}: <span class="d-illu" onclick="modalSchliessen();illuSetzen('${esc(k.illustrator).replace(/'/g, "\\'")}');mobilAnsicht('suche')" title="${t('d_illu_btn')}">${esc(k.illustrator)}</span></div>` : ''}
-        ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent);color:var(--akzent)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
+        ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent-text);color:var(--akzent-text)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
         <div class="d-preise">
           <div class="d-preis"><div class="z" id="detail-preis-zahl">${fmt(detailPreis(k, detailVariante))}</div><div class="l" id="detail-preis-lbl">${t('preis_trend')}</div></div>
           ${preis.eur_holo && (k.normal !== false || k.reverse) ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
@@ -9571,8 +9600,7 @@ async function detailOeffnen(idOrIdx) {
       (zeilenMehr.length ? `<button class="zst-auf" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').textContent=this.nextElementSibling.classList.contains('hidden')?'▾':'▴'">
            <span>${t('pr_mehr')}</span><strong>${zeilenMehr.length}</strong><i>▾</i></button>
          <div class="hidden"><div class="zst-liste">${zeilenMehr.map(([l, v]) => `<div><span>${esc(l)}</span><strong>${v}</strong></div>`).join('')}</div></div>` : '')
-      + (hinweise.length ? `<div style="margin-top:4px">${esc(hinweise.join(' · '))}</div>` : '')
-      + `<div style="margin-top:3px;opacity:.85">${t('pr_zustand_hin')}</div>`;
+      + (hinweise.length ? `<div style="margin-top:4px">${esc(hinweise.join(' · '))}</div>` : '');
   }
   if (preis.ohne_quelle && $('detail-preis-stand')) {
     $('detail-preis-stand').textContent = t('preis_ohne_quelle');
@@ -9965,7 +9993,7 @@ function artworkKontingentText() {
   el.innerHTML = `<span class="credit-chip">${ic('funke', 13)} ${kosten} ${t('credits')}</span> `
     + `<span style="color:${reicht ? 'var(--mut)' : 'var(--akzent)'}">${t('aw_kosten_hin')
         .replace('{s}', k.credits)}</span>`
-    + (reicht ? '' : ` · <a href="#" onclick="event.preventDefault();upgradeOeffnen('')" style="color:var(--akzent);font-weight:700">${t('credits_kaufen')}</a>`);
+    + (reicht ? '' : ` · <a href="#" onclick="event.preventDefault();upgradeOeffnen('')" style="color:var(--akzent-text);font-weight:700">${t('credits_kaufen')}</a>`);
   $('aw-start').disabled = !reicht;
 }
 
