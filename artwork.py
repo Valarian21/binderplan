@@ -35,7 +35,7 @@ from pathlib import Path
 import httpx
 from fastapi import HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from PIL import Image
+from PIL import Image, ImageDraw
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -209,6 +209,28 @@ def _kartenbild(card_id, lang):
     return bg
 
 
+#: Eckenradius einer Sammelkarte, als Anteil der Kartenbreite. 63 mm breit,
+#: rund 3 mm Radius – gemessen an den Scans, die ihre Ecken selbst mitbringen.
+KARTEN_RADIUS = 0.048
+
+
+def runde_ecken(img):
+    """Einem Scan ohne Alphakanal die runden Ecken geben.
+
+    Nötig für japanische Karten: TCGdex hat für sie keine Bilder, sie kommen
+    als **JPEG von TCGplayer** – rechteckig, mit hellem Grund in den Ecken. Ohne
+    diesen Schnitt stünden vier helle Zipfel über dem gemalten Bild, und zwar
+    unabhängig davon, wie sauber das Einsetzen arbeitet.
+    """
+    w, h = img.size
+    r = max(1, round(w * KARTEN_RADIUS))
+    maske = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(maske).rounded_rectangle((0, 0, w - 1, h - 1), radius=r, fill=255)
+    out = img.copy()
+    out.putalpha(maske)
+    return out
+
+
 def _kartenbild_alpha(card_id, lang):
     """Wie `_kartenbild`, aber mit erhaltener Transparenz.
 
@@ -218,14 +240,19 @@ def _kartenbild_alpha(card_id, lang):
     Hintergrund), auf der fertigen Seite aber vier weiße Zipfel um jede Karte
     hinterließ. Sichtbar wurde das erst, als die Seiten in Beiträgen groß
     gezeigt wurden.
+
+    Bringt der Scan keine Transparenz mit (JPEG), werden die Ecken geschnitten.
     """
     pfad = _dep["card_image_path"](card_id, lang)
     if not pfad:
         return None
     try:
-        return Image.open(pfad).convert("RGBA")
+        img = Image.open(pfad).convert("RGBA")
     except Exception:
         return None
+    # Ein durchgehend deckender Alphakanal heißt: die Quelle hat keine Ecken
+    # mitgeliefert, sie sind Teil des Bildes.
+    return img if img.split()[-1].getextrema()[0] < 250 else runde_ecken(img)
 
 
 def _karten_einsetzen(seite_img, anker, cols, geo, lang, offset=(0, 0)):
@@ -552,12 +579,48 @@ def _regie(cols, rows, anker, namen, analysen):
         return "", 0.0
 
 
+def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder):
+    """Kurzer Auftrag für Einzelkarten. Der lange Auftrag mit Drehbuch und 14 Regeln ließ das
+    Modell bei Szenenkarten (Mew ex) fünfmal hintereinander die Kartenszene doppelt so groß
+    nachmalen; derselbe Inhalt in sechs Sätzen traf im Test Maßstab und Motiv auf Anhieb
+    (gemini_frei_test.py, Variante I, 08.09.). Verneinungen häufen hilft nicht – kurz hilft."""
+    cid = next(iter(anker.values()))
+    a = analysen.get(cid) or {}
+    kante = a.get("edges") or {}
+    kanten = "; ".join(f"{k}: {v}" for k, v in kante.items() if v)
+    text = (
+        "IMAGE 1 is a large painting of which only one rectangular part is finished; everything flat gray is "
+        "still unpainted. Paint all gray areas so that the finished part continues outward in every direction "
+        "as ONE picture: the same place, seen from the same spot, same horizon height, same light, same colours, "
+        f"same painting technique. What leaves the edges of the finished part: {kanten or 'see the picture'}. "
+        "Keep the world at the same size as inside the finished part: a house, a leaf, a pond or a person outside "
+        "is exactly as big as the same thing inside. Everything shown inside the finished part exists exactly "
+        "once, inside it – outside there are only new, different things of the same world. If a figure is cut off "
+        "by an edge of the finished part (legs, tail, arm running out of the picture), complete just that cut part "
+        "directly outside the edge, same size, same pose, so the figure ends naturally. Do not change the finished "
+        "part. No text, no frames, no borders, no lines, not a single gray pixel left."
+    )
+    if stil and stil != "karte":
+        text += f"\nTechnique for the new areas: {STILE.get(stil, STILE['karte'])}"
+    if wunsch:
+        text += f"\nThe collector wishes: {wunsch[:300]}"
+    teile = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
+    crop = bilder.get(cid)
+    if crop is not None:
+        teile.append({"type": "text", "text": f"IMAGE 2 – the finished part in close-up, for reference of details, technique and colours. Its creature is {namen.get(cid) or 'the main creature'}."})
+        teile.append({"type": "image_url", "image_url": {"url": _data_url(crop, 'JPEG')}})
+    return teile
+
+
 def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bilder, pokemon, feedback="", regie=""):
     """Interleaved content für das Bildmodell: Outpainting-Auftrag, Vorlage, Illustrations-Ausschnitte,
     Pokémon-Referenzen. Bewusst KEIN Wort über Binder, Fächer oder Raster (→ Gitterlinien) und kein
     „erweitere das Artwork“ (→ Kreatur wird dupliziert). Kurz und konkret hat im Vergleich am besten
     abgeschnitten (Horizont, Licht und Wasserlinien laufen exakt weiter)."""
     mehrere = len(anker) > 1
+    # Einzelkarten ohne Wunsch-Pokémon bekommen den kurzen Auftrag (Umschalter ARTWORK_EINZEL_KURZ=0).
+    if not mehrere and not pokemon and not feedback and (_dep["env"]().get("ARTWORK_EINZEL_KURZ", "1") != "0"):
+        return _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder)
     kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
     intro = (
         "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
