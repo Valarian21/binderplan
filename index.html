@@ -1753,6 +1753,26 @@
   /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
   #sammlung .mk-band { margin: 10px 0 16px; }
   .bcard .bwert { margin-top: 2px; }
+  .st-alarme, .st-digest { display: grid; gap: 8px; }
+  .st-alarm { display: flex; align-items: center; gap: 10px; border: 2px solid var(--gruen-flaeche); border-radius: 12px;
+              padding: 10px 14px; background: var(--card); text-align: left; font-size: 13px; }
+  .st-alarm b { font-variant-numeric: tabular-nums; }
+  .st-alarm small { color: var(--mut); }
+  .st-digest .dg { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--card);
+                   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; font-size: 13px; }
+  .st-digest .dg h4 { margin: 0 0 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .st-digest .dg .z { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .st-digest .dg ul { margin: 0; padding: 0; list-style: none; }
+  .st-digest .dg li { padding: 2px 0; display: flex; justify-content: space-between; gap: 8px; }
+  .st-digest .dg li span:last-child { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .al-zeile { display: grid; grid-template-columns: minmax(0, 1fr) 110px 90px 28px; gap: 10px; align-items: center;
+              padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .al-zeile .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .al-zeile .nm small { display: block; color: var(--mut); font-weight: 500; font-size: 11.5px; }
+  .al-zeile .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .al-zeile.trifft .nm { color: var(--gruen-text); }
+  .al-zeile button { color: var(--mut); font-size: 14px; }
+  @media (max-width: 700px) { .al-zeile { grid-template-columns: minmax(0, 1fr) 90px 28px; } .al-zeile .r.aktuell { display: none; } }
   .sm-wahlleiste { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
                    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px;
                    margin: 0 0 12px; font-size: 12.5px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
@@ -2260,6 +2280,26 @@
   </div>
 </div>
 
+<!-- Preis-Alarm: „sag mir, wenn … unter/über … € liegt" — geprüft nach jedem Preislauf -->
+<div class="overlay hidden" id="modal-alarm">
+  <div class="modal" style="max-width:420px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="al_t">Preis-Alarm</h2>
+    <div class="unter" id="al-name"></div>
+    <div class="segment" id="al-richtung" role="tablist" style="display:inline-flex;margin:4px 0 10px">
+      <button id="alr-unter" class="on" onclick="alarmRichtung('unter')" data-i18n="al_unter">fällt unter</button>
+      <button id="alr-ueber" onclick="alarmRichtung('ueber')" data-i18n="al_ueber">steigt über</button>
+    </div>
+    <div class="f-lbl" data-i18n="al_schwelle">Schwelle in Euro</div>
+    <input class="feld" id="al-schwelle" inputmode="decimal" placeholder="z. B. 100">
+    <div class="unter" id="al-hin" style="margin:10px 0 0;font-size:12px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="alarmSpeichern()" data-i18n="al_setzen">Alarm setzen</button>
+    </div>
+  </div>
+</div>
+
 <!-- Ein Posten der Sammlung: Ausprägung, Anzahl, Kauf -->
 <div class="overlay hidden" id="modal-sm-posten">
   <div class="modal" style="max-width:440px">
@@ -2646,6 +2686,17 @@
     <div class="st-neu hidden" id="st-creator-neu"></div>
 
     <div class="st-band" id="st-band"></div>
+
+    <div class="st-abschnitt" id="st-alarme-block" hidden>
+      <div class="st-titel"><h2 data-i18n="al_ausgeloest">Preis-Alarme</h2>
+        <span class="mehr" onclick="startSchliessen();ansichtSammlung('wunsch')" data-i18n="al_alle">Alle Alarme</span></div>
+      <div class="st-alarme" id="st-alarme"></div>
+    </div>
+
+    <div class="st-abschnitt" id="st-digest-block" hidden>
+      <div class="st-titel"><h2 data-i18n="dg_t">Dein Wochenrückblick</h2><span class="mehr" id="st-digest-woche"></span></div>
+      <div class="st-digest" id="st-digest"></div>
+    </div>
 
     <div class="st-abschnitt" id="st-ziele-block" hidden>
       <div class="st-titel"><h2 data-i18n="st_ziele">Deine Ziele</h2>
@@ -3097,6 +3148,35 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    al_t: 'Preis-Alarm',
+    al_kurz: 'Alarm',
+    al_unter: 'fällt unter',
+    al_ueber: 'steigt über',
+    al_schwelle: 'Schwelle in Euro',
+    al_setzen: 'Alarm setzen',
+    al_gesetzt: 'Alarm gesetzt — wird nach jedem Preislauf geprüft.',
+    al_trifft_jetzt: 'Die Schwelle trifft heute schon.',
+    al_hin_karte: 'Geprüft wird der Cardmarket-Trend, einmal täglich nach dem Preislauf. Löst der Alarm aus, steht er auf der Startseite — und kommt per E-Mail, sobald der Versand eingerichtet ist.',
+    al_hin_set: 'Geprüft wird der Rest zum Set: die Summe der Trendpreise aller Karten, die dir noch fehlen.',
+    al_set: 'Alarm für den Rest zum Set',
+    al_ausgeloest: 'Preis-Alarme',
+    al_alle: 'Alle Alarme',
+    al_liste_t: 'Preis-Alarme',
+    al_liste_u: 'Nach jedem Preislauf geprüft. Ohne Plus drei Alarme.',
+    al_leer: 'Noch kein Alarm. Im Kartendialog: 🔔 Alarm.',
+    al_aktuell: 'aktuell',
+    al_schwelle_k: 'Schwelle',
+    al_weg: 'Alarm entfernen',
+    al_rest: 'Rest zum Set',
+    al_frei: '{n} von {m} Alarmen ohne Plus',
+    al_trifft: 'trifft',
+    dg_t: 'Dein Wochenrückblick',
+    dg_wert: 'Sammlung heute',
+    dg_beweg: 'Größte Bewegungen (7 Tage)',
+    dg_monat: 'Set des Monats',
+    dg_guenstiger: 'Günstiger auf der Wunschliste',
+    dg_leer: 'diese Woche nichts',
+    dg_mail: 'Kommt auch per E-Mail, sobald der Versand eingerichtet ist.',
     imp_ziel: 'Ziel',
     imp_ziel_binder: 'In den Binder',
     imp_ziel_sammlung: 'In die Sammlung',
@@ -3641,6 +3721,35 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    al_t: 'Price alert',
+    al_kurz: 'Alert',
+    al_unter: 'drops below',
+    al_ueber: 'rises above',
+    al_schwelle: 'Threshold in euro',
+    al_setzen: 'Set alert',
+    al_gesetzt: 'Alert set — checked after every price run.',
+    al_trifft_jetzt: 'The threshold is already met today.',
+    al_hin_karte: 'Checks the Cardmarket trend once a day after the price run. A triggered alert shows on the home page — and arrives by e-mail once sending is set up.',
+    al_hin_set: 'Checks what is left to complete the set: the sum of trend prices of all cards you are still missing.',
+    al_set: 'Alert for the set remainder',
+    al_ausgeloest: 'Price alerts',
+    al_alle: 'All alerts',
+    al_liste_t: 'Price alerts',
+    al_liste_u: 'Checked after every price run. Three alerts without Plus.',
+    al_leer: 'No alert yet. In the card dialog: 🔔 Alert.',
+    al_aktuell: 'now',
+    al_schwelle_k: 'Threshold',
+    al_weg: 'Remove alert',
+    al_rest: 'Left to complete',
+    al_frei: '{n} of {m} alerts without Plus',
+    al_trifft: 'hit',
+    dg_t: 'Your weekly digest',
+    dg_wert: 'Collection today',
+    dg_beweg: 'Largest moves (7 days)',
+    dg_monat: 'Set of the month',
+    dg_guenstiger: 'Cheaper on your wishlist',
+    dg_leer: 'nothing this week',
+    dg_mail: 'Also arrives by e-mail once sending is set up.',
     imp_ziel: 'Target',
     imp_ziel_binder: 'Into the binder',
     imp_ziel_sammlung: 'Into the collection',
@@ -4899,6 +5008,8 @@ async function startLaden() {
 
   creatorNeuLaden();
   if (typeof zieleStartLaden === 'function') zieleStartLaden();
+  if (typeof alarmeStartLaden === 'function') alarmeStartLaden();
+  if (typeof digestStartLaden === 'function') digestStartLaden();
 
   // Zahlenband — jede Kachel führt irgendwohin
   let sm = null;
@@ -9377,6 +9488,7 @@ async function detailOeffnen(idOrIdx) {
           <button class="btn sekundaer" id="detail-hab" onclick="sammlungAufnehmen('${esc(k.id)}')"
                   title="${t('sm_aufnehmen_t')}" aria-label="${t('tk_besitz')}">${(S.user && S.besitz[k.id]) ? '✓ ' + S.besitz[k.id] + '× <span class="txt">' + t('tk_besitz') + '</span>' : '✓ <span class="txt">' + t('tk_besitz') + '</span>'}</button>
           <button class="btn sekundaer" id="detail-wunsch" onclick="wunschToggle('${esc(k.id)}', 1)" aria-label="${t('wl_titel')}">${wunschHat(k.id) ? '★ <span class="txt">' + t('wl_drauf') + '</span>' : '☆ <span class="txt">' + t('wl_titel') + '</span>'}</button>
+          <button class="btn sekundaer" id="detail-alarm" onclick="alarmOeffnen('karte', '${esc(k.id)}', ${JSON.stringify(nm(k) + ' · ' + setNm(k) + ' ' + (k.local_id || '')).replace(/"/g, '&quot;')}, ${detailPreis(k, detailVariante) || 0})" title="${t('al_t')}" aria-label="${t('al_t')}">🔔 <span class="txt">${t('al_kurz')}</span></button>
           <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
         </div>
         ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}

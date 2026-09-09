@@ -3462,6 +3462,24 @@ def _markt_job():
         betreiber_melden(warnung)
 
 
+_alarme = None   # wird unten beim Einhängen des Moduls gesetzt
+
+
+def _alarme_job():
+    """Preis-Alarme prüfen; sonntags dazu der Wochenrückblick. Läuft nach dem Markt-Job."""
+    if not _alarme:
+        return
+    try:
+        print("Alarme:", _alarme.tagesjob(get_db, _mail_senden, _mail_konfiguriert))
+    except Exception as exc:
+        print("Alarm-Job fehlgeschlagen:", exc)
+    if datetime.datetime.now().weekday() == 6:
+        try:
+            print("Digest:", _alarme.wochenjob(get_db, _mail_senden, _mail_konfiguriert))
+        except Exception as exc:
+            print("Digest-Job fehlgeschlagen:", exc)
+
+
 def _hintergrund_takt():
     import time as _time
     while True:
@@ -3521,6 +3539,7 @@ def _hintergrund_takt():
                     _markt_job()
                 except Exception as exc:
                     print("Markt-Tagesstand fehlgeschlagen:", exc)
+                _alarme_job()
         except Exception:
             pass
         # Stündlich für Aufräumen und Cache; kurz vor 04:30 Uhr genau dorthin.
@@ -6702,6 +6721,18 @@ except Exception as _e:  # pragma: no cover
     print("Markt-Modul nicht geladen:", _e)
     _markt = None
     _markt_kennzahlen = None
+
+
+# --- Preis-Alarme und Wochen-Digest (Modul alarme.py) ---------------------------
+
+try:
+    import alarme as _alarme  # noqa: E402
+    _alarme_kennzahlen = _alarme.register(app, get_db=get_db, require_user=_require_user, ist_bezahlt=_ist_pro,
+                                          app_url=_env().get("APP_URL") or "https://binderplan.app")
+except Exception as _e:  # pragma: no cover
+    print("Alarm-Modul nicht geladen:", _e)
+    _alarme = None
+    _alarme_kennzahlen = None
 
 
 # --- Öffentliche Set-, Pokémon- und Kartenseiten samt Sitemap (Modul seiten.py) ---

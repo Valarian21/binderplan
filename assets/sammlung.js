@@ -154,12 +154,12 @@ async function sammlungLaden() {
       zeichneSammlung();
     } else if (SM.bereich === 'wunsch') {
       $('sm-gitter').innerHTML = `<div class="sm-leer">${lader('gross', t('laedt'))}</div>`;
-      const [d, g] = await Promise.all([api('api/wants'), api('api/sammlung/guenstig')]);
-      SM.wunsch = d;
+      const [d, g, al] = await Promise.all([api('api/wants'), api('api/sammlung/guenstig'), api('api/alarme').catch(() => null)]);
+      SM.wunsch = d; SM.alarme = al;
       S.wunsch = new Set(d.einzeln || []);
       const einzeln = new Set(d.einzeln || []);
       SM.karten = (d.karten || []).map((k) => ({ ...k, anzahl: 0, fehlt: true, wunsch_einzeln: einzeln.has(k.id) }));
-      rumpf.innerHTML = zeichneGuenstig(g) + zeichneWunschHinweis();
+      rumpf.innerHTML = zeichneGuenstig(g) + zeichneAlarme(al) + zeichneWunschHinweis();
       zeichneSammlung();
     } else if (SM.bereich === 'sets') {
       rumpf.innerHTML = `<div style="padding:40px;text-align:center">${lader('gross', t('laedt'))}</div>`;
@@ -368,8 +368,9 @@ function zeichneSmSetSeite() {
     <div class="mk-band">
       <div class="mk-kachel"><small>${t('sm_s_fortschritt')}</small><b>${anZahl(d.besessen)} / ${anZahl(d.gesamt)}</b>
         ${smFortschritt(prozent)}<span class="mk-neben">${prozent} % · ${t('sm_fehlen_n').replace('{n}', anZahl(d.gesamt - d.besessen))}</span></div>
-      ${mkKachel({ lbl: t('sm_s_rest'), zahl: d.gesamt - d.besessen ? anEur(d.rest, 0) : '✓',
-                   unter: d.rest_ohne_preis ? t('rk_ohne').replace('{n}', d.rest_ohne_preis) : t('sm_rest_u') })}
+      <div class="mk-kachel"><small>${t('sm_s_rest')}</small><b>${d.gesamt - d.besessen ? anEur(d.rest, 0) : '✓'}</b>
+        <span class="mk-neben">${d.rest_ohne_preis ? t('rk_ohne').replace('{n}', d.rest_ohne_preis) : t('sm_rest_u')}</span>
+        ${d.gesamt - d.besessen ? `<button class="mk-link" onclick="alarmOeffnen('set', '${esc(s.id)}', ${JSON.stringify(s.name || s.id)}, ${d.rest || 0})">🔔 ${t('al_set')}</button>` : ''}</div>
       ${mkKachel({ lbl: t('sm_dein_wert'), zahl: anEur(st.wert || 0, 0), delta: st.rendite,
                    unter: st.einsatz != null ? `${t('an_einsatz')} ${anEur(st.einsatz, 0)}` : t('an_kein_kaufpreis') })}
       ${zielKachel}
@@ -475,6 +476,90 @@ async function zieleStartLaden() {
       ${smFortschritt(z.prozent)}
       <div class="zu"><span>${z.prozent} %</span><span>${z.fehlt ? t('sm_rest_kurz').replace('{e}', anEur(z.rest, 0)) : '✓ ' + t('sm_komplett')}</span></div>
     </button>`).join('');
+}
+
+/* ---------------------------------------------------------------- Preis-Alarme */
+/* „Sag mir, wenn Glurak unter 100 € fällt." Geprüft nach jedem Preislauf; ausgelöste Alarme
+   stehen auf der Startseite und kommen per Mail, sobald SMTP eingerichtet ist. */
+
+const AL = { art: 'karte', ziel: '', richtung: 'unter', preis: 0 };
+
+function alarmOeffnen(art, ziel, name, preis) {
+  if (!S.user) return loginOeffnen(t('gate_login'));
+  Object.assign(AL, { art, ziel, richtung: 'unter', preis: preis || 0 });
+  $('al-name').textContent = (art === 'set' ? t('al_rest') + ': ' : '') + name + (preis ? ` · ${t('al_aktuell')} ${anEur(preis, preis >= 100 ? 0 : 2)}` : '');
+  $('al-schwelle').value = preis ? String(Math.round(preis * (art === 'set' ? 0.8 : 0.9) * 100) / 100).replace('.', ',') : '';
+  $('al-hin').textContent = art === 'set' ? t('al_hin_set') : t('al_hin_karte');
+  alarmRichtung('unter');
+  modalOeffnen('modal-alarm');
+  setTimeout(() => $('al-schwelle').focus(), 50);
+}
+function alarmRichtung(r) {
+  AL.richtung = r;
+  $('alr-unter').classList.toggle('on', r === 'unter');
+  $('alr-ueber').classList.toggle('on', r === 'ueber');
+}
+async function alarmSpeichern() {
+  const roh = ($('al-schwelle').value || '').trim().replace(',', '.');
+  if (!roh || isNaN(parseFloat(roh))) return toast(t('al_schwelle'));
+  try {
+    const d = await api('api/alarme', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ art: AL.art, ziel: AL.ziel, richtung: AL.richtung, schwelle: roh }) });
+    modalSchliessen();
+    toast(d.alarm && d.alarm.trifft ? t('al_trifft_jetzt') : t('al_gesetzt'));
+    if (SM.bereich === 'wunsch' && !$('sammlung').classList.contains('hidden')) sammlungLaden();
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+async function alarmLoeschen(id) {
+  try {
+    await api('api/alarme/loeschen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    sammlungLaden();
+  } catch (e) { toast(e.message); }
+}
+function zeichneAlarme(al) {
+  if (!al) return '';
+  const liste = al.alarme || [];
+  const fmt = (a, v) => a.art === 'set' ? anEur(v, 0) : anEur(v);
+  return `<div class="an-tafel"><h3>${t('al_liste_t')}</h3>
+    <div class="unter">${t('al_liste_u')}${!al.plus ? ' · ' + t('al_frei').replace('{n}', liste.length).replace('{m}', al.frei) : ''}</div>
+    ${liste.length ? liste.map((a) => `<div class="al-zeile ${a.trifft ? 'trifft' : ''}">
+      <span class="nm">${a.trifft ? '🔔 ' : ''}${esc(a.name)}<small>${a.art === 'set' ? t('al_rest') + ' ' : ''}${t(a.richtung === 'unter' ? 'al_unter' : 'al_ueber')} ${fmt(a, a.schwelle)}${a.trifft ? ' · ' + t('al_trifft') : ''}</small></span>
+      <span class="r aktuell">${a.letzter_wert != null ? `${t('al_aktuell')} ${fmt(a, a.letzter_wert)}` : ''}</span>
+      <span class="r">${fmt(a, a.schwelle)}</span>
+      <button onclick="alarmLoeschen(${a.id})" title="${t('al_weg')}">✕</button></div>`).join('')
+      : anDuenn(t('al_leer'))}</div>`;
+}
+/** Ausgelöste, noch nicht gesehene Alarme auf der Startseite — danach gelten sie als gesehen. */
+async function alarmeStartLaden() {
+  const block = $('st-alarme-block'); if (!block || !S.user) return;
+  let d;
+  try { d = await api('api/alarme'); } catch (e) { block.hidden = true; return; }
+  const offen = (d.alarme || []).filter((a) => a.trifft);
+  block.hidden = !offen.length;
+  if (!offen.length) return;
+  const fmt = (a, v) => a.art === 'set' ? anEur(v, 0) : anEur(v);
+  $('st-alarme').innerHTML = offen.map((a) => `<button class="st-alarm" onclick="${a.art === 'set'
+      ? `startSchliessen();ansichtSammlung('sets');smSetOeffnen('${esc(a.ziel)}')` : `detailOeffnenId('${esc(a.ziel)}')`}">
+    <span>🔔</span><span style="flex:1;min-width:0"><b>${esc(a.name)}</b><br><small>${a.art === 'set' ? t('al_rest') + ' ' : ''}${t(a.richtung === 'unter' ? 'al_unter' : 'al_ueber')} ${fmt(a, a.schwelle)}</small></span>
+    <b>${fmt(a, a.letzter_wert)}</b></button>`).join('');
+  if (d.neu) api('api/alarme/gesehen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+}
+/** Der Wochenrückblick auf der Startseite — solange keine Mail hinausgeht, ist das der Ort. */
+async function digestStartLaden() {
+  const block = $('st-digest-block'); if (!block || !S.user) return;
+  let d;
+  try { d = (await api('api/digest')).digest; } catch (e) { block.hidden = true; return; }
+  block.hidden = !d;
+  if (!d) return;
+  $('st-digest-woche').textContent = d.woche || '';
+  const li = (x, wert) => `<li><span>${esc(x.name)}<small style="color:var(--mut)"> · ${esc(x.set || '')} ${esc(x.nr || '')}</small></span><span>${wert}</span></li>`;
+  $('st-digest').innerHTML = `<div class="dg">
+    <div><h4>${t('dg_wert')}</h4><div class="z">${anEur(d.wert, 0)}</div>${d.bew7 != null ? mkDelta(d.bew7) + ` <span style="color:var(--mut)">${d.bew7_eur >= 0 ? '+' : ''}${anEur(d.bew7_eur, 0)} · ${t('mk_7t')}</span>` : ''}</div>
+    <div><h4>${t('dg_beweg')}</h4>${(d.bewegung || []).length ? `<ul>${d.bewegung.map((b) => li(b, `<span class="${b.diff >= 0 ? 'an-plus' : 'an-minus'}">${b.diff >= 0 ? '+' : ''}${anEur(b.diff)}</span>`)).join('')}</ul>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
+    <div><h4>${t('dg_monat')}</h4>${d.set_monat ? `<button class="mk-link" style="margin:0" onclick="startSchliessen();ansicht('markt')">${esc(d.set_monat.name)} ${mkDelta(d.set_monat.bew30)}</button>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
+    <div><h4>${t('dg_guenstiger')}</h4>${(d.guenstiger || []).length ? `<ul>${d.guenstiger.map((g) => li(g, `${anEur(g.eur)} ${mkDelta(g.prozent)}`)).join('')}</ul>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
+    <div style="grid-column:1/-1;font-size:11.5px;color:var(--mut)">${t('dg_mail')}</div></div>`;
+  if (!d.gesehen) api('api/digest/gesehen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
 }
 
 /* ---------------------------------------------------------------- Wunschliste */
