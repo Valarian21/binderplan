@@ -458,6 +458,8 @@
     color: var(--mut); border: 1.5px solid var(--line); border-radius: 999px; padding: 1px 7px; }
   .bp-nowants.an { color: #B8860B; border-color: #E0A21B; }
   .bstapel { margin: 2px 0 10px; }
+  .vt-blatt.stapel.bild { display: block; padding: 0; }
+  .vt-blatt.stapel.bild img { width: 100%; display: block; }
   .bstapel .vt-blatt.stapel { padding: 0 10px 10px 0; }
 
   /* ---------- Handy-Feinschliff ---------- */
@@ -5241,7 +5243,7 @@ function zeichneStartBinder(liste) {
     const proz = b.anzahl ? Math.round((b.gesammelt || 0) / b.anzahl * 100) : 0;
     // Seit die Startseite denselben Stapel zeigt wie die Vitrine, sieht ein Binder überall
     // gleich aus. Die alten drei Miniaturen bleiben als Rückfall, falls kein Raster kommt.
-    const stapel = b.blatt ? vitrineBlatt(b.blatt, false) : '';
+    const stapel = stapelBild(b);
     const thumbs = (b.vorschau || []).map((id) => `<img loading="lazy" src="${imgUrl(id)}" alt="">`).join('')
       + (b.dex_vorschau || []).slice(0, 3 - (b.vorschau || []).length).map((d) => `<img loading="lazy" src="api/img/dex/${d}" alt="" style="object-fit:contain;padding:4px">`).join('');
     return `<div class="bcard" onclick="startBinderOeffnen('${b.id}')">
@@ -7375,6 +7377,16 @@ function kunstEinsetzen(d) {
 
 /** Eine Binderseite als Vorschau zeichnen. `blatt` kommt vom Server und enthält das Raster
  *  samt leeren Fächern — nur so sieht die Kachel aus wie eine echte aufgeschlagene Seite. */
+/** Binder-Kachel als ein Bild vom Server (die ersten drei Seiten als Stapel). Vorher baute
+ *  vitrineBlatt() denselben Stapel aus bis zu 27 Kartenbildern – 193 Anfragen auf der
+ *  Startseite. Der Stand in der Adresse macht das Bild ein Jahr lang cachebar. */
+function stapelBild(b) {
+  if (!b || !b.id) return '';
+  const stand = String(b.updated_at || b.veroeffentlicht_at || '').replace(/[^0-9]/g, '').slice(0, 14);
+  if (!stand) return b.blatt ? vitrineBlatt(b.blatt, false) : '';
+  return `<div class="vt-blatt stapel bild"><img loading="lazy" decoding="async" src="api/binders/${encodeURIComponent(b.id)}/stapel.webp?s=${stand}" alt=""></div>`;
+}
+
 function vitrineBlatt(blatt, doppelt, einzeln) {
   if (!blatt || !blatt.seiten || !blatt.seiten.length) return '';
   const fach = (f, spalten, zeilen) => {
@@ -7435,7 +7447,7 @@ function zeichneVitrine() {
     <div class="vt-karte" role="button" tabindex="0" onclick="binderGross('${esc(b.id)}')"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();binderGross('${esc(b.id)}')}">
       <div style="padding:10px 10px 0;background:${VT.doppelseite ? '#14161a' : 'var(--panel2)'}">
-        ${vitrineBlatt(b.blatt, VT.doppelseite)}
+        ${VT.doppelseite ? vitrineBlatt(b.blatt, true) : stapelBild(b)}
       </div>
       <div class="vt-txt">
         <div class="vt-name">${esc(b.name)}</div>
@@ -7894,7 +7906,7 @@ function zeichneProfilBinder() {
   $('po-gitter').innerHTML = liste.map((b) => `
     <div class="vt-karte">
       <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:10px 10px 0;background:var(--panel2)">
-        ${vitrineBlatt(b.blatt, false)}
+        ${stapelBild(b)}
       </div>
       <div class="vt-txt">
         <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
@@ -10601,8 +10613,8 @@ async function artworkLoeschen() {
 boot();
 </script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609100013"></script>
+<script defer src="assets/markt.js?v=202609100022"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609100013"></script>
+<script defer src="assets/sammlung.js?v=202609100022"></script>
 </body>
 </html>

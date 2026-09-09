@@ -134,6 +134,8 @@
   .s-stapel .vorn { z-index: 3; }
   .s-stapel .hinten2 { z-index: 2; margin-left: -4%; margin-top: 4%; filter: brightness(.88); }
   .s-stapel .hinten3 { z-index: 1; margin-left: -4%; margin-top: 8%; filter: brightness(.76); }
+  .s-stapel.bild { display: block; padding: 0; }
+  .s-stapel.bild img { width: 100%; display: block; }
   .schau-h3 { font-size: 16px; font-weight: 800; margin: 22px 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .schau-fenster { font-size: 12px; font-weight: 700; color: var(--mut); letter-spacing: .04em; text-transform: uppercase; }
   .schau-reihe { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }

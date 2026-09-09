@@ -126,7 +126,7 @@
     if (f) f.textContent = t.fenster[d.fenster] || '';
     document.getElementById('schau-binder').innerHTML = d.binder.map(function (b) {
       return '<div class="s-kachel" data-id="' + esc(b.id) + '" role="button" tabindex="0">'
-        + '<div class="s-bild">' + stapel(b.blatt && b.blatt.seiten) + '</div>'
+        + '<div class="s-bild">' + (b.updated_at ? '<div class="s-stapel bild"><img loading="lazy" decoding="async" src="/api/binders/' + encodeURIComponent(b.id) + '/stapel.webp?s=' + String(b.updated_at).replace(/[^0-9]/g, '').slice(0, 14) + '" alt=""></div>' : stapel(b.blatt && b.blatt.seiten)) + '</div>'
         + '<div class="s-txt"><strong>' + esc(b.name) + '</strong><span>' + esc(b.besitzer) + ' · ' + b.karten + ' ' + t.karten
         + (b.stimmen ? ' · ' + b.stimmen + ' ' + t.herz : '') + '</span></div></div>';
     }).join('');

@@ -299,9 +299,45 @@ def pruefen(con):
 
 # ------------------------------------------------------------------ Endpunkte
 
+import functools
+
+# Tagesstand-Cache: Die Markt-Antworten ändern sich nur mit dem Preislauf um 04:30. Vorher
+# rechnete jede Anfrage die Aggregation neu (4,8 s für /api/markt/heute, gemessen 09.09.2026,
+# das SQL selbst brauchte 4 ms). Schlüssel: Endpunkt, Argumente, Pro-Stufe, Tag.
+_TAGESCACHE = {}
+_cache_helfer = {}
+
+
+def _tageskache(fn):
+    """Antworten je (Funktion, Argumente, Pro, Tag) im Prozess halten. Der Tag wird bei
+    jeder Anfrage aus markt_tag gelesen (ein MAX über einen Index) – wechselt er, verfällt
+    alles Alte von selbst."""
+    @functools.wraps(fn)
+    def wrapper(request, *args, **kwargs):
+        con = _cache_helfer["get_db"]()
+        try:
+            r = con.execute("SELECT MAX(datum) d FROM markt_tag").fetchone()
+            tag = r["d"] if r else None
+        finally:
+            con.close()
+        user = _cache_helfer["current_user"](request)
+        voll = bool(user) and _cache_helfer["ist_pro_stufe"](user)
+        schluessel = (fn.__name__, tag, voll, tuple(args), tuple(sorted(kwargs.items())))
+        treffer = _TAGESCACHE.get(schluessel)
+        if treffer is not None:
+            return treffer
+        wert = fn(request, *args, **kwargs)
+        if len(_TAGESCACHE) > 400:
+            _TAGESCACHE.clear()
+        _TAGESCACHE[schluessel] = wert
+        return wert
+    return wrapper
+
+
 def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
              betreiber_melden=None):
     from fastapi import HTTPException, Request
+    _cache_helfer.update(get_db=get_db, current_user=current_user, ist_pro_stufe=ist_pro_stufe)
 
     def _verlauf(con, ebene, schluessel, tage=SPARK_TAGE):
         """Die Summen der letzten Tage als Sparkline-Punkte."""
@@ -332,6 +368,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         return zeilen
 
     @app.get("/api/markt/heute")
+    @_tageskache
     def markt_heute(request: Request, fenster: int = 30):
         """Die Startseite des Markts. Der Kopf ist für alle sichtbar, die Ranglisten für Pro.
 
@@ -415,6 +452,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
               "geplant": ("geplant", True), "name": ("name", False)}
 
     @app.get("/api/markt/rangliste")
+    @_tageskache
     def markt_rangliste(request: Request, ebene: str = "set", sortier: str = "bewegung30",
                         limit: int = 40, richtung: str = "ab"):
         """Eine Ebene als Tabelle: Sets, Ären, Pokémon oder Illustratoren."""
@@ -454,6 +492,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         return {"pro": True, "stand": tag, "ebene": ebene, "sortier": sortier, "zeilen": zeilen}
 
     @app.get("/api/markt/set/{set_id}")
+    @_tageskache
     def markt_set(request: Request, set_id: str):
         """Eine Set-Seite: Index, Verteilung, Bewegung je Karte, teuerste Karten."""
         user = require_user(request)
@@ -502,6 +541,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         return aus
 
     @app.get("/api/markt/pokemon/{dex}")
+    @_tageskache
     def markt_pokemon(request: Request, dex: int):
         """Alle Karten eines Pokémon über alle Sets — die Frage „was ist Glurak wert"."""
         user = require_user(request)

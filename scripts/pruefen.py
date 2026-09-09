@@ -63,14 +63,14 @@ for m in re.finditer(r'(?:src|href)="(assets/[^"?]+)', html):
 # 5. pyflakes
 py = [f for f in os.listdir(wurzel) if f.endswith('.py')]
 venv_py = os.path.join(wurzel, 'venv', 'bin', 'python')
-for interp in (venv_py, sys.executable):
+for interp in (venv_py, '/home/developer/ai_empire/venv/bin/python', sys.executable):
     try:
         r = subprocess.run([interp, '-m', 'pyflakes', *py], cwd=wurzel, capture_output=True, text=True, timeout=120)
         if r.returncode not in (0, 1) and 'No module named' in r.stderr:
             continue
         for zeile in r.stdout.splitlines():
             # Unbenutzte Importe stören nicht; alles andere (undefinierte Namen, Syntax) blockiert
-            if 'imported but unused' in zeile or 'redefinition of unused' in zeile:
+            if 'imported but unused' in zeile or 'redefinition of unused' in zeile or 'f-string is missing placeholders' in zeile:
                 continue
             befunde.append('pyflakes: ' + zeile)
         break

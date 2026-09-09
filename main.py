@@ -321,6 +321,40 @@ def _compute_kinds(category, stage, suffix, rarity, name_en, name_de, local_id="
 
 app = FastAPI(title="Binderplan", docs_url=None, redoc_url=None, openapi_url=None)
 
+# --- Logging & Zugriffsprotokoll ---------------------------------------------------------
+# Vorher: print() und die Zugriffszeilen von uvicorn ohne Dauer. Jetzt eine Zeile je API-Aufruf
+# mit Status, Dauer und ob ein Konto dran hing; Bilder bleiben außen vor (zu viele, zu gleich).
+import logging  # noqa: E402
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+                    datefmt="%H:%M:%S")
+log = logging.getLogger("binderplan")
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def _log(*teile):
+    """Ersatz für die alten print()-Zeilen der Hintergrundjobs – gleiche Aufrufform."""
+    log.info(" ".join(str(t) for t in teile))
+
+
+@app.middleware("http")
+async def _zugriffsprotokoll(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        antwort = await call_next(request)
+    except Exception:
+        log.exception("%s %s abgebrochen", request.method, request.url.path)
+        raise
+    pfad = request.url.path
+    if pfad.startswith("/api/") and not pfad.startswith("/api/img"):
+        dauer = (time.perf_counter() - start) * 1000
+        konto = "K" if request.headers.get("authorization") or request.cookies.get("bp_token") else "-"
+        stufe = log.warning if antwort.status_code >= 500 or dauer > 2000 else log.info
+        stufe("%s %s%s %s %.0fms %s", request.method, pfad,
+              ("?" + request.url.query) if request.url.query else "", antwort.status_code, dauer, konto)
+    return antwort
+
+
 
 def get_db():
     con = sqlite3.connect(DB, timeout=30)
@@ -465,7 +499,7 @@ def init_db():
             con.execute("DROP TABLE sammlung")
             con.execute("ALTER TABLE sammlung_neu RENAME TO sammlung")
         except Exception as _e:
-            print("Sammlungs-Migration übersprungen:", _e)
+            _log("Sammlungs-Migration übersprungen:", _e)
     con.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sammlung_pos"
                 " ON sammlung(user_id, card_id, variante, zustand, sprache)")
     con.execute("CREATE INDEX IF NOT EXISTS idx_sammlung_user ON sammlung(user_id)")
@@ -604,11 +638,11 @@ def _jp_kollision_umbenennen():
                     (",".join(kollision) or "-",))
         con.commit()
         if kollision:
-            print(f"Japan-Präfix gesetzt für {kollision}")
+            _log(f"Japan-Präfix gesetzt für {kollision}")
             threading.Thread(target=_intl_sets_nachladen, args=(list(kollision),),
                              daemon=True).start()
     except Exception as exc:
-        print("JP-Umbenennung übersprungen:", exc)
+        _log("JP-Umbenennung übersprungen:", exc)
     finally:
         con.close()
 
@@ -726,9 +760,9 @@ def _intl_sets_nachladen(ids):
                     neu_karten += 1
                 con.commit()
             con.close()
-            print(f"Internationale Sets wiederhergestellt: {ids}, {neu_karten} Karten nachgeladen")
+            _log(f"Internationale Sets wiederhergestellt: {ids}, {neu_karten} Karten nachgeladen")
     except Exception as exc:
-        print("Set-Reparatur fehlgeschlagen:", exc)
+        _log("Set-Reparatur fehlgeschlagen:", exc)
 
 
 _jp_kollision_umbenennen()
@@ -1477,7 +1511,7 @@ def _historie_verdichten(con):
         (g_woche,)).rowcount
     con.commit()
     if weg:
-        print(f"Preisverlauf verdichtet: {weg} Punkte zusammengefasst")
+        _log(f"Preisverlauf verdichtet: {weg} Punkte zusammengefasst")
     return weg
 
 
@@ -1763,7 +1797,7 @@ def _preishistorie_job():
     # sonst wandert der Ausfall als Datenstand in die Historie.
     fehl = sum(1 for e in ergebnisse if not e["ok"])
     if fehl > len(ergebnisse) * 0.2:
-        print(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
+        _log(f"Preislauf abgebrochen: {fehl} von {len(ergebnisse)} Abrufen fehlgeschlagen")
         return
 
     # Erst die Ausprägungen berichtigen, dann entscheiden, ob es überhaupt eine zweite
@@ -1809,7 +1843,7 @@ def _preishistorie_job():
         con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preis_kurs', ?)", (str(kurs),))
     con.commit()
     con.close()
-    print(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt, {geschrieben} geschrieben,"
+    _log(f"Preislauf: {len(neue)} neu, {len(alt)} aufgefrischt, {geschrieben} geschrieben,"
           f" {fehl} fehlgeschlagen, {len(mehrdeutig)} mehrdeutig verworfen,"
           f" {var_neu} Varianten berichtigt, Kurs {kurs}, {urteile},"
           f" {max(0, offen - len(neue))} offen")
@@ -1870,7 +1904,7 @@ def _ptcgio_job(nur_set=None):
     """Karten ohne verlässlichen Europreis über die Zweitquelle auffüllen."""
     key = _env().get("PTCGIO_KEY")
     if not key:
-        print("Zweitquelle übersprungen: PTCGIO_KEY fehlt")
+        _log("Zweitquelle übersprungen: PTCGIO_KEY fehlt")
         return 0
     con = get_db()
     merker = con.execute("SELECT value FROM kv WHERE key='preis_kurs'").fetchone()
@@ -1965,7 +1999,7 @@ def _ptcgio_job(nur_set=None):
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('ptcgio_lauf', datetime('now'))")
     con.commit()
     con.close()
-    print(f"Zweitquelle: {gefuellt} Preise ergänzt, {var} Varianten berichtigt")
+    _log(f"Zweitquelle: {gefuellt} Preise ergänzt, {var} Varianten berichtigt")
     return gefuellt
 
 
@@ -2660,7 +2694,7 @@ def cm_import(preise_roh=None, katalog_roh=None, nonsingles_roh=None):
             bericht["kurs"] = kurs
             bericht["urteile"] = urteile
         except Exception as exc:
-            print("Börsenvergleich nach dem Import fehlgeschlagen:", exc)
+            _log("Börsenvergleich nach dem Import fehlgeschlagen:", exc)
     con.close()
     return bericht
 
@@ -2704,11 +2738,11 @@ def _cm_download_job():
             try:
                 r = client.get(url)
                 if r.status_code != 200 or len(r.content) < 10000:
-                    print(f"Cardmarket-Download {name}: HTTP {r.status_code},"
+                    _log(f"Cardmarket-Download {name}: HTTP {r.status_code},"
                           f" {len(r.content)} Bytes — übersprungen")
                     continue
             except Exception as exc:
-                print(f"Cardmarket-Download {name} fehlgeschlagen:", exc)
+                _log(f"Cardmarket-Download {name} fehlgeschlagen:", exc)
                 continue
             # Zeitstempel aus dem Kopf der Datei lesen, ohne die 15 MB zu zerlegen.
             treffer = re.search(rb'"createdAt"\s*:\s*"([^"]+)"', r.content[:500])
@@ -2721,7 +2755,7 @@ def _cm_download_job():
                 continue          # unverändert, nichts zu tun
             ziel.write_bytes(r.content)
             neu[name] = stand or "?"
-            print(f"Cardmarket-Download {name}: {len(r.content)} Bytes, Stand {stand}")
+            _log(f"Cardmarket-Download {name}: {len(r.content)} Bytes, Stand {stand}")
     if neu:
         con = get_db()
         con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_download_lauf', ?)",
@@ -2784,14 +2818,14 @@ def _cm_import_job():
                 ziel = BASE / "cardmarket"
                 ziel.mkdir(exist_ok=True)
                 (ziel / "price_guide.json").write_bytes(r.content)
-                print("Cardmarket-Preisverzeichnis geladen:", len(r.content), "Bytes")
+                _log("Cardmarket-Preisverzeichnis geladen:", len(r.content), "Bytes")
         except Exception as exc:
-            print("Cardmarket-Preisverzeichnis nicht ladbar:", exc)
+            _log("Cardmarket-Preisverzeichnis nicht ladbar:", exc)
     preise, katalog, nonsingles = _cm_dateien()
     if not preise and not katalog:
         return None
     bericht = cm_import(preise, katalog, nonsingles)
-    print("Cardmarket-Import:", bericht)
+    _log("Cardmarket-Import:", bericht)
     return bericht
 
 
@@ -3121,7 +3155,7 @@ def _cm_urls_job(grenze=40000):
             con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('cm_urls_lauf', datetime('now'))")
             con.commit()
             con.close()
-    print(f"Cardmarket-Adressen: {n} von {len(offen)} aufgelöst")
+    _log(f"Cardmarket-Adressen: {n} von {len(offen)} aufgelöst")
     return n
 
 
@@ -3170,7 +3204,7 @@ def _tp_bilder_job(grenze=20000):
         " WHERE c.image_de IS NULL AND c.image_en IS NULL AND COALESCE(c.image_alt,'') = ''"
         " AND p.tcgplayer_id IS NULL ORDER BY c.release_date LIMIT ?", (grenze,))]
     con.close()
-    print(f"TCGplayer-Bilder: {len(schon)} aus vorhandenen Nummern, {len(offen)} werden abgefragt")
+    _log(f"TCGplayer-Bilder: {len(schon)} aus vorhandenen Nummern, {len(offen)} werden abgefragt")
     gefunden = len(schon)
     with httpx.Client(timeout=25, headers=UA) as client:
         for start in range(0, len(offen), 300):
@@ -3191,7 +3225,7 @@ def _tp_bilder_job(grenze=20000):
                         " VALUES ('tp_bilder_lauf', datetime('now'))")
             con.commit()
             con.close()
-    print(f"TCGplayer-Bilder: {gefunden} Karten haben jetzt einen Scan")
+    _log(f"TCGplayer-Bilder: {gefunden} Karten haben jetzt einen Scan")
     return gefunden
 
 
@@ -3261,9 +3295,9 @@ def _tp_katalog_job():
                 tp_sets.setdefault(a["value"].strip().lower(), a["urlValue"])
                 tp_sets.setdefault(_tp_norm(a["value"]), a["urlValue"])
         except Exception as exc:
-            print("TCGplayer-Katalog: Setliste fehlgeschlagen:", exc)
+            _log("TCGplayer-Katalog: Setliste fehlgeschlagen:", exc)
             return 0
-        print(f"TCGplayer-Katalog: {len(offen)} Sets offen, {len(tp_sets)} Sets im Katalog")
+        _log(f"TCGplayer-Katalog: {len(offen)} Sets offen, {len(tp_sets)} Sets im Katalog")
         for (sid, name_en), karten in sorted(offen.items()):
             url = (tp_sets.get((name_en or "").strip().lower())
                    or tp_sets.get(_tp_norm(name_en)))
@@ -3275,7 +3309,7 @@ def _tp_katalog_job():
                 try:
                     d = _tp_anfrage(client, url, von, TP_SEITE)
                 except Exception as exc:
-                    print(f"TCGplayer-Katalog: {sid} Seite {von} fehlgeschlagen: {exc}")
+                    _log(f"TCGplayer-Katalog: {sid} Seite {von} fehlgeschlagen: {exc}")
                     break
                 treffer = d.get("results") or []
                 for p in treffer:
@@ -3305,12 +3339,12 @@ def _tp_katalog_job():
             con.commit()
             con.close()
             gefunden += n
-            print(f"TCGplayer-Katalog: {sid} ({name_en}) — {n} von {len(karten)} zugeordnet")
+            _log(f"TCGplayer-Katalog: {sid} ({name_en}) — {n} von {len(karten)} zugeordnet")
     con = get_db()
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('tp_katalog_lauf', datetime('now'))")
     con.commit()
     con.close()
-    print(f"TCGplayer-Katalog: {gefunden} Karten haben jetzt einen Scan")
+    _log(f"TCGplayer-Katalog: {gefunden} Karten haben jetzt einen Scan")
     return gefunden
 
 
@@ -3393,7 +3427,7 @@ def _cache_job():
                 pass
             if gesamt <= grenze * 0.9:
                 break
-        print(f"Cache {teil}: auf {gesamt/1024/1024:.0f} MB gestutzt")
+        _log(f"Cache {teil}: auf {gesamt/1024/1024:.0f} MB gestutzt")
 
 
 NACHTLAUF_STUNDE, NACHTLAUF_MINUTE = 4, 30     # Serverzeit (Europe/Berlin)
@@ -3440,7 +3474,7 @@ def _markt_job():
         warnung = _markt.pruefen(con)
     finally:
         con.close()
-    print("Markt-Tagesstand:", ergebnis)
+    _log("Markt-Tagesstand:", ergebnis)
     if warnung:
         betreiber_melden(warnung)
 
@@ -3453,14 +3487,14 @@ def _alarme_job():
     if not _alarme:
         return
     try:
-        print("Alarme:", _alarme.tagesjob(get_db, _mail_senden, _mail_konfiguriert))
+        _log("Alarme:", _alarme.tagesjob(get_db, _mail_senden, _mail_konfiguriert))
     except Exception as exc:
-        print("Alarm-Job fehlgeschlagen:", exc)
+        _log("Alarm-Job fehlgeschlagen:", exc)
     if datetime.datetime.now().weekday() == 6:
         try:
-            print("Digest:", _alarme.wochenjob(get_db, _mail_senden, _mail_konfiguriert))
+            _log("Digest:", _alarme.wochenjob(get_db, _mail_senden, _mail_konfiguriert))
         except Exception as exc:
-            print("Digest-Job fehlgeschlagen:", exc)
+            _log("Digest-Job fehlgeschlagen:", exc)
 
 
 def _hintergrund_takt():
@@ -3492,36 +3526,36 @@ def _hintergrund_takt():
                 try:
                     _cm_download_job()
                 except Exception as exc:
-                    print("Cardmarket-Download fehlgeschlagen:", exc)
+                    _log("Cardmarket-Download fehlgeschlagen:", exc)
                 try:
                     _cm_import_job()
                 except Exception as exc:
-                    print("Cardmarket-Import fehlgeschlagen:", exc)
+                    _log("Cardmarket-Import fehlgeschlagen:", exc)
                 try:
                     _ptcgio_job()
                 except Exception as exc:
-                    print("Zweitquelle fehlgeschlagen:", exc)
+                    _log("Zweitquelle fehlgeschlagen:", exc)
                 try:
                     _cm_urls_job(3000)      # neue Karten bekommen ihre Produktseite
                 except Exception as exc:
-                    print("Cardmarket-Adressen fehlgeschlagen:", exc)
+                    _log("Cardmarket-Adressen fehlgeschlagen:", exc)
                 try:
                     # Neue Karten ohne Scan: erst die günstige Quelle (TCGdex nennt die
                     # TCGplayer-Nummer), dann der Katalogabgleich für ganze Sets.
                     _tp_bilder_job(3000)
                     _tp_katalog_job()
                 except Exception as exc:
-                    print("Zweitbilder fehlgeschlagen:", exc)
+                    _log("Zweitbilder fehlgeschlagen:", exc)
                 try:
                     con = get_db()
                     _historie_verdichten(con)
                     con.close()
                 except Exception as exc:
-                    print("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
+                    _log("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
                 try:
                     _markt_job()
                 except Exception as exc:
-                    print("Markt-Tagesstand fehlgeschlagen:", exc)
+                    _log("Markt-Tagesstand fehlgeschlagen:", exc)
                 _alarme_job()
         except Exception:
             pass
@@ -3545,6 +3579,7 @@ def _maybe_autosync():
             threading.Thread(target=run_backfill_details, daemon=True).start()
         threading.Thread(target=_symbole_job, daemon=True).start()
     threading.Thread(target=_hintergrund_takt, daemon=True).start()
+    threading.Thread(target=_stapel_alle_vorwaermen, daemon=True).start()
 
 
 threading.Thread(target=_maybe_autosync, daemon=True).start()
@@ -3739,8 +3774,25 @@ def _artwork_kpis():
         return []
 
 
+_META_CACHE = {"bis": 0.0, "etag": "", "body": b""}
+
+
 @app.get("/api/meta")
-def meta():
+def meta(request: Request):
+    """163 KB bei jedem Start der App, 0,7 s Rechenzeit – dabei ändert sich der Katalog nur
+    beim Sync. Zehn Minuten im Prozess gehalten und per ETag als 304 beantwortet."""
+    jetzt = time.time()
+    if jetzt > _META_CACHE["bis"]:
+        import hashlib
+        body = json.dumps(_meta_bauen(), ensure_ascii=False).encode("utf-8")
+        _META_CACHE.update(bis=jetzt + 600, body=body, etag='"' + hashlib.md5(body).hexdigest()[:16] + '"')
+    if request.headers.get("if-none-match") == _META_CACHE["etag"]:
+        return Response(status_code=304, headers={"ETag": _META_CACHE["etag"]})
+    return Response(content=_META_CACHE["body"], media_type="application/json",
+                    headers={"ETag": _META_CACHE["etag"], "Cache-Control": "private, max-age=0, must-revalidate"})
+
+
+def _meta_bauen():
     con = get_db()
     counts = {
         "cards": con.execute("SELECT COUNT(*) c FROM cards").fetchone()["c"],
@@ -4793,7 +4845,7 @@ def _mail_senden(an: str, betreff: str, text: str) -> bool:
     except Exception as e:
         global _mail_letzter_fehler
         _mail_letzter_fehler = f"{type(e).__name__}: {e}"[:300]
-        print("Mailversand fehlgeschlagen:", _mail_letzter_fehler)
+        _log("Mailversand fehlgeschlagen:", _mail_letzter_fehler)
         return False
 
 
@@ -4822,7 +4874,7 @@ def betreiber_melden(text: str) -> bool:
                        json={"chat_id": chat, "text": text[:3500],
                              "disable_web_page_preview": True}, timeout=15)
         except Exception as e:
-            print("Telegram-Meldung fehlgeschlagen:", e)
+            _log("Telegram-Meldung fehlgeschlagen:", e)
 
     threading.Thread(target=senden, daemon=True).start()
     return True
@@ -5070,7 +5122,7 @@ async def konto_loeschen(request: Request):
         try:
             abo._stripe(f"subscriptions/{user['stripe_sub']}", {"cancel_at_period_end": True})
         except Exception as e:
-            print("Abo-Kündigung bei Kontolöschung fehlgeschlagen:", e)
+            _log("Abo-Kündigung bei Kontolöschung fehlgeschlagen:", e)
     con = get_db()
     artworks = [r["id"] for r in con.execute("SELECT id FROM artworks WHERE user_id = ?", (user["id"],))]
     con.execute("DELETE FROM artworks WHERE user_id = ?", (user["id"],))
@@ -5180,7 +5232,7 @@ try:
         melden=betreiber_melden,
     )
 except Exception as _e:  # pragma: no cover
-    print("Abo-Modul nicht geladen:", _e)
+    _log("Abo-Modul nicht geladen:", _e)
     _abo_api = None
 
 
@@ -5661,6 +5713,7 @@ async def binder_update(binder_id: str, request: Request):
     con.close()
     if cur.rowcount == 0:
         raise HTTPException(404, "Binder nicht gefunden")
+    _stapel_vorwaermen(binder_id)
     return {"ok": True}
 
 
@@ -5954,7 +6007,7 @@ def binder_list(request: Request, ids: str = ""):
 
 # --- PDF-Export -------------------------------------------------------------
 
-from PIL import Image, ImageOps  # noqa: E402
+from PIL import Image, ImageDraw, ImageOps  # noqa: E402
 from reportlab.lib.pagesizes import A4  # noqa: E402
 from reportlab.lib.units import mm  # noqa: E402
 from reportlab.lib.utils import ImageReader  # noqa: E402
@@ -6016,11 +6069,13 @@ def _grayscale_reader(path: Path):
     return ImageReader(gray)
 
 
-def _card_image_path(card_id, lang="de"):
-    """Hochauflösendes Kartenbild besorgen (nutzt denselben Cache wie /api/img)."""
+def _card_image_path(card_id, lang="de", groesse="high"):
+    """Kartenbild besorgen (nutzt denselben Cache wie /api/img). „high" für Druck und Detail,
+    „low" für Kacheln – die Stapelbilder zogen sonst je Binder bis zu 27 hochauflösende Scans
+    aus dem Netz, 12 s je Kachel beim ersten Aufruf."""
     safe = re.sub(r"[^A-Za-z0-9._%-]", "_", card_id)
     suffix = "" if lang != "en" else ".en"
-    target = CACHE / "cards" / "high" / f"{safe}{suffix}.webp"
+    target = CACHE / "cards" / groesse / f"{safe}{suffix}.webp"
     if target.exists():
         return target
     con = get_db()
@@ -6029,12 +6084,12 @@ def _card_image_path(card_id, lang="de"):
     if not row:
         return None
     urls = [
-        f"{row['image_de']}/high.webp" if row["image_de"] else None,
-        f"{row['image_en']}/high.webp" if row["image_en"] else None,
+        f"{row['image_de']}/{groesse}.webp" if row["image_de"] else None,
+        f"{row['image_en']}/{groesse}.webp" if row["image_en"] else None,
     ]
     if lang == "en":
         urls.reverse()
-    urls += _alt_urls(row["image_alt"], "high")
+    urls += _alt_urls(row["image_alt"], groesse)
     return target if _fetch_asset(urls, target) else None
 
 
@@ -6612,7 +6667,7 @@ try:
         env=_env, CACHE=CACHE, abo=abo, bestaetigt=_bestaetigt,
     )
 except Exception as _e:  # pragma: no cover
-    print("Artwork-Modul nicht geladen:", _e)
+    _log("Artwork-Modul nicht geladen:", _e)
     _artwork_kennzahlen = None
 
 
@@ -6627,7 +6682,7 @@ try:
         card_image_path=_card_image_path, env=_env, CACHE=CACHE, abo=abo, admin_key=_admin_key,
     )
 except Exception as _e:  # pragma: no cover
-    print("Themen-Modul nicht geladen:", _e)
+    _log("Themen-Modul nicht geladen:", _e)
     _themen_kennzahlen = None
 
 
@@ -6642,7 +6697,7 @@ try:
         env=_env, CACHE=CACHE, admin_key=_admin_key,
     )
 except Exception as _e:  # pragma: no cover
-    print("Fotoimport-Modul nicht geladen:", _e)
+    _log("Fotoimport-Modul nicht geladen:", _e)
     _foto_kennzahlen = None
 
 
@@ -6656,7 +6711,7 @@ try:
         items_wert=_items_wert,
     )
 except Exception as _e:  # pragma: no cover
-    print("Vitrine-Modul nicht geladen:", _e)
+    _log("Vitrine-Modul nicht geladen:", _e)
     _vitrine_kennzahlen = None
 
 # Die Vitrine wird nach dem Artwork-Modul geladen, ihre Freigabeprüfung wird dort aber
@@ -6665,7 +6720,7 @@ except Exception as _e:  # pragma: no cover
 try:
     _artwork._dep["vitrine_pruefen"] = _vitrine._dep.get("vitrine_pruefen")
 except Exception as _e:  # pragma: no cover
-    print("Kunstseiten-Prüfung nicht verbunden:", _e)
+    _log("Kunstseiten-Prüfung nicht verbunden:", _e)
 
 
 # --- Betreiber-Übersicht fürs Empire-Dashboard (Modul admin_uebersicht.py) ----
@@ -6674,7 +6729,7 @@ try:
     import admin_uebersicht as _admin_uebersicht  # noqa: E402
     _admin_uebersicht.register(app, get_db=get_db, env=_env, admin_key=_admin_key, abo=abo)
 except Exception as _e:  # pragma: no cover
-    print("Betreiber-Übersicht nicht geladen:", _e)
+    _log("Betreiber-Übersicht nicht geladen:", _e)
 
 
 # --- Sammlung: was wirklich besessen wird (Modul sammlung.py) ---------------
@@ -6687,7 +6742,7 @@ try:
         preis_fuer_posten=preis_fuer_posten, ist_bezahlt=_ist_pro,
     )
 except Exception as _e:  # pragma: no cover
-    print("Sammlung-Modul nicht geladen:", _e)
+    _log("Sammlung-Modul nicht geladen:", _e)
     _sammlung_kennzahlen = None
 
 
@@ -6700,7 +6755,7 @@ try:
         ist_pro_stufe=_ist_pro_stufe, preis_fuer_posten=preis_fuer_posten,
     )
 except Exception as _e:  # pragma: no cover
-    print("Analytics-Modul nicht geladen:", _e)
+    _log("Analytics-Modul nicht geladen:", _e)
     _analytics_kennzahlen = None
 
 
@@ -6713,7 +6768,7 @@ try:
         ist_pro=_ist_pro, ist_pro_stufe=_ist_pro_stufe, betreiber_melden=betreiber_melden,
     )
 except Exception as _e:  # pragma: no cover
-    print("Markt-Modul nicht geladen:", _e)
+    _log("Markt-Modul nicht geladen:", _e)
     _markt = None
     _markt_kennzahlen = None
 
@@ -6725,7 +6780,7 @@ try:
     _alarme_kennzahlen = _alarme.register(app, get_db=get_db, require_user=_require_user, ist_bezahlt=_ist_pro,
                                           app_url=_env().get("APP_URL") or "https://binderplan.app")
 except Exception as _e:  # pragma: no cover
-    print("Alarm-Modul nicht geladen:", _e)
+    _log("Alarm-Modul nicht geladen:", _e)
     _alarme = None
     _alarme_kennzahlen = None
 
@@ -6736,7 +6791,7 @@ try:
     import seiten as _seiten  # noqa: E402
     _seiten_kennzahlen = _seiten.register(app, get_db=get_db, app_url=_env().get("APP_URL") or "https://binderplan.app")
 except Exception as _e:  # pragma: no cover
-    print("Seiten-Modul nicht geladen:", _e)
+    _log("Seiten-Modul nicht geladen:", _e)
     _seiten_kennzahlen = None
 
 
@@ -6844,6 +6899,144 @@ def binder_vorschau(binder_id: str, request: Request):
         _vorschau_bauen(binder, ziel)
     return FileResponse(ziel, media_type="image/png",
                         headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/api/binders/{binder_id}/stapel.webp")
+def binder_stapel(binder_id: str, request: Request):
+    """Vorschaubild der Binder-Kachel: die ersten drei Seiten als Stapel, ein Bild statt 27.
+    Startseite, Vitrine und Landingpage luden vorher jedes Kartenbild einzeln – 193 Anfragen
+    und 4,9 MB für zehn Binder (gemessen 09.09.2026). Der Stand steckt im Dateinamen und in
+    der Adresse (?s=), deshalb darf die Antwort ein Jahr im Browser liegen."""
+    binder = _load_binder(binder_id)
+    _binder_lesen_erlaubt(binder_id, _current_user(request))
+    stand = re.sub(r"[^0-9]", "", str(binder.get("updated_at") or ""))[:14]
+    sicher = re.sub(r"[^A-Za-z0-9_-]", "_", binder_id)
+    ziel = CACHE / "vorschau" / f"{sicher}.{stand}.stapel.webp"
+    if not ziel.exists():
+        ziel.parent.mkdir(parents=True, exist_ok=True)
+        for alt in ziel.parent.glob(f"{sicher}.*.stapel.webp"):
+            try:
+                alt.unlink()
+            except OSError:
+                pass
+        _stapel_bauen(binder, ziel)
+    return FileResponse(ziel, media_type="image/webp",
+                        headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+def _stapel_vorwaermen(binder_id):
+    """Kachelbild im Hintergrund bauen, damit die nächste Startseite es fertig vorfindet."""
+    def lauf():
+        try:
+            binder = _load_binder(binder_id)
+            stand = re.sub(r"[^0-9]", "", str(binder.get("updated_at") or ""))[:14]
+            sicher = re.sub(r"[^A-Za-z0-9_-]", "_", binder_id)
+            ziel = CACHE / "vorschau" / f"{sicher}.{stand}.stapel.webp"
+            if not ziel.exists():
+                ziel.parent.mkdir(parents=True, exist_ok=True)
+                _stapel_bauen(binder, ziel)
+        except Exception as exc:
+            log.warning("Stapelbild %s: %s", binder_id, exc)
+    threading.Thread(target=lauf, daemon=True).start()
+
+
+def _stapel_alle_vorwaermen():
+    """Beim Start: fehlende Kachelbilder aller Konto- und Vitrine-Binder nachziehen, langsam,
+    damit der Dienst nebenbei antwortet."""
+    try:
+        con = get_db()
+        ids = [r["id"] for r in con.execute(
+            "SELECT id FROM binders WHERE user_id IS NOT NULL OR COALESCE(sichtbar,0)=1 ORDER BY updated_at DESC")]
+        con.close()
+        for bid in ids:
+            binder = _load_binder(bid)
+            stand = re.sub(r"[^0-9]", "", str(binder.get("updated_at") or ""))[:14]
+            sicher = re.sub(r"[^A-Za-z0-9_-]", "_", bid)
+            ziel = CACHE / "vorschau" / f"{sicher}.{stand}.stapel.webp"
+            if ziel.exists():
+                continue
+            ziel.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                _stapel_bauen(binder, ziel)
+            except Exception as exc:
+                log.warning("Stapelbild %s: %s", bid, exc)
+            time.sleep(0.3)
+    except Exception as exc:
+        log.warning("Stapelbilder vorwärmen: %s", exc)
+
+
+def _stapel_bauen(binder, ziel: Path):
+    """Drei Seiten leicht versetzt hintereinander, hinten dunkler – dieselbe Form, die
+    vitrineBlatt() im Browser aus Einzelbildern baute. Transparenter Grund, damit die Kachel
+    hell wie dunkel funktioniert."""
+    from PIL import ImageEnhance
+    items = binder["items"]
+    optionen = binder.get("options") or {}
+    lang = "en" if optionen.get("sprache") == "en" else "de"
+    plan = _seiten_plan(binder)[:3]
+    if not plan:
+        plan = [{"nr": 0, "start": 0, "laenge": 9}]
+    grund = RASTER.get(binder.get("layout") or "3x3", (3, 3))
+
+    def raster(sp):
+        return (sp.get("spalten") or grund[0], sp.get("zeilen") or grund[1])
+
+    # Maßstab: die größte Seite muss in 440 × 400 passen (Einheiten: Karte 63 × 88, Fuge 4)
+    s = min(440 / max(c * 67 + 4 for c, _ in map(raster, plan)),
+            400 / max(r * 92 + 4 for _, r in map(raster, plan)))
+    rand = int(6 * s)
+    seiten = []
+    for sp in plan:
+        cols, rows = raster(sp)
+        breite = int((cols * 67 - 4) * s) + 2 * rand
+        hoehe = int((rows * 92 - 4) * s) + 2 * rand
+        seite = Image.new("RGBA", (breite, hoehe), (0, 0, 0, 0))
+        zeichnen = ImageDraw.Draw(seite)
+        zeichnen.rounded_rectangle([0, 0, breite - 1, hoehe - 1], int(10 * s), fill="#14161a")
+        fach_b, fach_h = int(63 * s), int(88 * s)
+        for i in range(sp["laenge"]):
+            c, r = i % cols, i // cols
+            x = rand + int(c * 67 * s); y = rand + int(r * 92 * s)
+            zeichnen.rounded_rectangle([x, y, x + fach_b, y + fach_h], int(4 * s), fill="#24272e")
+            idx = sp["start"] + i
+            item = items[idx] if idx < len(items) else None
+            if not item:
+                continue
+            bild = None
+            try:
+                if item.get("type") == "card" and item.get("id"):
+                    pfad = _card_image_path(item["id"], lang, "low")
+                    if pfad:
+                        bild = ImageOps.fit(Image.open(pfad).convert("RGB"), (fach_b, fach_h), Image.LANCZOS)
+                elif item.get("type") == "dex" and item.get("dex"):
+                    pfad = _dex_image_path(item["dex"])
+                    if pfad:
+                        sprite = Image.open(pfad).convert("RGBA")
+                        sprite.thumbnail((fach_b - 6, fach_h - 6), Image.LANCZOS)
+                        bild = Image.new("RGBA", (fach_b, fach_h), "#24272e")
+                        bild.paste(sprite, ((fach_b - sprite.width) // 2, (fach_h - sprite.height) // 2), sprite)
+                elif item.get("type") == "art" and item.get("artwork"):
+                    tile = _artwork.kachel(item["artwork"], int(item.get("slot") or 0))
+                    if tile is not None:
+                        bild = ImageOps.fit(tile.convert("RGB"), (fach_b, fach_h), Image.LANCZOS)
+            except Exception:
+                bild = None
+            if bild is not None:
+                seite.paste(bild, (x, y))
+        seiten.append(seite)
+
+    # Stapel: vorn links oben, jede weitere Seite nach rechts unten versetzt und abgedunkelt
+    vx, vy = int(seiten[0].width * 0.13), int(seiten[0].height * 0.07)
+    B = max(sx.width for sx in seiten) + vx * (len(seiten) - 1)
+    H = max(sx.height for sx in seiten) + vy * (len(seiten) - 1)
+    bild = Image.new("RGBA", (B, H), (0, 0, 0, 0))
+    for nr in reversed(range(len(seiten))):
+        seite = seiten[nr]
+        if nr:
+            rgb = ImageEnhance.Brightness(seite.convert("RGB")).enhance(0.88 if nr == 1 else 0.76)
+            seite = Image.merge("RGBA", (*rgb.split(), seite.split()[3]))
+        bild.alpha_composite(seite, (nr * vx, nr * vy))
+    bild.save(ziel, "WEBP", quality=82, method=4)
 
 
 def _vorschau_bauen(binder, ziel: Path):

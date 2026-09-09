@@ -427,7 +427,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
         seit = _fenster_seit(fenster)
         con = get_db()
         reihen = con.execute(
-            "SELECT b.id, b.name, b.layout, b.mode, b.options, b.items, b.veroeffentlicht_at, b.user_id,"
+            "SELECT b.id, b.name, b.layout, b.mode, b.options, b.items, b.veroeffentlicht_at, b.user_id, b.updated_at,"
             " p.name AS besitzer, p.avatar_card,"
             " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id) AS stimmen,"
             " (SELECT COUNT(*) FROM stimmen s WHERE s.binder_id = b.id AND s.created_at >= ?) AS stimmen_fenster"
@@ -476,6 +476,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
                 "layout": r["layout"],
                 "art": binder_art,
                 "veroeffentlicht_at": r["veroeffentlicht_at"],
+                "updated_at": r["updated_at"],
                 "vorschau": _vorschau(items),
                 "blatt": _seiten_vorschau(items, r["layout"], 3, optionen.get("seitenLayouts")),
                 "_punkte": _punkte(r["stimmen"], r["veroeffentlicht_at"] or ""),
