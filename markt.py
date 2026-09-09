@@ -537,51 +537,6 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         con.close()
         return aus
 
-    @app.get("/api/markt/meine")
-    def markt_meine(request: Request):
-        """Die eigene Sammlung gegen den Markt: welche Sets, welche Bewegung, was ist billig."""
-        user = require_user(request)
-        if not ist_pro(user):
-            return {"pro": False}
-        con = get_db()
-        tag = _letzter_tag(con)
-        # Zustand, Ausprägung und geschätzte Preise gehören dazu: ohne sie stand hier eine
-        # andere Zahl als in der Sammlung — bei gebrauchten Karten 79 % daneben.
-        posten = [dict(r) for r in con.execute(
-            "SELECT s.card_id, s.anzahl, s.variante, s.zustand, c.set_id, c.name_de, c.name_en,"
-            f" c.local_id, {_wert.sql_eur()} eur, p.eur_holo, p.eur_low, p.eur_avg7, p.eur_avg30,"
-            " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
-            " FROM sammlung s JOIN cards c ON c.id = s.card_id"
-            " LEFT JOIN card_prices p ON p.card_id = s.card_id"
-            " WHERE s.user_id = ? AND s.anzahl > 0", (user["id"],))]
-        nach_set = {}
-        for p in posten:
-            nach_set.setdefault(p["set_id"], []).append(p)
-        marktzeilen = {r["schluessel"]: dict(r) for r in con.execute(
-            "SELECT * FROM markt_tag WHERE ebene='set' AND datum=?", (tag,))} if tag else {}
-        sets = []
-        for sid, liste in nach_set.items():
-            m = marktzeilen.get(sid, {})
-            wert, _n, _o = _wert.zeilen_wert(liste)
-            sets.append({"set_id": sid, "name": liste[0]["set_name"] or sid,
-                         "karten": len(liste), "wert": round(wert, 2),
-                         "bew30": m.get("bew30"), "markt_n": m.get("n")})
-        # Sets, in denen nur Cent-Karten liegen, sind kein Posten.
-        sets = [s for s in sets if s["wert"] >= 1]
-        sets.sort(key=lambda s: -s["wert"])
-        bewegung = []
-        for p in posten:
-            diff = _wert.bewegung_euro(p, "eur_avg7")
-            if diff is None or abs(diff) < 0.5:
-                continue
-            bewegung.append({"id": p["card_id"], "name": p["name_de"] or p["name_en"],
-                             "set": p["set_name"], "nr": p["local_id"],
-                             "anzahl": p["anzahl"], "diff": diff,
-                             "prozent": round((p["eur"] / p["eur_avg7"] - 1) * 100, 1)})
-        bewegung.sort(key=lambda z: -abs(z["diff"]))
-        con.close()
-        return {"pro": True, "stand": tag, "sets": sets[:20], "bewegung": bewegung[:12]}
-
     def kennzahlen():
         con = get_db()
         tabelle_anlegen(con)

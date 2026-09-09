@@ -23,9 +23,6 @@ werte = {}
 werte["Sammlung · Kopfband"] = hol("/api/sammlung/kopf").get("wert")
 werte["Sammlung · Übersicht (Startseite)"] = hol("/api/sammlung/uebersicht").get("wert")
 werte["Auswertung"] = hol("/api/analytics/sammlung?tage=30").get("wert")
-m = hol("/api/markt/meine")
-if m.get("sets") is not None:
-    werte["Markt · Meine Karten"] = round(sum(s["wert"] for s in m["sets"]), 2)
 d = hol("/api/digest").get("digest")
 if d:
     werte["Wochenrückblick"] = d.get("wert")

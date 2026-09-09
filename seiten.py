@@ -53,12 +53,15 @@ TYPEN_DE = {"Fire": "Feuer", "Water": "Wasser", "Grass": "Pflanze", "Lightning":
 
 
 def _symbol(set_id, symbol, gross=False):
-    """Set-Symbol nur, wenn das Set eines hat — sonst kein leeres Bild."""
+    """Set-Symbol, oder ein Platzhalter derselben Größe.
+
+    Ein Drittel der Sets hat kein Symbol; ohne Platzhalter sprangen die Namen in der Liste
+    hin und her. Der Platzhalter trägt die Set-Kurzform, die viele Sammler ohnehin kennen."""
+    kl = "sym gross" if gross else "sym"
     if not symbol:
-        return ""
-    st = ' style="width:32px;height:32px"' if gross else ""
-    return (f'<img class="sym" src="/api/img/set/{esc(set_id)}" alt="" loading="lazy" width="24" height="24"{st}'
-            f' onerror="this.remove()">')
+        return f'<span class="{kl} symleer">{esc(set_id[:4].upper())}</span>'
+    return (f'<img class="{kl}" src="/api/img/set/{esc(set_id)}" alt="" loading="lazy" width="24" height="24"'
+            f' onerror="this.outerHTML=\'<span class=&quot;{kl} symleer&quot;>{esc(set_id[:4].upper())}</span>\'">')
 
 
 def _bewegung(eur_jetzt, schnitt):
@@ -70,6 +73,32 @@ def _bewegung(eur_jetzt, schnitt):
         return None
     return round((q - 1) * 100, 1)
 
+
+SETS_SKRIPT = """
+<script>
+(function () {
+  var q = document.getElementById('q'), zahl = document.getElementById('qn'), nix = document.getElementById('nix');
+  var zeilen = [].slice.call(document.querySelectorAll('tbody tr'));
+  var serien = [].slice.call(document.querySelectorAll('section.serie'));
+  var anker = document.querySelector('nav.anker');
+  q.addEventListener('input', function () {
+    var s = q.value.trim().toLowerCase();
+    var treffer = 0;
+    zeilen.forEach(function (tr) {
+      var passt = !s || tr.dataset.name.indexOf(s) >= 0;
+      tr.hidden = !passt;
+      if (passt) treffer++;
+    });
+    serien.forEach(function (sec) {
+      sec.hidden = !sec.querySelector('tbody tr:not([hidden])');
+    });
+    anker.hidden = !!s;
+    nix.hidden = treffer > 0;
+    zahl.textContent = s ? treffer + (treffer === 1 ? ' Set' : ' Sets') : '';
+  });
+})();
+</script>
+"""
 
 CSS = """
 :root{--bg:#F6F5F0;--card:#fff;--ink:#14161C;--mut:#5F6470;--line:#DDDBD2;--blau:#2A4B9B;--blau-fg:#fff;--gelb:#F5C518;
@@ -113,9 +142,28 @@ td img{width:30px;border-radius:3px;display:block;background:var(--panel)}
 .spark{width:100%;height:70px;display:block}
 .fuss{border-top:1.5px solid var(--line);margin-top:40px;padding:18px;font-size:12.5px;color:var(--mut);text-align:center}
 .fuss a{color:var(--mut)}.hin{font-size:12px;color:var(--mut);line-height:1.5}
-.sym{width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px}
+.sym{width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:8px;flex:none}
+.sym.gross{width:32px;height:32px}
+.symleer{display:inline-flex;align-items:center;justify-content:center;background:var(--panel);border-radius:5px;
+  font-family:var(--mono);font-size:9px;font-weight:600;color:var(--mut);letter-spacing:.02em}
+.sym.gross.symleer{font-size:11px}
 .liste{columns:2;column-gap:24px;font-size:14px}.liste a{display:block;text-decoration:none;color:inherit;padding:3px 0;border-bottom:1px solid var(--line)}
 .liste a:hover{color:var(--blau)}@media(max-width:700px){.liste{columns:1}}
+.setsuche{display:flex;align-items:center;gap:12px;margin:20px 0 14px}
+.setsuche input{flex:1;max-width:420px;font:inherit;font-size:15px;padding:10px 14px;border:1.5px solid var(--line);
+  border-radius:10px;background:var(--card);color:var(--ink)}
+.setsuche input:focus{outline:2px solid var(--blau);outline-offset:1px;border-color:var(--blau)}
+.setsuche span{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}
+nav.anker{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 24px}
+nav.anker a{font-size:12.5px;font-weight:600;text-decoration:none;color:var(--mut);background:var(--card);
+  border:1px solid var(--line);border-radius:999px;padding:5px 12px}
+nav.anker a:hover{color:var(--blau);border-color:var(--blau)}
+section.serie h2{scroll-margin-top:70px}
+.leer{color:var(--mut);padding:20px 0}
+tr.gruppe td{background:var(--panel);font-size:12.5px;color:var(--mut);
+  border-top:1px solid var(--line);padding-top:12px}
+tr.gruppe strong{color:var(--ink);font-size:14px}
+td a{display:inline-flex;align-items:center}
 """
 
 
@@ -288,20 +336,32 @@ def register(app, *, get_db, app_url=None):
         serien = {}
         for s in sets:
             serien.setdefault(s["serie_name"] or "Weitere", []).append(s)
+        # Ein Suchfeld über 203 Sets: die Seite war 14.478 px lang, und wer das Grundset
+        # suchte, scrollte an 190 Sets vorbei. Gefiltert wird im Browser über die Daten, die
+        # ohnehin schon auf der Seite stehen — kein zweiter Abruf, und ohne JavaScript
+        # bleibt die vollständige Liste stehen.
+        anker = "".join(f'<a href="#s-{i}">{esc(serie)}</a>' for i, serie in enumerate(serien))
         teile = []
-        for serie, liste in serien.items():
+        for i, (serie, liste) in enumerate(serien.items()):
             zeilen = "".join(
-                f'<tr><td><a href="/set/{esc(s["id"])}">{_symbol(s["id"], s.get("symbol"))}{esc(s["name"] or s["name_en"])}</a></td>'
+                f'<tr data-name="{esc(((s["name"] or "") + " " + (s["name_en"] or "") + " " + s["id"]).lower())}">'
+                f'<td><a href="/set/{esc(s["id"])}">{_symbol(s["id"], s.get("symbol"))}{esc(s["name"] or s["name_en"])}</a></td>'
                 f'<td class="r">{(s["release_date"] or "")[:4]}</td><td class="r">{s["n"] or s["total"] or ""}</td>'
                 f'<td class="r">{eur((markt.get(s["id"]) or {}).get("summe"), 0)}</td>'
                 f'<td class="r dl {kl((markt.get(s["id"]) or {}).get("bew30"))}">{proz((markt.get(s["id"]) or {}).get("bew30"))}</td></tr>'
                 for s in liste)
-            teile.append(f'<h2>{esc(serie)}</h2><div class="tabr"><table><thead><tr><th>Set</th><th class="r">Jahr</th><th class="r">Karten</th>'
-                         f'<th class="r">Wert aller Karten</th><th class="r">30 Tage</th></tr></thead><tbody>{zeilen}</tbody></table></div>')
+            teile.append(f'<section class="serie" id="s-{i}"><h2>{esc(serie)}</h2>'
+                         f'<div class="tabr"><table><thead><tr><th>Set</th><th class="r">Jahr</th><th class="r">Karten</th>'
+                         f'<th class="r">Wert aller Karten</th><th class="r">30 Tage</th></tr></thead><tbody>{zeilen}</tbody></table></div></section>')
         inhalt = (_brot(("Sets", None)) + "<h1>Alle Pokémon-Sets mit Preisen</h1>"
                   '<p class="unter">Jedes westliche Set von 1999 bis heute: Kartenzahl, Wert aller Karten nach Cardmarket-Trend '
                   'und die Bewegung der letzten 30 Tage. Ein Klick öffnet das Set mit allen Karten und Preisen.</p>'
-                  + "".join(teile))
+                  f'<div class="setsuche"><input type="search" id="q" placeholder="Set suchen, z. B. Grundset oder base1"'
+                  f' aria-label="Set suchen" autocomplete="off"><span id="qn"></span></div>'
+                  f'<nav class="anker">{anker}</nav>'
+                  + "".join(teile)
+                  + '<p class="leer" id="nix" hidden>Kein Set mit diesem Namen.</p>'
+                  + SETS_SKRIPT)
         return _seite("Alle Pokémon-Sets mit Preisen und Wert | Binderplan",
                       "Jedes Pokémon-Set von 1999 bis heute mit Kartenzahl, Gesamtwert nach Cardmarket-Trend und 30-Tage-Bewegung.",
                       "/sets", inhalt)
@@ -322,7 +382,11 @@ def register(app, *, get_db, app_url=None):
         name = s["name"] or s["name_en"] or set_id
         jahr = (s.get("release_date") or "")[:4]
         mit_preis = [k for k in karten if k["eur"]]
-        summe = sum(k["eur"] for k in mit_preis)
+        # Der Wert kommt aus demselben Tagesstand wie in der Set-Liste. Vorher rechnete die
+        # Detailseite selbst: derselbe Klick änderte die Zahl, weil die Liste den Tagesstand
+        # nahm (nur internationale Karten, ohne geschätzte Preise) und die Seite eine eigene
+        # Summe bildete. Ohne Tagesstand (frisches Set) bleibt die eigene Summe als Rückfall.
+        summe = m.get("summe") if m and m.get("summe") else sum(k["eur"] for k in mit_preis)
         teuerste = sorted(mit_preis, key=lambda k: -k["eur"])[:12]
         bew = m.get("bew30") if m else None
         median = sorted(k["eur"] for k in mit_preis)[len(mit_preis) // 2] if mit_preis else None
@@ -384,12 +448,24 @@ def register(app, *, get_db, app_url=None):
             j = (k.get("release_date") or "")[:4]
             if j:
                 jahre.setdefault(j, []).append(k)
-        zeilen = "".join(
-            f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42"></td>'
-            f'<td><a href="/karte/{esc(k["id"])}">{esc(k["name_de"] or k["name_en"])}</a></td>'
-            f'<td><a href="/set/{esc(k["set_id"])}">{esc(k["set_name"] or k["set_id"])}</a> · {esc(k["local_id"] or "")}</td>'
-            f'<td class="r">{(k.get("release_date") or "")[:4]}</td><td>{esc(k["rarity"] or "")}</td><td class="r">{eur(k["eur"])}</td></tr>'
-            for k in karten)
+        # Nach Jahrzehnt gruppiert, wie die Set-Liste nach Serien: 111 Karten in einer
+        # Tabelle waren für Suchmaschinen gut und für Leser eine Wand.
+        nach_jahrzehnt = {}
+        for k in karten:
+            j = (k.get("release_date") or "")[:3]
+            nach_jahrzehnt.setdefault(j + "0er" if j else "ohne Jahr", []).append(k)
+        zeilen = ""
+        for jz in sorted(nach_jahrzehnt, reverse=True):
+            teil = sorted(nach_jahrzehnt[jz], key=lambda k: -(k["eur"] or 0))
+            wert = sum(k["eur"] or 0 for k in teil)
+            zeilen += (f'<tr class="gruppe"><td colspan="6"><strong>{esc(jz)}</strong> · {len(teil)} Karten'
+                       f' · {eur(wert, 0)}</td></tr>')
+            zeilen += "".join(
+                f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42"></td>'
+                f'<td><a href="/karte/{esc(k["id"])}">{esc(k["name_de"] or k["name_en"])}</a></td>'
+                f'<td><a href="/set/{esc(k["set_id"])}">{esc(k["set_name"] or k["set_id"])}</a> · {esc(k["local_id"] or "")}</td>'
+                f'<td class="r">{(k.get("release_date") or "")[:4]}</td><td>{esc(k["rarity"] or "")}</td><td class="r">{eur(k["eur"])}</td></tr>'
+                for k in teil)
         titel = f"{name}-Karten: alle {len(karten)} Karten mit Preisen | Binderplan"
         beschreibung = (f"Alle {len(karten)} {name}-Karten von {min(jahre) if jahre else '?'} bis {max(jahre) if jahre else '?'} "
                         f"mit Cardmarket-Preisen. Zusammen {eur(summe, 0)}"

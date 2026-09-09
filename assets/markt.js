@@ -12,7 +12,9 @@
 
 const MKT = { bereich: 'heute', fenster: 30, daten: null, sortier: 'bewegung30',
               ebene: 'set', seite: null, nr: 0 };
-const MK_BEREICHE = ['heute', 'sets', 'aeren', 'pokemon', 'regionen', 'meine'];
+// „Meine Karten" ist entfallen: der Reiter zeigte dieselben Sets wie die Sammlung, nur mit
+// einer anderen Rechnung. Der Markt ist der Blick nach außen, die Sammlung der nach innen.
+const MK_BEREICHE = ['heute', 'sets', 'aeren', 'pokemon', 'regionen'];
 
 /* ---------------------------------------------------------------- Bausteine */
 
@@ -131,7 +133,6 @@ async function marktLaden() {
     aeren: `api/markt/rangliste?ebene=aera&sortier=${MKT.sortier}&limit=20`,
     illustrator: `api/markt/rangliste?ebene=illustrator&sortier=${MKT.sortier}&limit=40`,
     pokemon: `api/markt/rangliste?ebene=pokemon&sortier=${MKT.sortier}&limit=40`,
-    meine: 'api/markt/meine',
     regionen: 'api/analytics/markt/regionen',
   };
   let d;
@@ -143,7 +144,6 @@ async function marktLaden() {
   }
   if (MKT.bereich === 'heute') zeichneMarktHeute(d);
   else if (MKT.bereich === 'regionen') zeichneMarktRegionen(d);
-  else if (MKT.bereich === 'meine') zeichneMarktMeine(d);
   else zeichneMarktRangliste(d);
   if (MKT.bereich === 'aeren') marktIllustratoren();
 }
@@ -377,43 +377,4 @@ function zeichneMarktPokemonSeite(d) {
           <td><div class="nm">${esc(c.name)}</div><div class="set">${esc(c.set_name || '')}${c.local_id ? ' · ' + esc(c.local_id) : ''}</div></td>
           <td class="r"><strong>${anEur(c.eur)}</strong></td>
           <td class="r">${mkDelta(c.bewegung)}</td></tr>`).join('')}</tbody></table></div></div>`;
-}
-
-/* --------------------------------------------------------------- Meine Karten */
-
-function zeichneMarktMeine(d) {
-  const sets = d.sets || [], bw = d.bewegung || [];
-  if (!sets.length) {
-    $('mk-rumpf').innerHTML = `<h1>${t('mk_r_meine')}</h1><div class="unter">${t('mk_meine_u')}</div>`
-      + anDuenn(t('mk_meine_leer'))
-      + `<div style="display:flex;gap:10px;margin-top:14px"><button class="btn" onclick="ansicht('sammlung')">${t('sammlung')}</button></div>`;
-    return;
-  }
-  const gesamt = sets.reduce((s, x) => s + (x.wert || 0), 0);
-  $('mk-rumpf').innerHTML = `<h1>${t('mk_r_meine')}</h1><div class="unter">${t('mk_meine_u')}</div>
-    <div class="mk-band">
-      ${mkKachel({ lbl: t('mk_meine_wert'), zahl: anEur(gesamt, 0), unter: t('mk_meine_sets').replace('{n}', sets.length) })}
-      ${mkKachel({ lbl: t('mk_meine_bestes'), zahl: esc(sets[0].name), unter: anEur(sets[0].wert, 0),
-                   klick: `marktSetOeffnen('${esc(sets[0].set_id)}')` })}
-    </div>
-    <div class="an-tafel"><h3>${t('mk_meine_sets_t')}</h3>
-      <div class="unter">${t('mk_meine_sets_u')}</div>
-      <div class="an-tab-rahmen"><table class="an-tab mk-tab">
-        <thead><tr><th>${t('an_set')}</th><th class="r">${t('an_karten')}</th><th class="r">${t('mk_dein_wert')}</th>
-          <th class="r">${t('mk_30t')}</th></tr></thead>
-        <tbody>${sets.map((s) => `<tr class="klickbar" onclick="marktSetOeffnen('${esc(s.set_id)}')">
-          <td><div class="nm">${esc(s.name)}</div></td>
-          <td class="r">${anZahl(s.karten)}</td>
-          <td class="r"><strong>${anEur(s.wert)}</strong></td>
-          <td class="r">${mkDelta(s.bew30)}</td></tr>`).join('')}</tbody></table></div></div>
-    <div class="an-tafel"><h3>${t('mk_meine_beweg')}</h3>
-      <div class="unter">${t('mk_meine_beweg_u')}</div>
-      <div class="an-tab-rahmen"><table class="an-tab">
-        <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('mk_diff')}</th><th class="r">${t('mk_7t')}</th></tr></thead>
-        <tbody>${bw.map((c) => `<tr onclick="detailOeffnen('${esc(c.id)}')">
-          <td><img loading="lazy" src="${imgUrl(c.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
-          <td><div class="nm">${esc(c.name)}${c.anzahl > 1 ? ` <span class="mk-anz">${c.anzahl}×</span>` : ''}</div>
-            <div class="set">${esc(c.set || '')}${c.nr ? ' · ' + esc(c.nr) : ''}</div></td>
-          <td class="r"><strong class="${c.diff >= 0 ? 'an-plus' : 'an-minus'}">${c.diff >= 0 ? '+' : ''}${anEur(c.diff)}</strong></td>
-          <td class="r">${mkDelta(c.prozent)}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
