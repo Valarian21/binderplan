@@ -3443,6 +3443,25 @@ def _sekunden_bis_nachtlauf():
     return (ziel - jetzt).total_seconds()
 
 
+def _markt_job():
+    """Tagesstand des Markts rechnen und auf Plausibilität prüfen.
+
+    Läuft direkt nach dem Preislauf. Fällt der Katalogwert gegenüber dem Vortag um mehr als
+    5 %, geht eine Meldung an den Betreiber, bevor die Marktseite falsche Nachrichten zeigt."""
+    if not _markt:
+        return
+    con = get_db()
+    try:
+        _markt.rueckwirkend_fuellen(con)
+        ergebnis = _markt.markt_job(con)
+        warnung = _markt.pruefen(con)
+    finally:
+        con.close()
+    print("Markt-Tagesstand:", ergebnis)
+    if warnung:
+        betreiber_melden(warnung)
+
+
 def _hintergrund_takt():
     import time as _time
     while True:
@@ -3498,6 +3517,10 @@ def _hintergrund_takt():
                     con.close()
                 except Exception as exc:
                     print("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
+                try:
+                    _markt_job()
+                except Exception as exc:
+                    print("Markt-Tagesstand fehlgeschlagen:", exc)
         except Exception:
             pass
         # Stündlich für Aufräumen und Cache; kurz vor 04:30 Uhr genau dorthin.
@@ -6532,6 +6555,20 @@ try:
 except Exception as _e:  # pragma: no cover
     print("Analytics-Modul nicht geladen:", _e)
     _analytics_kennzahlen = None
+
+
+# --- Markt: Tagesstand je Set, Ära, Pokémon, Illustrator (Modul markt.py) ---
+
+try:
+    import markt as _markt  # noqa: E402
+    _markt_kennzahlen = _markt.register(
+        app, get_db=get_db, current_user=_current_user, require_user=_require_user,
+        ist_pro=_ist_pro, ist_pro_stufe=_ist_pro_stufe, betreiber_melden=betreiber_melden,
+    )
+except Exception as _e:  # pragma: no cover
+    print("Markt-Modul nicht geladen:", _e)
+    _markt = None
+    _markt_kennzahlen = None
 
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------
