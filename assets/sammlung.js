@@ -14,7 +14,9 @@
 
 const SM = { bereich: 'karten', filter: '', karten: [], zahlen: null, kopf: null, laeuft: false,
              posten: null, postenAlt: {}, umgekehrt: false, setSort: 'fortschritt',
-             seite: null, seitenDaten: null, anTage: 90, kauf: null, ziele: null };
+             seite: null, seitenDaten: null, anTage: 90, kauf: null, ziele: null,
+             wahlModus: false, wahl: new Set() };
+const SM_GRADER = ['PSA', 'BGS', 'CGC', 'SGC', 'ACE', 'TAG', 'GMA'];
 const SM_BEREICHE = ['karten', 'sets', 'wunsch', 'auswertung'];
 S.besitz = {};          // card_id → Anzahl, für die Fachanzeige im Binder
 
@@ -93,7 +95,11 @@ function zeichneSammlungReiter() {
     ['', t('sm_alle'), z.verschiedene],
     ['doppelt', t('sm_doppelt'), z.doppelte],
     ['ohne_binder', t('sm_ohne_binder'), z.ohne_binder],
+    ...(z.graded ? [['graded', t('sm_graded'), z.graded]] : []),
   ].map(([f, l, n]) => `<button class="chip ${SM.filter === f ? 'on' : ''}" onclick="sammlungFilter('${f}')">${l}${n != null ? ` <strong>${n}</strong>` : ''}</button>`).join('');
+  const wb = $('sm-wahl-btn');
+  if (wb) { wb.classList.toggle('hidden', wunsch); wb.textContent = SM.wahlModus ? t('sm_wahl_fertig') : t('sm_wahl'); }
+  if (wunsch && SM.wahlModus) smWahlModus(false);
   smRichtungZeichnen();
 }
 function sammlungFilter(f) { SM.filter = f; zeichneSammlungReiter(); sammlungLaden(); }
@@ -107,6 +113,8 @@ function smAuswahlenFuellen() {
     .map((x) => `<option value="${x}">${x || t('sm_ohne_angabe')}</option>`).join('');
   $('smp-sprache').innerHTML = SM_SPRACHEN
     .map((x) => `<option value="${x}">${x ? x.toUpperCase() : t('sm_ohne_angabe')}</option>`).join('');
+  const g = $('smp-grader');
+  if (g) g.innerHTML = `<option value="">${t('sm_grading_ohne')}</option>` + SM_GRADER.map((x) => `<option value="${x}">${x}</option>`).join('');
 }
 
 /** Reihenfolge umdrehen. Die natürliche Richtung hängt an der Sortierung: „Zuletzt
@@ -210,8 +218,11 @@ function zeichneSammlung() {
     $('sm-gitter').innerHTML = `<div class="sm-leer">${text}${wege}</div>`;
     return;
   }
+  const wahl = SM.wahlModus && SM.bereich === 'karten';
   $('sm-gitter').innerHTML = SM.karten.map((k) => `
-    <div class="sm-karte" onclick="detailOeffnenId('${esc(k.id)}')">
+    <div class="sm-karte ${wahl ? 'wahlbar' : ''} ${wahl && SM.wahl.has(k.id) ? 'gewaehlt' : ''}" id="smk-${esc(k.id)}"
+         onclick="${wahl ? `smWahlToggle('${esc(k.id)}')` : `detailOeffnenId('${esc(k.id)}')`}">
+      <span class="sm-wahlbox">${SM.wahl.has(k.id) ? '✓' : ''}</span>
       ${k.anzahl > 1 ? `<span class="sm-anz">${k.anzahl}×</span>` : ''}
       ${k.fehlt
         ? (k.wunsch_einzeln ? `<button class="sm-weg" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}');setTimeout(sammlungLaden,300)" title="${t('wl_weg')}">✕</button>` : '')
@@ -231,6 +242,68 @@ function zeichneSammlung() {
           k.bew30 != null ? ` <span class="sm-bew ${k.bew30 > 0.05 ? 'plus' : k.bew30 < -0.05 ? 'minus' : ''}" title="${t('mk_s_bew30')}">${anProz(k.bew30)}</span>` : ''}</div>` : ''}
       </div>
     </div>`).join('');
+}
+
+/* --------------------------------------------------------------- Mehrfachbearbeitung */
+
+function smWahlModus(an) {
+  SM.wahlModus = an === undefined ? !SM.wahlModus : !!an;
+  if (!SM.wahlModus) SM.wahl.clear();
+  const wb = $('sm-wahl-btn'); if (wb) wb.textContent = SM.wahlModus ? t('sm_wahl_fertig') : t('sm_wahl');
+  smWahlLeiste();
+  zeichneSammlung();
+}
+function smWahlToggle(id) {
+  if (SM.wahl.has(id)) SM.wahl.delete(id); else SM.wahl.add(id);
+  const el = $('smk-' + id);
+  if (el) { el.classList.toggle('gewaehlt', SM.wahl.has(id)); el.querySelector('.sm-wahlbox').textContent = SM.wahl.has(id) ? '✓' : ''; }
+  smWahlLeiste();
+}
+function smWahlAlle(an) {
+  SM.wahl = new Set(an ? SM.karten.map((k) => k.id) : []);
+  smWahlLeiste(); zeichneSammlung();
+}
+function smWahlLeiste() {
+  const l = $('sm-wahlleiste'); if (!l) return;
+  l.classList.toggle('hidden', !SM.wahlModus);
+  if (!SM.wahlModus) return;
+  const n = SM.wahl.size;
+  l.innerHTML = `<b>${t('sm_wahl_n').replace('{n}', n)}</b>
+    <button class="btn sekundaer" onclick="smWahlAlle(true)">${t('sm_wahl_alle')}</button>
+    <button class="btn sekundaer" onclick="smWahlAlle(false)">${t('sm_wahl_keine')}</button>
+    <span style="flex:1"></span>
+    <select class="feld" id="sm-wahl-zustand" title="${t('sm_wahl_zustand')}">${SM_ZUSTAENDE.map((x) => `<option value="${x === '' ? '_' : x}">${x || t('sm_wahl_zustand') + ': ' + t('sm_wahl_unveraendert')}</option>`).join('')}</select>
+    <select class="feld" id="sm-wahl-sprache" title="${t('sm_wahl_sprache')}">${SM_SPRACHEN.map((x) => `<option value="${x === '' ? '_' : x}">${x ? x.toUpperCase() : t('sm_wahl_sprache') + ': ' + t('sm_wahl_unveraendert')}</option>`).join('')}</select>
+    <button class="btn" ${n ? '' : 'disabled'} onclick="smWahlAnwenden()">${t('sm_wahl_anwenden')}</button>
+    <button class="btn sekundaer" ${n && S.binder ? '' : 'disabled'} onclick="smWahlBinder()">＋ ${t('sm_wahl_binder')}</button>
+    <button class="btn sekundaer gefahr" ${n ? '' : 'disabled'} onclick="smWahlWeg()">${t('sm_wahl_weg')}</button>`;
+}
+async function smWahlAnwenden() {
+  const z = $('sm-wahl-zustand').value, sp = $('sm-wahl-sprache').value;
+  const daten = { card_ids: [...SM.wahl] };
+  if (z !== '_') daten.zustand = z;
+  if (sp !== '_') daten.sprache = sp;
+  if (daten.zustand === undefined && daten.sprache === undefined) return toast(t('sm_wahl_unveraendert'));
+  try {
+    const d = await api('api/sammlung/mehrfach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten) });
+    toast(t('sm_wahl_ok').replace('{n}', SM.wahl.size));
+    await besitzLaden(); sammlungLaden();
+  } catch (e) { if (!gate(e)) toast(e.message); }
+}
+async function smWahlBinder() {
+  if (!S.binder) return;
+  for (const id of SM.wahl) await kartAddId(id, 'normal');
+  toast(SM.wahl.size + ' ' + t('hinzugefuegt'));
+}
+async function smWahlWeg() {
+  if (!confirm(t('sm_wahl_weg_frage').replace('{n}', SM.wahl.size))) return;
+  try {
+    await api('api/sammlung/mehrfach', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                         body: JSON.stringify({ card_ids: [...SM.wahl], loeschen: true }) });
+    for (const id of SM.wahl) delete S.besitz[id];
+    SM.wahl.clear();
+    restkostenNeu(); zeichneBinder(); sammlungLaden(); smWahlLeiste();
+  } catch (e) { if (!gate(e)) toast(e.message); }
 }
 
 /* ------------------------------------------------------------------------- Sets */
@@ -326,7 +399,7 @@ async function smHaken(id) {
   try {
     const d = await api('api/sammlung/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                                                  body: JSON.stringify({ card_id: id, variante: 'normal' }) });
-    const drin = d.drin != null ? d.drin : !(el && el.classList.contains('hab'));
+    const drin = d.besitze != null ? d.besitze : !(el && el.classList.contains('hab'));
     if (drin) S.besitz[id] = d.anzahl || 1; else delete S.besitz[id];
     if (el) {
       el.classList.toggle('hab', drin);
@@ -555,7 +628,7 @@ function toastKaufTaste(ev) { if (ev.key === 'Enter') toastKaufSpeichern(); if (
 function smPostenOeffnen(cardId, posten) {
   if (!S.user) return loginOeffnen(t('sm_login'));
   SM.posten = { card_id: cardId, ...(posten || {}) };
-  SM.postenAlt = { zustand: (posten || {}).zustand || '', sprache: (posten || {}).sprache || '' };
+  SM.postenAlt = { zustand: (posten || {}).zustand || '', sprache: (posten || {}).sprache || '', grading: (posten || {}).grading || '' };
   const p = SM.posten;
   $('smp-titel').textContent = posten ? t('sm_posten_aendern') : t('sm_posten_neu');
   $('smp-variante').value = p.variante || 'normal';
@@ -565,6 +638,8 @@ function smPostenOeffnen(cardId, posten) {
   $('smp-kaufpreis').value = p.kaufpreis != null ? p.kaufpreis : '';
   $('smp-gekauft').value = isoZuDatum(p.gekauft_am);
   $('smp-notiz').value = p.notiz || '';
+  const [grader, grade] = (p.grading || '').split(' ');
+  if ($('smp-grader')) { $('smp-grader').value = SM_GRADER.includes(grader) ? grader : ''; $('smp-grade').value = grade || ''; $('smp-zert').value = p.zertifikat || ''; }
   $('smp-loeschen').classList.toggle('hidden', !posten);
   smPostenWert();
   modalOeffnen('modal-sm-posten');
@@ -596,6 +671,9 @@ async function smPostenSpeichern(loeschen) {
     sprache: $('smp-sprache').value,
     alt_zustand: SM.postenAlt.zustand,
     alt_sprache: SM.postenAlt.sprache,
+    alt_grading: SM.postenAlt.grading,
+    grading: $('smp-grader') && $('smp-grader').value ? `${$('smp-grader').value} ${($('smp-grade').value || '').trim().replace(',', '.')}` : '',
+    zertifikat: $('smp-zert') ? $('smp-zert').value.trim() : '',
     anzahl: loeschen ? 0 : Math.max(1, parseInt($('smp-anzahl').value, 10) || 1),
     kaufpreis: $('smp-kaufpreis').value.trim().replace(',', '.') || null,
     gekauft_am: gebIso($('smp-gekauft').value) || null,
@@ -616,7 +694,7 @@ async function smPostenSpeichern(loeschen) {
 function smPostenLabel(p) {
   const teile = [];
   if (p.variante && p.variante !== 'normal') teile.push(t('v_' + p.variante) || p.variante);
-  if (p.zustand) teile.push(p.zustand);
+  if (p.grading) teile.push(p.grading); else if (p.zustand) teile.push(p.zustand);
   if (p.sprache) teile.push(p.sprache.toUpperCase());
   return teile.length ? esc(teile.join(' · ')) : t('sm_ohne_angabe');
 }

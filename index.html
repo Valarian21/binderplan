@@ -1753,6 +1753,20 @@
   /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
   #sammlung .mk-band { margin: 10px 0 16px; }
   .bcard .bwert { margin-top: 2px; }
+  .sm-wahlleiste { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                   background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px;
+                   margin: 0 0 12px; font-size: 12.5px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .sm-wahlleiste .feld { padding: 5px 8px; font-size: 12.5px; width: auto; }
+  .sm-wahlleiste .btn { font-size: 12.5px; padding: 6px 11px; }
+  .sm-wahlleiste b { font-variant-numeric: tabular-nums; }
+  .sm-karte.wahlbar { cursor: pointer; }
+  .sm-karte .sm-wahlbox { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 7px;
+                          border: 2px solid #fff; background: rgba(0,0,0,.45); color: #fff; font-size: 14px; font-weight: 800;
+                          display: none; align-items: center; justify-content: center; }
+  .sm-karte.wahlbar .sm-wahlbox { display: flex; }
+  .sm-karte.wahlbar .sm-weg { display: none; }
+  .sm-karte.gewaehlt { outline: 3px solid var(--blau); outline-offset: -1px; }
+  .sm-karte.gewaehlt .sm-wahlbox { background: var(--blau); }
   .sm-bew { font-size: 10px; font-weight: 800; margin-left: 4px; color: var(--mut); }
   .sm-bew.plus { color: var(--gruen-text); } .sm-bew.minus { color: var(--akzent-text); }
   .sm-prog { display: block; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; min-width: 40px; }
@@ -2271,6 +2285,15 @@
         <input class="feld" id="smp-gekauft" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
                placeholder="TT.MM.JJJJ" data-i18n-ph="geb_ph" oninput="gebTippen(this)"></div>
     </div>
+    <!-- Grading gehört zum Exemplar: PSA 10 ist ein anderer Posten als das lose NM-Exemplar. -->
+    <div class="f-zweispaltig" style="margin-top:10px">
+      <div><div class="f-lbl" data-i18n="sm_grading">Grading</div>
+        <div style="display:flex;gap:6px">
+          <select class="feld" id="smp-grader" style="width:auto;flex:1"></select>
+          <input class="feld" id="smp-grade" inputmode="decimal" placeholder="10" maxlength="4" style="width:64px"></div></div>
+      <div><div class="f-lbl" data-i18n="sm_zert">Zertifikat-Nr.</div>
+        <input class="feld" id="smp-zert" maxlength="30" placeholder="z. B. 12345678"></div>
+    </div>
     <div style="margin-top:10px"><div class="f-lbl" data-i18n="sm_notiz">Notiz</div>
       <input class="feld" id="smp-notiz" maxlength="200" placeholder="…" data-i18n-ph="sm_notiz_ph"></div>
     <div class="unter" id="smp-wert" style="margin:12px 0 0;font-size:12.5px"></div>
@@ -2363,6 +2386,16 @@
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="m_import_t">Liste importieren</h2>
     <div class="unter" data-i18n="m_import_u">Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.</div>
+    <!-- Wohin: ein Import aus Collectr oder TCG Collector ist eine Sammlung, kein Plan.
+         Mit Kopfzeile kommen Anzahl, Zustand, Sprache und Kaufpreis mit. -->
+    <div style="display:flex;align-items:center;gap:10px;margin:8px 0 10px;flex-wrap:wrap">
+      <span class="f-lbl" style="margin:0" data-i18n="imp_ziel">Ziel</span>
+      <div class="segment" id="import-ziel" role="tablist">
+        <button id="impz-binder" class="on" onclick="importZiel('binder')" data-i18n="imp_ziel_binder">In den Binder</button>
+        <button id="impz-sammlung" onclick="importZiel('sammlung')" data-i18n="imp_ziel_sammlung">In die Sammlung</button>
+      </div>
+      <span style="font-size:11.5px;color:var(--mut)" id="import-ziel-hin"></span>
+    </div>
     <textarea class="feld" id="import-text" rows="7" placeholder="sv1 25&#10;Glurak 4/102&#10;1x Charizard (Base Set) 4" data-i18n-ph="ph_import" style="resize:vertical;font-family:ui-monospace,monospace;font-size:12.5px"></textarea>
     <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
       <label class="btn sekundaer" style="font-size:12.5px;padding:7px 12px"><span data-i18n="import_datei">Datei wählen (.csv/.txt)</span><input type="file" accept=".csv,.txt,text/plain,text/csv" style="display:none" onchange="importDatei(this)"></label>
@@ -3017,6 +3050,7 @@
     <div class="sm-leiste">
       <div class="f-chips" id="sm-filter"></div>
       <div style="flex:1"></div>
+      <button class="btn sekundaer" id="sm-wahl-btn" style="font-size:12.5px;padding:6px 12px" onclick="smWahlModus()" data-i18n="sm_wahl">Auswählen</button>
       <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" data-i18n-ph="sm_ph" oninput="sammlungSuchen()">
       <div class="sortwahl" id="sm-sortwahl">
         <select class="feld" id="sm-sort" onchange="smRichtungZeichnen();sammlungLaden()" title="Sortierung" data-i18n-title="f_sort">
@@ -3028,6 +3062,9 @@
         <button class="btn sekundaer richtung" id="sm-richtung" onclick="smRichtungWechseln()"></button>
       </div>
     </div>
+    <!-- Mehrfachbearbeitung: Karten wählen, Zustand oder Sprache für alle setzen, in den
+         Binder legen oder entfernen. Vorher ging jede Änderung nur je Posten. -->
+    <div class="sm-wahlleiste hidden" id="sm-wahlleiste"></div>
     <div class="sm-gitter" id="sm-gitter"></div>
   </div>
 </div>
@@ -3060,6 +3097,31 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    imp_ziel: 'Ziel',
+    imp_ziel_binder: 'In den Binder',
+    imp_ziel_sammlung: 'In die Sammlung',
+    imp_ziel_binder_u: 'Als Plan: die Karten landen in den Fächern.',
+    imp_ziel_sammlung_u: 'Als Bestand: mit Anzahl, Zustand, Sprache und Kaufpreis, wenn die Tabelle sie hat.',
+    imp_in_sammlung: 'In die Sammlung',
+    imp_sammlung_ok: '{n} Karten in die Sammlung aufgenommen.',
+    imp_tabelle: 'Tabelle mit Spalten erkannt',
+    sm_grading: 'Grading',
+    sm_zert: 'Zertifikat-Nr.',
+    sm_graded: 'Graded',
+    sm_grading_ohne: 'kein Grading',
+    sm_wahl: 'Auswählen',
+    sm_wahl_fertig: 'Fertig',
+    sm_wahl_n: '{n} gewählt',
+    sm_wahl_anwenden: 'Anwenden',
+    sm_wahl_binder: 'In den Binder',
+    sm_wahl_weg: 'Entfernen',
+    sm_wahl_weg_frage: '{n} Karten samt allen Posten aus der Sammlung entfernen?',
+    sm_wahl_ok: '{n} Karten geändert.',
+    sm_wahl_alle: 'Alle',
+    sm_wahl_keine: 'Keine',
+    sm_wahl_zustand: 'Zustand für alle',
+    sm_wahl_sprache: 'Sprache für alle',
+    sm_wahl_unveraendert: 'unverändert',
     st_komplett_heute: 'Komplett heute',
     aera_waehlen: 'Alle Sets dieser Ära',
     sm2_karten: 'Karten',
@@ -3579,6 +3641,31 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    imp_ziel: 'Target',
+    imp_ziel_binder: 'Into the binder',
+    imp_ziel_sammlung: 'Into the collection',
+    imp_ziel_binder_u: 'As a plan: the cards go into the slots.',
+    imp_ziel_sammlung_u: 'As owned cards: with quantity, condition, language and price paid when the table has them.',
+    imp_in_sammlung: 'Into the collection',
+    imp_sammlung_ok: '{n} cards added to your collection.',
+    imp_tabelle: 'table with columns detected',
+    sm_grading: 'Grading',
+    sm_zert: 'Certificate no.',
+    sm_graded: 'Graded',
+    sm_grading_ohne: 'not graded',
+    sm_wahl: 'Select',
+    sm_wahl_fertig: 'Done',
+    sm_wahl_n: '{n} selected',
+    sm_wahl_anwenden: 'Apply',
+    sm_wahl_binder: 'Into the binder',
+    sm_wahl_weg: 'Remove',
+    sm_wahl_weg_frage: 'Remove {n} cards with all their entries from the collection?',
+    sm_wahl_ok: '{n} cards changed.',
+    sm_wahl_alle: 'All',
+    sm_wahl_keine: 'None',
+    sm_wahl_zustand: 'Condition for all',
+    sm_wahl_sprache: 'Language for all',
+    sm_wahl_unveraendert: 'unchanged',
     st_komplett_heute: 'Complete today',
     aera_waehlen: 'Every set of this era',
     sm2_karten: 'Cards',
@@ -9521,7 +9608,19 @@ async function _kuenstlerErstellen() {
 
 // ---------- Import ----------
 let importTreffer = [];
-function importOeffnen() { document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden')); modalOeffnen('modal-import'); $('import-vorschau').innerHTML = ''; $('import-btn').disabled = true; }
+let importZielWert = 'binder';
+function importOeffnen(ziel) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  modalOeffnen('modal-import'); $('import-vorschau').innerHTML = ''; $('import-btn').disabled = true;
+  importZiel(ziel || (S.user && !S.binder ? 'sammlung' : 'binder'));
+}
+function importZiel(z) {
+  importZielWert = z === 'sammlung' ? 'sammlung' : 'binder';
+  $('impz-binder').classList.toggle('on', importZielWert === 'binder');
+  $('impz-sammlung').classList.toggle('on', importZielWert === 'sammlung');
+  $('import-ziel-hin').textContent = importZielWert === 'sammlung' ? t('imp_ziel_sammlung_u') : t('imp_ziel_binder_u');
+  $('import-btn').textContent = importZielWert === 'sammlung' ? t('imp_in_sammlung') : t('import_btn');
+}
 function importDatei(inp) {
   const f = inp.files && inp.files[0]; if (!f) return;
   const r = new FileReader(); r.onload = () => { $('import-text').value = r.result; importPruefen(); }; r.readAsText(f);
@@ -9532,14 +9631,19 @@ async function importPruefen() {
   try {
     const d = await api('api/import/parse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
     importTreffer = d.treffer;
-    $('import-stand').textContent = `${d.treffer.length} ${t('imp_erkannt')}${d.unklar.length ? ` · ${d.unklar.length} ${t('imp_unklar')}` : ''}`;
+    $('import-stand').textContent = `${d.treffer.length} ${t('imp_erkannt')}${d.unklar.length ? ` · ${d.unklar.length} ${t('imp_unklar')}` : ''}${d.tabelle ? ' · ' + t('imp_tabelle') : ''}`;
+    if (d.tabelle && S.user) importZiel('sammlung');
     // Vier Spalten statt einer Textwurst: Eingabe, Treffer, Set, Sicherheit.
     // „?“ heißt: erkannt, aber die Setnummer war nicht eindeutig.
+    // Mit Kopfzeile (Collectr, TCG Collector) stehen Anzahl, Zustand und Sprache dabei.
+    const mitPosten = d.tabelle || d.treffer.some((x) => (x.anzahl || 1) > 1);
     const zeile = (x, ok) => `<tr class="${ok ? (x.sicher === false ? 'unsicher' : '') : 'fehlt'}">
       <td class="imp-roh">${esc(ok ? x.zeile : x)}</td>
       <td>${ok ? '<strong>' + esc(x.name) + '</strong>' + (x.local_id ? ' · ' + esc(x.local_id) : '')
                : '<span style="color:var(--mut)">' + t('imp_kein_treffer') + '</span>'}</td>
       <td class="imp-set">${ok ? esc(x.set_name || '') : ''}</td>
+      ${mitPosten ? `<td class="imp-set">${ok ? [(x.anzahl || 1) + '×', x.zustand, (x.sprache || '').toUpperCase(),
+        x.variante && x.variante !== 'normal' ? x.variante : '', x.kaufpreis != null ? x.kaufpreis + ' €' : ''].filter(Boolean).join(' · ') : ''}</td>` : ''}
       <td class="imp-ok">${ok ? (x.sicher === false ? '?' : '✓') : '✕'}</td></tr>`;
     $('import-vorschau').innerHTML = `<table class="imp-tab">${d.treffer.map((x) => zeile(x, true)).join('')}
       ${d.unklar.map((z) => zeile(z, false)).join('')}</table>`
@@ -9548,7 +9652,21 @@ async function importPruefen() {
   } catch (e) { $('import-stand').textContent = t('fehler_laden'); }
 }
 async function importUebernehmen() {
-  if (!importTreffer.length || !S.binder) return;
+  if (!importTreffer.length) return;
+  if (importZielWert === 'sammlung') {
+    if (!S.user) return loginOeffnen(t('sm_login'));
+    try {
+      const d = await api('api/sammlung/import', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ karten: importTreffer.map((x) => ({ id: x.id, anzahl: x.anzahl || 1, zustand: x.zustand || '',
+                                                                   sprache: x.sprache || '', variante: x.variante || 'normal', kaufpreis: x.kaufpreis })) }) });
+      modalSchliessen();
+      await besitzLaden(); restkostenNeu(); zeichneBinder(); zeichneErgebnisse();
+      if (!$('sammlung').classList.contains('hidden')) sammlungLaden();
+      toast(t('imp_sammlung_ok').replace('{n}', d.aufgenommen));
+    } catch (e) { if (!gate(e)) toast(e.message); }
+    return;
+  }
+  if (!S.binder) return;
   merken('import');
   for (const x of importTreffer) S.binder.items.push({ type: 'card', id: x.id });
   if (!await binderAnlegenWennNoetig()) return;

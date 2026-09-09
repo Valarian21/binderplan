@@ -47,6 +47,18 @@ def _spr(v):
     return v if v in SPRACHEN else ""
 
 
+GRADER = ["PSA", "BGS", "CGC", "SGC", "ACE", "TAG", "GMA"]
+
+
+def _grd(v):
+    """„psa 10" → „PSA 10"; unbekannte Anbieter oder Noten außerhalb 1–10 werden verworfen."""
+    t = re.sub(r"\s+", " ", str(v or "").strip().upper())
+    m = re.match(r"^([A-Z]{2,4})\s*(10|[1-9](?:[.,]5)?)$", t)
+    if not m or m.group(1) not in GRADER:
+        return ""
+    return f"{m.group(1)} {m.group(2).replace(',', '.')}"
+
+
 def register(app, *, get_db, current_user, require_user, env, card_query, card_select, card_brief,
              preis_fuer_posten=None, ist_bezahlt=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
@@ -56,6 +68,20 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
     ist_bezahlt = ist_bezahlt or (lambda user: True)
 
     con = get_db()
+    # Grading (PSA 10, BGS 9.5 …) gehört zum Exemplar wie Zustand und Sprache. Es wird Teil
+    # des Posten-Schlüssels, damit ein PSA-10-Glurak und ein loses NM-Exemplar zwei Posten
+    # sind. Kein Preis dafür (keine freie Quelle), aber Sortier- und Filterwert.
+    try:
+        spalten = {r[1] for r in con.execute("PRAGMA table_info(sammlung)")}
+        if "grading" not in spalten:
+            con.execute("ALTER TABLE sammlung ADD COLUMN grading TEXT NOT NULL DEFAULT ''")
+            con.execute("ALTER TABLE sammlung ADD COLUMN zertifikat TEXT DEFAULT ''")
+            con.execute("DROP INDEX IF EXISTS idx_sammlung_pos")
+            con.execute("CREATE UNIQUE INDEX idx_sammlung_pos"
+                        " ON sammlung(user_id, card_id, variante, zustand, sprache, grading)")
+            con.commit()
+    except Exception as _e:
+        print("Grading-Migration übersprungen:", _e)
     con.executescript("""
         CREATE TABLE IF NOT EXISTS sammlung (
             user_id INTEGER, card_id TEXT, variante TEXT DEFAULT 'normal',
@@ -190,6 +216,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             ids = {c for c in ids if besitz[c] >= 2}
         elif nur == "ohne_binder":
             ids = {c for c in ids if c not in geplant}
+        elif nur == "graded":
+            con0 = get_db()
+            graded = {r["card_id"] for r in con0.execute(
+                "SELECT DISTINCT card_id FROM sammlung WHERE user_id = ? AND grading <> ''", (user["id"],))}
+            con0.close()
+            ids = {c for c in ids if c in graded}
         if not ids:
             return {"karten": [], "gesamt": 0}
 
@@ -220,7 +252,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             # zeigt sie einzeln, damit man jeden für sich ändern kann.
             kurz["posten"] = [{"variante": e["variante"], "anzahl": e["anzahl"], "zustand": e["zustand"] or "",
                                "sprache": e.get("sprache") or "", "kaufpreis": e["kaufpreis"],
-                               "gekauft_am": e.get("gekauft_am"), "notiz": e["notiz"]} for e in eigene]
+                               "gekauft_am": e.get("gekauft_am"), "notiz": e["notiz"],
+                               "grading": e.get("grading") or "", "zertifikat": e.get("zertifikat") or ""} for e in eigene]
             kurz["varianten"] = kurz["posten"]      # alter Name, solange die Oberfläche ihn nutzt
             pr = preise.get(r["id"])
             kurz["eur"] = pr["eur"] if pr else None
@@ -275,6 +308,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                               " AND kaufpreis IS NOT NULL", (user["id"],)).fetchone()["s"] or 0
         mit_preis = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id = ? AND kaufpreis IS NOT NULL",
                                 (user["id"],)).fetchone()["c"]
+        graded = con.execute("SELECT COUNT(DISTINCT card_id) c FROM sammlung WHERE user_id = ? AND grading <> ''",
+                             (user["id"],)).fetchone()["c"]
         con.close()
         geplant = _geplant(user["id"])                    # alle Binder: „in keinem Binder"
         fehlt = sum(1 for c in _wants(user["id"]) if c not in besitz)
@@ -284,7 +319,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             "gezahlt": round(gezahlt, 2), "eintraege_mit_preis": mit_preis,
             "doppelte": sum(1 for n in besitz.values() if n >= 2),
             "ohne_binder": sum(1 for c in besitz if c not in geplant),
-            "fehlt": fehlt,
+            "fehlt": fehlt, "graded": graded,
         }
 
     @app.post("/api/sammlung/toggle")
@@ -301,14 +336,14 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         # unbestimmten Posten. Wer die Karte schon mit Angaben erfasst hat, verliert sie
         # durch das Abhaken nicht — es wird nur dieser eine Posten entfernt.
         row = con.execute("SELECT anzahl FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
-                          " AND zustand='' AND sprache=''",
+                          " AND zustand='' AND sprache='' AND grading=''",
                           (user["id"], card_id, variante)).fetchone()
         andere = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
-                             " AND (zustand<>'' OR sprache<>'')",
+                             " AND (zustand<>'' OR sprache<>'' OR grading<>'')",
                              (user["id"], card_id, variante)).fetchone()["c"]
         if row:
             con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
-                        " AND zustand='' AND sprache=''", (user["id"], card_id, variante))
+                        " AND zustand='' AND sprache='' AND grading=''", (user["id"], card_id, variante))
             drin = bool(andere)
         elif andere:
             # Schon als bestimmter Posten vorhanden: der Haken nimmt ihn heraus, statt einen
@@ -344,6 +379,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         # zweiter Posten statt einer Änderung.
         alt_zustand = _zus(data.get("alt_zustand", zustand))
         alt_sprache = _spr(data.get("alt_sprache", sprache))
+        grading = _grd(data.get("grading"))
+        alt_grading = _grd(data.get("alt_grading", grading))
+        zertifikat = re.sub(r"[^A-Za-z0-9-]", "", str(data.get("zertifikat") or ""))[:30]
         kaufpreis = data.get("kaufpreis")
         try:
             kaufpreis = round(float(kaufpreis), 2) if kaufpreis not in (None, "") else None
@@ -357,21 +395,21 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con = get_db()
         if anzahl == 0:
             con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
-                        " AND zustand=? AND sprache=?",
-                        (user["id"], card_id, variante, alt_zustand, alt_sprache))
+                        " AND zustand=? AND sprache=? AND grading=?",
+                        (user["id"], card_id, variante, alt_zustand, alt_sprache, alt_grading))
         else:
-            if (alt_zustand, alt_sprache) != (zustand, sprache):
+            if (alt_zustand, alt_sprache, alt_grading) != (zustand, sprache, grading):
                 con.execute("DELETE FROM sammlung WHERE user_id=? AND card_id=? AND variante=?"
-                            " AND zustand=? AND sprache=?",
-                            (user["id"], card_id, variante, alt_zustand, alt_sprache))
+                            " AND zustand=? AND sprache=? AND grading=?",
+                            (user["id"], card_id, variante, alt_zustand, alt_sprache, alt_grading))
             con.execute(
-                "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, anzahl, kaufpreis,"
-                " gekauft_am, notiz, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
-                " ON CONFLICT(user_id, card_id, variante, zustand, sprache) DO UPDATE SET"
+                "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, grading, zertifikat, anzahl,"
+                " kaufpreis, gekauft_am, notiz, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(user_id, card_id, variante, zustand, sprache, grading) DO UPDATE SET"
                 " anzahl=excluded.anzahl, kaufpreis=excluded.kaufpreis, gekauft_am=excluded.gekauft_am,"
-                " notiz=excluded.notiz, updated_at=excluded.updated_at",
-                (user["id"], card_id, variante, zustand, sprache, anzahl, kaufpreis, gekauft, notiz,
-                 _now(), _now()))
+                " notiz=excluded.notiz, zertifikat=excluded.zertifikat, updated_at=excluded.updated_at",
+                (user["id"], card_id, variante, zustand, sprache, grading, zertifikat, anzahl, kaufpreis, gekauft,
+                 notiz, _now(), _now()))
         con.commit()
         con.close()
         return {"ok": True}
@@ -397,7 +435,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.execute(
             "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, anzahl, created_at, updated_at)"
             " VALUES (?,?,?,?,?,?,?,?)"
-            " ON CONFLICT(user_id, card_id, variante, zustand, sprache) DO UPDATE SET"
+            " ON CONFLICT(user_id, card_id, variante, zustand, sprache, grading) DO UPDATE SET"
             " anzahl = MIN(999, sammlung.anzahl + excluded.anzahl), updated_at = excluded.updated_at",
             (user["id"], card_id, variante, zustand, sprache, dazu, _now(), _now()))
         gesamt = con.execute("SELECT SUM(anzahl) n FROM sammlung WHERE user_id=? AND card_id=?",
@@ -874,6 +912,92 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.close()
         return {"ok": bool(n)}
 
+    @app.post("/api/sammlung/import")
+    async def sammlung_import(request: Request):
+        """Eine geprüfte Importliste direkt in die Sammlung — mit Anzahl, Zustand, Sprache
+        und Kaufpreis aus der Tabelle. Vorher landete jeder Import nur als Plan im Binder."""
+        user = require_user(request)
+        data = await request.json()
+        karten = data.get("karten") or []
+        if not isinstance(karten, list):
+            raise HTTPException(400, "Keine Liste")
+        con = get_db()
+        n = 0
+        for k in karten[:300]:
+            cid = str(k.get("id") or "").strip()
+            if not cid or not con.execute("SELECT 1 FROM cards WHERE id = ?", (cid,)).fetchone():
+                continue
+            try:
+                anzahl = max(1, min(999, int(k.get("anzahl") or 1)))
+            except Exception:
+                anzahl = 1
+            kp = k.get("kaufpreis")
+            try:
+                kp = round(float(kp), 2) if kp not in (None, "") else None
+            except Exception:
+                kp = None
+            con.execute(
+                "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, anzahl, kaufpreis, created_at, updated_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(user_id, card_id, variante, zustand, sprache, grading) DO UPDATE SET"
+                " anzahl = MIN(999, sammlung.anzahl + excluded.anzahl),"
+                " kaufpreis = COALESCE(excluded.kaufpreis, sammlung.kaufpreis), updated_at = excluded.updated_at",
+                (user["id"], cid, _var(k.get("variante")), _zus(k.get("zustand")), _spr(k.get("sprache")),
+                 anzahl, kp, _now(), _now()))
+            n += 1
+        con.commit()
+        con.close()
+        return {"ok": True, "aufgenommen": n}
+
+    @app.post("/api/sammlung/mehrfach")
+    async def mehrfach(request: Request):
+        """Mehrere Karten auf einmal: Zustand oder Sprache setzen, oder entfernen.
+
+        Posten, die dadurch denselben Schlüssel bekämen, werden zusammengelegt (Anzahl
+        addiert, Kaufpreis des ersten behalten) — sonst liefe die Änderung in den
+        Unique-Index."""
+        user = require_user(request)
+        data = await request.json()
+        ids = [str(x) for x in (data.get("card_ids") or []) if x][:500]
+        if not ids:
+            raise HTTPException(400, "Keine Karten")
+        con = get_db()
+        marken = ",".join("?" * len(ids))
+        if data.get("loeschen"):
+            n = con.execute(f"DELETE FROM sammlung WHERE user_id = ? AND card_id IN ({marken})",
+                            (user["id"], *ids)).rowcount
+            con.commit()
+            con.close()
+            return {"ok": True, "geaendert": n}
+        neu_z = _zus(data.get("zustand")) if data.get("zustand") is not None else None
+        neu_s = _spr(data.get("sprache")) if data.get("sprache") is not None else None
+        if neu_z is None and neu_s is None:
+            con.close()
+            raise HTTPException(400, "Nichts zu ändern")
+        posten = [dict(r) for r in con.execute(
+            f"SELECT * FROM sammlung WHERE user_id = ? AND card_id IN ({marken})", (user["id"], *ids))]
+        zusammen = {}
+        for p in posten:
+            z = neu_z if neu_z is not None else (p["zustand"] or "")
+            sp = neu_s if neu_s is not None else (p.get("sprache") or "")
+            key = (p["card_id"], p["variante"], z, sp, p.get("grading") or "")
+            if key in zusammen:
+                zusammen[key]["anzahl"] = min(999, zusammen[key]["anzahl"] + (p["anzahl"] or 0))
+                if zusammen[key]["kaufpreis"] is None:
+                    zusammen[key]["kaufpreis"] = p["kaufpreis"]
+            else:
+                zusammen[key] = dict(p, zustand=z, sprache=sp)
+        con.execute(f"DELETE FROM sammlung WHERE user_id = ? AND card_id IN ({marken})", (user["id"], *ids))
+        for (cid, var, z, sp, g), p in zusammen.items():
+            con.execute(
+                "INSERT INTO sammlung (user_id, card_id, variante, zustand, sprache, grading, zertifikat, anzahl,"
+                " kaufpreis, gekauft_am, notiz, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (user["id"], cid, var, z, sp, g, p.get("zertifikat") or "", p["anzahl"], p["kaufpreis"],
+                 p.get("gekauft_am"), p.get("notiz"), p.get("created_at") or _now(), _now()))
+        con.commit()
+        con.close()
+        return {"ok": True, "geaendert": len(zusammen)}
+
     # --- Ziele ----------------------------------------------------------------
     #
     # „Base Set komplett bis Dezember." Ein Ziel ist ein Set mit Datum; der Fortschritt
@@ -955,7 +1079,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con = get_db()
         reihen = [dict(r) for r in con.execute(
             "SELECT s.card_id, s.variante, s.zustand, s.sprache, s.anzahl, s.kaufpreis, s.gekauft_am,"
-            " s.notiz, c.name_de, c.name_en, c.local_id, c.rarity, c.set_id,"
+            " s.notiz, s.grading, s.zertifikat, c.name_de, c.name_en, c.local_id, c.rarity, c.set_id,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id WHERE s.user_id = ? AND s.anzahl > 0"
             " ORDER BY set_name, c.local_num, c.local_id, s.variante", (user_id,))]
@@ -983,14 +1107,15 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         if format == "pdf":
             return Response(_export_pdf(zeilen, summe, stueck, datum), media_type="application/pdf",
                             headers={"Content-Disposition": f'attachment; filename="sammlung-{datum}.pdf"'})
-        out = ["Name;Set;Nummer;Seltenheit;Variante;Zustand;Sprache;Anzahl;Stückwert EUR;Wert EUR;Kaufpreis EUR;Gekauft am;Notiz;Karten-ID"]
+        out = ["Name;Set;Nummer;Seltenheit;Variante;Zustand;Sprache;Grading;Zertifikat;Anzahl;Stückwert EUR;Wert EUR;Kaufpreis EUR;Gekauft am;Notiz;Karten-ID"]
         for z in zeilen:
             notiz = (z["notiz"] or "").replace(";", ",").replace("\n", " ")
             out.append(";".join([z["name"], z["set_name"] or z["set_id"], z["local_id"] or "", z["rarity"] or "",
                                  z["variante"] or "normal", z["zustand"] or "", (z["sprache"] or "").upper(),
+                                 z.get("grading") or "", z.get("zertifikat") or "",
                                  str(z["anzahl"] or 0), _d(z["stueck"]), _d(z["wert"]), _d(z["kaufpreis"]),
                                  z["gekauft_am"] or "", notiz, z["card_id"]]))
-        out.append(f"Summe;;;;;;;{stueck};;{_d(summe)};;;;")
+        out.append(f"Summe;;;;;;;;;{stueck};;{_d(summe)};;;;")
         return Response("\n".join(out).encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="sammlung-{datum}.csv"'})
 
@@ -1034,7 +1159,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                 y = kopf(seite)
                 c.setFont("Helvetica", 8)
             posten = " · ".join(x for x in (z["variante"] if z["variante"] != "normal" else "",
-                                            z["zustand"] or "", (z["sprache"] or "").upper()) if x) or "–"
+                                            z["zustand"] or "", (z["sprache"] or "").upper(),
+                                            z.get("grading") or "") if x) or "–"
             c.drawString(links, y, (z["name"] or "")[:34])
             c.drawString(links + spalten[1][1], y, f"{(z['set_name'] or z['set_id'])[:26]} · {z['local_id'] or ''}")
             c.drawString(links + spalten[2][1], y, posten[:18])

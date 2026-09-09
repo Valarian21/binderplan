@@ -4356,10 +4356,98 @@ def _set_codes():
     return codes
 
 
-def _import_zeile(zeile, con):
+# Spaltennamen der großen Sammel-Apps (Collectr, TCG Collector, Cardmarket, eigene Tabellen).
+# Klein geschrieben, ohne Sonderzeichen — so passt „Card Number" genauso wie „card_number".
+_IMPORT_SPALTEN = {
+    "name": ("name", "cardname", "productname", "card", "karte", "kartenname", "produkt", "title"),
+    "set": ("set", "setname", "expansion", "edition", "series", "serie", "erweiterung", "setcode"),
+    "nummer": ("number", "cardnumber", "collectornumber", "no", "nr", "nummer", "kartennummer", "#", "num"),
+    "anzahl": ("quantity", "qty", "count", "amount", "anzahl", "menge", "owned", "stueck", "stück", "copies"),
+    "zustand": ("condition", "zustand", "cond"),
+    "sprache": ("language", "sprache", "lang"),
+    "kaufpreis": ("pricepaid", "purchaseprice", "kaufpreis", "paid", "buyprice", "cost", "einkaufspreis"),
+    "variante": ("variant", "variante", "finish", "printing", "foil", "holo"),
+}
+_ZUSTAND_WORTE = [("mint", "M"), ("nearmint", "NM"), ("nm", "NM"), ("excellent", "EX"), ("ex", "EX"), ("good", "GD"),
+                  ("gd", "GD"), ("lightlyplayed", "LP"), ("lightplayed", "LP"), ("lp", "LP"),
+                  ("moderatelyplayed", "PL"), ("played", "PL"), ("mp", "PL"), ("pl", "PL"),
+                  ("heavilyplayed", "PO"), ("hp", "PO"), ("damaged", "PO"), ("poor", "PO"), ("po", "PO"), ("dmg", "PO")]
+_SPRACHE_WORTE = {"german": "de", "deutsch": "de", "de": "de", "english": "en", "englisch": "en", "en": "en",
+                  "japanese": "jp", "japanisch": "jp", "jp": "jp", "ja": "jp", "french": "fr", "fr": "fr",
+                  "italian": "it", "it": "it", "spanish": "es", "es": "es", "portuguese": "pt", "pt": "pt",
+                  "korean": "kr", "kr": "kr", "chinese": "cn", "cn": "cn", "russian": "ru", "ru": "ru"}
+
+
+def _import_zustand(text):
+    t = re.sub(r"[^a-z]", "", str(text or "").lower())
+    if not t:
+        return ""
+    for wort, kuerzel in sorted(_ZUSTAND_WORTE, key=lambda x: -len(x[0])):
+        if t.startswith(wort) or t == wort:
+            return kuerzel
+    return ""
+
+
+def _import_kopf(zeile):
+    """Erkennt eine CSV-Kopfzeile und liefert (Trenner, {Feld: Spaltenindex}) — oder None."""
+    for sep in (";", ",", "\t"):
+        if zeile.count(sep) < 1:
+            continue
+        teile = [re.sub(r"[^a-z0-9#]", "", t.strip().strip('"').lower()) for t in zeile.split(sep)]
+        karte = {}
+        for i, t in enumerate(teile):
+            for feld, namen in _IMPORT_SPALTEN.items():
+                if t in namen and feld not in karte:
+                    karte[feld] = i
+        if "name" in karte and len(karte) >= 2:
+            return sep, karte
+    return None
+
+
+def _import_csv_zeile(zeile, sep, karte, con):
+    """Eine Datenzeile einer erkannten CSV: Name, Set und Nummer über die Spalten, dazu
+    Anzahl, Zustand, Sprache und Kaufpreis — damit landet ein Collectr-Export mit einem
+    Klick in der Sammlung, nicht nur als Kartenliste im Binder."""
+    import csv as _csv
+    try:
+        teile = next(_csv.reader([zeile], delimiter=sep))
+    except Exception:
+        teile = zeile.split(sep)
+    def spalte(feld):
+        i = karte.get(feld)
+        return teile[i].strip() if i is not None and i < len(teile) else ""
+    name, setname, nummer = spalte("name"), spalte("set"), spalte("nummer")
+    if not name:
+        return None
+    nummer = nummer.split("/")[0].strip()
+    synth = name + (f" ({setname})" if setname else "") + (f" {nummer}" if nummer else "")
+    e = _import_zeile(synth, con, roh=zeile)
+    if not e:
+        return None
+    try:
+        e["anzahl"] = max(1, min(999, int(float(spalte("anzahl") or 1))))
+    except Exception:
+        e["anzahl"] = 1
+    e["zustand"] = _import_zustand(spalte("zustand"))
+    e["sprache"] = _SPRACHE_WORTE.get(re.sub(r"[^a-z]", "", spalte("sprache").lower()), "")
+    v = spalte("variante").lower()
+    e["variante"] = "reverse" if "reverse" in v else ("holo" if "holo" in v or "foil" in v else "normal")
+    try:
+        kp = spalte("kaufpreis").replace("€", "").replace("$", "").replace(",", ".").strip()
+        e["kaufpreis"] = round(float(kp), 2) if kp else None
+    except Exception:
+        e["kaufpreis"] = None
+    return e
+
+
+def _import_zeile(zeile, con, roh=None):
     z = zeile.strip()
     if not z or z.lower().startswith(("name;", "name,", "card name", "quantity", "menge")):
         return None
+    anzahl = 1
+    ma = re.match(r"^\s*(\d{1,3})\s*[x×]\s*", z)
+    if ma:
+        anzahl = max(1, int(ma.group(1)))
     z = re.sub(r"^\s*\d+\s*[x×]\s*", "", z)          # „2x “ vorne weg
     z = re.sub(r"^\s*\d+\s+(?=[A-Za-zÄÖÜäöü])", "", z)  # „1 Charizard …“
     codes = _set_codes()
@@ -4403,15 +4491,15 @@ def _import_zeile(zeile, con):
     if name:
         where.append("(name_de LIKE ? OR name_en LIKE ?)"); params += [f"%{name}%", f"%{name}%"]
     if not where:
-        return {"zeile": zeile, "id": None}
+        return {"zeile": roh or zeile, "id": None}
     rows = con.execute(f"{_CARD_SELECT} WHERE {' AND '.join(where)} ORDER BY release_date DESC LIMIT 3", params).fetchall()
     if not rows and name and set_id:   # Name passt nicht zur Nummer → Nummer + Set reicht
         rows = con.execute(f"{_CARD_SELECT} WHERE set_id = ? AND local_num = ? LIMIT 1", (set_id, _local_num(nummer or ""))).fetchall()
     if not rows:
-        return {"zeile": zeile, "id": None}
+        return {"zeile": roh or zeile, "id": None}
     k = _card_brief(rows[0])
-    return {"zeile": zeile, "id": k["id"], "name": k["name"], "set_name": k["set_name"], "local_id": k["local_id"],
-            "sicher": bool(set_id and nummer) or len(rows) == 1}
+    return {"zeile": roh or zeile, "id": k["id"], "name": k["name"], "set_name": k["set_name"], "local_id": k["local_id"],
+            "sicher": bool(set_id and nummer) or len(rows) == 1, "anzahl": anzahl}
 
 
 @app.post("/api/import/parse")
@@ -4427,15 +4515,27 @@ def _import_parse_sync(text: str):
     300 Zeilen sind rund 10 Sekunden Rechenzeit — mehr nimmt eine Anfrage nicht."""
     con = get_db()
     treffer, unklar = [], []
-    zeilen = text.splitlines()
-    for zeile in zeilen[:300]:
-        e = _import_zeile(zeile, con)
-        if e is None:
-            continue
-        (treffer if e["id"] else unklar).append(e)
+    zeilen = [z for z in text.splitlines() if z.strip()]
+    # Eine Kopfzeile mit bekannten Spaltennamen schaltet auf den Tabellenmodus um: dann
+    # zählen Spalten, nicht Muster — und Anzahl, Zustand, Sprache kommen mit.
+    kopf = _import_kopf(zeilen[0]) if zeilen else None
+    if kopf:
+        sep, karte = kopf
+        for zeile in zeilen[1:301]:
+            e = _import_csv_zeile(zeile, sep, karte, con)
+            if e is None:
+                continue
+            (treffer if e["id"] else unklar).append(e)
+    else:
+        for zeile in zeilen[:300]:
+            e = _import_zeile(zeile, con)
+            if e is None:
+                continue
+            (treffer if e["id"] else unklar).append(e)
     con.close()
     return {"treffer": treffer, "unklar": [u["zeile"] for u in unklar],
-            "abgeschnitten": max(0, len(zeilen) - 300)}
+            "abgeschnitten": max(0, len(zeilen) - (301 if kopf else 300)),
+            "tabelle": bool(kopf), "spalten": sorted(kopf[1]) if kopf else []}
 
 
 @app.get("/api/pokedex")
