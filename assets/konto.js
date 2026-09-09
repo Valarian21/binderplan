@@ -5,7 +5,12 @@
 async function boot() {
   // App-Hülle und zuletzt geöffnete Binder auch ohne Netz (assets/sw.js, Wurzelpfad /sw.js)
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
-  try { S.meta = await api('api/meta'); } catch (e) { toast(t('fehler_server')); return; }
+  // Direkt nach einem Neustart oder aus dem Service-Worker-Cache schlägt der erste Aufruf
+  // gelegentlich fehl – ein zweiter Versuch nach 1,5 s, bevor die App aufgibt.
+  try { S.meta = await api('api/meta'); } catch (e) {
+    await new Promise((r) => setTimeout(r, 1500));
+    try { S.meta = await api('api/meta'); } catch (e2) { toast(t('fehler_server')); return; }
+  }
   if (S.token) { try { S.user = (await api('api/auth/me')).user; } catch (e) {} }
   if (!S.user && S.token) setToken('');
   syncBanner();

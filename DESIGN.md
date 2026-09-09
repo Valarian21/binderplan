@@ -75,6 +75,30 @@ Neue Hex-Werte gehören in `tokens.css`, nicht in Komponenten – dann stimmt au
   Sheet von unten (Handy); Inspektor rechts für genau ein gewähltes Fach (Desktop); am Handy bleibt
   das Fach-Menü.
 
+## Backend (Phase 6, 10.09.2026)
+
+- **Abschnitte in Dateien:** `auth.py` (Konten, Sitzungen, Limits, E-Mail), `bilder.py` (Bild-Cache),
+  `binder.py` (Binder, Wertverlauf), `pdf.py` (Platzhalter, Checkliste, Kaufliste), `katalog.py` (Meta,
+  Admin-Kennzahlen, Suche, Import) sind **Abschnitte der main.py**: `_abschnitt("name")` führt sie an
+  ihrer alten Stelle im Namensraum von main.py aus. Kein Import, keine Exporte – dieselben Helfer,
+  dieselbe Reihenfolge, nur lesbare Dateien und Tracebacks mit Dateinamen. Die eigenständigen Module
+  (`abo`, `artwork`, `vitrine`, `sammlung`, `markt`, `alarme`, `analytics`, `seiten`, `themen`,
+  `fotoimport`, `wert`) bleiben echte Module mit `register()`.
+- **Speichern:** `PUT /api/binders/{id}` trägt `updated_at`; weicht es vom Server ab → 409 `konflikt`,
+  der Browser lädt den fremden Stand und sagt es. Antwort liefert das neue `updated_at`.
+- **PDF:** `GET …/pdf_stand` liefert während eines Karten-PDFs `{seiten, gesamt}`; der Toast zählt mit.
+- **Hintergrund-Jobs:** `_job(name, fn, limit)` im Takt – Zeitlimit, Stand in `kv`
+  (`job:<name>:letzter/dauer/fehler`), Preislauf als Kennzahl in `/api/admin/stats` (`jobs` komplett).
+- **Cache:** Markt-Antworten je Tag/Argumente/Pro im Prozess; `/api/meta` zehn Minuten + ETag/304;
+  Stapelbild je Binder (`/stapel.webp?s=<stand>`, ein Jahr unveränderlich, Vorwärmen nach Speichern
+  und beim Start).
+- **Offline:** `/sw.js` (Datei `assets/sw.js`) hält App-Hülle, Meta, Konto und zuletzt geöffnete
+  Binder als Rückfall. Schreibzugriffe werden nicht gepuffert.
+- **Sicherheit:** Header in nginx (HSTS, nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy);
+  Login-Drossel 12 Versuche / 15 min je IP (`LIMITS` in auth.py); Sitzungen verfallen nach 365 Tagen.
+- **Prüfen:** `scripts/pruefen.py` (statisch) und `scripts/rauchtest.py` (27 Prüfungen gegen den
+  laufenden Dienst, mit `BP_TOKEN` auch die Konto-Wege) – beide laufen im Deploy.
+
 ## Bauregeln
 
 1. `python3 scripts/pruefen.py` vor jedem Deploy (das Deploy-Skript ruft es): doppelte Funktionen

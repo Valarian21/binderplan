@@ -69,7 +69,29 @@ for m in re.finditer(r'(?:src|href)="(assets/[^"?]+)', html):
     if not os.path.exists(os.path.join(wurzel, m.group(1))):
         befunde.append(f'Asset fehlt: {m.group(1)}')
 
-# 5. pyflakes
+# 5. pyflakes – main.py und ihre Abschnitte (auth, bilder, binder, pdf, katalog) teilen sich einen
+#    Namensraum; ein Name, der in einer der Dateien auf oberster Ebene definiert ist, gilt überall.
+import ast
+ABSCHNITTE = ['auth.py', 'bilder.py', 'binder.py', 'pdf.py', 'katalog.py']
+bekannt = set()
+for f in ['main.py'] + ABSCHNITTE:
+    try:
+        baum = ast.parse(open(os.path.join(wurzel, f), encoding='utf-8').read())
+    except (OSError, SyntaxError) as exc:
+        befunde.append(f'{f}: {exc}'); continue
+    def sammle(saetze):
+        # auch Zuweisungen in try/if/with auf oberster Ebene (z. B. `_vitrine = …` im try-Block)
+        for n in saetze:
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)): bekannt.add(n.name)
+            elif isinstance(n, ast.Assign):
+                bekannt.update(t.id for t in n.targets if isinstance(t, ast.Name))
+            elif isinstance(n, (ast.Import, ast.ImportFrom)):
+                bekannt.update((a.asname or a.name).split('.')[0] for a in n.names)
+            elif isinstance(n, (ast.Try, ast.If, ast.With, ast.For, ast.While)):
+                for feld in ('body', 'orelse', 'finalbody', 'handlers'):
+                    for teil in getattr(n, feld, []) or []:
+                        sammle(teil.body if isinstance(teil, ast.ExceptHandler) else [teil])
+    sammle(baum.body)
 py = [f for f in os.listdir(wurzel) if f.endswith('.py')]
 venv_py = os.path.join(wurzel, 'venv', 'bin', 'python')
 for interp in (venv_py, '/home/developer/ai_empire/venv/bin/python', sys.executable):
@@ -78,8 +100,10 @@ for interp in (venv_py, '/home/developer/ai_empire/venv/bin/python', sys.executa
         if r.returncode not in (0, 1) and 'No module named' in r.stderr:
             continue
         for zeile in r.stdout.splitlines():
-            # Unbenutzte Importe stören nicht; alles andere (undefinierte Namen, Syntax) blockiert
             if 'imported but unused' in zeile or 'redefinition of unused' in zeile or 'f-string is missing placeholders' in zeile:
+                continue
+            m = re.search(r"undefined name '([^']+)'", zeile)
+            if m and m.group(1) in bekannt and zeile.split(':')[0] in ['main.py'] + ABSCHNITTE:
                 continue
             befunde.append('pyflakes: ' + zeile)
         break
