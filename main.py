@@ -5751,6 +5751,37 @@ def _blatt_vorschau(items, layout, seiten=3, seiten_layouts=None):
     return {"spalten": spalten, "zeilen": zeilen, "seiten": aus}
 
 
+def _items_wert(con, items):
+    """Was alle Karten eines Plans heute zusammen kosten, und wie sich das in 30 Tagen bewegt hat.
+
+    Auf den Kacheln von Startseite und Vitrine: „Komplett heute 1.234 € · +2,1 %". Verbindet
+    Planen und Markt an der Stelle, wo Nutzer täglich hinsehen. Bewegung nach der Regel aus
+    markt.py (Ausreißer und Cent-Karten zählen nicht)."""
+    karten = [i for i in items if i.get("type") == "card" and i.get("id")]
+    if not karten:
+        return None, None
+    ids = list({i["id"] for i in karten})
+    preise = {}
+    for start in range(0, len(ids), 600):
+        teil = ids[start:start + 600]
+        marken = ",".join("?" * len(teil))
+        for r in con.execute(f"SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, eur_avg30"
+                             f" FROM card_prices WHERE card_id IN ({marken})", teil):
+            preise[r["card_id"]] = r
+    wert = basis = diff = 0.0
+    for i in karten:
+        pr = preise.get(i["id"])
+        if not pr or not pr["eur"]:
+            continue
+        e = pr["eur_holo"] if (i.get("variant") in ("holo", "reverse") and pr["eur_holo"]) else pr["eur"]
+        wert += e
+        s = pr["eur_avg30"]
+        if s and pr["eur"] >= 1 and s >= 1 and 1 / 3 <= pr["eur"] / s <= 3:
+            basis += s
+            diff += pr["eur"] - s
+    return round(wert, 2), (round(diff / basis * 100, 1) if basis else None)
+
+
 @app.get("/api/binders")
 def binder_list(request: Request, ids: str = ""):
     """Konto-Binder (falls angemeldet) plus lokal gemerkte anonyme Binder."""
@@ -5769,7 +5800,6 @@ def binder_list(request: Request, ids: str = ""):
             wanted,
         ).fetchall()
     besitz = _besitz_ids(user, con)
-    con.close()
     gesehen = set()
     result = []
     reihenfolge = [r["id"] for r in rows if user] + wanted
@@ -5784,9 +5814,10 @@ def binder_list(request: Request, ids: str = ""):
             optionen = json.loads(r["options"] or "{}")
         except Exception:
             optionen = {}
+        wert, bew30 = _items_wert(con, items)
         result.append({
             "id": r["id"], "name": r["name"], "mode": r["mode"], "layout": r["layout"],
-            "anzahl": len(items),
+            "anzahl": len(items), "wert": wert, "bew30": bew30,
             "seiten": len(_seiten_plan({"items": items, "layout": r["layout"],
                                         "options": optionen})),
             # Weicht mindestens eine Seite vom Standardraster ab? Sonst behauptet die
@@ -5803,6 +5834,7 @@ def binder_list(request: Request, ids: str = ""):
             # der aussieht wie ein Binder, in dem man geblättert hat.
             "blatt": _blatt_vorschau(items, r["layout"], 3, optionen.get("seitenLayouts")),
         })
+    con.close()
     return {"binder": result}
 
 
@@ -6507,6 +6539,7 @@ try:
     _vitrine_kennzahlen = _vitrine.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user,
         env=_env, admin_key=_admin_key, load_binder=_load_binder, abo=abo, drossel=_drossel,
+        items_wert=_items_wert,
     )
 except Exception as _e:  # pragma: no cover
     print("Vitrine-Modul nicht geladen:", _e)
@@ -6569,6 +6602,16 @@ except Exception as _e:  # pragma: no cover
     print("Markt-Modul nicht geladen:", _e)
     _markt = None
     _markt_kennzahlen = None
+
+
+# --- Öffentliche Set-, Pokémon- und Kartenseiten samt Sitemap (Modul seiten.py) ---
+
+try:
+    import seiten as _seiten  # noqa: E402
+    _seiten_kennzahlen = _seiten.register(app, get_db=get_db, app_url=_env().get("APP_URL") or "https://binderplan.app")
+except Exception as _e:  # pragma: no cover
+    print("Seiten-Modul nicht geladen:", _e)
+    _seiten_kennzahlen = None
 
 
 # --- Frontend, Rechtsseite & PWA --------------------------------------------

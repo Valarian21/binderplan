@@ -123,7 +123,8 @@ def druckrecht_sichern(user, items):
     return f(user, items) if f else []
 
 
-def register(app, *, get_db, current_user, require_user, env, admin_key, load_binder, abo, drossel=None):
+def register(app, *, get_db, current_user, require_user, env, admin_key, load_binder, abo, drossel=None,
+             items_wert=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
                 admin_key=admin_key, load_binder=load_binder, abo=abo, drossel=drossel)
 
@@ -464,8 +465,10 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
             if groesse == "gross" and len(karten) <= 150:
                 continue
             spalten, zeilen = RASTER.get(r["layout"] or "3x3", (3, 3))
+            wert, bew30 = items_wert(con, items) if items_wert else (None, None)
             aus.append({
                 "id": r["id"], "name": r["name"], "besitzer": r["besitzer"] or "—",
+                "wert": wert, "bew30": bew30,
                 "avatar_card": r["avatar_card"], "stimmen": r["stimmen"],
                 "stimmen_fenster": r["stimmen_fenster"],
                 "gestimmt": r["id"] in meine, "karten": len(karten),

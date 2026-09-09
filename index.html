@@ -1752,6 +1752,7 @@
 
   /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
   #sammlung .mk-band { margin: 10px 0 16px; }
+  .bcard .bwert { margin-top: 2px; }
   .sm-bew { font-size: 10px; font-weight: 800; margin-left: 4px; color: var(--mut); }
   .sm-bew.plus { color: var(--gruen-text); } .sm-bew.minus { color: var(--akzent-text); }
   .sm-prog { display: block; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; min-width: 40px; }
@@ -3059,6 +3060,7 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    st_komplett_heute: 'Komplett heute',
     aera_waehlen: 'Alle Sets dieser Ära',
     sm2_karten: 'Karten',
     sm2_sets: 'Sets',
@@ -3577,6 +3579,7 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    st_komplett_heute: 'Complete today',
     aera_waehlen: 'Every set of this era',
     sm2_karten: 'Cards',
     sm2_sets: 'Sets',
@@ -4339,6 +4342,11 @@ async function boot() {
 
   let hash = routeLesen();
   if (hash === 'vitrine/kunst') { VT.bereich = 'kunst'; hash = 'vitrine'; }   // Sprungziel der Startseite
+  // Einstiege von den öffentlichen Seiten (/set/…, /pokemon/…, /karte/…): direkt zum Set,
+  // zum Pokémon oder in den Kartendialog — nicht auf die Startseite.
+  let einstieg = null;
+  const mEin = hash.match(/^(set|pokemon|karte)\/(.+)$/);
+  if (mEin) { einstieg = { art: mEin[1], id: decodeURIComponent(mEin[2]) }; hash = 'suche'; history.replaceState(null, '', APP_BASIS + '#suche'); }
   if (hash.startsWith('ansicht/')) {
     try {
       S.binder = await api('api/binders/' + hash.split('/')[1]);
@@ -4367,9 +4375,17 @@ async function boot() {
   const zeigeStart = S.user && (!hash || hash === 'start');
   if (!S.binder && !zeigeStart) S.binder = lokalerBinder();   // wird erst mit der ersten Karte gespeichert
   if (S.binder) binderAnzeigen();
+  if (einstieg && einstieg.art === 'set') { filter.set = einstieg.id; $('f-set').value = einstieg.id; zeichneSetWahlKnopf(); }
+  if (einstieg && einstieg.art === 'pokemon') {
+    filter.dex = parseInt(einstieg.id, 10) || 0;
+    try { await ladePokedex(); } catch (e) {}
+    const pn = (S.pokedex || []).find((x) => x.dex === filter.dex || x.dex_id === filter.dex || x.id === filter.dex);
+    if (pn && $('f-dex')) $('f-dex').value = (LANG === 'en' ? pn.name_en : pn.name) || '';
+  }
   mehrFilterZahl();
   sucheNeu();
   if (zeigeStart) startOeffnen();
+  if (einstieg && einstieg.art === 'karte') setTimeout(() => detailOeffnenId(einstieg.id), 300);
   if (new URLSearchParams(location.search).get('upgrade')) { history.replaceState(null, '', location.pathname + location.hash); upgradeOeffnen(''); }
   const bestToken = new URLSearchParams(location.search).get('bestaetigen');
   if (bestToken) {
@@ -4863,6 +4879,7 @@ function zeichneStartBinder(liste) {
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
       <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
+      ${b.wert ? `<div class="bmeta bwert">${t('st_komplett_heute')} ≈ <strong>${anEur(b.wert, 0)}</strong>${b.bew30 != null ? ` · <span class="${b.bew30 > 0.05 ? 'an-plus' : b.bew30 < -0.05 ? 'an-minus' : ''}">${anProz(b.bew30)}</span>` : ''}</div>` : ''}
       ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
       <div class="bmeta" style="color:var(--gruen-text);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
     </div>`;
@@ -7020,7 +7037,8 @@ function zeichneVitrine() {
       </div>
       <div class="vt-txt">
         <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
-        <div class="vt-meta"><a onclick="profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}</div>
+        <div class="vt-meta"><a onclick="profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${
+          b.wert ? ` · ≈ ${anEur(b.wert, 0)}${b.bew30 != null ? ` <span class="${b.bew30 > 0.05 ? 'an-plus' : b.bew30 < -0.05 ? 'an-minus' : ''}">${anProz(b.bew30)}</span>` : ''}` : ''}</div>
         <div class="vt-fuss">
           <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
             ${ic('herz', 15, b.gestimmt ? 'voll' : '')}<span>${b.stimmen}</span></button>
