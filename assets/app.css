@@ -1412,7 +1412,8 @@
               padding: 5px 12px; font-size: var(--t-s); font-weight: 700; opacity: 0; transition: opacity .12s; z-index: 3; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
   .tk:hover .plus { opacity: 1; }
   .tk .plus:hover { background: var(--akzent-flaeche-hover); }
-  .tk .enb { position: absolute; bottom: 46px; right: 5px; background: rgba(58,50,39,.75); color: #fff; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
+  /* Sprach-Abzeichen oben links auf dem Bild – unten rechts lag es über der Set-Zeile */
+  .tk .enb { position: absolute; top: 5px; left: 5px; background: rgba(58,50,39,.75); color: #fff; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
   .tk .jpb { position: absolute; top: 5px; left: 5px; background: #c0392b; color: #fff; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
   /* Am Handy deckte der rote Balken das untere Drittel jedes Kartenbildes zu — genau das,
      wonach man auswählt. Jetzt legt ein Tipp auf die Kachel die Karte ab, und der Knopf
@@ -2018,3 +2019,32 @@
   .leer { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center; color: var(--mut); font-size: var(--t-mp); }
   .leer strong { color: var(--ink); font-size: var(--t-l); }
   .leer .btn { margin-top: 6px; }
+
+  /* Handy-Sheet: Filterschublade und Trefferkacheln (Nachbesserung 10.09.) */
+  @media (max-width: 900px) {
+    /* Das Sheet ist ein eigener Stapelkontext; der Rückfall-Hintergrund lag darüber und fing jeden
+       Tipp auf die Filter ab – „Set" schloss die Schublade statt sie zu öffnen. */
+    .m-backdrop.offen { z-index: calc(var(--z-leiste) - 2); }
+    body.suche-offen .spalte-filter { z-index: calc(var(--z-menue) + 1); }
+    body.suche-offen .spalte-filter .menu { z-index: calc(var(--z-menue) + 2); }
+    /* Kacheln: Sprach-Abzeichen aufs Bild statt über die Set-Zeile; Wunsch-Stern in den Dialog */
+    .tk .enb { top: 5px; left: 5px; bottom: auto; }
+    .tk .anz { top: 5px; right: 5px; }
+    .tk .tk-meta { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .tk-hab { gap: 4px; padding: 0 5px 6px; }
+    .tk-hab .wunsch { display: none; }
+    .tk-hab .hat-k { flex: 0 0 34px; padding: 0; justify-content: center; }
+    .tk-hab .hinzu { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+  }
+
+  @media (max-width: 900px) {
+    /* Set-Wähler in der Filterschublade: nicht breiter als die Schublade, kein seitliches Verrutschen */
+    .spalte-filter { overflow-x: hidden; }
+    .spalte-filter .setpop { left: 0; right: 0; width: 100%; min-width: 0; max-width: 100%; }
+    .spalte-filter .setpop .setliste { max-width: 100%; }
+  }
+  @media (max-width: 480px) {
+    /* Zwei Spalten im Sheet: drei Kacheln à 118 px waren zu klein für Name, Set und Knöpfe */
+    .suche-lade .ergebnisse { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .tk-hab .hinzu { font-size: var(--t-s); }
+  }
