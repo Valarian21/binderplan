@@ -299,7 +299,7 @@
   .vt-fach img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .vt-fach.leer { border: 1px dashed rgba(255,255,255,.14); background: transparent; }
   .vt-bild-rand { padding: 8px 8px 0; background: #14161a; }
-  .vt-karte { border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card);
+  .vt-karte { cursor: pointer; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card);
               display: flex; flex-direction: column; }
   .vt-karte:hover { border-color: var(--kontur); }
   .vt-bilder { display: flex; gap: 2px; padding: 8px 8px 0; background: #14161a; }
@@ -375,7 +375,14 @@
   .kk .bild { position: relative; width: 100%; padding-top: 138%; background: var(--panel2); cursor: pointer; }
   .kk .bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
   .kk .txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .kk { cursor: pointer; }
+  .kk:hover { border-color: var(--kontur); }
   .kk .kt { font-weight: 800; font-size: 13.5px; }
+  /* Zwei Zeilen für die Kartennamen, fest: sonst rutschte der Knopf bei jeder zweiten Kachel
+     eine Zeile tiefer und das Raster stand nie ruhig. */
+  .kk .km.karten { min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                   overflow: hidden; }
+  .kk .kansehen { font-size: 12px; color: var(--mut); font-weight: 700; }
   .kk .km { font-size: 11.5px; color: var(--mut); }
   .kk .kf { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
   .kk .kf .btn { font-size: 12px; padding: 6px 11px; }
@@ -426,6 +433,10 @@
               line-height: 1; background: rgba(255,255,255,.1); opacity: .85; }
   .kw-pfeil:hover { background: rgba(255,255,255,.2); opacity: 1; }
   .kw-fuss { display: flex; align-items: center; justify-content: center; gap: 14px; flex: 0 0 auto; color: #fff; flex-wrap: wrap; }
+  .kw-blaettern { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+  .kw-blaettern button { color: #fff; font-size: 20px; line-height: 1; padding: 4px 10px; border-radius: 8px;
+                         background: rgba(255,255,255,.12); min-width: 40px; min-height: 36px; }
+  .kw-blaettern button[disabled] { opacity: .35; }
   .kw-fuss .vt-herz { color: #fff; }
   .kw-stand { font-size: 12.5px; opacity: .75; font-variant-numeric: tabular-nums; }
   .kw-melden { color: #fff; opacity: .7; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;
@@ -498,6 +509,12 @@
     body.nur-ansicht .vt-ansichtleiste .vt-wer { font-size: 12px; white-space: nowrap; }
     body.nur-ansicht .vt-ansichtleiste .vt-hab { font-size: 11.5px; white-space: nowrap; }
     body.nur-ansicht .rumpf { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+
+    /* Fingerziele in der Vitrine: der Besitzer-Link war 39 × 12 px, das Herz 60 × 29 px.
+       Die Norm liegt bei 44 px, und der Besitzer ist der einzige Weg in ein fremdes Profil. */
+    #vitrine .vt-meta a, #vitrine .km a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; }
+    #vitrine .vt-herz { min-height: 44px; padding: 0 12px; }
+    #vt-tabs button, #vt-filter .chip { min-height: 40px; display: inline-flex; align-items: center; }
 
     /* Umschalter der Galerie: eine Zeile, wischbar */
     .gal-umschalter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -796,6 +813,8 @@
   .st-vk:hover { border-color: var(--kontur); }
   .st-vk .bilder { display: flex; gap: 2px; padding: 6px 6px 0; background: #14161a; }
   .st-vk .bilder img { width: 100%; aspect-ratio: 63/88; object-fit: cover; border-radius: 3px; min-width: 0; }
+  .st-vk .bilder.eins { padding: 0; display: block; }
+  .st-vk .bilder.eins img { border-radius: 0; object-position: top; }
   .st-vk .t { padding: 8px 10px 10px; }
   .st-vk .t strong { font-size: 13px; display: block; }
   .st-vk .t span { font-size: 11px; color: var(--mut); }
@@ -2973,8 +2992,8 @@
          zu finden, wenn jemand den ganzen Binder veröffentlicht hatte — dabei sind sie das
          Einzige hier, in dem echte Arbeit und echtes Geld steckt. -->
     <div class="segment" id="vt-bereich" role="tablist">
-      <button id="vtb-binder" class="on" onclick="vitrineBereich('binder')" data-i18n="vt_b_binder">Binder</button>
-      <button id="vtb-kunst" onclick="vitrineBereich('kunst')" data-i18n="vt_b_kunst">Kunstseiten</button>
+      <button id="vtb-kunst" class="on" onclick="vitrineBereich('kunst')" data-i18n="vt_b_kunst">Kunstseiten</button>
+      <button id="vtb-binder" onclick="vitrineBereich('binder')" data-i18n="vt_b_binder">Binder</button>
     </div>
     <div style="flex:1"></div>
     <input class="feld" id="vt-suche" style="width:190px" placeholder="Binder suchen …" data-i18n-ph="vt_suche" oninput="vitrineSuchen()">
@@ -3148,6 +3167,11 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    vt_beliebt: 'Beliebt',
+    vt_k_geholt: 'geholt',
+    vt_k_ansehen: 'Ansehen',
+    vt_seite_n: 'Seite {n} von {g}',
+    vt_ganz_oeffnen: 'Ganzen Binder öffnen',
     al_t: 'Preis-Alarm',
     al_kurz: 'Alarm',
     al_unter: 'fällt unter',
@@ -3721,6 +3745,11 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    vt_beliebt: 'Popular',
+    vt_k_geholt: 'taken',
+    vt_k_ansehen: 'View',
+    vt_seite_n: 'Page {n} of {g}',
+    vt_ganz_oeffnen: 'Open the whole binder',
     al_t: 'Price alert',
     al_kurz: 'Alert',
     al_unter: 'drops below',
@@ -4537,7 +4566,8 @@ async function boot() {
   }
 
   let hash = routeLesen();
-  if (hash === 'vitrine/kunst') { VT.bereich = 'kunst'; hash = 'vitrine'; }   // Sprungziel der Startseite
+  if (hash === 'vitrine/kunst') hash = 'vitrine';        // alter Sprung, Kunst ist jetzt die Erstansicht
+  if (hash === 'vitrine/binder') { VT.bereich = 'binder'; hash = 'vitrine'; }
   // Einstiege von den öffentlichen Seiten (/set/…, /pokemon/…, /karte/…): direkt zum Set,
   // zum Pokémon oder in den Kartendialog — nicht auf die Startseite.
   let einstieg = null;
@@ -5047,16 +5077,16 @@ async function startLaden() {
   zeichneStartBinder(liste);
 
   // Aus der Vitrine
+  // Kunstseiten statt Binder: die Vitrine führt sie seit September vorn, und sie sind das
+  // Einzige hier, in dem echte Arbeit steckt. Ein Klick öffnet die Vitrine bei dieser Seite.
   try {
-    const v = await api('api/vitrine?sortierung=trend&limit=4');
-    const fremd = (v.binder || []).filter((b) => !liste.some((e) => e.id === b.id)).slice(0, 4);
-    $('st-vitrine-block').hidden = !fremd.length;
-    $('st-vitrine').innerHTML = fremd.map((b) => `
-      <div class="st-vk" onclick="vitrineOeffnen('${esc(b.id)}')">
-        <div class="bilder">${(b.vorschau || []).slice(0, 3).map((x) => x.art === 'artwork'
-          ? `<img loading="lazy" src="api/artwork/${encodeURIComponent(x.id)}/bild?v=vorschau" alt="">`
-          : `<img loading="lazy" src="${imgUrl(x.id)}" alt="">`).join('')}</div>
-        <div class="t"><strong>${esc(b.name)}</strong><span>${esc(b.besitzer)} · ${b.stimmen} ♥</span></div>
+    const v = await api('api/vitrine/artwork?sortierung=top&limit=4');
+    const kunst = (v.artworks || []).slice(0, 4);
+    $('st-vitrine-block').hidden = !kunst.length;
+    $('st-vitrine').innerHTML = kunst.map((a) => `
+      <div class="st-vk" onclick="startSchliessen();ansicht('vitrine');setTimeout(() => kunstGross('${esc(a.id)}'), 700)">
+        <div class="bilder eins"><img loading="lazy" src="api/artwork/${encodeURIComponent(a.id)}/bild?v=vorschau" alt=""></div>
+        <div class="t"><strong>${esc(a.titel)}</strong><span>${esc(a.besitzer)}${a.downloads ? ` · ${a.downloads}× ${t('vt_k_geholt')}` : ''}${a.stimmen ? ` · ${a.stimmen} ♥` : ''}</span></div>
       </div>`).join('');
   } catch (e) { $('st-vitrine-block').hidden = true; }
 }
@@ -6825,7 +6855,10 @@ async function fotoUebernehmen(modus) {
 const VT = { sortierung: 'trend', binder: [], seq: 0, art: '', groesse: '',
              doppelseite: localStorage.getItem('bp_vt_dop') === '1', meldung: null,
              fenster: localStorage.getItem('bp_vt_fenster') || '',
-             bereich: 'binder', kunst: [], kunstSort: 'neu', kunstStil: '', stile: [],
+             // Kunstseiten stehen vorn: es gibt dreieinhalbmal so viele wie Binder, sie tragen
+             // sichtbar Arbeit und sind das Einzige, was kein Konkurrent hat. Ein Binder-Stapel
+             // ist ein Kartenraster — hübsch, aber erklärungsbedürftig.
+             bereich: 'kunst', kunst: [], kunstSort: 'neu', kunstStil: '', stile: [],
              jahrVon: '', jahrBis: '', jahrMin: null, jahrMax: null,
              preis: 5, anteil: 2 };
 
@@ -6855,7 +6888,12 @@ function zeichneVitrineBereich() {
   const u = $('vt-unter');
   if (u) u.textContent = VT.bereich === 'kunst' ? t('vt_u_kunst') : t('vt_u');
   const suche = $('vt-suche');
-  if (suche) suche.placeholder = VT.bereich === 'kunst' ? t('vt_suche_kunst') : t('vt_suche');
+  if (suche) {
+    suche.placeholder = VT.bereich === 'kunst' ? t('vt_suche_kunst') : t('vt_suche');
+    // Auch das Suchfeld erst, wenn es etwas zu durchsuchen gibt.
+    const n = VT.bereich === 'kunst' ? (VT.kunstGesamt || 0) : (VT.gesamt || 0);
+    suche.classList.toggle('hidden', n < VT_FILTER_AB && !suche.value);
+  }
 }
 function vitrineSchliessen() {
   if ($('vitrine').classList.contains('hidden')) return;
@@ -6868,11 +6906,11 @@ function vitrineSchliessen() {
 }
 
 function zeichneVitrineTabs() {
-  // Kunstseiten: zwei Reiter statt vier. „Älteste Karten" und „Neueste Karten" waren
-  // derselbe Filter wie der Jahrgang daneben, nur als Sortierung.
-  const tabs = VT.bereich === 'kunst'
-    ? [['neu', t('vt_neu')], ['top', t('vt_k_top')]]
-    : [['trend', t('vt_trend')], ['top', t('vt_top')], ['neu', t('vt_neu')]];
+  // Zwei Reiter, in beiden Bereichen dieselben Wörter. Vorher hießen dieselben drei
+  // Ordnungen bei Bindern „Im Trend · Bestenliste · Frisch" und bei Kunstseiten
+  // „Frisch · Beliebt". Der Trend-Reiter kommt zurück, sobald genug veröffentlicht wird —
+  // eine Bestenliste über vier Herzen ist keine Liste.
+  const tabs = [['neu', t('vt_neu')], ['top', t('vt_beliebt')]];
   const aktiv = VT.bereich === 'kunst' ? VT.kunstSort : VT.sortierung;
   $('vt-tabs').innerHTML = tabs
     .map(([w, l]) => `<button class="${aktiv === w ? 'on' : ''}" onclick="vitrineSortierung('${w}')">${l}</button>`).join('');
@@ -6886,9 +6924,17 @@ function zeichneVitrineTabs() {
 const VT_JAHRGAENGE = [[1996, 2003, '1996–2003 · WotC'], [2004, 2010, '2004–2010 · EX bis Platin'],
                        [2011, 2016, '2011–2016 · HGSS bis XY'], [2017, 2019, '2017–2019 · Sonne & Mond'],
                        [2020, 2022, '2020–2022 · Schwert & Schild'], [2023, 2035, '2023+ · Karmesin & Purpur']];
+/** Ab wie vielen Objekten Filter überhaupt etwas ausrichten. Darunter sind sie Lärm:
+ *  über sechs Bindern standen zwei Wähler, ein Suchfeld, drei Reiter und ein Schalter. */
+const VT_FILTER_AB = 12;
+
 function zeichneVitrineFilter() {
   const box = $('vt-filter');
   if (!box) return;
+  const anzahl = VT.bereich === 'kunst' ? (VT.kunstGesamt || 0) : (VT.gesamt || 0);
+  const suche = VT.bereich === 'kunst' ? VT.kunstSuche : VT.suche;
+  if (anzahl < VT_FILTER_AB && !suche) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
   // Die Bestenliste bekommt ein Zeitfenster: „beliebt diese Woche" statt einer Liste,
   // die für immer dieselbe bleibt. Voreinstellung „Immer", solange die Vitrine klein ist.
   const aktivTab = VT.bereich === 'kunst' ? VT.kunstSort : VT.sortierung;
@@ -6968,6 +7014,7 @@ async function vitrineLaden() {
   $('vt-gitter').innerHTML = `<div class="vt-leer">${lader('gross', t('laedt'))}</div>`;
   try {
     const q = encodeURIComponent($('vt-suche').value.trim());
+    if (VT.bereich === 'kunst') VT.kunstSuche = $('vt-suche').value.trim(); else VT.suche = $('vt-suche').value.trim();
     if (VT.bereich === 'kunst') {
       const d = await api(`api/vitrine/artwork?sortierung=${VT.kunstSort}&limit=36&q=${q}&fenster=${VT.fenster}`
         + `&stil=${encodeURIComponent(VT.kunstStil || '')}`
@@ -6976,6 +7023,7 @@ async function vitrineLaden() {
       VT.kunst = d.artworks || [];
       VT.stile = d.stile || [];
       VT.jahrMin = d.jahr_min; VT.jahrMax = d.jahr_max;
+      VT.kunstGesamt = d.gesamt != null ? d.gesamt : (d.artworks || []).length;
       VT.preis = d.preis; VT.anteil = d.anteil;
       zeichneVitrineFilter();
       zeichneKunst();
@@ -6984,6 +7032,8 @@ async function vitrineLaden() {
         + `&art=${VT.art || ''}&groesse=${VT.groesse || ''}`);
       if (seq !== VT.seq) return;
       VT.binder = d.binder || [];
+      VT.gesamt = d.gesamt != null ? d.gesamt : VT.binder.length;
+      zeichneVitrineFilter();
       zeichneVitrine();
     }
   } catch (e) {
@@ -7001,26 +7051,34 @@ function zeichneKunst() {
   }
   $('vt-gitter').classList.add('kunst');
   $('vt-gitter').innerHTML = VT.kunst.map((a) => {
-    const knopf = a.mein
-      ? `<span class="habe">${t('vt_k_meine')}</span>`
-      : a.habe
-        ? `<button class="btn sekundaer" onclick="kunstInBinder('${esc(a.id)}')">${t('vt_k_einfuegen')}</button>`
-        : `<button class="btn sekundaer" onclick="kunstUebernehmen('${esc(a.id)}')">${t('vt_k_holen').replace('{n}', VT.preis)}</button>`;
+    // Ohne Konto steht hier „Ansehen": ein Preis in Credits sagt jemandem nichts, der weder
+    // ein Konto noch je von Credits gehört hat. Was eine Seite kostet, erklärt die Großansicht.
+    const knopf = !S.user
+      ? `<span class="kansehen">${t('vt_k_ansehen')}</span>`
+      : a.mein
+        ? `<span class="habe">${t('vt_k_meine')}</span>`
+        : a.habe
+          ? `<button class="btn sekundaer" onclick="event.stopPropagation();kunstInBinder('${esc(a.id)}')">${t('vt_k_einfuegen')}</button>`
+          : `<button class="btn sekundaer" onclick="event.stopPropagation();kunstUebernehmen('${esc(a.id)}')">${t('vt_k_holen').replace('{n}', VT.preis)}</button>`;
     // Die Kachel ist eine Binderseite mit Fächern und Fugen — genau das, was geliefert
     // wird: ein Druckbogen für die leeren Hüllen, die Ankerkarte bleibt echt im Fach.
     // Vorher stand das Bild als Poster da, und daneben zeigte der Binder-Bereich Seiten
     // mit Fächern: zwei Darstellungen für dasselbe Produkt. Tipp öffnet weiter das
     // ganze Bild; die Melde-Fahne liegt dort, nicht auf jeder Kachel.
-    return `<div class="kk">
-      <div class="kbild" onclick="kunstGross('${esc(a.id)}')">${a.blatt ? vitrineBlatt(a.blatt, false, true)
+    // Die ganze Kachel öffnet die Seite; Herz, Besitzer und Aktionsknopf halten den Klick an.
+    // Vorher war nur das Bild klickbar, beim Binder dagegen Bild und Titel — zwei Regeln im
+    // selben Raster.
+    return `<div class="kk" role="button" tabindex="0" onclick="kunstGross('${esc(a.id)}')"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();kunstGross('${esc(a.id)}')}">
+      <div class="kbild">${a.blatt ? vitrineBlatt(a.blatt, false, true)
         : `<img loading="lazy" src="${esc(a.vorschau)}" alt="" style="width:100%;display:block;border-radius:6px">`}</div>
       <div class="txt">
         <div class="kt">${esc(a.titel)}</div>
-        <div class="km"><a onclick="profilseiteOeffnen('${esc(a.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(a.besitzer)}</a>
-          · ${esc(a.layout.replace('x', '×'))}${a.downloads ? ` · ${a.downloads}× ${t('vt_k_geladen')}` : ''}</div>
-        ${(a.karten || []).length ? `<div class="km">${a.jahr_alt ? `<strong>${a.jahr_alt}${a.jahr_neu && a.jahr_neu !== a.jahr_alt ? '–' + a.jahr_neu : ''}</strong> · ` : ''}${esc((a.karten || []).map((k) => k.name).join(', '))}</div>` : ''}
+        <div class="km"><a onclick="event.stopPropagation();profilseiteOeffnen('${esc(a.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(a.besitzer)}</a>
+          · ${esc(a.layout.replace('x', '×'))}${a.downloads ? ` · <strong>${a.downloads}× ${t('vt_k_geholt')}</strong>` : ''}</div>
+        <div class="km karten">${(a.karten || []).length ? `${a.jahr_alt ? `<strong>${a.jahr_alt}${a.jahr_neu && a.jahr_neu !== a.jahr_alt ? '–' + a.jahr_neu : ''}</strong> · ` : ''}${esc((a.karten || []).map((k) => k.name).join(', '))}` : ''}</div>
         <div class="kf">
-          <button class="vt-herz ${a.gestimmt ? 'an' : ''}" onclick="vitrineKunstStimme('${esc(a.id)}')">
+          <button class="vt-herz ${a.gestimmt ? 'an' : ''}" onclick="event.stopPropagation();vitrineKunstStimme('${esc(a.id)}')">
             ${ic('herz', 15, a.gestimmt ? 'voll' : '')}<span>${a.stimmen || 0}</span></button>
           <div style="flex:1"></div>${knopf}
         </div>
@@ -7228,17 +7286,20 @@ function zeichneVitrine() {
     $('vt-gitter').innerHTML = `<div class="vt-leer">${t('vt_leer')}</div>`;
     return;
   }
+  // Die ganze Kachel ist der Klick. Vorher waren es vier Stellen — Bild, Titel, Besitzer,
+  // Herz —, und ausgerechnet die Zeile mit Kartenzahl, Seiten und Wert war tot.
   $('vt-gitter').innerHTML = VT.binder.map((b) => `
-    <div class="vt-karte">
-      <div onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer;padding:10px 10px 0;background:${VT.doppelseite ? '#14161a' : 'var(--panel2)'}">
+    <div class="vt-karte" role="button" tabindex="0" onclick="binderGross('${esc(b.id)}')"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();binderGross('${esc(b.id)}')}">
+      <div style="padding:10px 10px 0;background:${VT.doppelseite ? '#14161a' : 'var(--panel2)'}">
         ${vitrineBlatt(b.blatt, VT.doppelseite)}
       </div>
       <div class="vt-txt">
-        <div class="vt-name" onclick="vitrineOeffnen('${esc(b.id)}')" style="cursor:pointer">${esc(b.name)}</div>
-        <div class="vt-meta"><a onclick="profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${
+        <div class="vt-name">${esc(b.name)}</div>
+        <div class="vt-meta"><a onclick="event.stopPropagation();profilseiteOeffnen('${esc(b.besitzer)}')" style="color:var(--blau);cursor:pointer">${esc(b.besitzer)}</a> · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${
           b.wert ? ` · ≈ ${anEur(b.wert, 0)}${b.bew30 != null ? ` <span class="${b.bew30 > 0.05 ? 'an-plus' : b.bew30 < -0.05 ? 'an-minus' : ''}">${anProz(b.bew30)}</span>` : ''}` : ''}</div>
         <div class="vt-fuss">
-          <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}')">
+          <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="event.stopPropagation();vitrineStimme('${esc(b.id)}')">
             ${ic('herz', 15, b.gestimmt ? 'voll' : '')}<span>${b.stimmen}</span></button>
           ${VT_ARTEN[b.art] ? `<span class="vt-marke ${b.art}">${t(VT_ARTEN[b.art])}</span>` : ''}
         </div>
@@ -7246,8 +7307,92 @@ function zeichneVitrine() {
     </div>`).join('');
 }
 
+/* Ein Binder öffnet dieselbe Großansicht wie eine Kunstseite. Vorher verließ ein Klick auf
+   einen Binder die Vitrine per Adresswechsel, ein Klick auf eine Kunstseite legte ein Overlay
+   darüber: zwei Zurück-Wege im selben Raster. Jetzt blättert man in beiden Bereichen durch die
+   Kacheln; „Ganzen Binder öffnen" führt weiter, wenn man wirklich hineinwill. */
+const BW = { liste: [], pos: 0, box: null, seite: 0 };
+
+function binderGross(id) {
+  BW.liste = VT.binder || [];
+  BW.pos = Math.max(0, BW.liste.findIndex((b) => b.id === id));
+  BW.seite = 0;
+  if (!BW.liste.length) return;
+  if (!BW.box) {
+    BW.box = document.createElement('div');
+    BW.box.className = 'kw-box';
+    BW.box.onclick = (ev) => { if (ev.target === BW.box || ev.target.classList.contains('kw-buehne')) binderGrossZu(); };
+    document.body.appendChild(BW.box);
+    document.addEventListener('keydown', binderGrossTaste);
+  }
+  BW.box.classList.remove('hidden');
+  document.body.classList.add('kw-offen');
+  zeichneBinderGross();
+}
+function binderGrossZu() {
+  if (BW.box) BW.box.classList.add('hidden');
+  document.body.classList.remove('kw-offen');
+}
+function binderGrossTaste(ev) {
+  if (!BW.box || BW.box.classList.contains('hidden')) return;
+  if (ev.key === 'Escape') { ev.preventDefault(); binderGrossZu(); }
+  else if (ev.key === 'ArrowRight') { ev.preventDefault(); binderGrossWechsel(1); }
+  else if (ev.key === 'ArrowLeft') { ev.preventDefault(); binderGrossWechsel(-1); }
+}
+function binderGrossWechsel(d) {
+  if (!BW.liste.length) return;
+  BW.pos = (BW.pos + d + BW.liste.length) % BW.liste.length;
+  BW.seite = 0;
+  zeichneBinderGross();
+}
+function binderGrossSeite(d) {
+  const b = BW.liste[BW.pos];
+  const n = (((b && b.blatt) || {}).seiten || []).length;
+  BW.seite = Math.min(Math.max(0, BW.seite + d), Math.max(0, n - 1));
+  zeichneBinderGross();
+}
+
+function zeichneBinderGross() {
+  const b = BW.liste[BW.pos];
+  if (!b || !BW.box) return;
+  const [sp, ze] = LAYOUTS[b.layout] || [3, 3];
+  const pw = sp * 63 + (sp - 1) * 4, ph = ze * 88 + (ze - 1) * 4;
+  const blatt = b.blatt || {};
+  const alle = blatt.seiten || [];
+  const seiten = alle.length;
+  BW.box.innerHTML = `
+    <div class="kw-kopf" onclick="event.stopPropagation()">
+      <div class="kw-titel"><strong>${esc(b.name)}</strong>
+        <span>${esc(b.besitzer)} · ${b.karten} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${
+          b.wert ? ` · ≈ ${anEur(b.wert, 0)}` : ''}${b.stimmen ? ' · ' + b.stimmen + ' ♥' : ''}</span></div>
+      <div style="flex:1"></div>
+      <button class="kw-x" onclick="binderGrossZu()" title="${t('schliessen_t')}" aria-label="${t('schliessen_t')}">✕</button>
+    </div>
+    <div class="kw-buehne">
+      <button class="kw-pfeil" onclick="event.stopPropagation();binderGrossWechsel(-1)"
+              aria-label="${t('bv_zurueck')}" ${BW.liste.length < 2 ? 'hidden' : ''}>‹</button>
+      <div class="kw-seite" style="aspect-ratio:${pw}/${ph}" onclick="event.stopPropagation()">
+        ${seiten ? vitrineBlatt({ ...blatt, seiten: [alle[Math.min(BW.seite, seiten - 1)]] }, false, true) : ''}</div>
+      <button class="kw-pfeil" onclick="event.stopPropagation();binderGrossWechsel(1)"
+              aria-label="${t('bv_vor')}" ${BW.liste.length < 2 ? 'hidden' : ''}>›</button>
+    </div>
+    <div class="kw-fuss" onclick="event.stopPropagation()">
+      <button class="vt-herz ${b.gestimmt ? 'an' : ''}" onclick="vitrineStimme('${esc(b.id)}').then(zeichneBinderGross)">
+        ${ic('herz', 15, b.gestimmt ? 'voll' : '')}<span>${b.stimmen}</span></button>
+      ${seiten > 1 ? `<span class="kw-blaettern">
+        <button onclick="binderGrossSeite(-1)" ${BW.seite === 0 ? 'disabled' : ''} aria-label="${t('bv_zurueck')}">‹</button>
+        <span>${t('vt_seite_n').replace('{n}', BW.seite + 1).replace('{g}', seiten)}</span>
+        <button onclick="binderGrossSeite(1)" ${BW.seite >= seiten - 1 ? 'disabled' : ''} aria-label="${t('bv_vor')}">›</button>
+      </span>` : ''}
+      <span class="kw-stand">${BW.pos + 1} / ${BW.liste.length}</span>
+      <button class="btn sekundaer" onclick="vitrineOeffnen('${esc(b.id)}')">${t('vt_ganz_oeffnen')}</button>
+      <button class="kw-melden" onclick="binderGrossZu();meldenOeffnen('binder','${esc(b.id)}')" title="${t('md_t')}">${ic('fahne', 15)}</button>
+    </div>`;
+}
+
 function vitrineOeffnen(id) {
   // Der Verlaufseintrag, auf den „Zurück“ später springt, soll die Vitrine sein – nicht die Werkbank.
+  binderGrossZu();
   try { sessionStorage.setItem('bp_von_vitrine', '1'); history.replaceState(null, '', location.pathname + '#vitrine'); } catch (e) {}
   location.assign(APP_BASIS + '/ansicht/' + id);
 }
@@ -7262,6 +7407,7 @@ async function vitrineStimme(id) {
     const b = VT.binder.find((x) => x.id === id);
     if (b) { b.gestimmt = d.gestimmt; b.stimmen = d.stimmen; }
     zeichneVitrine();
+    return d;
   } catch (e) { if (!gate(e)) toast(e.message); }
 }
 
