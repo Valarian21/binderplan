@@ -596,7 +596,8 @@
   .gal-fach.leer { background: transparent; border-style: dashed; }
   .gal-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .gal-fach .hat-mark { top: 3px; left: 3px; }
-  .gal-umschalter { display: flex; gap: 6px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .gal-umschalter { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .gal-umschalter .pl-hilfe .chip { min-width: 30px; text-align: center; font-weight: 800; }
   @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
   .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800;
              padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
@@ -1031,10 +1032,35 @@
   .planer-kopf { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card);
                  border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
   .planer-rumpf { flex: 1; overflow: auto; padding: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-content: start; }
+  /* „Alle Seiten" in der Binderspalte: dasselbe Fließraster, aber innerhalb der Werkbank.
+     Vorher war das eine eigene Vollbildseite (der Planer) und zusätzlich eine dritte
+     Darstellung (die Galerie) — drei Wege zu denselben Fächern. */
+  .wb-alle { display: flex; flex-wrap: wrap; gap: 18px; align-content: start; padding: 2px 0 8px; }
+  .wb-alle .planer-seite { width: var(--planer-w, 300px); }
+  body.alle-seiten .spalte-binder { max-width: none; }
+  .pl-shift { font-size: 12px; color: var(--mut); }
+  /* Seitenleiste am Handy: die Zielseite als Miniatur, direkt über der Navigation. */
+  .m-seitenleiste { display: none; }
+  @media (max-width: 900px) {
+    .m-seitenleiste { display: flex; align-items: center; gap: 10px; position: fixed; left: 0; right: 0;
+      bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 58; background: var(--card);
+      border-top: 1.5px solid var(--line); padding: 7px 14px; cursor: pointer; }
+    .m-seitenleiste.hidden { display: none; }
+    .msl-nr { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+    .msl-raster { display: grid; gap: 2px; width: 46px; flex: none; }
+    .msl-raster i { aspect-ratio: 63/88; border-radius: 2px; background: var(--panel2);
+                    border: 1px solid var(--line); display: block; }
+    .msl-raster i.voll { background: var(--gruen); border-color: var(--gruen); }
+    .msl-zahl { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--mut);
+                font-variant-numeric: tabular-nums; }
+    body.binder-an .m-seitenleiste { display: none; }
+  }
   /* ---------- Suchschublade im Planer ----------
      Planer und Suche waren zwei Vollbildseiten: Karte suchen hieß Ansicht wechseln,
      einsortieren hieß zurückwechseln. Die Schublade holt die Suche in den Planer —
      ein Streifen über der Fußzeile, der Rest des Bildschirms bleibt der Binder. */
+  .hilfe-liste { margin: 8px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: var(--mut); }
+  .hilfe-liste li { margin: 6px 0; }
   .pl-suche { border-top: 1.5px solid var(--line); background: var(--card); flex: 0 0 auto;
               display: flex; flex-direction: column; }
   .pl-suche.zu .pl-treffer { display: none; }
@@ -1186,8 +1212,8 @@
   .zst-liste strong { font-size: 12.5px; }
   .zst-hin { font-size: 10.5px; color: var(--mut); line-height: 1.5; margin-top: 6px; }
   /* Zielmodus: jedes Fach ist ein möglicher Landeplatz */
-  body.ziel-modus #planer-rumpf .slot { cursor: crosshair; }
-  body.ziel-modus #planer-rumpf .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
+  body.ziel-modus .spalte-binder .slot { cursor: crosshair; }
+  body.ziel-modus .spalte-binder .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
   .an-marke { font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
               background: var(--gelb); color: #14161C; text-transform: uppercase; }
   .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding-bottom: 20px; }
@@ -1258,6 +1284,9 @@
     .planer-rumpf { padding: 10px; gap: 12px; }
     .planer-seite { width: 100%; max-width: 420px; margin: 0 auto; }
     .toast { bottom: 74px; max-width: 92vw; text-align: center; }
+    /* Über der Seitenleiste, wenn sie steht — sonst deckt der Toast genau die Rückmeldung zu,
+       die er meint. */
+    body:has(.m-seitenleiste:not(.hidden)) .toast { bottom: 122px; }
     /* Die untere Navigationsleiste liegt über allem (z-index 60). Ein Dialog, der bis
        zum Fensterrand geht, endet damit unter ihr: im Artwork-Dialog waren die letzten
        Stilkacheln, das Wunschfeld und der Startknopf nicht mehr erreichbar. Deshalb
@@ -1915,11 +1944,12 @@
     </div>
     <div class="segment desktop-only" role="tablist">
       <button id="seg-start" onclick="ansicht('start')" data-i18n="start_nav">Start</button>
-      <!-- Suchen und Planer als zwei Reiter: „Planen“ stand für beide Ansichten, und der
-           Wechsel lag nur im Umschalter „Seite | Alle“ rechts unten im Binder-Panel – dort
-           hat ihn niemand gesucht. Der Umschalter bleibt als kurzer Weg erhalten. -->
-      <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="suchen_nav">Suchen</button>
-      <button id="seg-planer" onclick="ansicht('planer')" data-i18n="planer_nav">Planer</button>
+      <!-- Ein Reiter für den Binder. „Suchen" benannte ein Werkzeug, „Planer" eine Tätigkeit,
+           und beide zeigten denselben Binder — die Galerie im einen war Zeichen für Zeichen
+           die Ansicht des anderen. Ob man eine Seite groß oder alle nebeneinander sieht,
+           steht jetzt als Umschalter über dem Binder, wo es hingehört. Am Handy heißt der
+           Reiter ohnehin seit jeher „Binder". -->
+      <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="binder_nav">Binder</button>
       <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
       <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
       <button id="seg-markt" onclick="ansicht('markt')" data-i18n="markt">Markt</button>
@@ -2186,7 +2216,7 @@
         </div>
       </div>
       <div class="gal-umschalter hidden" id="gal-umschalter"></div>
-      <div class="gal hidden" id="gal-seiten"></div>
+      <div class="wb-alle hidden" id="wb-alle" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <!-- Vorher standen hier sieben Bedienelemente nebeneinander: zwei Pfeile für die
            Seite, zwei zum Verschieben der Seite, „Alle Seiten", Durchblättern und ein
@@ -2197,10 +2227,6 @@
         <button onclick="seiteWechsel(-1)" style="font-size:16px" aria-label="Vorherige Seite" data-i18n-aria="s_vorherige">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
         <button onclick="seiteWechsel(1)" style="font-size:16px" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
-        <div class="segment klein" role="tablist" style="margin-left:8px">
-          <button class="on" onclick="ansicht('suche')" data-i18n="pl_eine">Seite</button>
-          <button onclick="ansicht('planer')" data-i18n="pl_alle_kurz" title="Alle Seiten des Binders nebeneinander" data-i18n-title="pl_alle_t">Alle</button>
-        </div>
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="seiteMenueOeffnen()" class="seite-btn" data-i18n="seite_menue">Seite …</button>
           <div class="menu hoch hidden" id="menu-seite" style="right:0;left:auto;min-width:240px">
@@ -2232,15 +2258,20 @@
 
   <!-- Mobile Navigationsleiste -->
   <div class="m-backdrop" id="m-backdrop" onclick="mobilFilter(false)"></div>
+  <!-- Beim Füllen sah man am Handy den Binder nicht: „Ins Fach" tippen, Toast lesen, über die
+       untere Leiste nachsehen, zurück. Diese Leiste zeigt die Seite, in die gelegt wird, und
+       füllt sich sichtbar mit. Ein Tipp öffnet die ganze Seite. -->
+  <div class="m-seitenleiste hidden" id="m-seitenleiste" onclick="mobilAnsicht('binder')">
+    <span class="msl-nr" id="msl-nr"></span>
+    <span class="msl-raster" id="msl-raster"></span>
+    <span class="msl-zahl" id="msl-zahl"></span>
+  </div>
+
   <div class="mnav">
     <button id="mnav-start" onclick="mnavStart()">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <path d="M3 9.2 10 3.5l7 5.7"/><path d="M5 8.6V16.5h10V8.6"/></svg>
       <span id="mnav-start-lbl" data-i18n="start_nav">Start</span>
-    </button>
-    <button id="mnav-filter" class="hidden" onclick="mobilFilter()">
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 3h12L9.5 8.5V13l-3 1.5V8.5L2 3z"></path></svg>
-      <span data-i18n="m_filter">Filter</span>
     </button>
     <button id="mnav-suche" class="on" onclick="mobilAnsicht('suche')">
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
@@ -2655,48 +2686,12 @@
 </div>
 
 <!-- Planer (zweite Ansicht neben der Suche; Kopfzeile bleibt) -->
-<div id="planer" class="hidden">
-  <div class="planer-kopf">
-    <div class="segment klein" role="tablist">
-      <button onclick="ansicht('suche')" data-i18n="pl_eine">Seite</button>
-      <button class="on" data-i18n="pl_alle_kurz">Alle</button>
-    </div>
-    <span style="font-size:12.5px;color:var(--mut)" id="planer-hinweis"></span>
-    <div style="flex:1"></div>
-    <div class="binder-groesse desktop-only" style="width:130px">
-      <span data-i18n="pl_zoom">Größe</span>
-      <input type="range" id="pl-zoom" min="220" max="620" step="20" oninput="planerZoom(this.value)">
-    </div>
-    <button class="btn sekundaer mobil-only" style="font-size:12.5px" onclick="plSucheUmschalten()" id="pl-such-knopf"
-            data-i18n="pl_such_auf">Karte suchen</button>
-    <div class="menuwrap">
-      <button class="btn sekundaer" style="font-size:12.5px" onclick="menuToggle('menu-planer')"
-              data-i18n="mehr_nav">Mehr</button>
-      <div class="menu hidden" id="menu-planer" style="right:0;left:auto;min-width:230px">
-        <button onclick="leereSeite()" data-i18n="leere_seite">+ Leere Seite</button>
-        <button onclick="lueckenSchliessen()" data-i18n="luecken">Lücken schließen</button>
-        <div class="trenn"></div>
-        <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
-      </div>
-    </div>
-  </div>
-  <div class="planer-rumpf" id="planer-rumpf"></div>
-  <div class="pl-suche zu" id="pl-suche">
-    <div class="pl-suche-zeile">
-      <input type="search" class="feld" id="pl-q" placeholder="Karte suchen …" data-i18n-ph="sm_ph"
-             oninput="plSucheTippen(this.value)" onfocus="plSucheAuf()">
-      <span style="font-size:12px;color:var(--mut)" id="pl-q-zahl"></span>
-      <button class="btn sekundaer" style="font-size:12.5px" onclick="plSucheZu()" id="pl-q-zu"
-              data-i18n="pl_such_zu">Ausblenden</button>
-    </div>
-    <div class="pl-treffer" id="pl-treffer"></div>
-  </div>
-  <!-- Zehn Knöpfe in zwei Reihen waren hier: Sortierfeld, Sortieren, Hierher, zwei
-       Pfeile, Nach vorn, Ans Ende, Löschen, Herausnehmen, Aufheben — sie brachen um und
-       lagen über der Suchschublade. Jetzt: schieben, sortieren, löschen, aufheben; alles
-       Seltenere im Menü. -->
+<!-- Der Planer war ein eigener Ort mit eigenem Kopf, eigener Suche und eigenem Rumpf.
+     Seine Fähigkeiten liegen jetzt im Binder: „Alle Seiten" ist ein Zustand, die
+     Auswahlleiste unten gilt in beiden Zuständen. -->
   <div class="planer-bar hidden" id="planer-bar">
     <strong id="planer-anzahl">0</strong> <span class="pl-wort" data-i18n="gewaehlt">gewählt</span>
+    <span class="pl-shift hidden" id="pl-shift-tipp" data-i18n="pl_shift">Shift wählt einen Bereich</span>
     <span class="pl-strich"></span>
     <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(-1)" title="Nach links" data-i18n-title="nach_links">◂</button>
     <button class="btn sekundaer pl-akt" onclick="auswahlVerschieben(1)" title="Nach rechts" data-i18n-title="nach_rechts">▸</button>
@@ -2720,6 +2715,24 @@
     </div>
     <button class="btn sekundaer pl-akt" onclick="auswahlLeeren()" title="Auswahl aufheben"
             data-i18n-title="aufheben" aria-label="Auswahl aufheben">✕</button>
+  </div>
+
+<!-- Kurzhilfe zum Binder. Stand vorher als Dauersatz über dem Planer: fünf Anweisungen,
+     immer sichtbar, auch beim tausendsten Besuch. -->
+<div class="overlay hidden" id="modal-planerhilfe">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="pl_hilfe_t">Fächer ordnen</h2>
+    <ul class="hilfe-liste">
+      <li data-i18n="pl_h_1">Ein Fach anklicken wählt es aus. Shift wählt einen Bereich.</li>
+      <li data-i18n="pl_h_2">Gewählte Fächer lassen sich verschieben, sortieren und leeren — die Leiste unten zeigt womit.</li>
+      <li data-i18n="pl_h_3">Ziehen verschiebt ein Fach direkt; auf dem Handy gedrückt halten und ziehen.</li>
+      <li data-i18n="pl_h_4">Der Haken im Fach sagt „hab ich" und wandert in deine Sammlung.</li>
+      <li data-i18n="pl_h_5">Tastatur: Strg+A wählt alles, Pfeile verschieben, Entf leert, Esc hebt auf.</li>
+    </ul>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="modalSchliessen()" data-i18n="verstanden">Verstanden</button>
+    </div>
   </div>
 </div>
 
@@ -3217,6 +3230,18 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    tk_anhaengen: 'Anhängen',
+    tk_in_fach: 'In Fach {n}',
+    tk_gesetzt: 'In Fach {n} gelegt',
+    binder_nav: 'Binder',
+    pl_shift: 'Shift wählt einen Bereich',
+    pl_hilfe_t: 'Fächer ordnen',
+    pl_h_1: 'Ein Fach anklicken wählt es aus. Shift wählt einen Bereich.',
+    pl_h_2: 'Gewählte Fächer lassen sich verschieben, sortieren und leeren — die Leiste unten zeigt womit.',
+    pl_h_3: 'Ziehen verschiebt ein Fach direkt; auf dem Handy gedrückt halten und ziehen.',
+    pl_h_4: 'Der Haken im Fach sagt „hab ich" und wandert in deine Sammlung.',
+    pl_h_5: 'Tastatur: Strg+A wählt alles, Pfeile verschieben, Entf leert, Esc hebt auf.',
+    verstanden: 'Verstanden',
     mk_meine_link: 'Meine Sammlung ›',
     st_womit: 'Womit fängst du an?',
     st_weg_foto_u: 'Seiten abfotografieren, Binderplan erkennt die Karten am Bild.',
@@ -3805,6 +3830,18 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    tk_anhaengen: 'Append',
+    tk_in_fach: 'Into slot {n}',
+    tk_gesetzt: 'Placed in slot {n}',
+    binder_nav: 'Binder',
+    pl_shift: 'Shift selects a range',
+    pl_hilfe_t: 'Arranging slots',
+    pl_h_1: 'Clicking a slot selects it. Shift selects a range.',
+    pl_h_2: 'Selected slots can be moved, sorted and emptied — the bar below shows how.',
+    pl_h_3: 'Dragging moves a slot directly; on a phone press and hold, then drag.',
+    pl_h_4: 'The check mark in a slot means “I own this” and goes into your collection.',
+    pl_h_5: 'Keyboard: Ctrl+A selects all, arrows move, Del empties, Esc clears.',
+    verstanden: 'Got it',
     mk_meine_link: 'My collection ›',
     st_womit: 'Where do you start?',
     st_weg_foto_u: 'Photograph your pages, Binderplan recognises the cards by their picture.',
@@ -4346,7 +4383,8 @@ const S = {
   // Muss gesetzt sein, nicht undefined: `classList.toggle(name, undefined)` schaltet um,
   // statt zu setzen. In der Werkbank blieb das Feld leer, und jeder zweite Seitenwechsel
   // blendete das Fächerraster aus — die Seite war „auf einmal weg".
-  galerie: false,
+  // „Alle Seiten" ist der Zustand, der aus Werkbank, Galerie und Planer einen Ort macht.
+  alleSeiten: localStorage.getItem('bp_alle_seiten') === '1',
 };
 const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
@@ -4478,7 +4516,10 @@ function mobilFilter(an) {
   const offen = an !== undefined ? an : !drawer.classList.contains('offen');
   drawer.classList.toggle('offen', offen);
   $('m-backdrop').classList.toggle('offen', offen);
-  $('mnav-filter').classList.toggle('on', offen);
+  const mf = $('mnav-filter');            // der Knopf ist aus der Leiste in die Suchzeile gewandert
+  if (mf) mf.classList.toggle('on', offen);
+  const bf = $('btn-filter-mobil');
+  if (bf) bf.classList.toggle('on', offen);
 }
 /** Der erste Knopf der unteren Leiste führt zur Startseite — die gibt es aber erst mit Konto.
  *  Gäste bekommen dort stattdessen die Filter, die sie in der Suche am häufigsten brauchen. */
@@ -4506,7 +4547,6 @@ function mnavAnpassen() {
 }
 
 function mobilAnsicht(w) {
-  if (!$('planer').classList.contains('hidden')) planerSchliessen();
   // Vitrine, Sammlung, Profil und Startseite liegen über der Werkbank — wer unten auf
   // „Suche“ oder „Binder“ tippt, will dorthin zurück, nicht dahinter.
   vitrineSchliessen();
@@ -4518,6 +4558,35 @@ function mobilAnsicht(w) {
   mnavMarkieren(w === 'binder' ? 'mnav-binder' : 'mnav-suche');
   mobilFilter(false);
   if (w === 'binder') zeichneBinder();
+  zeichneSeitenleiste();
+}
+
+/** Die Seitenleiste am unteren Rand: welche Seite gerade das Ziel ist und wie voll sie ist.
+ *  Sie erscheint nur am Handy und nur in der Suche — im Binder sieht man die Seite selbst. */
+function zeichneSeitenleiste() {
+  const bar = $('m-seitenleiste');
+  if (!bar) return;
+  const zeigen = window.innerWidth < 900 && S.binder && !S.nurAnsicht
+    && !document.body.classList.contains('binder-an')
+    && $('startseite').classList.contains('hidden') && $('vitrine').classList.contains('hidden')
+    && $('sammlung').classList.contains('hidden') && $('marktseite').classList.contains('hidden');
+  bar.classList.toggle('hidden', !zeigen);
+  if (!zeigen) return;
+  const plan = seitenPlan();
+  const sp = plan[Math.min(S.seite, plan.length - 1)] || plan[0];
+  if (!sp) return;
+  $('msl-nr').textContent = `${t('seite')} ${sp.nr + 1}/${plan.length}`;
+  let faecher = '';
+  for (let i = 0; i < sp.laenge; i++) {
+    const item = S.binder.items[sp.start + i];
+    faecher += `<i class="${item && item.type !== 'empty' ? 'voll' : ''}"></i>`;
+  }
+  const raster = $('msl-raster');
+  raster.style.gridTemplateColumns = `repeat(${sp.cols}, 1fr)`;
+  raster.innerHTML = faecher;
+  const voll = Array.from({ length: sp.laenge }, (_, i) => S.binder.items[sp.start + i])
+    .filter((x) => x && x.type !== 'empty').length;
+  $('msl-zahl').textContent = `${voll}/${sp.laenge}`;
 }
 
 // ---------- Hell/Dunkel (Auto -> Hell -> Dunkel) ----------
@@ -4557,7 +4626,6 @@ function setKartensprache(lang, automatisch) {
   if ($('f-klang-hinweis')) $('f-klang-hinweis').classList.toggle('hidden', !KLANG_EIGEN);
   $('f-lang-de').classList.toggle('on', lang === 'de'); $('f-lang-en').classList.toggle('on', lang === 'en');
   zeichneErgebnisse(); zeichneBinder(); baueSetSelect(); zeichneSetWahlKnopf();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
 }
 /** Zurück zum Normalfall: Kartensprache = Oberfläche. */
 function kartenspracheFolgen() {
@@ -4716,9 +4784,9 @@ function ansichtAktivieren() {
   S.seite = 0;
   zeichneLayouts();
   zeichneBinder();
-  // Beim Stöbern ist die Galerie der bessere Einstieg; wer lieber blättert, schaltet um.
-  S.galerie = localStorage.getItem('bp_galerie') !== '';
-  galerieUmschalten(S.galerie);
+  // Beim Stöbern ist die Übersicht der bessere Einstieg; wer lieber blättert, schaltet um.
+  S.alleSeiten = localStorage.getItem('bp_alle_seiten') !== '0';   // Nur-Ansicht: Übersicht ist der bessere Einstieg
+  binderAnsicht(S.alleSeiten);
   ansichtGroesse();
   ansichtBegleitung();
 }
@@ -4730,75 +4798,58 @@ function ansichtAktivieren() {
  */
 /** Alle Seiten des Binders auf einmal. Beim Stöbern in einem fremden Binder ist das der
  *  natürliche Blick: man will sehen, was drin ist, nicht zwölfmal auf „weiter“ klicken. */
-function zeichneGalerie() {
-  const box = $('gal-seiten');
-  if (!box || !S.binder) return;
-  const plan = seitenPlan();
-  let html = '';
-  for (const sp of plan) {
-    const seite = sp.nr, cols = sp.cols;
-    let faecher = '';
-    for (let i = 0; i < sp.laenge; i++) {
-      const item = S.binder.items[sp.start + i];
-      if (!item || item.type === 'empty') { faecher += '<div class="gal-fach leer"></div>'; continue; }
-      const haken = S.user && item.type === 'card'
-        ? `<span class="hat-mark ${besitzt(item) ? 'ja' : ''}">${besitzt(item) ? '✓' : ''}</span>` : '';
-      faecher += `<div class="gal-fach">${slotInhalt(item)}${haken}</div>`;
-    }
-    html += `<div class="gal-seite" ${S.nurAnsicht ? '' : `onclick="galerieSeiteOeffnen(${seite})" style="cursor:pointer" title="${t('gal_bearbeiten')}"`}>
-      <div class="gal-nr">${t('seite')} ${seite + 1}</div>
-      <div class="gal-blatt" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${faecher}</div>
-    </div>`;
-  }
-  box.innerHTML = html;
+/** Zwischen „Eine Seite" und „Alle Seiten" umschalten. Die Wahl bleibt gespeichert.
+ *  Vorher waren das zwei Orte: die Galerie im Reiter „Suchen" und der Planer als eigener
+ *  Reiter — beide zeigten dieselben Seiten mit denselben Fächern. */
+function binderAnsicht(alle) {
+  S.alleSeiten = !!alle;
+  try { localStorage.setItem('bp_alle_seiten', S.alleSeiten ? '1' : ''); } catch (e) {}
+  if (!S.alleSeiten) S.auswahl.clear();
+  hashSetzen(S.alleSeiten ? 'planer' : 'suche');     // beide Adressen bleiben gültig
+  breiteAnpassen();
+  zeichneBinder();
 }
 
-/** Zwischen Galerie und einzelner Seite umschalten. Die Wahl bleibt gespeichert. */
-function galerieUmschalten(an) {
-  S.galerie = !!an;
-  an = S.galerie;
-  try { localStorage.setItem('bp_galerie', an ? '1' : ''); } catch (e) {}
-  $('gal-seiten').classList.toggle('hidden', !an);
-  $('wb-slots').classList.toggle('hidden', an);
-  $('wb-nav').classList.toggle('hidden', an);
-  // In der Werkbank darf die Galerie die freie Breite nutzen; die Filterspalte bleibt stehen.
+/** Bei „Alle Seiten" bekommt der Binder die freie Fläche, sofern die Suche zu ist. */
+function breiteAnpassen() {
   const sp = document.querySelector('.spalte-binder');
   const mitte = document.querySelector('.spalte-mitte');
-  if (sp && !S.nurAnsicht) {
-    // Die Galerie will die ganze Fläche. Ohne das lag sie über der Trefferliste.
-    sp.style.width = an ? 'auto' : '';
-    sp.style.flex = an ? '1 1 auto' : '';
-    if (mitte) mitte.classList.toggle('hidden', an);
-  }
-  zeichneGalerieUmschalter();
-  if (an) zeichneGalerie(); else zeichneBinder();
+  if (!sp || S.nurAnsicht) return;
+  const breit = !!S.alleSeiten;
+  sp.style.width = breit ? 'auto' : '';
+  sp.style.flex = breit ? '1 1 auto' : '';
+  if (mitte) mitte.classList.toggle('hidden', breit);
+  document.body.classList.toggle('alle-seiten', breit);
 }
 
-/** In der Werkbank ist ein Klick auf eine Galerieseite der Weg zurück zum Bearbeiten. */
-function galerieSeiteOeffnen(nr) {
+/** Klick auf eine Seitenüberschrift in der Übersicht: diese Seite groß. */
+function seiteOeffnen(nr) {
   if (S.nurAnsicht) return;
   S.seite = nr;
-  galerieUmschalten(false);
+  binderAnsicht(false);
 }
 
-/** Der Umschalter „Alle Seiten | Eine Seite“ gehört auch dem Besitzer.
- *  Vorher sah ein Fremder über den Teilen-Link den ganzen Binder als Galerie, während der
- *  Besitzer ihn nur Seite für Seite in einer 310 px breiten Spalte vor sich hatte. */
-function zeichneGalerieUmschalter() {
+/** Der Umschalter über dem Binder — derselbe für Besitzer und Besucher. */
+function zeichneBinderUmschalter() {
   const box = $('gal-umschalter');
   if (!box || !S.binder) return;
   box.classList.remove('hidden');
   box.innerHTML = `
-    <button class="chip ${S.galerie ? 'on' : ''}" onclick="galerieUmschalten(true)">${t('gal_alle')}</button>
-    <button class="chip ${S.galerie ? '' : 'on'}" onclick="galerieUmschalten(false)">${t('gal_einzeln')}</button>
+    <div class="segment klein" role="tablist">
+      <button class="${S.alleSeiten ? '' : 'on'}" onclick="binderAnsicht(false)">${t('gal_einzeln')}</button>
+      <button class="${S.alleSeiten ? 'on' : ''}" onclick="binderAnsicht(true)">${t('gal_alle')}</button>
+    </div>
     <div style="flex:1"></div>
+    ${S.alleSeiten && !S.nurAnsicht ? `<span class="pl-hilfe" id="wb-auswahl-hilfe"></span>` : ''}
     <button class="chip" onclick="blaetternOeffnen()">${t('bv_titel')}</button>`;
+  const h = $('wb-auswahl-hilfe');
+  if (h) h.innerHTML = `<button class="chip" onclick="modalOeffnen('modal-planerhilfe')" title="${t('pl_hilfe_t')}">?</button>`;
 }
 
 function ansichtGroesse() {
   if (!S.nurAnsicht || !S.binder) return;
   const sp = document.querySelector('.spalte-binder');
-  if (S.galerie) { sp.style.width = 'min(1200px, 100%)'; return; }   // Galerie darf breit sein
+  if (S.alleSeiten) { sp.style.width = 'min(1200px, 100%)'; return; }   // die Übersicht darf breit sein
   if (window.innerWidth < 900) { sp.style.width = ''; return; }
   const [cols, rows] = LAYOUTS[S.binder.layout] || [3, 3];
   const oben = document.querySelector('.rumpf').getBoundingClientRect().top;   // Kopf, Banner, Begleitleiste
@@ -4826,7 +4877,7 @@ function kontoAnzeigen() {
   if (typeof bestaetigungAnzeigen === 'function') bestaetigungAnzeigen();
   if (typeof besitzLaden === 'function') besitzLaden().then(() => {
     if (S.binder) zeichneBinder();
-    if (S.galerie && typeof zeichneGalerie === 'function') zeichneGalerie();
+    if (S.alleSeiten) zeichneAlleSeiten();
     if (typeof habStandZeigen === 'function') habStandZeigen();
   });
   const btn = $('btn-konto');
@@ -5450,14 +5501,8 @@ function binderAnzeigen() {
   wantsSchalterSetzen();
   zeichneBinder();
   werkbankZeigen();
-  // Der Planer zeigte weiter den alten Binder: gefüllt wird er nur von zeichnePlaner(),
-  // und das rief hier niemand. Wer in „Alle Seiten" den Binder wechselt, will dort den
-  // neuen sehen — nicht erst nach einem Wechsel der Ansicht.
-  if (!$('planer').classList.contains('hidden')) {
-    S.auswahl.clear();
-    zeichnePlaner();
-    hashSetzen('planer');
-  }
+  // Wer in „Alle Seiten" den Binder wechselt, will dort den neuen sehen.
+  S.auswahl.clear();
   if (S.preiseAn && typeof preiseLaden === 'function') preiseLaden();
 }
 
@@ -5469,16 +5514,10 @@ function werkbankZeigen() {
   const mitte = document.querySelector('.spalte-mitte');
   if (!sp || S.nurAnsicht) return;
   sp.classList.remove('hidden');
-  if (!S.galerie) {
-    sp.style.width = ''; sp.style.flex = '';
-    if (mitte) mitte.classList.remove('hidden');
-    $('gal-seiten').classList.add('hidden');
-    $('wb-slots').classList.remove('hidden');
-    $('wb-nav').classList.remove('hidden');
-  }
+  breiteAnpassen();
   // Wenn der Binder Fächer hat, das Raster aber leer ist, noch einmal zeichnen.
-  if (S.binder && S.binder.items && S.binder.items.length && !S.galerie
-      && $('wb-slots').children.length === 0) zeichneBinder();
+  const box = S.alleSeiten ? $('wb-alle') : $('wb-slots');
+  if (S.binder && S.binder.items && S.binder.items.length && box && box.children.length === 0) zeichneBinder();
 }
 
 // ---------- Menüs & Modale ----------
@@ -5602,7 +5641,6 @@ async function neuLeer(still) {
   // Leerer Binder = nur lokal; die DB-Zeile entsteht mit der ersten Karte (keine leeren Gast-Binder mehr)
   S.binder = lokalerBinder();
   binderAnzeigen(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) planerSchliessen();
   if (!still) { modalSchliessen(); toast(t('angelegt')); }
 }
 
@@ -6018,19 +6056,18 @@ function zeichneErgebnisse() {
     const sn = S.user ? (S.besitz[k.id] || 0) : 0;
     const enb = KLANG === 'de' && k.img && k.img_lang && k.img_lang !== 'de' && k.region !== 'jp' ? '<span class="enb" title="Bild in Englisch">EN</span>' : '';
     const jpb = k.region === 'jp' ? '<span class="jpb">JP</span>' : '';
-    // Eine Kachel, eine Hauptaktion: Klick legt die Karte ins Fach. Vorher trug sie vier
-    // Ziele — Kachel für Details, ＋ für den Binder, ein grüner Kreis für die Sammlung und
-    // R+ für Reverse —, wobei der grüne Kreis und das Zählabzeichen gleich aussahen und
-    // Verschiedenes bedeuteten. Details liegen jetzt auf dem „i“, der Besitz auf einer
-    // beschrifteten Zeile unter dem Namen.
-    return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="kartAdd(${i})" title="${esc(nm(k))} – ${t('tk_klick')}">
+    // Ein Klick auf die Karte öffnet ihr Detail — so wie in der Sammlung, im Markt und auf
+    // den öffentlichen Seiten. Vorher legte er sie in den Binder, und das Detail versteckte
+    // sich hinter einem 18 Pixel großen „i". Hinzufügen ist der beschriftete Knopf darunter,
+    // dazu weiterhin das Ziehen ins Fach.
+    return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('tk_info')}">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}${preisBadge(k.id)}</div>
       ${enb}${jpb}
       ${n ? `<span class="anz" title="${t('im_binder')}">${n}</span>` : ''}
-      <div class="tk-name"><span class="tkn">${nm(k)}</span><button class="info" onclick="event.stopPropagation();detailOeffnen(${i})" title="${t('tk_info')}" aria-label="${t('tk_info')}">i</button></div>
+      <div class="tk-name"><span class="tkn">${nm(k)}</span></div>
       <div class="tk-meta">${setNm(k)} · ${k.local_id}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}</div>
       <div class="tk-hab">
-        <button class="hinzu" onclick="event.stopPropagation();kartAdd(${i})" title="${t('tk_klick')}">＋ ${t('tk_hinzu')}</button>
+        <button class="hinzu" onclick="event.stopPropagation();kartAdd(${i})" title="${t('tk_klick')}">＋ ${zielText()}</button>
         <button class="hat-k ${sn ? 'hat' : ''}" onclick="event.stopPropagation();sammlungAufnehmen('${esc(k.id)}')"
                 title="${t('sm_aufnehmen_t')}" aria-label="${t('tk_besitz')}">${sn ? '✓ ' + sn + '×' : '✓'}</button>
         <button class="wunsch ${wunschHat(k.id) ? 'an' : ''}" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}')"
@@ -6039,7 +6076,6 @@ function zeichneErgebnisse() {
       </div>
     </div>`;
   }).join('');
-  plTrefferZeichnen();
   if (S.preiseAn) preiseTrefferLaden();
 }
 
@@ -6074,61 +6110,12 @@ async function preiseTrefferLaden() {
    (`S.ergebnisse`) — nur ein zweites Bild davon. Deshalb genügt es, dass
    `zeichneErgebnisse()` am Ende hier vorbeischaut; was die Werkbank zeigt, zeigt die
    Schublade auch, ohne zweiten Netzaufruf und ohne zweite Wahrheit. */
-/** Die Auswahlleiste schwebt über der Suchschublade. Deren Höhe wechselt (zu: nur die
- *  Zeile, offen: dazu der Trefferstreifen), also wird sie gemessen. */
+/** Die Auswahlleiste sitzt unten und schwebt über dem, was dort noch steht. */
 function plBarSetzen() {
-  const d = $('pl-suche');
   document.documentElement.style.setProperty('--pl-bar-unten',
-    ((d ? d.offsetHeight : 0) + 14) + 'px');
+    (window.innerWidth < 900 ? 68 : 14) + 'px');
 }
 window.addEventListener('resize', plBarSetzen);
-
-function plSucheAuf() {
-  $('pl-suche').classList.remove('zu');
-  document.body.classList.add('pl-suche-offen');
-  setTimeout(plBarSetzen, 30);
-  const k = $('pl-such-knopf'); if (k) k.textContent = t('pl_such_zu');
-  if ($('pl-q').value !== $('f-suche').value) $('pl-q').value = $('f-suche').value;
-  plTrefferZeichnen();
-}
-function plSucheZu() {
-  $('pl-suche').classList.add('zu');
-  document.body.classList.remove('pl-suche-offen');
-  setTimeout(plBarSetzen, 30);
-  const k = $('pl-such-knopf'); if (k) k.textContent = t('pl_such_auf');
-}
-function plSucheUmschalten() {
-  if ($('pl-suche').classList.contains('zu')) { plSucheAuf(); $('pl-q').focus(); }
-  else plSucheZu();
-}
-function plSucheTippen(wert) {
-  // Ein Suchbegriff für drei Felder: Werkbank, Handy-Zeile und Schublade halten
-  // denselben Text, sonst sucht das eine nach etwas anderem, als das andere anzeigt.
-  $('f-suche').value = wert;
-  if ($('f-suche-mobil')) $('f-suche-mobil').value = wert;
-  sucheBegriff(wert);
-}
-function plTrefferZeichnen() {
-  const streifen = $('pl-treffer');
-  if (!streifen || $('pl-suche').classList.contains('zu')) return;
-  $('pl-q-zahl').textContent = S.meta && filter.q ? `${S.gesamt} ${t('treffer')}` : '';
-  if (!S.ergebnisse.length) {
-    streifen.innerHTML = `<div class="pl-treffer-leer">${filter.q ? t('erg_leer') : t('pl_such_hinweis')}</div>`;
-    return;
-  }
-  streifen.innerHTML = S.ergebnisse.slice(0, 60).map((k, i) => {
-    const n = anzahlImBinder(k.id);
-    const bild = k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="">`
-                       : `<div class="kein-bild">${nm(k)}</div>`;
-    return `<div class="plk" onclick="plTrefferKlick(${i})" title="${esc(nm(k))} — ${t('tk_klick')}">
-      ${bild}${n ? `<span class="plk-anz">${n}</span>` : ''}${preisBadge(k.id)}
-      <div class="plk-n">${nm(k)}</div></div>`;
-  }).join('');
-}
-async function plTrefferKlick(i) {
-  const k = S.ergebnisse[i];
-  if (k) await kartAddId(k.id);
-}
 
 function kartAdd(i, variant) {
   const k = S.ergebnisse[i];
@@ -6297,13 +6284,11 @@ async function hatToggle(idx) {
     item.have = !item.have;
     speichern();
     zeichneBinder();
-    if (!$('planer').classList.contains('hidden')) zeichnePlaner();
     return;
   }
   const vorher = !!S.besitz[item.id];
   if (vorher) delete S.besitz[item.id]; else S.besitz[item.id] = 1;   // sofort sichtbar
   zeichneBinder();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   try {
     const d = await api('api/sammlung/toggle', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -6315,6 +6300,51 @@ async function hatToggle(idx) {
     zeichneBinder();
     if (!gate(e)) toast(e.message);
   }
+}
+
+/* Ein Fach — dieselbe Zeichnung, egal ob eine Seite groß oder alle nebeneinander stehen.
+   Vorher gab es dafür drei Funktionen (zeichneBinder, zeichnePlaner, zeichneGalerie), und
+   ein Klick bedeutete in der einen „Haken setzen" und in der anderen „auswählen". */
+function fachHtml(idx) {
+  const item = S.binder.items[idx];
+  if (!item) {
+    return S.nurAnsicht ? '<div class="slot">+</div>'
+      : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)"
+              ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`;
+  }
+  const dnd = S.nurAnsicht ? '' : 'draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)"'
+    + ' ondragleave="dragLeave(event)" ondrop="dragDrop(event)"'
+    + ' ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnde()" ontouchcancel="touchEnde()"';
+  const klick = S.nurAnsicht ? '' : `onclick="fachKlick(event,${idx})"`;
+  return `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''}
+      ${besitzt(item) ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}" ${dnd} data-idx="${idx}" ${klick}>
+    ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
+}
+
+/** Eine Seite mit Kopfzeile und Fächern. `werkzeuge` blendet die Seitenknöpfe ein. */
+function seiteHtml(sp, seiten, werkzeuge) {
+  let faecher = '';
+  for (let i = 0; i < sp.laenge; i++) faecher += fachHtml(sp.start + i);
+  const kopf = werkzeuge ? `<div class="ps-titel"><span>${t('seite')} ${sp.nr + 1}</span>
+      <span class="ps-akt">
+        <button onclick="artworkOeffnen(${sp.nr})" title="${t('aw_t')}">${ic('palette', 16)}</button>
+        <button onclick="seiteWaehlen(${sp.nr})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
+        <button onclick="seiteVerschieben(${sp.nr},-1)" title="${t('s_seite_hoch')}" ${sp.nr === 0 ? 'disabled' : ''}>↑</button>
+        <button onclick="seiteVerschieben(${sp.nr},1)" title="${t('s_seite_runter')}" ${sp.nr === seiten - 1 ? 'disabled' : ''}>↓</button>
+        <button onclick="seiteLeeresFach(${sp.nr})" title="${t('s_seite_fach')}">＋</button>
+        <button onclick="seiteEntfernen(${sp.nr})" title="${t('s_seite_weg')}">✕</button>
+      </span></div>` : '';
+  return `<div class="planer-seite">${kopf}
+    <div class="slots" style="grid-template-columns:repeat(${sp.cols},minmax(0,1fr))">${faecher}</div></div>`;
+}
+
+/** Alle Seiten nebeneinander — der Zustand „Alle Seiten" der Binderansicht. */
+function zeichneAlleSeiten() {
+  const box = $('wb-alle');
+  if (!box || !S.binder) return;
+  const plan = seitenPlan();
+  box.innerHTML = plan.map((sp) => seiteHtml(sp, plan.length, !S.nurAnsicht)).join('');
+  auswahlAktionen();
 }
 
 function zeichneBinder() {
@@ -6345,21 +6375,16 @@ function zeichneBinder() {
   const box = $('wb-slots');
   box.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   let html = '';
-  for (let s = 0; s < pp; s++) {
-    const idx = sp.start + s;
-    const item = S.binder.items[idx];
-    if (!item) { html += S.nurAnsicht ? '<div class="slot">+</div>' : `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
-    const dnd = S.nurAnsicht ? '' : `draggable="true" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)"`;
-    html += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''}" ${dnd} data-idx="${idx}" onclick="slotKlick(${idx})"
-        ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnde()" ontouchcancel="touchEnde()">
-      ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
-  }
+  for (let i = 0; i < pp; i++) html += fachHtml(sp.start + i);
   box.innerHTML = html;
   // Leerer Binder: Einstieg erklären und die Vorlagen zeigen – das Raster erst ab der ersten Karte
   const leer = !S.nurAnsicht && S.binder.items.length === 0;
   $('wb-onb').classList.toggle('hidden', !leer);
-  $('wb-slots').classList.toggle('hidden', !!(leer || S.galerie));
-  $('wb-nav').classList.toggle('hidden', !!(leer || S.galerie));
+  $('wb-slots').classList.toggle('hidden', !!(leer || S.alleSeiten));
+  $('wb-alle').classList.toggle('hidden', !!(leer || !S.alleSeiten));
+  $('wb-nav').classList.toggle('hidden', !!leer);
+  if (S.alleSeiten && !leer) zeichneAlleSeiten();
+  auswahlAktionen();
   // Sammel-Fortschritt
   const sammelbar = S.binder.items.filter((i) => i.type !== 'empty' && i.type !== 'art').length;
   const gesammelt = S.binder.items.filter((i) => besitzt(i)).length;
@@ -6374,6 +6399,8 @@ function zeichneBinder() {
   if ($('wb-seite-vor')) $('wb-seite-vor').disabled = S.nurAnsicht || S.seite <= 0;
   if ($('wb-seite-zurueck')) $('wb-seite-zurueck').disabled = S.nurAnsicht || S.seite >= seitenZahl - 1;
   zeichnePreisSumme();
+  zeichneBinderUmschalter();
+  zeichneSeitenleiste();
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
 
@@ -8223,7 +8250,6 @@ function slotHerausnehmen(idx) {
   merken('raus');
   S.binder.items.splice(idx, 1);
   speichern(); zeichneBinder(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   toastUndo(t('herausnehmen'));
 }
 /** Zählt dieser Binder zur Kaufliste? Nicht jeder soll das: man legt einen an, um etwas
@@ -8332,7 +8358,6 @@ function fachVerschieben(von, nach) {
   }
   S.auswahl.clear();
   speichern(); zeichneBinder();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   toastUndo(t('verschoben'));
 }
 
@@ -8371,7 +8396,6 @@ function neueKarteAblegen(ziel) {
     S.binder.items.splice(ziel, 0, item);            // belegtes Fach: davor einschieben
   }
   speichern(); zeichneBinder(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   toastUndo(t('in_binder'));
 }
 
@@ -8403,7 +8427,6 @@ function dragDrop(ev) {
   }
   dragIdx = null; S.auswahl.clear();
   speichern(); zeichneBinder();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
 }
 
 // ---------- Preise ----------
@@ -8426,7 +8449,6 @@ async function preiseLaden() {
     else if (d.offen > 0) toast(t('preise_offen'));
     wertverlaufLaden();
     zeichneBinder();
-    if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   } catch (e) {
     if (gate(e)) { S.preiseAn = false; $('preis-toggle').checked = false; $('wb-preise').classList.add('hidden'); return; }
     toast(t('fehler_preise'));
@@ -8487,38 +8509,24 @@ function ansicht(w) {
   if (w === 'vitrine') { ansichtVitrine(); return; }
   if (w === 'markt') { marktOeffnen(); return; }
   if (w === 'auswertung') { auswertungOeffnen(); return; }
-  if (w === 'planer') planerOeffnen(); else planerSchliessen();
-  // Wer auf „Suche" geht, will suchen. Die Galerie ist eine Binder-Ansicht und wird beim
-  // Wechsel dorthin zurückgestellt — sonst stand man vor der Werkbank ohne Trefferliste
-  // und ohne zu wissen, warum.
-  if (w === 'suche') {
-    if (S.galerie) galerieUmschalten(false);
+  // „suche" und „planer" sind derselbe Ort in zwei Zuständen. Beide Adressen bleiben
+  // gültig, damit geteilte Links und der Zurück-Knopf weiter funktionieren.
+  if (w === 'suche' || w === 'planer') {
+    // Beide Adressen zeigen denselben Ort. „planer" schaltet auf die Übersicht, „suche"
+    // lässt den zuletzt gewählten Zustand stehen — er gehört dem Nutzer, nicht der Adresse.
+    if (w === 'planer' && !S.alleSeiten) binderAnsicht(true);
+    else { breiteAnpassen(); zeichneBinder(); }
     werkbankZeigen();
-    // Beim ersten Öffnen der Suche die Trefferliste nachholen (beim Start wurde sie gespart).
+    reiterSetzen('seg-suche');
+    mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
     if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
   }
 }
-function planerOeffnen() {
-  hashSetzen('planer');
-  planerZoomInit();
-  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  S.auswahl.clear();
-  $('planer').classList.remove('hidden');
-  ebeneOeffnen(planerSchliessen);
-  reiterSetzen('seg-planer');
-  mnavMarkieren('mnav-binder');
-  if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) { ladePokedex().then(zeichnePlaner); }
-  zeichnePlaner();
-}
-function planerSchliessen() {
-  if ($('planer').classList.contains('hidden')) return;
-  ebeneAufraeumen(planerSchliessen);
-  $('planer').classList.add('hidden');
-  routeZurueck();
-  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
-  mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
-  zeichneBinder();
-}
+/* Die beiden Namen bleiben, weil sie an vielen Stellen gerufen werden — sie schalten jetzt
+   nur noch den Zustand um, statt einen eigenen Ort zu öffnen und zu schließen. */
+function planerOeffnen() { binderAnsicht(true); }
+function planerSchliessen() { /* kein eigener Ort mehr */ }
+function zeichnePlaner() { if (S.alleSeiten) zeichneAlleSeiten(); }
 
 
 /* ==========================================================================
@@ -8834,64 +8842,23 @@ async function statistikOeffnen() {
     ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1])}` : ''}`;
 }
 
-function zeichnePlaner() {
-  const plan = seitenPlan();
-  const seiten = plan.length;
-  let html = '';
-  for (const sp of plan) {
-    const seite = sp.nr, pp = sp.laenge, cols = sp.cols;
-    let slots = '';
-    for (let s = 0; s < pp; s++) {
-      const idx = sp.start + s;
-      const item = S.binder.items[idx];
-      if (!item) { slots += `<div class="slot frei" data-idx="${idx}" onclick="freiesFach(${idx})" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)" title="${t('s_frei_danach')}">+</div>`; continue; }
-      slots += `<div class="slot ${item.type === 'empty' ? 'leer-item' : 'voll'} ${item.type === 'art' ? 'art' : ''} ${besitzt(item) ? 'hat' : ''} ${S.auswahl.has(idx) ? 'gewaehlt' : ''}"
-        draggable="true" data-idx="${idx}" onclick="planerKlick(event,${idx})"
-        ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnde()" ontouchcancel="touchEnde()"
-        ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
-        ${slotInhalt(item)}${slotExtras(item, idx)}</div>`;
-    }
-    html += `<div class="planer-seite"><div class="ps-titel"><span>${t('seite')} ${seite + 1}</span>
-      <span class="ps-akt">
-        <button onclick="artworkOeffnen(${seite})" title="${t('aw_t')}">${ic('palette', 16)}</button>
-        <button onclick="seiteWaehlen(${seite})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
-        <button onclick="seiteVerschieben(${seite},-1)" title="${t('s_seite_hoch')}" ${seite === 0 ? 'disabled' : ''}>↑</button>
-        <button onclick="seiteVerschieben(${seite},1)" title="${t('s_seite_runter')}" ${seite === seiten - 1 ? 'disabled' : ''}>↓</button>
-        <button onclick="seiteLeeresFach(${seite})" title="${t('s_seite_fach')}">＋</button>
-        <button onclick="seiteEntfernen(${seite})" title="${t('s_seite_weg')}">✕</button>
-      </span></div>
-      <div class="slots" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${slots}</div></div>`;
-  }
-  $('planer-rumpf').innerHTML = html;
-  planerAktionen();
-}
-
-let letzterKlick = null;
-function planerKlick(ev, idx) {
-  if (ev.target.closest('.raus')) return;
-  if (zielModus) return auswahlZuZiel(idx);
-  if (ev.shiftKey && letzterKlick !== null) {
-    const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
-    for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
-  } else {
-    S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
-  }
-  letzterKlick = idx;
-  auswahlZeigen();
-}
+function planerKlick(ev, idx) { fachKlick(ev, idx); }
 
 /** Nur die Markierung umschalten. Ein Pokédex-Binder hat bis zu 1.000 Fächer — den ganzen
  *  Baum für einen Klick neu zu bauen, ließ jede Auswahl ruckeln. */
 function auswahlZeigen() {
-  document.querySelectorAll('#planer-rumpf .slot[data-idx]').forEach((el) => {
+  document.querySelectorAll('.spalte-binder .slot[data-idx]').forEach((el) => {
     el.classList.toggle('gewaehlt', S.auswahl.has(Number(el.dataset.idx)));
   });
-  planerAktionen();
+  auswahlAktionen();
 }
-/** Tastatur im Planer. Wer 500 Karten sortiert, will nicht für jeden Schritt zur Maus greifen.
- *  Entf entfernt die Auswahl, Pfeile verschieben sie, Strg+A wählt alles, Escape hebt auf. */
+/** Tastatur im Binder. Wer 500 Karten sortiert, will nicht für jeden Schritt zur Maus greifen.
+ *  Entf entfernt die Auswahl, Pfeile verschieben sie, Strg+A wählt alles, Escape hebt auf.
+ *  Gilt seit der Zusammenlegung in beiden Zuständen — auch beim Blättern durch eine Seite. */
 document.addEventListener('keydown', (ev) => {
-  if ($('planer').classList.contains('hidden') || S.nurAnsicht) return;
+  if (S.nurAnsicht || !S.binder || $('sammlung') && !$('sammlung').classList.contains('hidden')) return;
+  if (!$('vitrine').classList.contains('hidden') || !$('startseite').classList.contains('hidden')) return;
+  if (!$('marktseite').classList.contains('hidden')) return;
   const feld = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
   if (feld) return;
   if (ev.key === 'Escape' && S.auswahl.size) { ev.preventDefault(); auswahlLeeren(); return; }
@@ -9007,7 +8974,6 @@ function lueckenSchliessen() {
   S.binder.items = rest;
   S.auswahl.clear();
   speichern(); zeichneBinder(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   toastUndo(t('luecken_zu').replace('{n}', vorher - rest.length));
 }
 /** Neue leere Seite anhängen und gleich dorthin springen. */
@@ -9024,7 +8990,7 @@ function leereSeite() {
   const pp = seiteInfo(seitenAnzahl()).laenge;
   merken('seite');
   for (let i = 0; i < pp; i++) S.binder.items.push({ type: 'empty' });
-  speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
+  speichern(); zeichneBinder();
 }
 
 async function auswahlSortieren(key) {
@@ -9353,7 +9319,6 @@ function rueckgaengig() {
   S.binder.items = undo.items; undo = null;
   $('toast').classList.remove('zeig'); $('toast-undo').classList.add('hidden');
   speichern(); zeichneBinder(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
   toast(t('undo_ok'));
 }
 
@@ -9389,11 +9354,14 @@ function sammelnToggle() { zeichneBinder(); }
 
 // ---------- Fächer frei anordnen ----------
 function freiesFach(idx) {
-  // Klick auf einen unbelegten Platz: bis dorthin mit leeren Fächern auffüllen (freier Platz im Raster)
+  // Klick auf einen unbelegten Platz: bis dorthin mit leeren Fächern auffüllen (freier Platz
+  // im Raster) — und dieses Fach gleich als Ziel wählen, damit die nächste Karte dort landet.
   if (!S.binder || S.nurAnsicht) return;
   merken('frei');
   while (S.binder.items.length <= idx) S.binder.items.push({ type: 'empty' });
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  S.auswahl.clear();
+  S.auswahl.add(idx);
+  speichern(); zeichneBinder();
 }
 function slotMenue(ev, idx) {
   const item = S.binder.items[idx]; if (!item) return;
@@ -9421,18 +9389,18 @@ function fachSprache(idx) {
   const item = S.binder.items[idx]; if (!item) return;
   const reihe = ['de', 'en', 'jp']; const neu = reihe[(reihe.indexOf(item.sprache || 'de') + 1) % reihe.length];
   if (neu === 'de') delete item.sprache; else item.sprache = neu;
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  speichern(); zeichneBinder();
 }
 function fachZustand(idx) {
   const item = S.binder.items[idx]; if (!item) return;
   const z = prompt(t('zustand_ph'), item.zustand || ''); if (z === null) return;
   if (z.trim()) item.zustand = z.trim().slice(0, 16); else delete item.zustand;
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  speichern(); zeichneBinder();
 }
 function fachEinfuegen(idx) {
   merken('fach');
   S.binder.items.splice(idx, 0, { type: 'empty' });
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  speichern(); zeichneBinder();
   toastUndo(t('s_frei_davor'));
 }
 function fachFreimachen(idx) {
@@ -9449,7 +9417,7 @@ function seiteAuffuellen() {
   if (!rest) return toast(t('gespeichert'));
   merken('auffuellen');
   for (let i = 0; i < pp - rest; i++) S.binder.items.push({ type: 'empty' });
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  speichern(); zeichneBinder();
 }
 /** Zwei Nachbarseiten tauschen — mitsamt ihrem Raster, sonst zerfiele eine 4×4-Seite
  *  beim Hochschieben in eine 3×3-Grenze. Getauscht werden also Block und Layout. */
@@ -9472,7 +9440,7 @@ function seiteVerschieben(seite, d) {
     if (rb == null) delete je[a]; else je[a] = rb;
     if (ra == null) delete je[b]; else je[b] = ra;
   }
-  S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
+  S.auswahl.clear(); speichern(); zeichneBinder();
 }
 
 /** Nach dem Entfernen einer Seite rutschen alle Rasterzuweisungen dahinter mit. */
@@ -9492,7 +9460,7 @@ function seiteEntfernen(seite) {
   merken('seite');
   S.binder.items.splice(sp.start, sp.laenge);
   rasterNachziehen(seite, -1);
-  S.auswahl.clear(); speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder(); zeichneErgebnisse();
+  S.auswahl.clear(); speichern(); zeichneBinder(); zeichneErgebnisse();
   toastUndo(t('s_seite_weg'));
 }
 function seiteLeeresFach(seite) {
@@ -9500,7 +9468,7 @@ function seiteLeeresFach(seite) {
   const ende = Math.min(sp.start + sp.laenge, S.binder.items.length);
   merken('fach');
   S.binder.items.splice(ende, 0, { type: 'empty' });
-  speichern(); if (!$('planer').classList.contains('hidden')) zeichnePlaner(); zeichneBinder();
+  speichern(); zeichneBinder();
 }
 function auswahlZuLeer() {
   if (!S.auswahl.size) return;
@@ -9510,10 +9478,27 @@ function auswahlZuLeer() {
   S.auswahl.clear(); speichern(); zeichnePlaner(); zeichneErgebnisse();
   toastUndo(t('zu_leer'));
 }
-function slotKlick(idx) {
-  const item = S.binder.items[idx];
-  if (item && item.type === 'card') hatToggle(idx);
+let letzterKlick = null;
+
+/* Ein Klick auf ein Fach wählt es aus — in beiden Zuständen des Binders. Vorher setzte
+   derselbe Klick beim Blättern den Besitz-Haken und wählte in der Übersicht aus: dieselbe
+   Geste, zwei Bedeutungen, je nachdem welcher Reiter offen war. Auswählen ist die
+   verlustfreie Handlung; der Haken sitzt als eigener Knopf im Fach (slotExtras). */
+function fachKlick(ev, idx) {
+  if (ev && ev.target && ev.target.closest('.raus, .mehr, .hat-btn')) return;
+  if (S.nurAnsicht || !S.binder.items[idx]) return;
+  if (zielModus) return auswahlZuZiel(idx);
+  if (ev && ev.shiftKey && letzterKlick !== null) {
+    const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
+    for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
+  } else {
+    S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
+  }
+  letzterKlick = idx;
+  auswahlZeigen();
 }
+/** Alter Name, damit ältere Aufrufer nicht brechen. */
+function slotKlick(idx) { fachKlick(null, idx); }
 
 // ---------- Filter: „Mehr Filter“ ----------
 let mehrFilterOffen = false;
@@ -9922,6 +9907,19 @@ function detailHinzufuegen() {
   kartAddId(detailKarte.id, detailVariante, zustand, detailSprache);
   $('detail-anz').textContent = anzahlImBinder(detailKarte.id) + '× ' + t('im_binder');
 }
+/** Wohin die nächste Karte geht: in das gewählte Fach, sonst ans Ende. Genau ein Fach
+ *  gewählt heißt „dorthin"; mehrere oder keins heißt „anhängen". */
+function zielFach() {
+  if (S.nurAnsicht || S.auswahl.size !== 1) return null;
+  const idx = [...S.auswahl][0];
+  const item = S.binder && S.binder.items[idx];
+  return item && item.type === 'empty' ? idx : null;
+}
+function zielText() {
+  const z = zielFach();
+  return z === null ? t('tk_anhaengen') : t('tk_in_fach').replace('{n}', z + 1);
+}
+
 async function kartAddId(id, variant, zustand, sprache) {
   if (!S.binder) return;
   merken('add');
@@ -9929,11 +9927,23 @@ async function kartAddId(id, variant, zustand, sprache) {
   if (zustand) item.zustand = zustand;
   const sp = sprache || (/^[A-Z]/.test(id) ? 'jp' : KLANG);
   if (sp !== 'de') item.sprache = sp;
-  S.binder.items.push(item);
-  if (!await binderAnlegenWennNoetig()) { S.binder.items.pop(); return; }
+  // Der Knopf hieß „Ins Fach", legte die Karte aber immer ans Ende. Jetzt geht sie in das
+  // gewählte leere Fach — und der Knopf sagt vorher, welches das ist.
+  const ziel = zielFach();
+  if (ziel === null) S.binder.items.push(item);
+  else S.binder.items[ziel] = item;
+  if (!await binderAnlegenWennNoetig()) {
+    if (ziel === null) S.binder.items.pop(); else S.binder.items[ziel] = { type: 'empty' };
+    return;
+  }
+  if (ziel !== null) {
+    S.auswahl.clear();
+    // Weiterrücken: wer eine Seite füllt, will nach dem Einsetzen das nächste freie Fach.
+    const naechstes = S.binder.items.findIndex((x, i) => i > ziel && x && x.type === 'empty');
+    if (naechstes >= 0) S.auswahl.add(naechstes);
+  }
   speichern(); zeichneBinder(); zeichneErgebnisse();
-  if (!$('planer').classList.contains('hidden')) zeichnePlaner();
-  toastUndo(t('hinzugefuegt_1'));
+  toastUndo(ziel === null ? t('hinzugefuegt_1') : t('tk_gesetzt').replace('{n}', ziel + 1));
 }
 
 // ---------- Vorlage: ein Pokémon – alle Karten ----------
@@ -10104,16 +10114,25 @@ function planerZoomInit() {
   if (el) el.value = px;
 }
 
-function planerAktionen() {
+/** Die Auswahlleiste erscheint, sobald etwas gewählt ist — in beiden Zuständen des Binders.
+ *  Vorher gab es sie nur im Planer, und der Hinweis „Shift für einen Bereich" stand als
+ *  Dauertext über allem, auch wenn nichts gewählt war. */
+function auswahlAktionen() {
   plBarSetzen();
   const n = S.auswahl.size;
-  $('planer-bar').classList.toggle('hidden', n === 0);
-  $('planer-anzahl').textContent = n;
-  // Am Handy stand hier „Shift für einen Bereich … Strg+A alle, Pfeile verschieben,
-  // Entf entfernt" — kein einziger dieser Hinweise gilt dort.
-  $('planer-hinweis').textContent = n ? '' :
-    (window.innerWidth < 900 ? t('planer_hinweis_touch') : t('planer_hinweis'));
+  const bar = $('planer-bar');
+  if (!bar) return;
+  bar.classList.toggle('hidden', n === 0 || S.nurAnsicht);
+  const zahl = $('planer-anzahl');
+  if (zahl) zahl.textContent = n;
+  const tipp = $('pl-shift-tipp');
+  if (tipp) tipp.classList.toggle('hidden', n !== 1 || window.innerWidth < 900);
+  // Der Hinzufügen-Knopf jeder Trefferkarte nennt sein Ziel — es hängt an der Auswahl.
+  const txt = '＋ ' + zielText();
+  document.querySelectorAll('#ergebnisse .hinzu').forEach((el) => { el.textContent = txt; });
 }
+function planerAktionen() { auswahlAktionen(); }
+
 
 // ---------- Artwork-Seiten (KI erweitert das Kartenmotiv über die ganze Seite) ----------
 const AW_STILE = ['karte', 'comic', 'foto', 'aquarell', 'oel', 'anime', 'retro', 'pixel', 'neon', 'skizze', 'minimal', 'dunkel'];
@@ -10418,7 +10437,7 @@ function artworkUebernehmen() {
     S.binder.items[aw.seite * pp + s] = { type: 'art', artwork: aw.id, slot: s, layout: aw.layout };
   }
   S.seite = aw.seite;
-  speichern(); zeichneBinder(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  speichern(); zeichneBinder();
   artworkSchliessen();
   toastUndo(t('aw_uebernommen'));
   // Jetzt ist der richtige Moment für die Frage: die Seite hängt im Binder, sie gefällt,
