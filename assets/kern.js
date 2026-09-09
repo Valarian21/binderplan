@@ -6,6 +6,7 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    konflikt_neu: 'Auf einem anderen Gerät geändert – der Stand von dort wurde geladen.', pdf_seite: 'PDF … Blatt {a} von {b}',
     sm_z_karten: '{n} Karten', sm_z_sets: '{n} Sets', sm_z_kaufpreise: 'Kaufpreise eintragen ›', sm_z_ziel: 'Ziel setzen ›',
     d_tab_preise: 'Preise', d_tab_drucke: 'Drucke', d_tab_reihe: 'Reihe',
     lade_fuer: 'Für Fach {n}', fach_wort: 'Fach', ik_leer_t: 'Fach {n} ist leer', ik_leer_u: 'Wähle eine Karte aus der Suche – sie landet hier.',
@@ -624,6 +625,7 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    konflikt_neu: 'Changed on another device – loaded that version.', pdf_seite: 'PDF … sheet {a} of {b}',
     sm_z_karten: '{n} cards', sm_z_sets: '{n} sets', sm_z_kaufpreise: 'Add purchase prices ›', sm_z_ziel: 'Set a goal ›',
     d_tab_preise: 'Prices', d_tab_drucke: 'Printings', d_tab_reihe: 'Line',
     lade_fuer: 'For slot {n}', fach_wort: 'Slot', ik_leer_t: 'Slot {n} is empty', ik_leer_u: 'Pick a card from the search – it lands here.',

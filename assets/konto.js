@@ -3,6 +3,8 @@
 // kern → konto → werkbank → vitrine → preise → planer → detail → artwork → markt → sammlung.
 // ---------- Start ----------
 async function boot() {
+  // App-Hülle und zuletzt geöffnete Binder auch ohne Netz (assets/sw.js, Wurzelpfad /sw.js)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
   try { S.meta = await api('api/meta'); } catch (e) { toast(t('fehler_server')); return; }
   if (S.token) { try { S.user = (await api('api/auth/me')).user; } catch (e) {} }
   if (!S.user && S.token) setToken('');
@@ -348,6 +350,8 @@ async function nameNeuSpeichern() {
   try { const d = await api('api/auth/profil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); S.user = d.user; kontoAnzeigen(); } catch (e) {}
 }
 async function abmelden() {
+  // Geteiltes Gerät: die App-Hülle im Service-Worker-Cache trägt Binderdaten des Kontos
+  try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('leeren'); } catch (e) {}
   try { await api('api/auth/logout', { method: 'POST' }); } catch (e) {}
   setToken('');
   // Konto-Binder gehören nicht in die anonyme Sitzung — frisch als Gast starten

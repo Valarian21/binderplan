@@ -3497,6 +3497,48 @@ def _alarme_job():
             _log("Digest-Job fehlgeschlagen:", exc)
 
 
+_JOB_POOL = ThreadPoolExecutor(4)
+
+
+def _job(name, fn, limit=1800):
+    """Ein Hintergrund-Job mit Zeitlimit und Stand in kv (job:<name>:letzter/dauer/fehler).
+    Vorher liefen alle Jobs nacheinander im selben Thread: ein hängender Cardmarket-Download
+    hielt den Preislauf und die Verdichtung auf. Nach dem Limit geht der Takt weiter; der Job
+    selbst läuft im Pool zu Ende (ein Thread lässt sich nicht abbrechen)."""
+    import concurrent.futures
+    start = time.time()
+    fehler = ""
+    fut = _JOB_POOL.submit(fn)
+    try:
+        fut.result(timeout=limit)
+    except concurrent.futures.TimeoutError:
+        fehler = f"Zeitlimit {limit}s überschritten"
+        log.warning("Job %s: %s", name, fehler)
+    except Exception as exc:
+        fehler = str(exc)[:300]
+        log.warning("Job %s fehlgeschlagen: %s", name, exc)
+    try:
+        con = get_db()
+        for k, v in (("letzter", datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")),
+                     ("dauer", f"{time.time() - start:.0f}"), ("fehler", fehler)):
+            con.execute("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", (f"job:{name}:{k}", v))
+        con.commit()
+        con.close()
+    except Exception as exc:
+        log.warning("Job-Stand %s: %s", name, exc)
+    return not fehler
+
+
+def _job_stand():
+    """Die Jobs mit letztem Lauf, Dauer und Fehler – für die Betriebsseite."""
+    con = get_db()
+    zeilen = {r["key"]: r["value"] for r in con.execute("SELECT key, value FROM kv WHERE key LIKE 'job:%'")}
+    con.close()
+    namen = sorted({k.split(":")[1] for k in zeilen})
+    return [{"job": n, "letzter": zeilen.get(f"job:{n}:letzter", ""), "dauer": zeilen.get(f"job:{n}:dauer", ""),
+             "fehler": zeilen.get(f"job:{n}:fehler", "")} for n in namen]
+
+
 def _hintergrund_takt():
     import time as _time
     while True:
@@ -3522,36 +3564,21 @@ def _hintergrund_takt():
                 # stärksten: TCGdex legt die Grundlage und berichtigt die Ausprägungen,
                 # das Cardmarket-Preisverzeichnis überschreibt sie mit den echten Zahlen,
                 # und die Zweitquelle füllt nur noch, was danach leer geblieben ist.
-                _preishistorie_job()
-                try:
-                    _cm_download_job()
-                except Exception as exc:
-                    _log("Cardmarket-Download fehlgeschlagen:", exc)
-                try:
-                    _cm_import_job()
-                except Exception as exc:
-                    _log("Cardmarket-Import fehlgeschlagen:", exc)
-                try:
-                    _ptcgio_job()
-                except Exception as exc:
-                    _log("Zweitquelle fehlgeschlagen:", exc)
-                try:
-                    _cm_urls_job(3000)      # neue Karten bekommen ihre Produktseite
-                except Exception as exc:
-                    _log("Cardmarket-Adressen fehlgeschlagen:", exc)
-                try:
-                    # Neue Karten ohne Scan: erst die günstige Quelle (TCGdex nennt die
-                    # TCGplayer-Nummer), dann der Katalogabgleich für ganze Sets.
-                    _tp_bilder_job(3000)
-                    _tp_katalog_job()
-                except Exception as exc:
-                    _log("Zweitbilder fehlgeschlagen:", exc)
-                try:
+                _job("preishistorie", _preishistorie_job, 3600)
+                _job("cm_download", _cm_download_job, 900)
+                _job("cm_import", _cm_import_job, 1800)
+                _job("zweitquelle", _ptcgio_job, 1800)
+                _job("cm_urls", lambda: _cm_urls_job(3000), 1200)      # neue Karten bekommen ihre Produktseite
+                # Neue Karten ohne Scan: erst die günstige Quelle (TCGdex nennt die
+                # TCGplayer-Nummer), dann der Katalogabgleich für ganze Sets.
+                _job("tp_bilder", lambda: _tp_bilder_job(3000), 1200)
+                _job("tp_katalog", _tp_katalog_job, 1200)
+
+                def _verdichten():
                     con = get_db()
                     _historie_verdichten(con)
                     con.close()
-                except Exception as exc:
-                    _log("Verdichten des Preisverlaufs fehlgeschlagen:", exc)
+                _job("verdichten", _verdichten, 900)
                 try:
                     _markt_job()
                 except Exception as exc:
@@ -3579,7 +3606,6 @@ def _maybe_autosync():
             threading.Thread(target=run_backfill_details, daemon=True).start()
         threading.Thread(target=_symbole_job, daemon=True).start()
     threading.Thread(target=_hintergrund_takt, daemon=True).start()
-    threading.Thread(target=_stapel_alle_vorwaermen, daemon=True).start()
 
 
 threading.Thread(target=_maybe_autosync, daemon=True).start()
@@ -3760,7 +3786,19 @@ def admin_stats(key: str = ""):
         {"label": "Neu (7T)", "value": neu7, "color": "green" if neu7 else None},
         {"label": "PDF-Exporte", "value": int(pdfs["value"]) if pdfs else 0},
         {"label": "Karten im Katalog", "value": karten},
-    ] + _artwork_kpis()}
+    ] + _artwork_kpis() + _job_kpis(), "jobs": _job_stand()}
+
+
+def _job_kpis():
+    """Preislauf-Stand als Kennzahl: wann zuletzt, wie lange, ob mit Fehler."""
+    try:
+        for j in _job_stand():
+            if j["job"] == "preishistorie":
+                return [{"label": "Preislauf", "value": f"{(j['letzter'] or '–')[5:16]} · {j['dauer'] or '?'} s",
+                         "color": "red" if j["fehler"] else "green"}]
+    except Exception:
+        pass
+    return []
 
 
 def _artwork_kpis():
@@ -5698,8 +5736,14 @@ async def binder_update(binder_id: str, request: Request):
     con = get_db()
     # Ein Binder in der Vitrine trägt seinen Namen öffentlich. Die Prüfung lief bisher nur
     # beim Veröffentlichen — danach ließ sich beliebiger Text nachschieben.
-    alt = con.execute("SELECT name, COALESCE(sichtbar,0) sichtbar FROM binders WHERE id=?",
+    alt = con.execute("SELECT name, COALESCE(sichtbar,0) sichtbar, updated_at FROM binders WHERE id=?",
                       (binder_id,)).fetchone()
+    # Zwei Geräte überschrieben sich stumm – der letzte gewann. Der Client schickt den Stand mit,
+    # den er geladen hat; weicht er ab, gibt es 409 und der Browser holt sich den neuen Stand.
+    stand = str(data.get("updated_at") or "")
+    if alt and stand and alt["updated_at"] and stand != alt["updated_at"]:
+        con.close()
+        raise HTTPException(409, detail={"code": "konflikt", "updated_at": alt["updated_at"]})
     if alt and alt["sichtbar"] and (alt["name"] or "") != p["name"] and globals().get("_vitrine"):
         ok, grund = await run_in_threadpool(_vitrine._text_ok, p["name"])
         if not ok:
@@ -5711,11 +5755,12 @@ async def binder_update(binder_id: str, request: Request):
         (p["name"], p["mode"], p["layout"], p["options"], p["items"], binder_id),
     )
     con.commit()
+    neu = con.execute("SELECT updated_at FROM binders WHERE id=?", (binder_id,)).fetchone()
     con.close()
     if cur.rowcount == 0:
         raise HTTPException(404, "Binder nicht gefunden")
     _stapel_vorwaermen(binder_id)
-    return {"ok": True}
+    return {"ok": True, "updated_at": neu["updated_at"] if neu else None}
 
 
 ITEM_FELDER = {"type", "id", "dex", "variant", "zustand", "sprache", "have", "artwork", "slot", "layout"}
@@ -6320,6 +6365,15 @@ def binder_pdf_vorbereiten(binder_id: str, request: Request, farbe: int = 0):
     return {"karten": len(ids), "ohne_bild": fehlend}
 
 
+# Fortschritt laufender Karten-PDFs je Binder – der Browser fragt ihn beim Warten ab.
+_PDF_STAND = {}
+
+
+@app.get("/api/binders/{binder_id}/pdf_stand")
+def binder_pdf_stand(binder_id: str):
+    return _PDF_STAND.get(binder_id, {})
+
+
 @app.get("/api/binders/{binder_id}/pdf")
 def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_fehlende: int = 0,
                seiten: str = "", farbe: int = 0, nur_art: int = 0):
@@ -6402,10 +6456,12 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
                       for cid, r in card_rows.items()}
     _pdf_register(c, binder, lang, register_namen, plan)
 
+    _PDF_STAND[binder_id] = {"seiten": 1, "gesamt": max(1, -(-len(printable) // (COLS * ROWS)))}
     cell = 0
     for idx, item in printable:
         if cell == COLS * ROWS:
             c.showPage()
+            _PDF_STAND[binder_id]["seiten"] += 1
             cell = 0
         col = cell % COLS
         row = cell // COLS
@@ -6471,6 +6527,7 @@ def binder_pdf(binder_id: str, request: Request, variante: str = "karten", nur_f
         c.drawCentredString(page_w / 2, page_h / 2,
                             "Dieser Binder ist noch leer." if lang == "de" else "This binder is still empty.")
     c.save()
+    _PDF_STAND.pop(binder_id, None)
 
     con = get_db()
     con.execute(
@@ -6881,6 +6938,20 @@ def asset(name: str):
     return FileResponse(f, media_type=typ, headers=kopf)
 
 
+@app.on_event("startup")
+async def _nach_dem_start():
+    """Läuft, wenn das Modul vollständig geladen ist – der Autosync-Thread startet schon beim
+    Import und kannte die Funktion noch nicht (NameError am 10.09.)."""
+    threading.Thread(target=_stapel_alle_vorwaermen, daemon=True).start()
+
+
+@app.get("/sw.js")
+def service_worker():
+    """Der Service Worker muss im Wurzelpfad liegen, sonst gilt er nur für /assets/."""
+    return FileResponse(BASE / "assets" / "sw.js", media_type="text/javascript; charset=utf-8",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/api/binders/{binder_id}/vorschau.png")
 def binder_vorschau(binder_id: str, request: Request):
     """Bild der ersten Binderseite, wie es beim Teilen in Chats und Netzwerken erscheint.
@@ -7037,7 +7108,10 @@ def _stapel_bauen(binder, ziel: Path):
             rgb = ImageEnhance.Brightness(seite.convert("RGB")).enhance(0.88 if nr == 1 else 0.76)
             seite = Image.merge("RGBA", (*rgb.split(), seite.split()[3]))
         bild.alpha_composite(seite, (nr * vx, nr * vy))
-    bild.save(ziel, "WEBP", quality=82, method=4)
+    tmp = ziel.with_name(ziel.name + f".{threading.get_ident()}.tmp")
+    bild.save(tmp, "WEBP", quality=82, method=4)
+    import os
+    os.replace(tmp, ziel)
 
 
 def _vorschau_bauen(binder, ziel: Path):

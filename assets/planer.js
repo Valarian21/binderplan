@@ -576,11 +576,24 @@ function speichern() {
 async function sichereJetzt(binder, inhalt) {
   clearTimeout(S.speicherTimer);
   try {
-    await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: inhalt });
+    const d = await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: inhalt });
+    if (d && d.updated_at) binder.updated_at = d.updated_at;
     if (S.binder === binder) $('wb-status').textContent = t('gespeichert');
   } catch (e) {
+    if (e.status === 409) return konfliktBehandeln(binder);
     if (S.binder === binder) $('wb-status').textContent = t('fehler_speichern');
   }
+}
+
+/** 409 beim Speichern: ein anderes Gerät hat diesen Binder inzwischen geändert. Der Stand von
+ *  dort wird geladen und gezeigt – die eigene, nicht gespeicherte Änderung geht verloren, aber
+ *  bewusst und mit Ansage statt stumm die fremde. */
+async function konfliktBehandeln(binder) {
+  try {
+    const neu = await api('api/binders/' + binder.id);
+    if (S.binder === binder) { S.binder = neu; S.auswahl.clear(); zeichneBinder(); if (S.alleSeiten) zeichneAlleSeiten(); $('wb-status').textContent = ''; }
+    toast(t('konflikt_neu'));
+  } catch (e) { if (S.binder === binder) $('wb-status').textContent = t('fehler_speichern'); }
 }
 
 async function _binderSichern() {
@@ -588,7 +601,14 @@ async function _binderSichern() {
   if (!S.binder.id && !await binderAnlegenWennNoetig()) return;
   clearTimeout(S.speicherTimer);
   S.binder.options = { ...(S.binder.options || {}), sprache: KLANG };
-  await api('api/binders/' + S.binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(S.binder) });
+  const binder = S.binder;
+  try {
+    const d = await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(binder) });
+    if (d && d.updated_at) binder.updated_at = d.updated_at;
+  } catch (e) {
+    if (e.status === 409) { await konfliktBehandeln(binder); throw e; }
+    throw e;
+  }
 }
 
 /* ---------- Druckdialog ----------
@@ -713,10 +733,16 @@ async function exportPdf(variante, nurFehlende, opt) {
     try { await api(`api/binders/${S.binder.id}/pdf_vorbereiten?farbe=${opt.farbe || 0}`, { method: 'POST' }); } catch (e) { arbeitToastEnde(); if (gate(e)) return; }
   }
   arbeitToast(t('pdf_erzeugt'));
+  // Solange das PDF entsteht, sagt der Hinweis, auf welchem Blatt der Server gerade ist.
+  const bid = S.binder.id;
+  const stand = karten ? setInterval(async () => {
+    try { const st = await api(`api/binders/${bid}/pdf_stand`); if (st && st.gesamt) arbeitToast(t('pdf_seite').replace('{a}', st.seiten).replace('{b}', st.gesamt)); } catch (e) {}
+  }, 800) : null;
   const url = `api/binders/${S.binder.id}/pdf?variante=${variante || 'karten'}&nur_fehlende=${nurFehlende ? 1 : 0}`
     + `&seiten=${encodeURIComponent(opt.seiten || '')}&farbe=${opt.farbe || 0}&nur_art=${opt.nur_art || 0}`;
   try {
     const r = await fetch(url, { headers: { Authorization: 'Bearer ' + S.token } });
+    clearInterval(stand);
     if (!r.ok) {
       arbeitToastEnde();
       let code = null;
@@ -736,7 +762,7 @@ async function exportPdf(variante, nurFehlende, opt) {
     $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 15000);
     if (S.user && S.user.exporte_limit != null && karten) S.user.exporte_benutzt += 1;
-  } catch (e) { arbeitToastEnde(); toast(t('fehler_export')); }
+  } catch (e) { clearInterval(stand); arbeitToastEnde(); toast(t('fehler_export')); }
 }
 // Dauerhafter Arbeits-Hinweis (Spinner) – verschwindet erst mit arbeitToastEnde()
 function arbeitToast(text) {
