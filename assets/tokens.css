@@ -1,0 +1,29 @@
+/* Binderplan – Design-Tokens: Farben je Thema, Typo-Skala, Abstände, Ebenen. Siehe DESIGN.md. */
+  :root { --t-xs:11px; --t-s:12.5px; --t-m:13px; --t-mp:14px; --t-l:16px; --t-xl:20px; --t-2xl:22px; --t-3xl:26px; --t-4xl:34px;
+          --r-1:4px; --r-2:8px; --r-3:12px; --r-4:16px; --r-6:24px; --r-8:32px;
+          --marke-blau:#2A4B9B; --marke-gelb:#F5C518; --marke-rot:#E4322B; --kontur:#14161C; --seite-dunkel:#14161a; --weiss:#FFFFFF;
+          --z-inhalt:1; --z-ort:40; --z-leiste:60; --z-menue:80; --z-dialog:100;
+          --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518;
+          --d1:#E4322B; --d2:#2A4B9B; --d3:#2F8F5B; --d-gitter:rgba(20,22,28,.09);
+          --aktiv-bg:#14161C; --aktiv-fg:#FFFFFF;
+          --blau-flaeche:#2A4B9B; --blau-fg:#FFFFFF;
+          --akzent-flaeche:#DC2C25; --akzent-flaeche-hover:#B8211B; --akzent-fg:#FFFFFF;
+          --link:#2A4B9B; --gruen-text:#24704A;
+          --gruen-flaeche:#2A8051; --gruen-fg:#FFFFFF; --akzent-text:#CF2A23; }
+  /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
+                                          --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11);
+                                          --aktiv-bg:#ECEEF2; --aktiv-fg:#14161C;
+                                          --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
+                                          --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
+                                          --link:#7C9BF0; --gruen-text:#5CC48F;
+                                          --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }
+  }
+  :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
+                              --d1:#E54E3F; --d2:#5684E9; --d3:#38A065; --d-gitter:rgba(236,238,242,.11);
+                              --aktiv-bg:#ECEEF2; --aktiv-fg:#14161C;
+                              --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
+                              --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
+                              --link:#7C9BF0; --gruen-text:#5CC48F;
+                              --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }

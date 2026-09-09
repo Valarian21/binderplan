@@ -1,0 +1,2020 @@
+/* Binderplan – Komponenten und Orte. Tokens liegen in tokens.css, Regeln in DESIGN.md. */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Archivo', 'Trebuchet MS', sans-serif; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  a { color: var(--link); }
+  input, select { font-family: inherit; font-size: var(--t-mp); color: var(--ink); }
+  .hidden { display: none !important; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+          border: 1.5px solid var(--line); background: var(--card); font-size: var(--t-s); font-weight: 600; color: var(--mut); }
+  .chip.on { border-color: var(--akzent-text); background: var(--akzent-flaeche); color: var(--akzent-fg); }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
+         background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-mp); font-weight: 700; }
+  .btn:hover { background: var(--akzent-flaeche-hover); }
+  .btn.sekundaer { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
+  .btn.sekundaer:hover { background: var(--panel2); }
+  .btn:disabled { opacity: 1; background: var(--panel2); color: var(--mut); border-color: var(--line); cursor: default; }
+  .feld { width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--eingabe); outline: none; }
+
+
+  /* ---------- Durchblättern: der Binder, wie er auf dem Tisch liegt ----------
+     Zwei aufgeschlagene Seiten, dazwischen die Ringe. Beim Umblättern dreht
+     sich ein Blatt um den Rücken — Vorderseite ist die alte rechte Seite,
+     Rückseite die neue linke. Die Fächer zeichnet dieselbe Funktion wie in der
+     Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen. */
+  #blaettern { position: fixed; inset: 0; z-index: calc(var(--z-dialog) + 5); background: rgba(8,9,12,1);
+               display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
+  #blaettern.hidden { display: none !important; }
+  .bv-kopf { display: flex; align-items: center; gap: 14px; color: #fff; font-size: var(--t-mp); font-weight: 700; }
+  .bv-kopf .bv-name { opacity: .75; font-weight: 500; }
+  .bv-buch { perspective: 2600px; display: flex; align-items: stretch; justify-content: center;
+             gap: 0; width: 100%;
+             /* Breite aus der Höhe: Kopf + Fuß brauchen ~150 px, der Rest gehört der Doppelseite.
+                --bv-ratio setzt bvZeichne() je Raster (4×3 ist breiter als 3×4). */
+             max-width: min(1240px, 96vw, calc((100vh - 150px) * var(--bv-ratio, 1.43))); }
+  .imp-tab { width: 100%; border-collapse: collapse; font-size: var(--t-m); margin-top: 10px; }
+  .imp-tab td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .imp-tab .imp-roh { color: var(--mut); font-family: ui-monospace, monospace; font-size: var(--t-s); max-width: 190px; overflow-wrap: anywhere; }
+  .imp-tab .imp-set { color: var(--mut); font-size: var(--t-s); }
+  .imp-tab .imp-ok { text-align: right; font-weight: 700; color: var(--gruen-text); width: 26px; }
+  .imp-tab tr.unsicher .imp-ok { color: var(--gelb); }
+  .imp-tab tr.fehlt .imp-ok { color: var(--mut); }
+  .imp-tab tr.fehlt td { opacity: .65; }
+  .imp-rest { font-size: var(--t-s); color: var(--mut); margin-top: 8px; }
+  .pf-pw-stand { font-size: var(--t-s); color: var(--mut); margin-top: 8px; }
+  .wv-box { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1.5px solid var(--line);
+            border-radius: 10px; background: var(--card); }
+  .wv-box .wv-spark { width: 78px; height: 26px; flex-shrink: 0; }
+  .wv-box .wv-text { font-size: var(--t-s); color: var(--mut); }
+  .bv-seite { background: var(--bseite); border-radius: 10px; padding: clamp(8px, 1.2vw, 16px);
+              display: grid; gap: clamp(4px, .7vw, 9px); flex: 1 1 0; min-width: 0;
+              align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+  .bv-seite.links { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+  .bv-seite.rechts { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+  .bv-seite.leer { background: transparent; box-shadow: none; }
+  /* Der Rücken: schmaler Streifen mit drei Ringen */
+  .bv-ruecken { width: 26px; flex: 0 0 26px; background: linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.12) 40%, rgba(0,0,0,.35));
+                display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 12% 0; }
+  .bv-ring { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid #b9bec7;
+             background: linear-gradient(180deg, #f2f4f7, #99a0ab); }
+  /* Eine Artwork-Seite ist EIN Bild, das über alle Fächer läuft. In der Werkbank
+     wird es je Fach ausgeschnitten (dort zählt das einzelne Fach), hier liegt es
+     am Stück darunter — das ist näher am echten Album und spart neun Rasterungen
+     pro Seite, die das Umblättern spürbar verzögert haben. */
+  /* Das Gitter bleibt im Fluss und gibt der Seite ihre Höhe; das Bild liegt
+     absolut dahinter und deckt genau die Fläche der Fächer ab. */
+  .bv-seite.ganzseite { position: relative; display: block; --fuge: clamp(4px, .7vw, 9px); }
+  .bv-seite.ganzseite > img { position: absolute; left: clamp(8px, 1.2vw, 16px); top: clamp(8px, 1.2vw, 16px);
+                              width: calc(100% - 2 * clamp(8px, 1.2vw, 16px)); height: calc(100% - 2 * clamp(8px, 1.2vw, 16px));
+                              object-fit: fill; border-radius: 3px; z-index: 0; }
+  .bv-seite.ganzseite .bv-gitter { position: relative; z-index: 1; display: grid; gap: var(--fuge); }
+  .bv-seite.ganzseite .bv-gitter > i { aspect-ratio: 63/88; border: 1px solid rgba(255,255,255,.15);
+                                       border-radius: 5px; box-shadow: inset 0 0 14px rgba(0,0,0,.3); }
+  /* Die Fuge zwischen den Fächern gehört dem Binder, nicht dem Bild. Das Artwork
+     liegt über die ganze Seite; ohne diese Umrandung schien es in den Fugen durch —
+     auch rund um eine eingesteckte Karte, wo der Binder zu sehen sein muss. Die
+     Umrandung deckt die halbe Fuge nach jeder Seite, also die ganze. */
+  .bv-seite.ganzseite .bv-gitter > i,
+  .bv-seite.ganzseite .bv-gitter > .bv-slot { outline: calc(var(--fuge) / 2 + .5px) solid var(--bseite); }
+  .bv-slot { position: relative; aspect-ratio: 63/88; border-radius: 5px; overflow: hidden;
+             background: var(--bfach); border: 1px solid var(--bkante); display: flex; align-items: center; justify-content: center; }
+  .bv-slot.frei { background: transparent; border-style: dashed; }
+  .bv-slot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .bv-slot .artfach { position: absolute; inset: 0; overflow: hidden; }
+  .bv-slot .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .bv-slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 4px; }
+  .bv-slot .dexzelle img { width: 52%; height: auto; }
+  .bv-slot .dexzelle span { font-size: var(--t-xs); font-weight: 700; color: var(--bnamen); text-align: center; line-height: 1.15; }
+  .bv-slot .bv-preis { position: absolute; bottom: 3px; right: 3px; background: var(--kontur, #14161c); color: #fff;
+                       font-size: var(--t-xs); font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+  /* Das umblätternde Blatt liegt über der rechten (bzw. linken) Seite */
+  /* Das umblätternde Blatt. Die Dauer steht als Variable, weil die Schattenlagen
+     mit derselben Zeit laufen müssen wie die Drehung. */
+  .bv-buch-wrap { --bv-dauer: .66s; }
+  .bv-blatt { position: absolute; top: 0; bottom: 0; transform-style: preserve-3d; z-index: 3;
+              transition: transform var(--bv-dauer) cubic-bezier(.36,.02,.2,1); }
+  .bv-blatt .bv-seite { position: absolute; inset: 0; backface-visibility: hidden; }
+  .bv-blatt .rueck { transform: rotateY(180deg); }
+  /* Licht: die abgewandte Seite läuft ins Dunkle, die ankommende ins Helle —
+     zum Bund hin am stärksten, so fällt das Licht auch bei einem echten Album. */
+  .bv-schatten { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 4; opacity: 0; }
+  .bv-blatt.vor .vorn .bv-schatten { background: linear-gradient(90deg, rgba(0,0,0,.62), rgba(0,0,0,.06) 62%, transparent); }
+  .bv-blatt.vor .rueck .bv-schatten { background: linear-gradient(90deg, rgba(0,0,0,.06), rgba(0,0,0,.62) 92%); }
+  .bv-blatt.zurueck .vorn .bv-schatten { background: linear-gradient(270deg, rgba(0,0,0,.62), rgba(0,0,0,.06) 62%, transparent); }
+  .bv-blatt.zurueck .rueck .bv-schatten { background: linear-gradient(270deg, rgba(0,0,0,.06), rgba(0,0,0,.62) 92%); }
+  .bv-blatt.laeuft .vorn .bv-schatten { animation: bv-dunkler var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  .bv-blatt.laeuft .rueck .bv-schatten { animation: bv-heller var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  @keyframes bv-dunkler { from { opacity: 0; } 55% { opacity: .85; } to { opacity: 1; } }
+  @keyframes bv-heller { from { opacity: 1; } 55% { opacity: .8; } to { opacity: 0; } }
+  /* Der Schatten, den das Blatt über die frisch aufgedeckte Seite zieht */
+  .bv-wisch { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; z-index: 4; }
+  .bv-seite.rechts .bv-wisch { background: linear-gradient(90deg, rgba(0,0,0,.5), rgba(0,0,0,.12) 55%, transparent); }
+  .bv-seite.links .bv-wisch { background: linear-gradient(270deg, rgba(0,0,0,.5), rgba(0,0,0,.12) 55%, transparent); }
+  .bv-wisch.laeuft { animation: bv-wisch-weg var(--bv-dauer) cubic-bezier(.36,.02,.2,1) forwards; }
+  @keyframes bv-wisch-weg { from { opacity: 1; } 60% { opacity: .45; } to { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .bv-schatten, .bv-wisch { display: none; } }
+  .bv-buch-wrap { position: relative; display: flex; width: 100%; justify-content: center; }
+  /* Vorbereitete Seiten liegen hier, bis sie gebraucht werden. Sichtbar sind sie
+     nicht, aber der Browser legt sie an und rastert die Bilder — genau darum geht
+     es: beim Umblättern soll nichts mehr zu rechnen sein. */
+  .bv-lager { position: absolute; inset: 0; display: flex; gap: 0; visibility: hidden;
+              pointer-events: none; z-index: -1; }
+  .bv-lager .bv-seite { flex: 1 1 0; min-width: 0; }
+  .bv-fuss { display: flex; align-items: center; gap: 18px; color: #fff; }
+  .bv-fuss button { color: #fff; font-size: var(--t-3xl); width: 46px; height: 46px; border-radius: 50%;
+                    background: rgba(255,255,255,.12); line-height: 1; }
+  .bv-fuss button:hover:not(:disabled) { background: rgba(255,255,255,.24); }
+  .bv-fuss button:disabled { opacity: .3; cursor: default; }
+  .bv-zaehler { font-size: var(--t-mp); font-variant-numeric: tabular-nums; min-width: 168px; text-align: center; }
+  .bv-x { position: absolute; top: 16px; right: 18px; width: 40px; height: 40px; border-radius: 50%;
+          background: rgba(255,255,255,.12); color: #fff; font-size: var(--t-xl); }
+  .bv-x:hover { background: rgba(255,255,255,.24); }
+  @media (max-width: 700px) and (orientation: portrait) {
+    /* Durchblättern am Handy: die Seite bekommt fast den ganzen Bildschirm. Vorher lagen
+       oben 163 und unten 200 Pixel brach, die Karten waren entsprechend klein. */
+    #blaettern { padding: 8px 8px 0; gap: 8px; background: rgba(8,9,12,1); justify-content: flex-start; }
+    .bv-kopf { order: -1; padding-top: 34px; font-size: var(--t-m); gap: 8px; text-align: center;
+               flex-direction: column; }
+    .bv-kopf .bv-name { font-size: var(--t-s); }
+    .bv-buch { max-width: 100vw; }
+    .bv-seite { border-radius: 10px !important; padding: 7px; }
+    .bv-fuss { gap: 10px; padding-bottom: 6px; }
+    .bv-fuss button { width: 52px; height: 52px; font-size: var(--t-3xl); }
+    .bv-zaehler { min-width: 0; font-size: var(--t-l); font-weight: 700; }
+    .bv-x { top: 8px; right: 8px; width: 44px; height: 44px; }
+    /* Hinweis auf die Wischgeste — ohne ihn probiert sie kaum jemand aus. */
+    .bv-wisch-tipp { font-size: var(--t-s); color: rgba(255,255,255,.55); text-align: center;
+                     padding-bottom: 4px; }
+  }
+  .bv-wisch-tipp { display: none; }
+  @media (max-width: 700px) { .bv-wisch-tipp { display: block; } }
+  @media (max-width: 720px) {
+    .bv-ruecken { width: 14px; flex-basis: 14px; }
+    .bv-ring { width: 9px; height: 9px; border-width: 2px; }
+    .bv-buch { max-width: 100vw; }
+  }
+  body.dunkle-seiten #blaettern { background: rgba(26,28,33,.985); }
+  body.dunkle-seiten .bv-seite:not(.leer) { box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.09); }
+  body.dunkle-seiten .bv-ruecken { background: linear-gradient(90deg, rgba(0,0,0,.6), rgba(0,0,0,.25) 40%, rgba(0,0,0,.6)); }
+  @media (prefers-reduced-motion: reduce) { .bv-blatt { transition: none; } }
+
+
+  /* ---------- Themenseiten: Vorschlag der Bildsuche ---------- */
+  .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; margin-top: 12px; }
+  .th-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); position: relative; }
+  .th-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .th-karte .th-text { padding: 6px 7px 8px; }
+  .th-karte .th-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
+  .th-karte .th-set { font-size: var(--t-xs); color: var(--mut); margin-top: 1px; }
+  .th-karte .th-grund { font-size: var(--t-xs); color: var(--mut); margin-top: 4px; line-height: 1.25; }
+  .th-karte .th-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+                      background: rgba(0,0,0,.55); color: #fff; font-size: var(--t-m); line-height: 1; opacity: 0; transition: opacity .15s; }
+  .th-karte:hover .th-weg { opacity: 1; }
+  .th-karte.raus { opacity: .3; }
+  .th-lauf { display: flex; align-items: center; gap: 10px; color: var(--mut); font-size: var(--t-m); margin-top: 14px; }
+
+  .th-anker { display: flex; gap: 10px; align-items: center; background: var(--panel2); border: 1px solid var(--line);
+              border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
+  .th-anker img { width: 42px; border-radius: 4px; }
+
+
+  .f-art-hinweis { font-size: var(--t-xs); color: var(--mut); line-height: 1.35; }
+  .f-art-hinweis.warn { color: var(--akzent-text); }
+
+
+  /* ---------- Binder aus Fotos ---------- */
+  .fi-liste { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+  .fi-foto { position: relative; width: 96px; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); }
+  .fi-foto img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+  .fi-foto .fi-nr { position: absolute; top: 3px; left: 3px; background: var(--kontur); color: #fff;
+                    font-size: var(--t-xs); font-weight: 800; padding: 1px 6px; border-radius: 999px; }
+  .fi-foto .fi-akt { display: flex; justify-content: center; gap: 1px; padding: 3px 0; }
+  .fi-foto .fi-akt button { font-size: var(--t-s); padding: 1px 6px; border-radius: 5px; color: var(--mut); }
+  .fi-foto .fi-akt button:hover:not(:disabled) { background: var(--panel2); color: var(--ink); }
+  .fi-foto .fi-akt button:disabled { opacity: .3; }
+  .fi-seite { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .fi-seite h4 { margin: 0 0 8px; font-size: var(--t-m); }
+  .fi-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .fi-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); cursor: pointer; }
+  .fi-karte.unsicher { border-color: var(--gelb); border-width: 2px; }
+  .fi-karte .fi-paar { display: flex; gap: 2px; }
+  .fi-karte .fi-paar img { width: 50%; aspect-ratio: 63/88; object-fit: contain; background: var(--panel); display: block; }
+  .fi-karte .fi-txt { padding: 5px 6px 6px; }
+  .fi-karte .fi-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
+  .fi-karte .fi-set { font-size: var(--t-xs); color: var(--mut); }
+  .fi-karte .fi-warn { font-size: var(--t-xs); color: var(--akzent-text); font-weight: 700; margin-top: 2px; }
+  .fi-fort { height: 6px; border-radius: 999px; background: var(--panel2); overflow: hidden; margin: 12px 0; }
+  .fi-fort i { display: block; height: 100%; background: var(--akzent); transition: width .25s; }
+  .fi-tip { font-size: var(--t-s); color: var(--mut); line-height: 1.45; }
+
+
+  /* ---------- Vitrine ---------- */
+  /* Wie der Planer eine eigene Ebene ueber der Suche, sonst haengt sie darunter. */
+  #vitrine { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: var(--z-ort);
+             background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
+  .vt-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .vt-kopf h2 { margin: 0; font-size: var(--t-xl); }
+  .vt-tabs { display: flex; gap: 4px; }
+  .vt-tabs button { font-size: var(--t-m); font-weight: 700; padding: 6px 13px; border-radius: 999px; color: var(--mut); }
+  .vt-tabs button.on { background: var(--kontur); color: #fff; }
+  /* 290 statt 360 px: vier Binder je Reihe auf einem breiten Bildschirm, und der Stapel
+     bleibt lesbar. Bei 360 standen drei mit viel Weiß unter jedem Stapel. */
+  .vt-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+  .vt-zeile2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; }
+  .vt-zeile2 .vt-filter { margin: 0; flex: 1; }
+  .vt-fensterwahl { display: inline-flex; gap: 4px; }
+  .vt-blatt.einzeln { background: none; padding: 0; display: block; }
+  .vt-blatt.einzeln .vt-seite { background: var(--seite-dunkel); border-radius: 7px; padding: 4px;
+                                outline: 1px solid rgba(255,255,255,.13); outline-offset: -1px; }
+  .kk .kbild { background: var(--panel2); padding: 10px; cursor: pointer; }
+  /* Kunstseiten sind hochkant und werden ganz gezeigt — bei 360er Kacheln füllte am Handy
+     eine einzige Seite den Bildschirm. Schmalere Spalten zeigen mehrere nebeneinander,
+     ohne dass etwas beschnitten wird. */
+  .vt-gitter.kunst { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  /* Eine Vitrine-Kachel zeigt, was den Binder ausmacht: eine echte aufgeschlagene Seite auf
+     dunklem Grund. Vier Karten in einer Reihe sahen aus wie eine beliebige Trefferliste. */
+  .vt-blatt { background: var(--bseite, var(--seite-dunkel)); padding: 9px; display: grid; gap: 4px;
+              border-radius: 10px; }
+  .vt-blatt.dop { grid-template-columns: 1fr 1fr; gap: 9px; padding: 9px; background: none; }
+  /* Drei Seiten nebeneinander, leicht überlappend — wie aufgefächerte Blätter in einem Album.
+     Vorne links die erste Seite, dahinter die zweite und dritte, jede noch weit genug sichtbar,
+     dass man ihre Karten erkennt. Die vordere überdeckt die nächste nur am Rand. */
+  /* Drei Seiten, je 36 % breit, um 4 % überlappend: 3 × 36 − 2 × 4 = 100 %. Damit passt der
+     Fächer genau in die Kachel, und von jeder Seite bleiben rund 89 % sichtbar. Der helle
+     Rand und der Schatten nach links trennen die Blätter voneinander. */
+  .vt-blatt.stapel { position: relative; background: none; padding: 0 0 9%; display: flex;
+                     align-items: flex-start; }
+  .vt-blatt.stapel .vt-seite { background: var(--seite-dunkel); border-radius: 7px; padding: 4px;
+                               flex: 0 0 36%; box-shadow: -5px 2px 12px rgba(0,0,0,.55);
+                               outline: 1px solid rgba(255,255,255,.13); outline-offset: -1px; }
+  .vt-blatt.stapel .vorn { z-index: 3; }
+  .vt-blatt.stapel .hinten2 { z-index: 2; margin-left: -4%; margin-top: 4%; filter: brightness(.88); }
+  .vt-blatt.stapel .hinten3 { z-index: 1; margin-left: -4%; margin-top: 8%; filter: brightness(.76); }
+  .vt-blatt .vt-seite { display: grid; background: var(--seite-dunkel); border-radius: 8px; padding: 6px; }
+  .vt-fach img { object-fit: contain; }
+  .vt-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 3px; display: block; }
+  .vt-fach .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .vt-fach { position: relative; aspect-ratio: 63/88; border-radius: 3px; background: rgba(255,255,255,.05);
+             overflow: hidden; }
+  .vt-fach img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .vt-fach.leer { border: 1px dashed rgba(255,255,255,.14); background: transparent; }
+  .vt-bild-rand { padding: 8px 8px 0; background: var(--seite-dunkel); }
+  .vt-karte { cursor: pointer; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--card);
+              display: flex; flex-direction: column; }
+  .vt-karte:hover { border-color: var(--kontur); }
+  .vt-bilder { display: flex; gap: 2px; padding: 8px 8px 0; background: var(--seite-dunkel); }
+  .vt-bilder img { width: 100%; aspect-ratio: 63/88; object-fit: cover; border-radius: 3px; display: block; min-width: 0; }
+  .vt-txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .vt-name { font-weight: 800; font-size: var(--t-l); line-height: 1.2; }
+  .vt-meta { font-size: var(--t-s); color: var(--mut); }
+  .vt-fuss { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .vt-marke { display: inline-block; font-size: var(--t-xs); font-weight: 800; letter-spacing: .04em;
+              text-transform: uppercase; padding: 2px 7px; border-radius: 6px; background: var(--panel2);
+              color: var(--mut); }
+  .vt-marke.dex { background: #E8EDF9; color: var(--marke-blau); }
+  .vt-marke.artwork { background: #F3E8FB; color: #7B3FA8; }
+  .vt-marke.kuenstler { background: #FFF4D6; color: #8a6d00; }
+  .vt-marke.master { background: #E3F3EA; color: var(--gruen-text); }
+  .vt-marke.pokemon { background: #FDE7E5; color: var(--akzent-text); }
+  body.dunkel .vt-marke.dex, :root[data-theme="dark"] .vt-marke.dex { background: #1E2740; color: #9DB4F5; }
+  body.dunkel .vt-marke.artwork, :root[data-theme="dark"] .vt-marke.artwork { background: #2E2140; color: #C79BE8; }
+  body.dunkel .vt-marke.kuenstler, :root[data-theme="dark"] .vt-marke.kuenstler { background: #3A3112; color: var(--gelb); }
+  body.dunkel .vt-marke.master, :root[data-theme="dark"] .vt-marke.master { background: #173124; color: #6BD3A0; }
+  body.dunkel .vt-marke.pokemon, :root[data-theme="dark"] .vt-marke.pokemon { background: #3D1F1D; color: #FF8C82; }
+  /* Filterzeile über dem Gitter */
+  .vt-filter { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 16px; }
+  .vt-filter .chip { font-size: var(--t-s); padding: 4px 11px; }
+  .vt-filter .trenner { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .vt-lbl { font-size: var(--t-xs); font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); }
+  /* Profilkopf */
+  .po-hero { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap;
+             border: 2px solid var(--kontur); border-radius: 16px; padding: 18px 20px;
+             background: var(--card); box-shadow: 4px 4px 0 var(--kontur); margin-bottom: 6px; }
+  .po-zahlen { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
+  .po-zahl b { display: block; font-size: var(--t-2xl); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .po-zahl span { font-size: var(--t-s); color: var(--mut); }
+  .stat-kopf { display: flex; gap: 26px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .stat-h { font-size: var(--t-s); font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--mut); margin: 18px 0 8px; }
+  .stat-zeile { display: grid; grid-template-columns: minmax(90px, 150px) 1fr 34px; gap: 10px;
+                align-items: center; font-size: var(--t-m); margin-bottom: 5px; }
+  .stat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-bar { height: 9px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  .stat-bar i { display: block; height: 100%; background: var(--blau); border-radius: 99px; }
+  .stat-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--mut); }
+  .m-suchzeile { padding: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+  @media (max-width: 700px) {
+    /* Die Schnellfilter über der Trefferliste brauchten drei Zeilen. Eine wischbare Zeile
+       zeigt genauso viel und lässt die Karten oben im Bild. */
+    .kopfzeile { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 7px; }
+    .kopfzeile::-webkit-scrollbar { display: none; }
+    .kopfzeile > * { flex-shrink: 0; }
+    .kopfzeile #f-presets { flex-wrap: nowrap; }
+    .kopfzeile #erg-anzahl { font-size: var(--t-s); }
+    .kopfzeile .btn, #btn-filter-mobil { min-height: 34px; }
+  }
+  .m-suchzeile input { flex: 1; min-width: 0; font-size: var(--t-l); padding: 11px 13px; }
+  /* Kopf und Fuß der Filterschublade gibt es nur am Handy: dort war weder zu sehen, wie man
+     sie schließt, noch wie viele Karten die Auswahl übrig lässt. Am Rechner steht die Spalte
+     ohnehin offen. */
+  @media (max-width: 900px) {
+    .spalte-filter .f-kopf { display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 2; background: var(--card); padding: 2px 0 10px;
+      border-bottom: 1.5px solid var(--line); margin-bottom: 4px; font-size: var(--t-l); font-weight: 800; }
+    .spalte-filter .f-fuss { display: block; position: sticky; bottom: 0; background: var(--card);
+      padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1.5px solid var(--line);
+      margin: 8px -14px 0; z-index: 3; }
+  }
+  /* Kunstseiten-Kacheln: das Bild ist die Ware, es bekommt die ganze Breite. */
+  .kk { background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden;
+        display: flex; flex-direction: column; }
+  /* Die Kachel hat das Format der Seite selbst (aus `breite`/`hoehe` der fertigen Datei,
+     sonst aus dem Raster gerechnet). Vorher war sie querformatig und schnitt die Seite
+     mit `cover` zu: zu sehen war ein waagerechter Streifen aus der Mitte — am Handy erst
+     recht, weil die Kachel dort die ganze Breite hat. */
+  .kk .bild { position: relative; width: 100%; padding-top: 138%; background: var(--panel2); cursor: pointer; }
+  .kk .bild img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .kk .txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .kk { cursor: pointer; }
+  .kk:hover { border-color: var(--kontur); }
+  .kk .kt { font-weight: 800; font-size: var(--t-mp); }
+  /* Zwei Zeilen für die Kartennamen, fest: sonst rutschte der Knopf bei jeder zweiten Kachel
+     eine Zeile tiefer und das Raster stand nie ruhig. */
+  .kk .km.karten { min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                   overflow: hidden; }
+  .kk .kansehen { font-size: var(--t-s); color: var(--mut); font-weight: 700; }
+  .kk .km { font-size: var(--t-s); color: var(--mut); }
+  .kk .kf { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .kk .kf .btn { font-size: var(--t-s); padding: 6px 11px; }
+  .kk .habe { font-size: var(--t-s); font-weight: 700; color: var(--gruen-text); }
+  @media (max-width: 700px) {
+    /* Diese Regel steht bewusst NACH der Grundregel: die alte Fassung weiter oben wurde
+       von `.kopfzeile { flex-wrap: wrap }` überschrieben, und die Zeile brach doch um. */
+    .kopfzeile { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; }
+    .kopfzeile::-webkit-scrollbar { display: none; }
+    .kopfzeile > * { flex-shrink: 0; }
+    /* Am Handy gleich nach der Trefferzahl: Sortierung vor den Schnellauswahl-Chips. */
+    .kopfzeile #f-presets { order: 3; }
+    .kopfzeile .sortwahl { order: 1; }
+    .kopfzeile > div[style*="flex:1"] { display: none; }
+    .kopfzeile .menuwrap { order: 4; }
+  }
+  .an-vorschau { filter: blur(5px); opacity: .45; pointer-events: none; user-select: none;
+    max-width: 720px; margin: 26px auto 6px; }
+  .an-vorschau .an-band { display: flex; gap: 12px; }
+  .an-vorschau .an-kachel { flex: 1; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .an-vorschau .an-kachel .lbl { font-size: var(--t-s); color: var(--mut); }
+  .an-vorschau .an-kachel .zahl { font-size: var(--t-2xl); font-weight: 800; }
+  .an-vorschau .an-kurve { width: 100%; height: 130px; margin-top: 14px; }
+  /* Großansicht einer Kunstseite: Kopf, Bühne, Fuß. Die Bühne trägt die Seite in ihrem echten
+     Seitenverhältnis, damit die Fächer stimmen; Pfeile links und rechts blättern weiter. */
+  .kw-box { position: fixed; inset: 0; background: rgba(10,11,14,.93); z-index: calc(var(--z-dialog) + 20); display: flex;
+            flex-direction: column; padding: 14px 16px 16px; gap: 12px; }
+  .kw-box.hidden { display: none; }
+  body.kw-offen { overflow: hidden; }
+  .kw-kopf { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: #fff; flex: 0 0 auto; }
+  .kw-titel { display: flex; flex-direction: column; min-width: 0; }
+  .kw-titel strong { font-size: var(--t-l); }
+  .kw-titel span { font-size: var(--t-s); opacity: .72; }
+  .kw-um { margin-left: auto; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.22); }
+  .kw-um button { color: #d6d9e0; }
+  .kw-um button.on { background: #fff; color: var(--kontur); }
+  .kw-x { color: #fff; font-size: var(--t-xl); line-height: 1; padding: 6px 10px; border-radius: 8px; opacity: .8; }
+  .kw-x:hover { background: rgba(255,255,255,.14); opacity: 1; }
+  .kw-buehne { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .kw-seite { height: 100%; max-width: 100%; display: flex; align-items: center; justify-content: center; }
+  /* Nur das Bild der ganzen Seite wird eingepasst — NICHT die Bilder in den Fächern. Die sind
+     absichtlich um ein Vielfaches größer als ihr Fach und werden per Prozentversatz beschnitten;
+     ein `max-height` darauf schneidet den Ausschnitt kaputt und die Fächer bleiben leer. */
+  .kw-seite > img { max-width: 100%; max-height: 100%; border-radius: 8px; display: block; }
+  .kw-seite .vt-blatt { width: 100%; height: 100%; }
+  .kw-seite .vt-blatt.einzeln .vt-seite { height: 100%; padding: 6px; border-radius: 10px; }
+  .kw-pfeil { flex: 0 0 auto; width: 44px; height: 64px; border-radius: 12px; color: #fff; font-size: var(--t-4xl);
+              line-height: 1; background: rgba(255,255,255,.1); opacity: .85; }
+  .kw-pfeil:hover { background: rgba(255,255,255,.2); opacity: 1; }
+  .kw-fuss { display: flex; align-items: center; justify-content: center; gap: 14px; flex: 0 0 auto; color: #fff; flex-wrap: wrap; }
+  .kw-blaettern { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-m); font-weight: 600; }
+  .kw-blaettern button { color: #fff; font-size: var(--t-xl); line-height: 1; padding: 4px 10px; border-radius: 8px;
+                         background: rgba(255,255,255,.12); min-width: 40px; min-height: 36px; }
+  .kw-blaettern button[disabled] { opacity: .35; }
+  .kw-fuss .vt-herz { color: #fff; }
+  .kw-stand { font-size: var(--t-s); opacity: .75; font-variant-numeric: tabular-nums; }
+  .kw-melden { color: #fff; opacity: .7; font-size: var(--t-s); display: inline-flex; align-items: center; gap: 6px;
+               padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.08); }
+  .kw-melden:hover { opacity: 1; }
+  @media (max-width: 700px) {
+    .kw-box { padding: 10px; gap: 8px; }
+    .kw-um { margin-left: 0; order: 3; width: 100%; }
+    .kw-pfeil { width: 34px; height: 52px; font-size: var(--t-2xl); }
+    .kw-titel strong { font-size: var(--t-mp); }
+  }
+  /* Der Name des offenen Binders steht über seinen Fächern. Vorher stand er nur in der
+     Kopfzeile, und bei mehreren Bindern war nicht zu sehen, in welchem man gerade plant. */
+  .bp-titel { font-size: var(--t-mp); font-weight: 800; letter-spacing: -.01em; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .bp-titel::after { content: "▾"; font-size: var(--t-xs); color: var(--mut); font-weight: 400; }
+  .bp-titel:hover { color: var(--akzent-text); }
+  .bp-nowants { font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--mut); border: 1.5px solid var(--line); border-radius: 999px; padding: 1px 7px; }
+  .bp-nowants.an { color: #B8860B; border-color: #E0A21B; }
+  .bstapel { margin: 2px 0 10px; }
+  .vt-blatt.stapel.bild { display: block; padding: 0; }
+  .vt-blatt.stapel.bild img { width: 100%; display: block; }
+  .bstapel .vt-blatt.stapel { padding: 0 10px 10px 0; }
+
+  /* ---------- Handy-Feinschliff ---------- */
+  @media (max-width: 700px) {
+    /* Filterzeilen brachen auf fünf Zeilen um und schoben die Binder aus dem Bild.
+       Am Handy laufen sie stattdessen in einer Zeile, die man zur Seite wischt. */
+    .vt-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+                 -webkit-overflow-scrolling: touch; padding-bottom: 4px; margin-bottom: 12px; }
+    .vt-filter::-webkit-scrollbar { display: none; }
+    .vt-filter > * { flex-shrink: 0; }
+    .vt-filter .chip { min-height: 34px; display: inline-flex; align-items: center; }
+    .vt-filter > div[style*="flex:1"] { display: none; }
+    .vt-zeile2 { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+                 padding-bottom: 4px; margin-bottom: 12px; }
+    .vt-zeile2::-webkit-scrollbar { display: none; }
+    .vt-zeile2 > * { flex-shrink: 0; }
+    .vt-zeile2 .vt-filter { overflow: visible; padding-bottom: 0; margin-bottom: 0; }
+    .vt-tabs { flex-shrink: 0; }
+    /* Sammlung am Handy: Chips, Suche und Sortierung in einer wischbaren Zeile statt
+       vier untereinander — die erste Karte kam sonst erst nach dem Scrollen. */
+    .sm-leiste { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .sm-leiste::-webkit-scrollbar { display: none; }
+    .sm-leiste > * { flex-shrink: 0; }
+    .sm-leiste > div[style*="flex:1"] { display: none; }
+    .sm-leiste #sm-suche { width: 150px !important; }
+    .sm-leiste .f-chips { flex-wrap: nowrap; }
+    .sm-kopf { row-gap: 6px; }
+    .sm-zahnzeile, .sm-zahlenzeile { font-size: var(--t-s); }
+    /* Zwei Kunstseiten nebeneinander statt einer, die den ganzen Bildschirm füllt. */
+    .vt-gitter.kunst { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .vt-gitter.kunst .kt { font-size: var(--t-s); }
+    .vt-gitter.kunst .km { font-size: var(--t-xs); }
+
+    /* Der Erklärsatz über der Vitrine kostet am Handy vier Zeilen. Die Kacheln erklären
+       sich selbst, sobald man eine sieht. */
+    #vitrine .vt-u { display: none; }
+    #vitrine h2, #vitrine .vt-kopf h2 { font-size: var(--t-xl); }
+
+    /* Begleitleiste eines geteilten Binders: eine schmale Leiste am unteren Rand statt eines
+       Kastens vor dem Inhalt. Die untere Navigation ist in der geteilten Ansicht ausgeblendet,
+       der Platz ist frei; die Leiste wischt seitlich, wenn sie nicht in eine Zeile passt. */
+    body.nur-ansicht .vt-ansichtleiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: calc(var(--z-leiste) - 1); margin: 0; max-width: none;
+                        border-radius: 14px 14px 0 0; border-width: 1.5px 0 0;
+                        padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 6px; flex-wrap: nowrap;
+                        overflow-x: auto; scrollbar-width: none; box-shadow: 0 -8px 22px rgba(0,0,0,.14); }
+    body.nur-ansicht .vt-ansichtleiste::-webkit-scrollbar { display: none; }
+    body.nur-ansicht .vt-ansichtleiste > * { flex-shrink: 0; }
+    body.nur-ansicht .vt-ansichtleiste .btn { font-size: var(--t-s) !important; padding: 8px 11px; }
+    body.nur-ansicht .vt-ansichtleiste .vt-wer { font-size: var(--t-s); white-space: nowrap; }
+    body.nur-ansicht .vt-ansichtleiste .vt-hab { font-size: var(--t-s); white-space: nowrap; }
+    body.nur-ansicht .rumpf { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+
+    /* Die Startseite hatte keine einzige eigene Regel für kleine Schirme: sie wurde
+       4.832 px lang, weil alles nur über auto-fit umbrach. */
+    .st-band { grid-template-columns: 1fr 1fr; }
+    .st-band .st-zahl:nth-child(3) { grid-column: 1 / -1; }
+    .binder-grid .bcard:nth-child(n+4):not(.neu) { display: none; }   /* „alle zeigen" blendet ein */
+    .binder-grid.alle .bcard { display: block; }
+    .st-weiter { flex-wrap: wrap; }
+    .st-weiter .txt { min-width: 0; flex: 1 1 100%; order: 2; }
+    .st-weiter .vor { order: 1; }
+    .st-weiter .btn { order: 3; width: 100%; justify-content: center; }
+    .st-digest .dg { grid-template-columns: 1fr; }
+    /* Die Kunstseiten sind hochformatige Binderseiten: einspaltig nahmen vier Kacheln
+       2.204 px, die halbe Seite. Zwei nebeneinander, zwei genügen. */
+    .st-vitrine { grid-template-columns: 1fr 1fr; }
+    .st-vitrine > *:nth-child(n+3) { display: none; }
+
+    /* Fingerziele in der Vitrine: der Besitzer-Link war 39 × 12 px, das Herz 60 × 29 px.
+       Die Norm liegt bei 44 px, und der Besitzer ist der einzige Weg in ein fremdes Profil. */
+    #vitrine .vt-meta a, #vitrine .km a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; }
+    #vitrine .vt-herz { min-height: 44px; padding: 0 12px; }
+    #vt-tabs button, #vt-filter .chip { min-height: 40px; display: inline-flex; align-items: center; }
+
+    /* Umschalter der Galerie: eine Zeile, wischbar */
+    .gal-umschalter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .gal-umschalter::-webkit-scrollbar { display: none; }
+    .gal-umschalter > * { flex-shrink: 0; }
+    .gal-umschalter .chip { min-height: 34px; display: inline-flex; align-items: center; }
+
+    /* Galerie: eine Seite je Zeile, aber ohne den Riesenabstand */
+    .gal { gap: 14px; }
+    .gal-blatt { padding: 7px; gap: 5px; }
+
+    /* Tippziele auf Fingergröße. Die Schalter „Preise“ und „absteigend“ waren 15 px klein. */
+    .schalter input[type=checkbox], .f-sort input[type=checkbox] { width: 22px; height: 22px; }
+    .schalter { min-height: 36px; display: inline-flex; align-items: center; gap: 8px; }
+    .fuss-links a, .bp-fuss a { display: inline-block; padding: 6px 4px; }
+    .kopf .btn { min-height: 36px; }
+
+    /* Profilkopf: Bild und Text nebeneinander, Zahlen darunter */
+    .po-hero { padding: 14px 15px; gap: 12px; }
+    .po-zahlen { gap: 16px; }
+    .po-zahl b { font-size: var(--t-xl); }
+
+    /* Statistik-Balken brauchen weniger Namensspalte */
+    .stat-zeile { grid-template-columns: minmax(70px, 110px) 1fr 30px; gap: 8px; }
+
+    /* Geteilter Binder: bis zur ersten Karte lagen acht Zeilen Kopf. Statuszeile und
+       Preis-Schalter teilen sich jetzt eine Zeile, der Banner ist schmaler. */
+    body.nur-ansicht .ansicht-banner { padding: 6px 10px; font-size: var(--t-s); }
+    body.nur-ansicht .bp-kopf { display: flex; flex-wrap: wrap; align-items: center;
+                                gap: 10px; row-gap: 4px; }
+    body.nur-ansicht .bp-stats { font-size: var(--t-s); flex: 1 1 100%; }
+    body.nur-ansicht .bp-tools { margin: 0; }
+    body.nur-ansicht .spalte-binder { gap: 8px; padding-top: 10px; }
+
+    /* Kleine Ziele, die der Finger sonst verfehlt: Sortier-Reiter der Vitrine, Rechtslinks
+       im Fuß, Sammlername und Melde-Fahne. Alle auf mindestens 34 px Höhe. */
+    .vt-tabs button { min-height: 34px; padding: 6px 13px; }
+    .rechtlink, .bp-recht a { display: inline-block; padding: 11px 6px; font-size: var(--t-xs); }
+    .vt-meta a, .vt-wer a { display: inline-block; padding: 9px 3px; }
+    .vt-fuss button, .vt-ansichtleiste button:not(.btn), .po-hero button,
+    .bp-tools .menuwrap > button { min-height: 34px; min-width: 34px;
+      display: inline-flex; align-items: center; justify-content: center; }
+  }
+  .tausch-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+  .tausch-karte { position: relative; aspect-ratio: 63/88; border-radius: 6px; overflow: hidden;
+                  border: 1.5px solid var(--line); background: var(--panel2); }
+  .tausch-karte img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tausch-n { position: absolute; right: 3px; bottom: 3px; background: var(--gruen-flaeche); color: var(--gruen-fg);
+              font-size: var(--t-xs); font-weight: 800; padding: 1px 5px; border-radius: 999px; }
+  .slot.wird-gezogen { opacity: .3; }
+  .fach-geist { transition: none; }
+  /* Während des Ziehens darf die Seite nicht mitscrollen */
+  body.zieht { overflow: hidden; touch-action: none; }
+  /* Seiten-Galerie: beim Stöbern will man den ganzen Binder sehen, nicht zwölfmal blättern.
+     Die Seiten liegen nebeneinander und umbrechen wie Text. */
+  .gal { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .gal-seite { display: flex; flex-direction: column; gap: 6px; }
+  .gal-nr { font-size: var(--t-s); font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--mut); }
+  .gal-blatt { background: var(--bseite); border-radius: 12px; padding: 9px; display: grid; gap: 6px; }
+  .gal-fach { position: relative; aspect-ratio: 63/88; border-radius: 4px; overflow: hidden;
+              background: var(--bfach); border: 1px solid var(--bkante); }
+  .gal-fach.leer { background: transparent; border-style: dashed; }
+  .gal-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .gal-fach .hat-mark { top: 3px; left: 3px; }
+  .gal-umschalter { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .gal-umschalter .pl-hilfe .chip { min-width: 30px; text-align: center; font-weight: 800; }
+  @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
+  .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-m); font-weight: 800;
+             padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
+  .vt-herz.an { border-color: var(--akzent-text); color: var(--akzent-text); }
+  .vt-herz:hover { border-color: var(--akzent-text); }
+  .vt-leer { grid-column: 1/-1; padding: 40px 0; text-align: center; color: var(--mut); font-size: var(--t-mp); }
+  .vt-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--line); }
+  .vt-band { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid var(--line);
+             border-radius: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+
+
+  /* Leiste über einem fremden, öffentlichen Binder */
+  .vt-hab { font-size: var(--t-s); color: var(--gruen-text); font-weight: 700; }
+  .vt-ansichtleiste { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+                      padding: 10px 14px; margin: 0 auto 12px; max-width: min(700px, 100%);
+                      border: 2px solid var(--line); border-radius: 12px; background: var(--card); }
+  .vt-ansichtleiste .vt-wer { font-size: var(--t-m); }
+  .vt-ansichtleiste .vt-wer strong { font-weight: 800; }
+  .vt-ansichtleiste .vt-wer a { color: var(--blau); cursor: pointer; text-decoration: underline; }
+  /* Profilseite */
+  #profil-oeffentlich { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: calc(var(--z-ort) + 1);
+                        background: var(--bg); overflow-y: auto; padding: 20px 18px 40px; }
+  .po-kopf { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
+  .po-kopf h2 { margin: 0; font-size: var(--t-2xl); }
+  .po-bild { width: 54px; height: 74px; border-radius: 6px; object-fit: cover; border: 2px solid var(--line); }
+
+
+  /* ---------- Finger statt Mauszeiger ----------
+     Auf Touchgeräten sind Ziele unter etwa 44px kaum sicher zu treffen. Betroffen
+     waren vor allem die Seiten-Navigation im Binder (18–29px) und die kleinen
+     Umschalter über der Suche. */
+  @media (pointer: coarse) {
+    .seiten-nav { gap: 4px; flex-wrap: wrap; }
+    .seiten-nav button { min-width: 44px; min-height: 44px; display: inline-flex;
+                         align-items: center; justify-content: center; }
+    .chip { min-height: 36px; padding-top: 7px; padding-bottom: 7px; }
+    .schalter input { width: 22px; height: 22px; }
+    .schalter { min-height: 40px; }
+    .tk .plus { min-height: 40px; }
+    .slot .mehr, .slot .raus, .slot .hat-btn { width: 26px; height: 26px; opacity: .85; }
+    .ps-titel .ps-akt button { min-width: 36px; min-height: 36px; }
+    .bv-fuss button { width: 54px; height: 54px; }
+    .fi-foto .fi-akt button { min-width: 34px; min-height: 34px; }
+    /* Umschalter über der Suche: Region, Kartensprache, Sortierrichtung */
+    #reg-intl, #reg-jp, .lang-toggle button, #btn-alle { min-height: 38px; }
+    .lang-toggle button { min-width: 44px; }
+    #f-absteigend { width: 22px; height: 22px; }
+    .spalte-filter a[href^="recht"] { display: inline-block; padding: 8px 4px; }
+  }
+
+
+  /* Einstiege auf der App-Startseite */
+  .st-tun { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 18px; }
+  .st-tun button { display: flex; align-items: center; gap: 9px; padding: 11px 15px; border-radius: 12px;
+                   border: 2px solid var(--line); background: var(--card); font-weight: 700; font-size: var(--t-mp);
+                   min-height: 46px; }
+  .st-tun button:hover { border-color: var(--kontur); }
+  .st-tun button .st-ic { font-size: var(--t-l); line-height: 1; }
+  .st-tun button small { display: block; font-weight: 500; font-size: var(--t-s); color: var(--mut); }
+
+
+  /* Hinweis auf die noch offene E-Mail-Bestätigung */
+  .best-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+                 background: var(--gelb); color: var(--kontur); font-size: var(--t-m); font-weight: 700;
+                 padding: 9px 16px; border-bottom: 2px solid var(--kontur); }
+  .best-banner.hidden { display: none !important; }
+
+
+  /* ---------- Sammlung ---------- */
+  #sammlung { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: var(--z-ort);
+              background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
+  .sm-kopf { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .sm-kopf h2 { margin: 0; font-size: var(--t-xl); }
+  .sm-zahlenzeile { font-size: var(--t-s); color: var(--mut); line-height: 1.5; }
+  .sm-zahlenzeile b { color: var(--ink); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .sm-zahlenzeile b.gruen { color: var(--gruen-text); }
+  .sm-zahlenzeile a { color: var(--blau); cursor: pointer; font-weight: 700; }
+  .sm-zahlen { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 16px; }
+  .sm-kachel { border: 2px solid var(--line); border-radius: 12px; padding: 10px 16px; min-width: 116px; }
+  .sm-kachel .zahl { font-size: var(--t-2xl); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .sm-kachel .lbl { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
+  .sm-kachel.wert { border-color: var(--gruen-flaeche); }
+  .sm-kachel.wert .zahl { color: var(--gruen-text); }
+  .sm-leiste { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .sm-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .sm-karte { position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
+              background: var(--panel2); }
+  .sm-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .sm-karte .sm-txt { padding: 6px 7px 7px; }
+  .sm-karte .sm-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
+  .sm-karte .sm-meta { font-size: var(--t-xs); color: var(--mut); margin-top: 1px; }
+  .sm-karte .sm-wert { font-size: var(--t-xs); font-weight: 800; color: var(--gruen-text); margin-top: 3px; }
+  /* Ein Zeichen, keine Fußnote: „≈" heißt, die Zahl stammt nicht direkt aus dem
+     Cardmarket-Trend. Was genau, sagt der Tooltip. */
+  .sm-karte .sm-quelle { color: var(--mut); font-weight: 700; margin-left: 4px; cursor: help; }
+  .sm-posten { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+  .sm-pchip { font-size: var(--t-xs); font-weight: 700; padding: 2px 6px; border-radius: 999px;
+              border: 1.5px solid var(--line); background: var(--card); color: var(--mut); line-height: 1.4; }
+  .sm-pchip:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
+  /* Der Knopf für einen weiteren Posten erscheint erst, wenn man die Karte anfasst —
+     auf jeder Kachel dauerhaft war er nur Rauschen. */
+  .sm-pchip.neu { color: var(--gruen-text); opacity: 0; transition: opacity .15s; }
+  .sm-karte:hover .sm-pchip.neu { opacity: 1; }
+  @media (pointer: coarse) { .sm-pchip.neu { opacity: .8; } }
+  /* Der Wert steht am Posten, nicht nur im Tooltip: eine Poor-Karte ist etwas anderes wert
+     als dieselbe Karte in Near Mint, und genau dafür gibt es die Posten. */
+  .sm-pchip b { color: var(--gruen-text); font-weight: 800; }
+  .sm-karte .sm-anz { position: absolute; top: 4px; left: 4px; background: var(--kontur); color: #fff;
+                      font-size: var(--t-xs); font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+  .sm-karte .sm-weg { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%;
+                      background: rgba(0,0,0,.55); color: #fff; font-size: var(--t-s); opacity: 0; transition: opacity .15s; }
+  .sm-karte:hover .sm-weg { opacity: 1; }
+  .sm-leer { grid-column: 1/-1; padding: 34px 0; text-align: center; color: var(--mut); font-size: var(--t-mp); line-height: 1.6; }
+  @media (pointer: coarse) { .sm-karte .sm-weg { opacity: .85; } }
+
+
+  /* Drei Beispiele fürs Bildmotiv — die Funktion war hinter dem Klappknopf unsichtbar */
+  .f-motiv-schnell { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 2px; }
+  .f-motiv-schnell .chip { font-size: var(--t-s); }
+  .aw-mini-teilen { display: block; width: 100%; margin-top: 4px; font-size: var(--t-xs); font-weight: 700;
+    color: var(--mut); border: 1.5px solid var(--line); border-radius: 7px; padding: 3px 6px; }
+  .aw-mini-teilen.an { color: #B8860B; border-color: #E0A21B; }
+  .aw-mini-teilen:hover { border-color: var(--blau); color: var(--blau); }
+  .aw-passung { margin-top: 8px; font-size: var(--t-s); line-height: 1.55; border: 1.5px solid var(--line);
+    border-radius: 10px; padding: 8px 10px; background: var(--panel2); }
+  .aw-passung.gut { border-color: var(--gruen-flaeche); }
+  .aw-passung.mittel { border-color: #E0A21B; }
+  .aw-passung strong { font-size: var(--t-s); }
+  .tk-hab .wunsch { flex: 0 0 auto; padding: 0 8px; color: var(--mut); }
+  .tk-hab .wunsch.an { color: #E0A21B; }
+  
+
+
+  /* ---------- Eigene Icons ----------
+     Eine Formensprache für alles: 20er-Raster, 1.8 Strich, runde Enden, currentColor.
+     Dieselbe Bauart wie das Logo — geometrisch, kantig, ohne Verlauf. Emoji sehen auf
+     jedem Gerät anders aus und gehören keiner Marke; diese hier gehören uns. */
+  .ic { display: inline-block; vertical-align: -0.16em; flex: none; }
+  .ic path, .ic circle, .ic rect, .ic line, .ic polyline { vector-effect: non-scaling-stroke; }
+  button .ic + span, .ic + span { margin-left: 6px; }
+
+  /* ---------- Ladeanzeige: eine Binderseite, die sich füllt ----------
+     Neun Fächer, in die nacheinander Karten rutschen — das Bild des Produkts als
+     Bewegung. Läuft als reines CSS, ohne Bibliothek, und hält bei
+     `prefers-reduced-motion` einfach an. */
+  .lader { display: inline-grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+           width: 42px; aspect-ratio: 63/88; padding: 3px; border-radius: 5px;
+           background: var(--kontur); }
+  .lader i { display: block; border-radius: 1.5px; background: rgba(255,255,255,.14);
+             animation: lader-fach 1.5s ease-in-out infinite; }
+  .lader i:nth-child(1) { animation-delay: 0s }      .lader i:nth-child(2) { animation-delay: .09s }
+  .lader i:nth-child(3) { animation-delay: .18s }    .lader i:nth-child(4) { animation-delay: .27s }
+  .lader i:nth-child(5) { animation-delay: .36s }    .lader i:nth-child(6) { animation-delay: .45s }
+  .lader i:nth-child(7) { animation-delay: .54s }    .lader i:nth-child(8) { animation-delay: .63s }
+  .lader i:nth-child(9) { animation-delay: .72s }
+  .lader i:nth-child(3n+1) { --lf: var(--gelb) }
+  .lader i:nth-child(3n+2) { --lf: var(--blau) }
+  .lader i:nth-child(3n)   { --lf: var(--akzent) }
+  @keyframes lader-fach {
+    0%, 70%, 100% { background: rgba(255,255,255,.14); transform: none; }
+    18%, 48% { background: var(--lf); transform: translateY(-1px); }
+  }
+  .lader.gross { width: 76px; padding: 5px; gap: 3px; }
+  .lader.klein { width: 26px; padding: 2px; gap: 1.5px; }
+  .ladezeile { display: flex; align-items: center; gap: 14px; color: var(--mut); font-size: var(--t-mp); }
+  @media (prefers-reduced-motion: reduce) { .lader i { animation: none; background: var(--lf); opacity: .55; } }
+
+
+  /* ---------- Startseite ----------
+     Viel Inhalt, aber ruhig: eine Spalte, klare Bänder, überall dieselben Abstände.
+     Jede Zahl ist ein Weg irgendwohin — Kacheln, die nur informieren, sind verschenkt. */
+  .st-rumpf { max-width: 1080px; margin: 0 auto; padding: 26px 20px 60px; }
+  .st-gruss { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .st-gruss h1 { margin: 0; font-size: clamp(24px, 3.2vw, 32px); }
+  .st-gruss .plan { font-size: var(--t-s); font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+                    padding: 3px 10px; border-radius: 999px; background: var(--panel2); color: var(--mut); }
+  .st-gruss .plan.bezahlt { background: var(--gelb); color: var(--kontur); }
+  .st-unter { color: var(--mut); font-size: var(--t-mp); margin-bottom: 22px; }
+
+  .st-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 26px; }
+  .st-zahl { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 13px 16px;
+             background: var(--card); }
+  .st-zahl:hover { border-color: var(--kontur); }
+  .st-zahl .z { font-size: var(--t-3xl); font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .st-zahl .l { font-size: var(--t-s); color: var(--mut); font-weight: 600; margin-top: 2px; }
+  .st-mehr { display: none; }
+  @media (max-width: 700px) { .st-mehr { display: block; width: 100%; margin-top: 10px; padding: 11px;
+    border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); font-weight: 700; font-size: var(--t-mp); } }
+  .st-wege { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .st-weg { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 15px 17px;
+            background: var(--card); display: grid; gap: 4px; }
+  .st-weg:hover { border-color: var(--kontur); }
+  .st-weg strong { font-size: var(--t-l); font-weight: 800; }
+  .st-weg span { font-size: var(--t-s); color: var(--mut); line-height: 1.45; }
+  .st-zahl .u { font-size: var(--t-s); color: var(--mut); font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .st-zahl.gruen .z { color: var(--gruen-text); }
+
+  /* Creator-Übersicht: Karte auf der Startseite nur bei Ereignissen, Block im Profil */
+  .st-neu { display: flex; align-items: center; gap: 12px; border: 2px solid var(--kontur); border-radius: 14px;
+            padding: 11px 14px; background: var(--card); box-shadow: 4px 4px 0 var(--akzent); margin-bottom: 22px; flex-wrap: wrap; }
+  .st-neu .herz { color: var(--akzent-text); font-size: var(--t-2xl); line-height: 1; }
+  .st-neu .txt { flex: 1; min-width: 200px; }
+  .st-neu .txt strong { display: block; font-size: var(--t-mp); }
+  .st-neu .txt span { font-size: var(--t-s); color: var(--mut); }
+  .st-neu .txt b { color: var(--gruen-text); }
+  .cr-zahlen { display: flex; gap: 20px; flex-wrap: wrap; margin: 2px 0 8px; }
+  .cr-zahl b { display: block; font-size: var(--t-2xl); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .cr-zahl span { font-size: var(--t-s); color: var(--mut); }
+  .cr-seite { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center;
+              padding: 7px 0; border-bottom: 1px solid var(--line); font-size: var(--t-m); cursor: pointer; }
+  .cr-seite:last-child { border-bottom: none; }
+  .cr-seite img { width: 40px; aspect-ratio: 63/88; object-fit: cover; border-radius: 5px; background: var(--panel2); }
+  .cr-seite .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-seite .u { color: var(--mut); font-size: var(--t-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cr-seite .k { display: flex; gap: 10px; font-size: var(--t-s); color: var(--mut); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cr-seite .k b { color: var(--ink); }
+  .st-abschnitt { margin-bottom: 30px; }
+  .st-titel { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .st-titel h2 { margin: 0; font-size: var(--t-l); letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+  .st-titel .mehr { font-size: var(--t-s); color: var(--blau); cursor: pointer; margin-left: auto; }
+
+  .st-weiter { display: flex; align-items: center; gap: 18px; border: 2px solid var(--kontur); border-radius: 16px;
+               padding: 14px 18px; background: var(--card); box-shadow: 4px 4px 0 var(--gelb); flex-wrap: wrap; }
+  .st-weiter .vor { display: flex; gap: 3px; }
+  .st-weiter .vor img { width: 46px; aspect-ratio: 63/88; object-fit: cover; border-radius: 4px; background: var(--panel2); }
+  .st-weiter .txt { min-width: 160px; flex: 1; }
+  .st-weiter .txt strong { font-size: var(--t-l); }
+  .st-weiter .txt div { font-size: var(--t-s); color: var(--mut); }
+
+  .st-tun { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 10px; }
+  .st-tun button { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px; border-radius: 14px;
+                   border: 2px solid var(--line); background: var(--card); text-align: left; min-height: 62px; }
+  .st-tun button:hover { border-color: var(--kontur); }
+  .st-tun .st-ic { color: var(--blau); margin-top: 1px; }
+  .st-tun strong { display: block; font-size: var(--t-mp); font-weight: 700; }
+  .st-tun small { display: block; font-weight: 500; font-size: var(--t-s); color: var(--mut); margin-top: 2px; line-height: 1.35; }
+
+  .st-vitrine { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .st-vk { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); cursor: pointer; }
+  .st-vk:hover { border-color: var(--kontur); }
+  .st-vk .bilder { display: flex; gap: 2px; padding: 6px 6px 0; background: var(--seite-dunkel); }
+  .st-vk .bilder img { width: 100%; aspect-ratio: 63/88; object-fit: cover; border-radius: 3px; min-width: 0; }
+  .st-vk .bilder.eins { padding: 0; display: block; }
+  .st-vk .bilder.eins img { border-radius: 0; object-position: top; }
+  .st-vk .t { padding: 8px 10px 10px; }
+  .st-vk .t strong { font-size: var(--t-m); display: block; }
+  .st-vk .t span { font-size: var(--t-xs); color: var(--mut); }
+
+
+  /* ---------- Profil & Konto ----------
+     Vorher ein langer Stapel gleich aussehender Kästen. Jetzt: das Wichtige (Tarif und
+     Guthaben) als Kopfband, darunter zwei Spalten — links, was dich betrifft, rechts,
+     was du einstellst. Gefährliches steht ganz unten und sieht auch so aus. */
+  .pf-rumpf { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
+  .pf-kopfband { display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+                 border: 2px solid var(--kontur); border-radius: 16px; padding: 18px 22px;
+                 background: var(--card); box-shadow: 4px 4px 0 var(--gelb); margin-bottom: 22px; }
+  .pf-kopfband .pf-tarif { font-size: var(--t-2xl); font-weight: 800; line-height: 1.1; }
+  .pf-kopfband .pf-tarif small { display: block; font-size: var(--t-s); font-weight: 600; color: var(--mut);
+                              letter-spacing: .05em; text-transform: uppercase; }
+  .pf-kopfband .guthaben { display: flex; align-items: baseline; gap: 7px; font-size: var(--t-2xl); font-weight: 800;
+                           color: var(--blau); }
+  .pf-kopfband .guthaben small { font-size: var(--t-s); font-weight: 600; color: var(--mut);
+                                 letter-spacing: .05em; text-transform: uppercase; }
+  .pf-spalten { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .pf-block { border: 2px solid var(--line); border-radius: 14px; padding: 16px 18px; background: var(--card); margin: 0; }
+  .pf-block h3 { margin: 0 0 12px; font-size: var(--t-m); letter-spacing: .05em; text-transform: uppercase; color: var(--mut); }
+  .pf-block.gefahr { border-color: color-mix(in srgb, var(--akzent) 45%, var(--line)); }
+  .pf-zeile { display: flex; align-items: center; gap: 12px; justify-content: space-between;
+              padding: 8px 0; border-bottom: 1px solid var(--line); font-size: var(--t-mp); }
+  .pf-zeile:last-child { border-bottom: none; }
+  .pf-zeile .wert { font-weight: 700; text-align: right; }
+  .pf-voll { grid-column: 1 / -1; }
+  .pf-hinweis { font-size: var(--t-s); color: var(--mut); line-height: 1.45; margin: -4px 0 12px; }
+
+  /* ---------- Werkbank-Rahmen ---------- */
+  #app { height: 100vh; display: flex; flex-direction: column; }
+  .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
+          border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap;
+          position: sticky; top: 0; z-index: calc(var(--z-ort) + 5); }
+  .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: var(--t-l); font-weight: 700; }
+  .menuwrap { position: relative; }
+  .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+          box-shadow: 0 12px 30px rgba(58,50,39,.14); min-width: 250px; z-index: var(--z-menue); padding: 6px; }
+  .menu button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 12px;
+                 border-radius: 8px; font-size: var(--t-mp); font-weight: 600; }
+  .menu button:hover { background: var(--hover); }
+  .menu .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
+  .lang-toggle { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .lang-toggle button { padding: 5px 11px; font-size: var(--t-s); font-weight: 700; color: var(--mut); }
+  .lang-toggle button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
+
+  .rumpf { display: flex; flex: 1; min-height: 0; }
+  .spalte-filter { width: 288px; flex-shrink: 0; background: var(--card); border-right: 1.5px solid var(--line);
+                   padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .f-lbl { font-size: var(--t-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-bottom: 6px; }
+  .f-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .spalte-mitte { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 12px 16px; gap: 9px; }
+  .kopfzeile { display: flex; align-items: center; gap: 10px; font-size: var(--t-m); color: var(--mut); flex-wrap: wrap; }
+  .sortwahl { display: flex; align-items: center; gap: 6px; }
+  .sortwahl .feld { width: auto; padding: 5px 8px; font-size: var(--t-s); }
+  .sortwahl .richtung { font-size: var(--t-s); padding: 6px 10px; white-space: nowrap; gap: 5px; }
+  .sortwahl .richtung .pf { font-weight: 800; }
+  .ergebnisse { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+                grid-auto-rows: max-content; gap: 9px; align-content: start; padding-bottom: 10px; }
+  .tk { position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden;
+        text-align: left; padding: 0; display: flex; flex-direction: column; cursor: pointer; }
+  .tk:hover { border-color: var(--akzent-text); }
+  .tk .bildbox { position: relative; width: 100%; padding-top: 139.7%; background: var(--panel2); }
+  .tk .bildbox img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .tk .kein-bild { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                   color: var(--mut); font-size: var(--t-xs); padding: 8px; text-align: center; }
+  .tk .tk-name { font-size: var(--t-xs); font-weight: 700; padding: 5px 7px 0; }
+  .tk .tk-meta { font-size: var(--t-xs); color: var(--mut); padding: 1px 7px 6px; }
+  /* Preis auf der Kachel, wie im Fach: schwarzes Schild unten links über dem Bild. */
+  .tk .tk-preis, .plk .tk-preis { position: absolute; left: 5px; bottom: 5px; background: var(--kontur); color: #fff;
+    font-size: var(--t-xs); font-weight: 800; padding: 2px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; z-index: 2; }
+  .tk .tk-preis.leer, .plk .tk-preis.leer { background: var(--mut); }
+  .plk { position: relative; }
+  .tk .anz { position: absolute; top: 5px; right: 5px; background: var(--gruen-flaeche); color: var(--gruen-fg); font-size: var(--t-xs);
+             font-weight: 700; min-width: 19px; height: 19px; border-radius: 999px; display: flex; align-items: center;
+             justify-content: center; padding: 0 5px; }
+  .tk .rbtn { position: absolute; top: 5px; left: 5px; background: rgba(255,255,255,.92); border: 1.5px solid var(--line);
+              color: var(--mut); font-size: var(--t-xs); font-weight: 700; padding: 2px 6px; border-radius: 999px; }
+  .tk .rbtn:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
+  /* Sammlung: direkt aufnehmen, ohne Umweg über einen Binder */
+  /* Ein Klick auf die Kachel legt die Karte ins Fach — das ist die Arbeit dieser Seite.
+     Für alles andere sitzen zwei kleine Knöpfe in den Ecken, beschriftet und getrennt. */
+  .tk .info { position: absolute; top: 5px; left: 5px; width: 26px; height: 26px; border-radius: 999px;
+    background: rgba(255,255,255,.92); border: 1.5px solid var(--line); color: var(--mut);
+    font-size: var(--t-m); font-weight: 700; line-height: 1; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; z-index: 3; }
+  .tk .info:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
+  :root[data-theme="dark"] .tk .info { background: rgba(25,28,35,.92); }
+  .zst-auf { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent;
+    border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 11px; cursor: pointer;
+    font-size: var(--t-s); color: var(--mut); }
+  .zst-auf strong { margin-left: auto; color: var(--text); font-size: var(--t-m); }
+  .zst-auf i { font-style: normal; }
+  /* Die Aktionszeile stand am Handy unter Preis, Verlauf und Zustandsraster — also unter
+     dem Falz. Jetzt klebt sie am unteren Rand des Dialogs. */
+  .d-aktion { position: sticky; bottom: 0; background: var(--card); padding: 10px 0 2px;
+    border-top: 1.5px solid var(--line); margin-top: 14px; z-index: 2; }
+  .tk-hab { display: flex; align-items: center; gap: 6px; padding: 0 7px 7px; }
+  .tk-hab button { flex: 1; font-size: var(--t-xs); font-weight: 700; border: 1.5px solid var(--line);
+    background: transparent; color: var(--mut); border-radius: 7px; padding: 4px 6px; cursor: pointer;
+    min-height: 28px; }
+  .tk-hab button:hover { border-color: var(--gruen-flaeche); color: var(--gruen-text); }
+  .tk-hab button.hat { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
+  .tk-hab .rev { flex: 0 0 auto; }
+  .tk .sbtn { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 999px;
+              background: rgba(255,255,255,.92); border: 1.5px solid var(--line); color: var(--mut);
+              font-size: var(--t-m); font-weight: 700; display: flex; align-items: center; justify-content: center;
+              padding: 0 4px; min-width: 28px; width: auto; }
+  .tk .sbtn:hover { border-color: var(--gruen-flaeche); color: var(--gruen-text); }
+  .tk .sbtn.hat { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
+  :root[data-theme="dark"] .tk .sbtn { background: rgba(25,28,35,.92); }
+
+  .spalte-binder { width: var(--binder-w, 486px); flex-shrink: 0; background: var(--card); border-left: 1.5px solid var(--line);
+                   padding: 14px; display: flex; flex-direction: column; gap: 11px; overflow-y: auto; }
+  .binder-groesse { display: flex; align-items: center; gap: 7px; font-size: var(--t-xs); color: var(--mut);
+                    flex-shrink: 0; white-space: nowrap; }
+  /* `min-width: 0` ist hier Pflicht: ein Bereichsregler bringt eine eigene Standardbreite mit
+     (rund 130 px) und schrumpft ohne diese Zeile nicht darunter, egal was `flex` sagt. In der
+     schmalen Kopfzeile des Planers ragte er deshalb 40 px aus seinem Kasten und lag unter dem
+     Knopf „Karte suchen". */
+  .binder-groesse input[type=range] { flex: 1; min-width: 0; accent-color: var(--gruen-text); cursor: pointer; }
+  /* Binderseiten haben eine eigene kleine Palette: echte Sammelalben sind fast immer
+     schwarz, weil die Karten davor stehen. `body.dunkle-seiten` schaltet Werkbank,
+     Planer und Durchblättern gemeinsam um — der Druck bleibt davon unberührt. */
+  :root { --bseite: var(--panel2); --bfach: var(--card); --bkante: var(--slotrand);
+          --bleer: rgba(255,255,255,.5); --btext: #9aa1ad; --bnamen: var(--ink); }
+  body.dunkle-seiten { --bseite: #14161a; --bfach: #1c1f25; --bkante: rgba(255,255,255,.16);
+                       --bleer: rgba(255,255,255,.05); --btext: #6f7683; --bnamen: #e6e8ec; }
+  .slots { background: var(--bseite); border-radius: 14px; padding: 10px; display: grid; gap: 7px; }
+  .slot { position: relative; aspect-ratio: 63/88; border-radius: 6px; border: 1.5px dashed var(--bkante); background: transparent;
+          display: flex; align-items: center; justify-content: center; color: var(--btext); font-size: var(--t-l); overflow: hidden; padding: 0; }
+  .slot.voll { border: 1.5px solid var(--bkante); background: var(--bfach); cursor: grab; }
+  .slot.leer-item { border-style: dotted; background: var(--bleer); cursor: grab; color: var(--btext); font-size: var(--t-xs); }
+  .slot img { width: 100%; height: 100%; object-fit: contain; }
+  .slot .artfach, .gal-fach .artfach { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+  .slot .artfach img, .gal-fach .artfach img { position: absolute; max-width: none; width: auto; height: auto; object-fit: fill; }
+  .slot.art { border-style: solid; border-color: var(--blau); }
+  .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
+  .slot .dexzelle img { width: 52%; height: auto; }
+  .slot .dexzelle span { font-size: var(--t-xs); font-weight: 700; color: var(--bnamen); text-align: center; line-height: 1.15; }
+  .slot .raus { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
+                color: #fff; font-size: var(--t-xs); line-height: 17px; text-align: center; opacity: 0; z-index: 3; }
+  .slot:hover .raus { opacity: 1; }
+  .slot .rmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-xs);
+                 font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  .slot .preis { position: absolute; bottom: 2px; right: 2px; background: rgba(58,50,39,.82); color: #fff; font-size: var(--t-xs);
+                 font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  .slot.dragover { border-color: var(--akzent-text); border-style: solid; }
+  .slots.dragover { outline: 2px dashed var(--akzent); outline-offset: -3px; }
+  .tk { cursor: grab; }
+  body.zieht-karte .slot { border-color: var(--akzent-text); }
+  body.zieht-karte .slot.frei { background: color-mix(in srgb, var(--akzent) 12%, transparent); }
+  .slot.gewaehlt { outline: 3px solid var(--akzent); outline-offset: -2px; }
+  .seiten-nav { display: flex; align-items: center; justify-content: center; gap: 7px;
+    flex-wrap: wrap; font-size: var(--t-s); color: var(--mut); }
+  .seiten-nav strong { color: var(--ink); }
+  .schalter { display: flex; align-items: center; gap: 7px; font-size: var(--t-s); font-weight: 600; }
+  .schalter input { width: 15px; height: 15px; accent-color: var(--akzent-text); }
+
+  /* ---------- Modale & Planer ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: var(--z-dialog); display: flex; align-items: center; justify-content: center; }
+  .modal { position: relative; background: var(--card); border-radius: 18px; padding: 22px; width: min(680px, 94vw); max-height: 88vh;
+           overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  .modal-x { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%;
+             background: var(--panel2); color: var(--mut); font-size: var(--t-m); font-weight: 700; z-index: 2; }
+  .modal-x:hover { background: var(--hover); color: var(--ink); }
+  .modal h2 { margin: 0 0 4px; font-size: var(--t-xl); }
+  .modal .unter { font-size: var(--t-m); color: var(--mut); margin-bottom: 14px; }
+  .setliste { max-height: 330px; overflow-y: auto; margin-top: 10px; border: 1.5px solid var(--line); border-radius: 12px; }
+  .setzeile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 13px;
+              border-bottom: 1px solid var(--line); font-size: var(--t-mp); }
+  .setzeile:hover { background: var(--hover); }
+  .serie-kopf.wahl { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;
+                     cursor: pointer; padding: 8px 13px 5px; font-size: var(--t-xs); font-weight: 800; letter-spacing: .05em;
+                     text-transform: uppercase; color: var(--mut); background: var(--panel2); }
+  .serie-kopf.wahl span { font-size: var(--t-xs); letter-spacing: 0; text-transform: none; font-weight: 600; }
+  .serie-kopf.wahl:hover, .serie-kopf.wahl.on { color: var(--blau); }
+  .setzeile.on { background: var(--hover); }
+  .setzeile .datum { margin-left: auto; color: var(--mut); font-size: var(--t-s); white-space: nowrap; }
+  .setzeile .set-sym { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+  .setzeile .set-sym.leer { visibility: hidden; }
+  .serie-kopf { padding: 7px 13px; font-size: var(--t-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+                color: var(--mut); background: var(--panel2); position: sticky; top: 0; }
+
+  #planer { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: flex; flex-direction: column; }
+  .planer-kopf { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card);
+                 border-bottom: 1.5px solid var(--line); flex-wrap: wrap; }
+  .planer-rumpf { flex: 1; overflow: auto; padding: 18px; display: flex; flex-wrap: wrap; gap: 18px; align-content: start; }
+  /* „Alle Seiten" in der Binderspalte: dasselbe Fließraster, aber innerhalb der Werkbank.
+     Vorher war das eine eigene Vollbildseite (der Planer) und zusätzlich eine dritte
+     Darstellung (die Galerie) — drei Wege zu denselben Fächern. */
+  .wb-alle { display: flex; flex-wrap: wrap; gap: 18px; align-content: start; padding: 2px 0 8px; }
+  .wb-alle .planer-seite { width: var(--planer-w, 300px); }
+  body.alle-seiten .spalte-binder { max-width: none; }
+  .pl-shift { font-size: var(--t-s); color: var(--mut); }
+  /* Seitenleiste am Handy: die Zielseite als Miniatur, direkt über der Navigation. */
+  .m-seitenleiste { display: none; }
+  @media (max-width: 900px) {
+    .m-seitenleiste { display: flex; align-items: center; gap: 10px; position: fixed; left: 0; right: 0;
+      bottom: calc(60px + env(safe-area-inset-bottom)); z-index: calc(var(--z-leiste) - 2); background: var(--card);
+      border-top: 1.5px solid var(--line); padding: 7px 14px; cursor: pointer; }
+    .m-seitenleiste.hidden { display: none; }
+    .msl-nr { font-size: var(--t-s); font-weight: 700; white-space: nowrap; }
+    .msl-raster { display: grid; gap: 2px; width: 46px; flex: none; }
+    .msl-raster i { aspect-ratio: 63/88; border-radius: 2px; background: var(--panel2);
+                    border: 1px solid var(--line); display: block; }
+    .msl-raster i.voll { background: var(--gruen); border-color: var(--gruen); }
+    .msl-zahl { margin-left: auto; font-size: var(--t-s); font-weight: 700; color: var(--mut);
+                font-variant-numeric: tabular-nums; }
+    body.binder-an .m-seitenleiste { display: none; }
+  }
+  /* ---------- Suchschublade im Planer ----------
+     Planer und Suche waren zwei Vollbildseiten: Karte suchen hieß Ansicht wechseln,
+     einsortieren hieß zurückwechseln. Die Schublade holt die Suche in den Planer —
+     ein Streifen über der Fußzeile, der Rest des Bildschirms bleibt der Binder. */
+  .hilfe-liste { margin: 8px 0 0; padding-left: 20px; font-size: var(--t-mp); line-height: 1.6; color: var(--mut); }
+  .hilfe-liste li { margin: 6px 0; }
+  .pl-suche { border-top: 1.5px solid var(--line); background: var(--card); flex: 0 0 auto;
+              display: flex; flex-direction: column; }
+  .pl-suche.zu .pl-treffer { display: none; }
+  .pl-suche-zeile { display: flex; align-items: center; gap: 8px; padding: 8px 14px; }
+  .pl-suche-zeile input { flex: 1; min-width: 0; }
+  .pl-treffer { display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden;
+                padding: 4px 14px 12px; scrollbar-width: thin; }
+  .pl-treffer .plk { flex: 0 0 auto; width: 92px; cursor: pointer; position: relative;
+                     border-radius: 8px; }
+  .pl-treffer .plk img { width: 92px; aspect-ratio: 63/88; object-fit: contain;
+                         border-radius: 6px; display: block; background: var(--panel2); }
+  .pl-treffer .plk .kein-bild { width: 92px; aspect-ratio: 63/88; display: flex; align-items: center;
+                                justify-content: center; text-align: center; font-size: var(--t-xs);
+                                padding: 4px; background: var(--panel2); border-radius: 6px; color: var(--mut); }
+  .pl-treffer .plk .plk-n { font-size: var(--t-xs); line-height: 1.2; margin-top: 3px; color: var(--mut);
+                            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .pl-treffer .plk:hover img { outline: 2px solid var(--akzent); outline-offset: 1px; }
+  .pl-treffer .plk .plk-anz { position: absolute; top: 3px; right: 3px; background: var(--akzent-flaeche); color: var(--akzent-fg);
+                              font-size: var(--t-xs); font-weight: 700; border-radius: 99px; padding: 0 5px; }
+  .pl-treffer-leer { padding: 4px 14px 14px; font-size: var(--t-s); color: var(--mut); }
+  .planer-seite { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px;
+                  width: var(--planer-w, 300px); }
+  body.dunkle-seiten .planer-seite { background: #101216; border-color: rgba(255,255,255,.1); }
+  body.dunkle-seiten .planer-seite .ps-titel { color: #8a919d; }
+  .planer-seite .ps-titel { font-size: var(--t-s); font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
+  .planer-seite .slots { padding: 8px; }
+  .slot .hat-btn { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+                   background: rgba(255,255,255,.9); border: 1.5px solid var(--slotrand); color: var(--mut);
+                   font-size: var(--t-xs); line-height: 14px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
+  .slot:hover .hat-btn { opacity: 1; }
+  .slot.hat img { opacity: .4; }
+  .slot.hat { border-color: var(--gruen-flaeche); }
+  .slot.hat .hat-btn { opacity: 1; background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); color: var(--gruen-fg); }
+  .tab-leiste { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tab-leiste button { flex: 1; padding: 9px; border-radius: 10px; border: 1.5px solid var(--line); font-weight: 700; font-size: var(--t-mp); color: var(--mut); }
+  .tab-leiste button.on { background: var(--aktiv-bg); border-color: var(--aktiv-bg); color: var(--aktiv-fg); }
+  .tarife { display: flex; gap: 12px; flex-wrap: wrap; }
+  .tarif { flex: 1 1 160px; border: 2px solid var(--line); border-radius: 14px; padding: 16px 14px; text-align: center; cursor: pointer; background: var(--card); }
+  .tarif:hover { border-color: var(--akzent-text); }
+  .tarif .preis-gross { font-size: var(--t-2xl); font-weight: 700; margin: 6px 0 2px; }
+  .tarif .klein { font-size: var(--t-s); color: var(--mut); }
+  .tarif .empf { display: inline-block; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-xs); font-weight: 700; border-radius: 999px; padding: 2px 9px; margin-bottom: 4px; }
+  .feld-lbl { font-size: var(--t-s); font-weight: 700; margin: 12px 0 5px; }
+  .ansicht-banner { background: var(--hover); border-bottom: 1.5px solid var(--line); text-align: center; font-size: var(--t-m); padding: 8px; font-weight: 600; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--aktiv-bg); color: var(--aktiv-fg);
+           font-size: var(--t-mp); font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: calc(var(--z-dialog) + 10); }
+  .toast.zeig { opacity: 1; }
+  .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: var(--t-s); padding: 7px 16px; text-align: center; }
+
+  /* ---------- Übersichts- & Profilseite (angemeldete Nutzer) ---------- */
+  /* Vollseiten (Start, Profil) liegen wie Planer und Vitrine UNTER der Kopfleiste:
+     die Reiter bleiben sichtbar und erreichbar, und der Inhalt scrollt. Vorher deckten
+     sie den Kopf ab und der eigene Rumpf war der einzige scrollende Bereich — nach dem
+     Umbau hieß der anders, also scrollte gar nichts mehr. */
+  .seite-voll { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg);
+                z-index: calc(var(--z-ort) + 1); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .seite-voll > .planer-kopf { position: sticky; top: 0; z-index: 2; }
+  .st-rumpf, .pf-rumpf { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  @media (max-width: 860px) { .seite-voll { top: 50px; } }
+  .seite-rumpf { flex: 1; overflow-y: auto; padding: 22px 18px calc(28px + env(safe-area-inset-bottom));
+                 max-width: 1060px; margin: 0 auto; width: 100%; }
+  .seite-rumpf h1 { font-size: var(--t-2xl); margin: 0 0 4px; }
+  .statzeile { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0 22px; }
+  .statkachel { flex: 1 1 140px; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 16px; }
+  .statkachel .zahl { font-size: var(--t-2xl); font-weight: 700; }
+  .statkachel .lbl { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
+  /* ---------- Auswertungen: Sammlung & Markt ----------
+     Zwei Seiten, ein Baukasten: Kennzahlenband oben, darunter Tafeln mit je einer Frage.
+     Diagramme sind handgezeichnetes SVG — die App hat keinen Build-Schritt und soll
+     wegen zweier Kurven keine Bibliothek nachladen. */
+  .an-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 4px 0 20px; }
+  .an-kachel { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px 15px; }
+  .an-kachel .zahl { font-size: var(--t-2xl); font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .an-kachel .lbl { font-size: var(--t-s); color: var(--mut); font-weight: 600; margin-bottom: 3px; }
+  .an-kachel .neben { font-size: var(--t-s); color: var(--mut); font-weight: 600; margin-top: 3px; }
+  .an-kachel .zahl.plus { color: var(--gruen-text); } .an-kachel .zahl.minus { color: var(--akzent-text); }
+  .an-tafel { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px;
+              padding: 16px 18px 18px; margin-bottom: 16px; }
+  .an-tafel > h3 { margin: 0 0 3px; font-size: var(--t-l); }
+  .an-tafel > .unter { margin: 0 0 14px; font-size: var(--t-s); color: var(--mut); line-height: 1.5; }
+  .an-zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .an-zwei { grid-template-columns: 1fr; } }
+  /* Hinweis statt Diagramm, solange die Messreihe zu kurz ist. Lieber ein ehrlicher Satz
+     als eine Kurve, die aus drei Punkten eine Marktaussage macht. */
+  .an-duenn { border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px;
+              font-size: var(--t-s); color: var(--mut); line-height: 1.6; background: var(--panel2); }
+  .an-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; font-size: var(--t-s); font-weight: 600; }
+  .an-legende span { display: inline-flex; align-items: center; gap: 6px; color: var(--mut); }
+  .an-legende i { width: 11px; height: 3px; border-radius: 2px; display: inline-block; }
+  .an-svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .an-svg text { font-family: inherit; font-variant-numeric: tabular-nums; }
+  /* Balkenliste: Beschriftung links, Balken, Zahl rechts — eine Zeile je Gruppe */
+  .an-balken { display: grid; grid-template-columns: minmax(70px, 34%) 1fr auto; gap: 5px 10px; align-items: center; }
+  .an-balken .nm { font-size: var(--t-s); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .an-balken .bar { height: 9px; border-radius: 0 4px 4px 0; background: var(--d2); min-width: 2px; }
+  .an-balken .zl { font-size: var(--t-s); font-weight: 700; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .an-balken .spur { background: var(--panel2); border-radius: 0 4px 4px 0; height: 9px; }
+  .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  /* Tabellen: Zahlen rechts, Ziffern in gleicher Breite, waagerecht scrollbar am Handy */
+  .an-tab-rahmen { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
+  .an-tab { width: 100%; border-collapse: collapse; font-size: var(--t-s); min-width: 420px; }
+  .an-tab th { text-align: left; font-size: var(--t-xs); color: var(--mut); font-weight: 700; padding: 0 8px 7px 0;
+               border-bottom: 1.5px solid var(--line); white-space: nowrap; }
+  .an-tab td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .an-tab tr:last-child td { border-bottom: none; }
+  .an-tab .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .an-tab .nm { font-weight: 600; }
+  .an-tab .set { font-size: var(--t-xs); color: var(--mut); }
+  .an-tab img { width: 30px; border-radius: 3px; display: block; background: var(--panel2); }
+  .an-plus { color: var(--gruen-text); font-weight: 700; } .an-minus { color: var(--akzent-text); font-weight: 700; }
+  /* Kartenraster für „teuerste Karten“ */
+  .an-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 11px; }
+  .an-karte { text-align: left; }
+  .an-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; border-radius: 6px; background: var(--panel2); display: block; }
+  .an-karte .kein-scan { width: 100%; aspect-ratio: 63/88; border-radius: 6px; background: var(--panel2);
+                         border: 1.5px dashed var(--line); display: flex; align-items: center; justify-content: center;
+                         padding: 8px; font-size: var(--t-xs); color: var(--mut); text-align: center; line-height: 1.3; }
+  .an-karte .p { font-size: var(--t-s); font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .an-karte .n { font-size: var(--t-xs); color: var(--mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Pro-Schranke */
+  .an-sperre { text-align: center; max-width: 460px; margin: 30px auto; }
+  .an-sperre h3 { font-size: var(--t-xl); margin: 0 0 8px; }
+  .an-sperre p { font-size: var(--t-mp); color: var(--mut); line-height: 1.65; margin: 0 0 18px; }
+  .an-sperre ul { text-align: left; font-size: var(--t-m); color: var(--mut); line-height: 1.9; margin: 0 0 20px;
+                  padding-left: 20px; }
+  .an-tip { position: absolute; top: 4px; pointer-events: none; background: var(--card);
+            border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 10px; font-size: var(--t-s);
+            font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.16); display: grid; gap: 3px;
+            min-width: 118px; z-index: 3; }
+  .an-tip strong { font-size: var(--t-xs); color: var(--mut); }
+  .an-tip span { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .an-tip i { width: 9px; height: 3px; border-radius: 2px; flex: none; }
+  .an-rest { display: none; }
+  /* Restkosten im Binder */
+  .wb-rest { background: var(--panel2); border: 1.5px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .wb-rest .wr-zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+                       font-size: var(--t-s); font-weight: 600; }
+  .wb-rest .wr-zeile strong { font-size: var(--t-mp); font-variant-numeric: tabular-nums; }
+  .wb-rest .wr-hin { font-size: var(--t-xs); color: var(--mut); margin-top: 3px; line-height: 1.4; }
+  .wb-rest .wr-link { font-size: var(--t-s); font-weight: 700; color: var(--blau); margin-top: 5px; padding: 0; }
+  /* Abgeleitete Zustandspreise */
+  .zst { margin-top: 10px; }
+  .zst-titel { font-size: var(--t-xs); font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+               color: var(--mut); margin-bottom: 5px; }
+  .zst-liste { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 4px; }
+  .zst-liste div { display: flex; flex-direction: column; gap: 1px; padding: 5px 7px; border-radius: 8px;
+                   background: var(--panel2); font-variant-numeric: tabular-nums; }
+  .zst-liste span { font-size: var(--t-xs); font-weight: 800; color: var(--mut); }
+  .zst-liste strong { font-size: var(--t-s); }
+  .zst-hin { font-size: var(--t-xs); color: var(--mut); line-height: 1.5; margin-top: 6px; }
+  /* Zielmodus: jedes Fach ist ein möglicher Landeplatz */
+  body.ziel-modus .spalte-binder .slot { cursor: crosshair; }
+  body.ziel-modus .spalte-binder .slot:not(.gewaehlt):hover { outline: 2px solid var(--akzent); outline-offset: -2px; }
+  .an-marke { font-size: var(--t-xs); font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+              background: var(--gelb); color: var(--kontur); text-transform: uppercase; }
+  .binder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding-bottom: 20px; }
+  .bcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 15px; cursor: pointer;
+           display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .bcard:hover { border-color: var(--akzent-text); }
+  .bcard .badge { font-size: var(--t-xs); font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--panel2);
+                  color: var(--mut); align-self: flex-start; letter-spacing: .05em; text-transform: uppercase; }
+  .bcard .bname { font-size: var(--t-l); font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .bcard .bmeta { font-size: var(--t-s); color: var(--mut); }
+  .bcard.neu { border-style: dashed; align-items: center; justify-content: center; color: var(--mut); min-height: 130px; }
+  .bcard.neu:hover { color: var(--akzent-text); }
+  .pf-block { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .pf-block h3 { margin: 0 0 12px; font-size: var(--t-mp); }
+  .pf-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-mp); padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .pf-zeile:last-child { border-bottom: none; }
+  .pf-zeile .wert { font-weight: 700; }
+  .pf-block.gefahr { border-color: #d9847360; }
+  .pf-block.gefahr h3 { color: var(--akzent-text); }
+  /* Touch-Geräte: Aktions-Knöpfe auf den Slots ohne Hover immer zeigen */
+  @media (hover: none) {
+    .slot .raus, .slot .hat-btn { opacity: .95; }
+  }
+
+  /* ---------- Mobile (gestapeltes Layout, Filter-Schublade, Binder-Tab) ---------- */
+  .mnav, .m-backdrop { display: none; }
+  @media (max-width: 900px) {
+    html, body { overflow-x: hidden; }
+    #app { height: 100dvh; }
+    .kopf { flex-wrap: wrap; height: auto; padding: 8px 10px; gap: 7px; row-gap: 7px; }
+    .kopf .logo { font-size: var(--t-l); }
+    .kopf .btn { padding: 8px 12px; font-size: var(--t-s); }
+
+    .rumpf { flex-direction: column; padding-bottom: 62px; }
+    .spalte-mitte { padding: 10px 10px 0; width: 100%; }
+    .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 7px; }
+
+    /* Filter als Schublade von links */
+    .spalte-filter { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: calc(var(--z-leiste) + 10);
+      width: min(85vw, 330px); border-right: 1.5px solid var(--line);
+      transform: translateX(-105%); transition: transform .22s ease; box-shadow: 8px 0 30px rgba(0,0,0,.18);
+      padding-bottom: 0; }
+    .spalte-filter.offen { transform: translateX(0); }
+    .m-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: calc(var(--z-leiste) + 5); }
+    .m-backdrop.offen { display: block; }
+
+    /* Binder als eigene Vollbild-Ansicht (Umschalter unten) */
+    .spalte-binder { display: none; width: 100%; border-left: none; }
+    .binder-groesse { display: none; }
+    body.binder-an .spalte-binder { display: flex; }
+    body.binder-an .spalte-mitte { display: none; }
+    .slots { max-width: 430px; margin: 0 auto; width: 100%; }
+
+    /* Untere Navigationsleiste */
+    .mnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-leiste);
+      background: var(--card); border-top: 1.5px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+    .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-size: var(--t-xs); font-weight: 700; color: var(--mut); padding: 5px 2px; border-radius: 10px; min-height: 44px; }
+    .mnav button.on { color: var(--akzent-text); background: var(--hover); }
+    .mnav .mzahl { display: none; position: absolute; margin-left: 32px; margin-top: -5px; background: var(--akzent-flaeche); color: var(--akzent-fg);
+      font-size: var(--t-xs); font-weight: 700; min-width: 18px; border-radius: 999px; padding: 1px 5px; line-height: 1.4; }
+    #mobil-mehr { position: fixed; left: 10px; right: 10px; top: 60px; bottom: auto; min-width: 0;
+                  max-height: calc(100vh - 80px); overflow-y: auto; z-index: var(--z-menue); }
+    #mobil-mehr button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: var(--t-mp); padding: 10px 14px; }
+
+    .planer-kopf { gap: 6px; padding: 8px 10px; }
+    .planer-kopf .btn { font-size: var(--t-s) !important; padding: 7px 10px; }
+    .planer-rumpf { padding: 10px; gap: 12px; }
+    .planer-seite { width: 100%; max-width: 420px; margin: 0 auto; }
+    .toast { bottom: 74px; max-width: 92vw; text-align: center; }
+    /* Über der Seitenleiste, wenn sie steht — sonst deckt der Toast genau die Rückmeldung zu,
+       die er meint. */
+    body:has(.m-seitenleiste:not(.hidden)) .toast { bottom: 122px; }
+    /* Die untere Navigationsleiste liegt über allem (z-index 60). Ein Dialog, der bis
+       zum Fensterrand geht, endet damit unter ihr: im Artwork-Dialog waren die letzten
+       Stilkacheln, das Wunschfeld und der Startknopf nicht mehr erreichbar. Deshalb
+       endet der Dialog eine Leistenhöhe früher und bekommt so viel Fuß, dass sich das
+       letzte Element freischeiben lässt. */
+    .modal { padding: 16px 16px calc(78px + env(safe-area-inset-bottom));
+             max-height: calc(88vh - 62px); }
+    body.nur-ansicht .modal { padding-bottom: 16px; max-height: 88vh; }
+    .tarife { flex-direction: column; }
+  }
+  /* ---------- 2026-08-27 (2): Binder-Wechsler, Segment, Planer-Tab, Fach-Menü, Panel ---------- */
+  .menu.links { right: auto; left: 0; }
+  .menu-lbl { padding: 6px 12px 2px; font-size: var(--t-xs); color: var(--mut); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .menu button.gefahr { color: var(--akzent-text); }
+  .bw-btn { max-width: 320px; gap: 6px; }
+  .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bw-caret { color: var(--mut); font-size: var(--t-xs); }
+  #menu-bw { min-width: 320px; }
+  /* Wer viele Binder hat, bekam eine Liste, die unten aus dem Fenster lief. */
+  #bw-liste { max-height: min(58vh, 420px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .bw-edit { display: flex; align-items: center; gap: 6px; padding: 6px 12px 4px; }
+  .bw-edit .stift { color: var(--mut); }
+  .bw-edit input.bindername { flex: 1; border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--eingabe); font-size: var(--t-mp); }
+  .bw-edit #wb-status { font-size: var(--t-xs); color: var(--mut); white-space: nowrap; }
+  .bw-liste { max-height: 260px; overflow-y: auto; }
+  .bw-liste button.aktiv { background: var(--hover); }
+  .bw-liste .bwl-meta { font-weight: 500; font-size: var(--t-xs); color: var(--mut); }
+  .bw-liste .bwl-del { margin-left: auto; color: var(--mut); padding: 2px 6px; border-radius: 6px; }
+  .bw-liste .bwl-del:hover { color: var(--akzent-text); background: var(--panel2); }
+  .segment { display: flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .segment button { padding: 7px 16px; font-size: var(--t-m); font-weight: 700; color: var(--mut); }
+  .segment button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
+  #menu-konto { min-width: 280px; }
+  #menu-konto .konto-mail { padding: 9px 12px; font-size: var(--t-s); color: var(--mut); word-break: break-all; }
+  /* Binder-Panel: Kopf mit Stats und Werkzeugen */
+  .bp-kopf { display: flex; flex-direction: column; gap: 8px; }
+  .bp-kopf .menuwrap.bw { align-self: flex-start; max-width: 100%; }
+  .bp-kopf .menuwrap.bw .menu.links { left: 0; right: auto; }
+  button.bp-titel { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+  button.bp-titel .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gast-karte { position: absolute; inset: 0; background: var(--bg); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 5; }
+  .gast-box, .st-gast { display: flex; flex-direction: column; gap: 8px; max-width: 480px; background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .gast-box strong, .st-gast strong { font-size: var(--t-l); }
+  .gast-box span, .st-gast span { font-size: var(--t-mp); color: var(--mut); line-height: 1.5; }
+  .gast-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .st-gast { margin: 12px 0 18px; }
+  .st-gast[hidden] { display: none; }
+  .bp-stats { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
+  .bp-tools { display: flex; align-items: center; gap: 12px; }
+  .bp-tools .menuwrap { margin-left: auto; }
+  .bp-hilfe { font-size: var(--t-xs); color: var(--mut); line-height: 1.5; margin-top: auto; }
+  .slot.frei { cursor: pointer; }
+  .slot.frei:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
+  .slot .mehr { position: absolute; bottom: 2px; right: 2px; width: 22px; height: 17px; border-radius: 999px; background: rgba(58,50,39,.75); color: #fff; font-size: var(--t-s); line-height: 15px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
+  .slot:hover .mehr { opacity: 1; }
+  .slot .preis { bottom: 21px; }
+  .slot.leer-item .mehr { opacity: .6; }
+  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: var(--t-m); line-height: 23px; } .slot .mehr { opacity: .85; width: 30px; height: 30px; line-height: 20px; } .slot .preis { bottom: 26px; } }
+  /* Geteilte Ansicht: dort gibt es keine Knoepfe am Fach, die das Preisschild
+     nach oben draengen. Es gehoert an die untere Kante der Karte und darf dort
+     groesser sein — auf dem Handy stand es sonst mitten im Bild und war zu klein. */
+  body.nur-ansicht .slot .preis { bottom: 3px; right: 3px; font-size: var(--t-xs); padding: 2px 6px; }
+  /* Planer als zweite Ansicht unter der Kopfzeile */
+  #planer { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg); z-index: 40; display: flex; flex-direction: column; }
+  .planer-kopf { justify-content: flex-start; }
+  .ps-titel .ps-akt { display: inline-flex; gap: 2px; }
+  .ps-titel .ps-akt button { font-size: var(--t-s); color: var(--mut); padding: 1px 5px; border-radius: 6px; }
+  .ps-titel .ps-akt button:hover { background: var(--panel2); color: var(--ink); }
+  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--pl-bar-unten, 18px); background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: var(--t-m); z-index: calc(var(--z-leiste) - 5); max-width: 96vw; flex-wrap: wrap; justify-content: center; }
+  .planer-bar .btn { font-size: var(--t-s); padding: 6px 12px; }
+  .planer-bar .pl-strich { width: 1px; height: 18px; background: var(--line); }
+  /* In einer Leiste am unteren Rand muss ein Menü nach oben aufklappen. */
+  .menu.hoch { top: auto; bottom: calc(100% + 8px); }
+  .segment.klein button { padding: 5px 11px; font-size: var(--t-s); }
+  .seiten-nav .segment { margin-left: 4px !important; }
+  /* Die Suchschublade ist mal 50, mal 210 Pixel hoch — die Höhe wird gemessen
+     (`plBarSetzen`) und die Auswahlleiste setzt sich darüber, statt daraufzuliegen. */
+  .erg-leer { grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--mut); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .up-tab { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: var(--t-m); }
+  .up-tab th, .up-tab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
+  .up-tab td:first-child, .up-tab th:first-child { text-align: left; }
+  .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent-text); font-weight: 700; }
+  body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap { display: none !important; }
+  body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: var(--t-m); }
+  /* Wer aus der Vitrine kommt, bekommt den Weg zurück; die untere Handy-Leiste (Planer, Mehr)
+     gehört zum Bearbeiten und bleibt in der Nur-Ansicht weg. */
+  body.nur-ansicht.von-vitrine .ansicht-zurueck { display: inline-flex !important; margin-left: auto; font-size: var(--t-m); }
+  body.nur-ansicht.von-vitrine .ansicht-cta { margin-left: 0; }
+  body.nur-ansicht .nur-edit, body.nur-ansicht .mnav { display: none !important; }
+  body.nur-ansicht .spalte-binder { padding-bottom: 24px; }
+  body.nur-ansicht .bp-tools .menuwrap, body.nur-ansicht .bp-hilfe { display: none !important; }
+  .st-leer { margin-top: 10px; }
+  #f-presets .chip { font-size: var(--t-s); padding: 3px 9px; }
+  .f-region { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .f-klang { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .f-klang-lbl { font-size: var(--t-s); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .f-klang-zurueck { font-size: var(--t-xs); color: var(--blau); text-decoration: underline; }
+  .f-region .segment button { padding: 6px 11px; font-size: var(--t-s); }
+  .f-region .lang-toggle button { padding: 5px 8px; font-size: var(--t-s); }
+  .setwahl-inhalt .setcode { font-family: ui-monospace, monospace; font-size: var(--t-xs); background: var(--panel2); border-radius: 5px; padding: 1px 5px; color: var(--mut); flex-shrink: 0; }
+  .setzeile .setcode { font-family: ui-monospace, monospace; font-size: var(--t-xs); background: var(--panel2); border-radius: 5px; padding: 1px 5px; color: var(--mut); min-width: 26px; text-align: center; flex-shrink: 0; }
+  .setwahl { display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: pointer; min-height: 38px; }
+  .setwahl-inhalt { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; }
+  .setwahl-inhalt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-m); }
+  .setwahl-inhalt img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+  .setpop { width: min(92vw, 380px); padding: 8px; }
+  .setpop .setliste { max-height: 380px; margin-top: 8px; }
+  .setpop .setzeile { padding: 7px 10px; font-size: var(--t-m); }
+  .setpop .setzeile .set-sym { width: 24px; height: 24px; }
+  .f-jahr { display: flex; align-items: center; gap: 8px; }
+  .f-jahr input { flex: 1; min-width: 0; width: 100%; padding: 8px 10px; font-size: var(--t-mp); -moz-appearance: textfield; }
+  .f-jahr span { color: var(--mut); }
+  .spalte-filter select.feld { text-overflow: ellipsis; }
+  .chip.klein { font-size: var(--t-xs); padding: 3px 8px; }
+  .d-illu { color: var(--akzent-text); cursor: pointer; font-weight: 700; }
+  .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
+  .d-kein-bild small { font-weight: 500; color: var(--mut); font-size: var(--t-s); }
+  .slot .spmark { left: auto; right: 2px; bottom: 21px; background: var(--ink); }
+  .slot .hat-mark { position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%;
+                    border: 1.5px solid rgba(255,255,255,.5); background: rgba(20,22,28,.5); color: #fff;
+                    font-size: var(--t-xs); line-height: 14px; text-align: center; font-weight: 700; }
+  .slot .hat-mark.ja { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); }
+  .d-fam { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; font-size: var(--t-s); }
+  .detail .d-grid > div { min-width: 0; }
+  .d-fam .btn { white-space: nowrap; }
+  .toast.arbeit::before { content: ""; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: dreh .8s linear infinite; flex-shrink: 0; }
+  @keyframes dreh { to { transform: rotate(360deg); } }
+  .toast a { color: #ffb8a8; font-weight: 700; }
+  .mnav .menu button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: var(--t-mp); padding: 10px 14px; }
+  body.nur-ansicht .bp-tools label:nth-of-type(2) { display: none !important; }
+  .st-leer .onb-tpl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  /* ---------- 2026-08-27: Kopfzeile, Filter, Onboarding, Detail, Varianten, Undo ---------- */
+  .mobil-only { display: none !important; }
+  .seiten-nav .seite-btn { font-size: var(--t-s); font-weight: 700; padding: 5px 9px; border-radius: 8px; border: 1.5px solid var(--line); white-space: nowrap; }
+  .seiten-nav .seite-btn:hover { border-color: var(--blau); color: var(--blau); }
+  .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }
+  .namefeld:hover, .namefeld:focus-within { background: var(--panel2); }
+  .namefeld .stift { color: var(--mut); font-size: var(--t-m); }
+  /* Untereinander statt nebeneinander: in zwei Spalten schnitten „Alle Künstler“ und
+     „Erscheinungsdatum“ ihre eigene Beschriftung ab. */
+  .f-zweispaltig { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  /* Was gerade filtert, steht sichtbar über der Liste und lässt sich einzeln wegklicken. */
+  .f-aktiv { display: flex; flex-wrap: wrap; gap: 5px; }
+  .f-aktiv .chip { display: inline-flex; align-items: center; gap: 5px; border-color: var(--akzent-text);
+    color: var(--akzent-text); font-size: var(--t-s); padding: 3px 8px; }
+  .f-aktiv .chip b { font-weight: 700; }
+  .f-aktiv .chip span.w { opacity: .6; font-size: var(--t-m); line-height: 1; }
+  .f-kopf { display: none; }
+  .f-fuss { display: none; }
+  .f-mehr { font-size: var(--t-s); padding: 8px 13px; justify-content: space-between; }
+  .f-mehr-box { display: flex; flex-direction: column; gap: 14px; }
+  .onb { background: var(--panel2); border-radius: 14px; padding: 12px 14px; font-size: var(--t-s); }
+  .onb-titel { font-weight: 700; font-size: var(--t-mp); margin-bottom: 4px; }
+  .onb ol { margin: 0 0 10px; padding-left: 18px; color: var(--mut); line-height: 1.5; }
+  .onb-tpl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .onb-tpl button { background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; text-align: left; display: flex; flex-direction: column; gap: 1px; }
+  .onb-tpl button:hover { border-color: var(--akzent-text); }
+  .onb-tpl strong { font-size: var(--t-s); }
+  .onb-tpl span { font-size: var(--t-xs); color: var(--mut); }
+  .tk .plus { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); background: var(--akzent-flaeche); color: var(--akzent-fg); border-radius: 999px;
+              padding: 5px 12px; font-size: var(--t-s); font-weight: 700; opacity: 0; transition: opacity .12s; z-index: 3; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .tk:hover .plus { opacity: 1; }
+  .tk .plus:hover { background: var(--akzent-flaeche-hover); }
+  .tk .enb { position: absolute; bottom: 46px; right: 5px; background: rgba(58,50,39,.75); color: #fff; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
+  .tk .jpb { position: absolute; top: 5px; left: 5px; background: #c0392b; color: #fff; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 999px; z-index: 2; }
+  /* Am Handy deckte der rote Balken das untere Drittel jedes Kartenbildes zu — genau das,
+     wonach man auswählt. Jetzt legt ein Tipp auf die Kachel die Karte ab, und der Knopf
+     verschwindet. */
+  @media (hover: none) { .tk .plus { display: none; } }
+  .slot .vmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-xs); font-weight: 700; padding: 1px 4px; border-radius: 999px; z-index: 2; }
+  body.sammeln .slot .hat-btn { opacity: 1; width: 22px; height: 22px; font-size: var(--t-s); line-height: 19px; }
+  body.sammeln .slot.voll { cursor: pointer; }
+  body.sammeln .slot .raus { display: none; }
+  .preisbox { background: #f0f6ef; border: 1.5px solid #d3e4d0; border-radius: 10px; padding: 9px 12px; font-size: var(--t-s); color: #2f5c3b; text-align: center; font-weight: 700; }
+  :root[data-theme="dark"] .preisbox { background: #22301f; border-color: #35502f; color: #9fd3ad; }
+  .toast { display: flex; align-items: center; gap: 12px; pointer-events: none; }
+  .toast.zeig { pointer-events: auto; }
+  .toast button { color: #ffb8a8; font-weight: 700; text-decoration: underline; padding: 0; }
+  /* Detail-Panel */
+  .detail .d-grid { display: grid; grid-template-columns: 260px 1fr; gap: 22px; }
+  .detail .d-bild { width: 100%; border-radius: 12px; display: block; background: var(--panel2); }
+  .detail h2 { font-size: var(--t-xl); margin: 0; }
+  .detail .d-meta { color: var(--mut); font-size: var(--t-m); margin: 4px 0 12px; }
+  .detail .d-preise { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .detail .d-preis { background: var(--panel2); border-radius: 10px; padding: 8px 12px; min-width: 110px; }
+  .detail .d-preis .z { font-size: var(--t-xl); font-weight: 700; }
+  .detail .d-preis .l { font-size: var(--t-xs); color: var(--mut); font-weight: 600; }
+  .detail .spark { width: 100%; height: 56px; display: block; margin: 4px 0 12px; }
+  .detail .var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .detail .d-andere { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+  .detail .d-andere button { flex: 0 0 74px; padding: 0; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--line); background: var(--card); }
+  .detail .d-andere button:hover { border-color: var(--akzent-text); }
+  .detail .d-andere img { width: 100%; display: block; aspect-ratio: 63/88; object-fit: contain; background: var(--panel2); }
+  .detail .d-andere span { display: block; font-size: var(--t-xs); padding: 3px 4px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .imp-tab { width: 100%; border-collapse: collapse; font-size: var(--t-s); }
+  .imp-tab td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  .imp-tab td.u { color: var(--akzent-text); }
+  .pl-akt:disabled { opacity: .4; }
+  .bcard .bthumbs { display: flex; gap: 4px; margin-bottom: 4px; }
+  .bcard .bthumbs img { width: 46px; aspect-ratio: 63/88; object-fit: contain; border-radius: 5px; background: var(--panel2); }
+  .bcard .bthumbs span { width: 46px; aspect-ratio: 63/88; border-radius: 5px; border: 1.5px dashed var(--slotrand); }
+  @media (max-width: 900px) {
+    .mobil-only { display: inline-flex !important; }
+    .desktop-only { display: none !important; }
+    .kopf { flex-wrap: nowrap; height: 54px; overflow: visible; }
+    .kopf .logo-text { display: none; }
+    .kopf .bw { flex: 1; min-width: 0; }
+    .bw-btn { max-width: 100%; width: 100%; justify-content: space-between; }
+    #menu-bw { min-width: 0; left: 0; right: 0; width: min(92vw, 360px); }
+    #planer { top: 54px; padding-bottom: 62px; }
+    /* Am Handy als Leiste über die volle Breite statt als Pille in der Mitte: sechs
+       Bedienelemente in einer Pille brachen in vier Zeilen um. */
+    .planer-bar { bottom: calc(var(--pl-bar-unten, 18px) + 54px); border-radius: 14px;
+      left: 8px; right: 8px; transform: none; max-width: none; gap: 5px; padding: 7px 9px; }
+    .planer-bar .btn { padding: 6px 9px; font-size: var(--t-s); }
+    .planer-bar .pl-wort, .planer-bar .pl-strich { display: none; }
+    .bp-tools { flex-wrap: wrap; }
+    /* Am Handy trägt die Zeile nur die Navigation plus „Seite …“ — sieben nackte Symbole
+       nebeneinander waren nicht zuzuordnen. */
+    .seiten-nav #wb-seite-vor, .seiten-nav #wb-seite-zurueck { display: none; }
+    .detail .d-grid { grid-template-columns: 1fr; }
+    .detail .d-bild { max-width: 240px; margin: 0 auto; }
+    .onb-tpl { grid-template-columns: 1fr 1fr; }
+    .mnav .menu { position: fixed; left: 10px; right: 10px; bottom: 66px; top: auto; min-width: 0; }
+  }
+
+  /* Artwork-Seite (KI) */
+  .aw-wrap { display: flex; gap: 20px; flex-wrap: wrap; }
+  .aw-links { flex: 0 0 300px; max-width: 100%; }
+  .aw-rechts { flex: 1 1 280px; min-width: 240px; }
+  .aw-grid { display: grid; gap: 5px; background: var(--panel2); padding: 7px; border-radius: 12px; }
+  .aw-fach { position: relative; aspect-ratio: 63 / 88; border-radius: 5px; overflow: hidden; background: var(--card); display: flex; align-items: center; justify-content: center; color: var(--mut); border: 1px dashed var(--slotrand); }
+  .aw-fach.ki { background: var(--card); color: var(--blau); font-size: var(--t-xl); border-color: var(--blau)80; }
+  .aw-fach.karte { cursor: pointer; border-style: solid; }
+  .aw-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .aw-fach.uebermalt img { opacity: .3; filter: grayscale(.7); }
+  .aw-fach .aw-badge { position: absolute; left: 3px; right: 3px; bottom: 3px; font-size: var(--t-xs); font-weight: 700; text-align: center; padding: 2px 3px; border-radius: 6px; background: rgba(0,0,0,.66); color: #fff; line-height: 1.2; }
+  .aw-fach.uebermalt .aw-badge { background: var(--blau); }
+  .aw-hint { font-size: var(--t-s); color: var(--mut); margin-top: 8px; line-height: 1.4; }
+  .aw-stile { display: flex; flex-wrap: wrap; gap: 6px; }
+  .aw-kont { font-size: var(--t-s); color: var(--mut); margin: 12px 0 8px; }
+  .aw-poke-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .aw-poke-chips:empty { display: none; }
+  .aw-poke-chips .chip { display: inline-flex; align-items: center; gap: 6px; }
+  .aw-poke-chips .chip img { width: 22px; height: 22px; object-fit: contain; }
+  .aw-fehler { color: var(--akzent-text); font-size: var(--t-s); font-weight: 600; margin-top: 8px; min-height: 1em; }
+  .aw-lauf { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 40px 0; text-align: center; font-weight: 600; }
+  .aw-lauf .aw-mini-vorschau { display: grid; gap: 4px; width: 150px; }
+  .aw-spin { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--akzent-text); border-radius: 50%; animation: dreh .9s linear infinite; }
+  .aw-ergebnis { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .aw-vorschau { flex: 0 1 440px; max-width: 100%; }
+  /* Nur die ganze Seite wird gedeckelt. Die neun Kachelbilder sind dasselbe Seitenbild,
+     absichtlich dreimal so groß wie ihr Fach und verschoben — ein `max-height` daran
+     staucht sie, und jedes Fach zeigt dann den falschen Ausschnitt. Genau das war am
+     Handy zu sehen: Motive verrutscht, die Schnittfuge mitten im Fach. */
+  .aw-vorschau > img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.28); display: block; }
+  .aw-kacheln { display: grid; background: var(--panel2); padding: 10px; border-radius: 10px; }
+  .aw-kacheln .aw-kachel { position: relative; aspect-ratio: 63 / 88; overflow: hidden; border-radius: 3px; background: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+  .aw-kacheln .aw-kachel img { position: absolute; max-width: none; display: block; }
+  .aw-kacheln .aw-kachel span { position: absolute; left: 3px; bottom: 3px; font-size: var(--t-xs); font-weight: 700; padding: 1px 5px; border-radius: 5px; background: rgba(0,0,0,.6); color: #fff; }
+  .aw-kacheln .aw-kachel.karte span { background: var(--akzent); }
+  .aw-tabs { margin: 4px 0; }
+  .aw-akt { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 230px; }
+  .aw-akt .btn { justify-content: center; }
+  .aw-privat { font-size: var(--t-xs); color: var(--mut); margin-top: 6px; line-height: 1.4; }
+  .aw-galerie { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .aw-galerie .aw-mini { width: 72px; cursor: pointer; text-align: center; font-size: var(--t-xs); color: var(--mut); line-height: 1.2; }
+  .aw-galerie .aw-mini img { width: 100%; border-radius: 6px; border: 2px solid transparent; display: block; margin-bottom: 2px; }
+  .aw-galerie .aw-mini.on img { border-color: var(--akzent-text); }
+  .aw-galerie-lbl { font-size: var(--t-s); font-weight: 700; margin-top: 18px; }
+  .btn.aw-cta { background: linear-gradient(120deg, var(--blau), #c04a9a); border: 0; }
+  .btn.aw-cta:hover { filter: brightness(1.08); }
+  /* Der Verlauf blieb auch ohne Credits farbig – als einziger Knopf der App. */
+  .btn.aw-cta:disabled { background: var(--panel2); color: var(--mut); border: 1.5px solid var(--line); filter: none; }
+  /* Tarife & Credits */
+  .tarif-schalter { display: inline-flex; background: var(--panel2); border-radius: 99px; padding: 3px; margin: 0 auto 16px; }
+  .tarif-schalter button { padding: 6px 16px; border-radius: 99px; font-size: var(--t-m); font-weight: 700; color: var(--mut); }
+  .tarif-schalter button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .tarif-spar { font-size: var(--t-xs); color: var(--gruen-text); font-weight: 700; }
+  .tarif-karten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tk-tarif { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px 14px; display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .tk-tarif.empfohlen { border-color: var(--akzent-text); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
+  .tk-tarif .tk-name { font-weight: 800; font-size: var(--t-l); }
+  .tk-tarif .tk-preis { font-size: var(--t-3xl); font-weight: 800; line-height: 1.1; margin: 6px 0 0; }
+  .tk-tarif .tk-preis small { font-size: var(--t-m); font-weight: 600; color: var(--mut); }
+  .tk-tarif .tk-credits { font-size: var(--t-s); color: var(--blau); font-weight: 700; }
+  .tk-tarif ul { list-style: none; margin: 10px 0 0; padding: 0; font-size: var(--t-s); display: flex; flex-direction: column; gap: 5px; }
+  .tk-tarif li::before { content: "✓ "; color: var(--gruen-text); font-weight: 800; }
+  .tk-tarif li.aus { color: var(--mut); }
+  .tk-tarif li.aus::before { content: "– "; color: var(--mut); }
+  .tk-tarif .btn { margin-top: 12px; justify-content: center; }
+  .tk-tarif .empf-band { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-xs); font-weight: 800; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+  .pakete { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .paket { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; }
+  .paket:hover { border-color: var(--akzent-text); }
+  .paket .p-cr { font-weight: 800; font-size: var(--t-l); color: var(--blau); }
+  .paket .p-eur { font-weight: 700; margin-top: 2px; }
+  .paket .p-je { font-size: var(--t-xs); color: var(--mut); }
+  .credit-chip { display: inline-flex; align-items: center; gap: 4px; background: color-mix(in srgb, var(--blau) 12%, transparent); color: var(--blau); border-radius: 99px; padding: 3px 9px; font-size: var(--t-s); font-weight: 800; }
+  .bestell-box { border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel2); }
+  .bestell-zeile { display: flex; justify-content: space-between; font-size: var(--t-m); margin-bottom: 6px; }
+  .bestell-zeile.gesamt { font-weight: 800; font-size: var(--t-l); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  .zustimmung { display: flex; gap: 8px; align-items: flex-start; font-size: var(--t-s); margin-top: 12px; line-height: 1.45; }
+  .zustimmung input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--akzent-text); flex-shrink: 0; }
+  .buchungen { max-height: 220px; overflow-y: auto; font-size: var(--t-s); }
+  .buchungen div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
+  .buchungen .plus { color: var(--gruen-text); font-weight: 700; }
+  .buchungen .minus { color: var(--mut); font-weight: 700; }
+  @media (max-width: 720px) {
+    .tarif-karten, .pakete { grid-template-columns: 1fr; }
+  }
+  #aw-png { text-decoration: none; }
+  #modal-artwork h2 { padding-right: 40px; }
+  @media (max-width: 900px) {
+    .aw-links { flex-basis: 100%; }
+    .aw-grid { max-width: 200px; margin: 0 auto; }
+    .aw-fach .aw-badge { font-size: var(--t-xs); padding: 1px 2px; }
+    #modal-artwork h2 { font-size: var(--t-l); }
+    .aw-ergebnis .aw-vorschau > img { max-height: 50vh; }
+  }
+
+  /* ================= Neunundneunzig, ruhige Fassung =================
+     In der Werkbank stehen die Karten im Vordergrund. Der Grund bleibt weiß,
+     Struktur kommt aus dünnen Linien, und von den drei Marken-Farben trägt nur
+     Blau die Bedienung. Gelb markiert Besitz, Rot bleibt der einen Aktion
+     vorbehalten, die Geld oder Papier kostet. */
+  body { font-family:'Archivo','Trebuchet MS',sans-serif; }
+  .kopf .logo { font-family:'Bungee','Archivo',sans-serif; font-weight:400; font-size: var(--t-l); gap:9px; }
+
+  .btn { border-radius:10px; border:2px solid var(--kontur); box-shadow:2px 2px 0 var(--kontur);
+         font-weight:800; padding:8px 15px; transition:transform .08s, box-shadow .08s; }
+  .btn:hover { transform:translate(1px,1px); box-shadow:1px 1px 0 var(--kontur); }
+  .btn.sekundaer { background:var(--card); }
+  .btn.sekundaer:hover { background:var(--panel2); }
+  .btn:disabled { box-shadow:none; transform:none; }
+
+  .chip { border-radius:8px; border-width:2px; font-weight:700; }
+  .chip.on { background:var(--blau-flaeche); border-color:var(--blau-flaeche); color:var(--blau-fg); }
+  .feld { border-radius:8px; border-width:2px; }
+  .feld:focus { border-color:var(--blau); }
+
+  /* Die Binderseite: ruhiger Rahmen, klare Fächer, sonst nichts. Farbe kommt aus
+     den Binder-Variablen, damit Schwarz und Weiß denselben Aufbau haben. */
+  .slots { background:var(--bseite); border-radius:12px; border:2px solid var(--line); padding:11px; }
+  .slot { border-radius:5px; }
+  .slot.voll { border:1.5px solid var(--bkante); background:var(--bfach); }
+  body.dunkle-seiten .slots { border-color:rgba(255,255,255,.13); }
+  body.dunkle-seiten .slot.frei { border-color:rgba(255,255,255,.18); }
+  .slot.gewaehlt { outline:3px solid var(--blau); }
+  .slot.dragover { border-color:var(--blau); }
+  /* Besitz ist der einzige gelbe Zustand — er soll auf einen Blick zählbar sein. */
+  .slot .hat-btn.an, .slot .hat-btn[data-an="1"] { background:var(--gelb); color:var(--kontur); }
+  .slot .preis { background:var(--kontur); color:#fff; font-weight:700; border-radius:3px; }
+  .slot .rmark { background:var(--blau); border-radius:3px; }
+  .seiten-nav strong { font-weight:800; }
+  .preisbox { border-radius:10px; }
+
+  /* ================= UX-Audit 08.09.2026 ================= */
+  /* Konto-Knopf: Avatar + Name, der Name weicht zuerst */
+  #btn-konto { gap: 7px; max-width: 240px; }
+  #btn-konto .avatar { width: 24px; height: 24px; border-radius: 999px; background: var(--blau-flaeche); color: var(--blau-fg);
+    display: inline-flex; align-items: center; justify-content: center; font-size: var(--t-s); font-weight: 800; flex: 0 0 auto; }
+  #btn-konto .konto-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #menu-konto .konto-mail { overflow-wrap: anywhere; word-break: normal; }
+  /* Start: Anrede und Namensfrage */
+  .st-gruss h1 { overflow-wrap: anywhere; min-width: 0; }
+  .st-namefrage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--t-mp); color: var(--mut);
+    margin: 6px 0 12px; }
+  .st-namefrage .feld { width: 190px; padding: 6px 10px; font-size: var(--t-m); }
+  .st-namefrage .btn { font-size: var(--t-s); padding: 6px 12px; }
+  /* Kartendetail: Zustand in den Fließinhalt, Leiste einzeilig */
+  .detail .d-zustand { margin-top: 10px; }
+  .detail .d-aktion .btn { white-space: nowrap; }
+  /* Trefferkarte: Name + i, Hauptaktion als Knopf */
+  .tk .tk-name { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
+  .tk .tk-name .tkn { min-width: 0; }
+  .tk .info { position: static; width: 18px; height: 18px; font-size: var(--t-xs); line-height: 15px; flex: 0 0 auto; margin-top: 1px;
+    padding: 0; border-width: 1.5px; }
+  .tk-hab button { white-space: nowrap; }
+  .tk-hab .hinzu { flex: 1; background: var(--blau-flaeche); border-color: var(--blau-flaeche); color: var(--blau-fg); }
+  .tk-hab .hinzu:hover { background: color-mix(in srgb, var(--blau-flaeche) 85%, #000); border-color: var(--blau-flaeche); color: var(--blau-fg); }
+  .tk-hab .hat-k { flex: 0 0 auto; min-width: 30px; padding: 4px 6px; }
+  /* Planer: Seitenwerkzeuge treten zurück, bis die Seite überfahren wird */
+  .planer-seite .ps-akt button { opacity: .4; transition: opacity .12s; }
+  .planer-seite:hover .ps-akt button, .planer-seite .ps-akt button:focus-visible { opacity: 1; }
+  @media (hover: none) { .planer-seite .ps-akt button { opacity: 1; } }
+  /* Fach-Menü: begrenzte Breite */
+  #menu-slot { max-width: 300px; }
+  /* Menü-Einstellungen am Handy */
+  .mm-einst { display: grid; grid-template-columns: 1fr 1fr; }
+  .theme-wahl button { flex: 1; text-align: center; }
+  /* Laptop-Schiene: standardmäßig unsichtbar */
+  .f-rail { display: none; }
+
+  /* ---- Handy ---- */
+  @media (max-width: 900px) {
+    #btn-konto { padding: 5px 7px !important; max-width: none; }
+    #btn-konto .konto-name { display: none; }
+    .detail .d-aktion { flex-wrap: nowrap !important; gap: 6px !important; padding: 8px 0 4px; }
+    .detail .d-aktion .btn { padding: 8px 10px; font-size: var(--t-s); }
+    .detail .d-aktion .btn .txt, .detail .d-aktion #detail-anz { display: none; }
+    .detail .d-aktion .btn:first-child { flex: 1; justify-content: center; }
+    .detail .d-bild { max-height: 30vh; width: auto; max-width: 100%; object-fit: contain; }
+    /* Die Entwicklungsreihe schob den Trendpreis unter die klebende Leiste. Am Handy
+       läuft sie einzeilig und scrollt seitwärts. */
+    .detail .d-fam { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .detail .d-fam::-webkit-scrollbar { display: none; }
+    .detail .d-fam > * { flex-shrink: 0; }
+    .sortwahl .richtung { font-size: var(--t-s); padding: 6px 8px; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 1.4; }
+    .kopfzeile { row-gap: 6px; }
+    .pl-suche.zu { display: none; }
+    body.nur-ansicht .bp-stats { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+    body.nur-ansicht .bp-kopf > * { min-width: 0; }
+    /* Übernehmen-Leiste der geteilten Ansicht: kompakt, nicht vor dem Inhalt in voller Größe */
+    .vt-ansichtleiste .btn { flex: none; }
+    /* Kopf der geteilten Ansicht: Titel und Kennzahlen untereinander statt in einer Zeile,
+       die rechts aus dem Bild lief; die Lücke des ausgeblendeten Preis-Schalters schließt. */
+    body.nur-ansicht .bp-kopf { display: flex !important; flex-direction: column !important; align-items: flex-start; gap: 4px; }
+    body.nur-ansicht .bp-stats { flex: none; width: 100%; }
+    body.nur-ansicht .bp-tools:not(:has(label:first-of-type:not([style*="none"]))) { display: none; }
+    body.nur-ansicht .spalte-binder { gap: 6px; }
+    /* Umschalter im Handy-Menü: die Menüregel färbte den Text schwarz auf schwarz */
+    #mobil-mehr .lang-toggle button { padding: 6px 10px; justify-content: center; min-height: 0; color: var(--mut); }
+    #mobil-mehr .lang-toggle button.on { color: var(--aktiv-fg); }
+  }
+  @media (max-width: 600px) {
+    .pf-zeile { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .pf-zeile > span:first-child { font-size: var(--t-s); color: var(--mut); font-weight: 600; letter-spacing: .02em; }
+    .pf-zeile .wert { text-align: left; width: 100%; overflow-wrap: anywhere; }
+    .pf-zeile .wert input.feld { width: 100% !important; }
+    .pf-zeile .wert[style*="display:flex"] { flex-wrap: wrap; }
+  }
+
+  /* ---- Tablet 700–900 px: zwei Spalten, Binder-Panel bleibt sichtbar ---- */
+  @media (min-width: 700px) and (max-width: 900px) {
+    .rumpf { flex-direction: row; }
+    .spalte-mitte { width: auto; }
+    .spalte-binder { display: flex; width: 340px; border-left: 1.5px solid var(--line); }
+    body.binder-an .spalte-mitte { display: flex; }
+    .slots { max-width: none; }
+    .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+    .mnav #mnav-binder { display: none; }
+  }
+
+  /* ---- Laptop 901–1180 px: Filter als Schiene, drei Trefferspalten, kürzere Kopfzeile ---- */
+  @media (min-width: 901px) and (max-width: 1180px) {
+    .kopf .logo-text { display: none; }
+    .segment button { padding: 7px 10px; font-size: var(--t-s); }
+    #btn-konto .konto-name { display: none; }
+    .spalte-binder { --binder-w: 360px; }
+    .f-rail { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; flex: 0 0 56px;
+      padding: 14px 4px; background: var(--card); border-right: 1.5px solid var(--line); color: var(--mut);
+      font-size: var(--t-xs); font-weight: 700; cursor: pointer; position: relative; }
+    .f-rail:hover { color: var(--ink); background: var(--panel2); }
+    .f-rail-zahl { position: absolute; top: 8px; right: 8px; background: var(--blau-flaeche); color: var(--blau-fg); font-size: var(--t-xs);
+      min-width: 16px; border-radius: 999px; padding: 1px 4px; text-align: center; }
+    .spalte-filter { display: none; }
+    .spalte-filter.offen { display: flex; position: fixed; left: 0; top: 54px; bottom: 0; width: 320px; z-index: 70;
+      padding: 14px; overflow-y: auto; gap: 14px; box-shadow: 8px 0 30px rgba(0,0,0,.18); transform: none; }
+    .spalte-filter.offen .f-kopf { display: flex; align-items: center; justify-content: space-between; font-size: var(--t-l); font-weight: 800; }
+    .spalte-filter.offen .f-fuss { display: block; position: sticky; bottom: 0; background: var(--card);
+      padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1.5px solid var(--line); margin: 8px -14px 0; }
+    .m-backdrop.offen { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 65; }
+    .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+  }
+
+  /* ================= Markt (Welle B, 09.09.2026) ================= */
+  /* Eine Kachel trägt drei Dinge: die Zahl, ihre Bewegung und die Form der letzten Tage. */
+  .mk-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 18px; }
+  .mk-kachel { border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 15px; background: var(--card);
+    display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .mk-kachel.klickbar { cursor: pointer; }
+  .mk-kachel.klickbar:hover { border-color: var(--blau); }
+  .mk-kachel small { font-size: var(--t-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--mut); font-weight: 700; }
+  .mk-kachel b { font-size: var(--t-2xl); font-weight: 800; letter-spacing: -.01em; line-height: 1.15; overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums; }
+  .mk-kachel .spk { margin-top: 5px; }
+  .mk-neben { font-size: var(--t-s); color: var(--mut); }
+  .mk-dl { font-size: var(--t-s); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mk-dl.plus { color: var(--gruen-text); } .mk-dl.minus { color: var(--akzent-text); } .mk-dl.neutral { color: var(--mut); font-weight: 600; }
+  .spk { display: block; }
+  .spk-leer { color: var(--mut); font-size: var(--t-s); }
+  .mk-stand { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
+
+  .mk-zeile { display: grid; grid-template-columns: 18px minmax(0, 1fr) 104px 62px 40px; gap: 10px; align-items: center;
+    padding: 7px 0; border-top: 1px solid var(--line); }
+  .mk-zeile[role="button"] { cursor: pointer; }
+  .mk-zeile[role="button"]:hover { background: var(--hover); }
+  .mk-zeile .rg { font-size: var(--t-s); color: var(--mut); font-variant-numeric: tabular-nums; }
+  .mk-zeile .nm { min-width: 0; }
+  .mk-zeile .nm b { display: block; font-weight: 700; font-size: var(--t-mp); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mk-zeile .nm small { color: var(--mut); font-size: var(--t-s); }
+  .mk-zeile .mk-dl { text-align: right; }
+  .mk-zeile .n { font-size: var(--t-s); color: var(--mut); text-align: right; font-variant-numeric: tabular-nums; }
+  .mk-fuss { font-size: var(--t-s); color: var(--mut); margin-top: 10px; line-height: 1.5; }
+  .mk-link { font-size: var(--t-s); color: var(--link); font-weight: 700; padding: 0; margin-top: 10px; }
+
+  /* Ären als kleine Vielfache: sechs Kurven mit gleicher Regel statt einer überladenen. */
+  .mk-mult { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mk-mult .mm { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--card);
+    display: flex; flex-direction: column; gap: 2px; align-items: flex-start; text-align: left; }
+  .mk-mult button.mm { cursor: pointer; }
+  .mk-mult button.mm:hover { border-color: var(--blau); }
+  .mk-mult .mm small { font-size: var(--t-s); color: var(--mut); font-weight: 700; }
+  .mk-mult .mm .z { font-size: var(--t-l); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .mk-mult.gross { margin-bottom: 16px; }
+
+  /* Verteilung als Säulen: vorher zwei Balkenlisten nebeneinander für dieselbe Sache. */
+  .mk-hist { display: flex; align-items: flex-end; gap: 5px; height: 150px; padding: 16px 0 32px; }
+  .mk-hist .hs { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+    height: 100%; position: relative; min-width: 0; }
+  .mk-hist .hs i { display: block; width: 100%; background: var(--d2); border-radius: 4px 4px 0 0; min-height: 3px; }
+  .mk-hist .hs .wert { font-size: var(--t-xs); color: var(--mut); font-variant-numeric: tabular-nums; margin-bottom: 3px; }
+  .mk-hist .hs .lbl { position: absolute; top: 100%; left: -6px; right: -6px; text-align: center; font-size: var(--t-xs);
+    color: var(--mut); margin-top: 5px; line-height: 1.25; }
+
+  /* Bewegung zweiseitig: gefallen links, gestiegen rechts, Nulllinie in der Mitte. */
+  .mk-div .dz { display: grid; grid-template-columns: minmax(0, 120px) 1fr 58px; gap: 8px; align-items: center; padding: 4px 0; }
+  .mk-div .l { font-size: var(--t-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mk-div .l button { font-size: var(--t-s); padding: 0; text-align: left; color: var(--link); font-weight: 600; }
+  .mk-div .track { position: relative; height: 11px; background: var(--panel2); border-radius: 4px; }
+  .mk-div .track::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line); }
+  .mk-div .track i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+  .mk-div .track i.p { background: var(--gruen-flaeche); } .mk-div .track i.m { background: var(--akzent-flaeche); }
+  .mk-div .mk-dl { text-align: right; }
+
+  .mk-tab tr.klickbar { cursor: pointer; }
+  .mk-tab tr.klickbar:hover td { background: var(--hover); }
+  .mk-kopfzeile { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .mk-kopfzeile h1 { margin: 0; }
+  .mk-zurueck { font-size: var(--t-s); }
+  .mk-anz { font-size: var(--t-xs); color: var(--mut); font-weight: 700; }
+  #mk-fenster.klein button { padding: 6px 12px; font-size: var(--t-s); }
+
+  @media (max-width: 700px) {
+    .mk-band { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mk-kachel { padding: 10px 12px; }
+    .mk-kachel b { font-size: var(--t-l); }
+    .mk-kachel .spk { width: 100%; }
+    .mk-zeile { grid-template-columns: 16px minmax(0, 1fr) 58px; gap: 8px; }
+    .mk-zeile .spk, .mk-zeile .n { display: none; }
+    .mk-mult { grid-template-columns: 1fr 1fr; }
+    .mk-hist { height: 120px; }
+    .mk-hist .hs .lbl { font-size: var(--t-xs); }
+    .mk-div .dz { grid-template-columns: minmax(0, 88px) 1fr 52px; }
+    .mk-kopfzeile h1 { font-size: var(--t-xl); }
+  }
+
+  /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
+  #sammlung .mk-band { margin: 10px 0 16px; }
+  .bcard .bwert { margin-top: 2px; }
+  .bcard .bfort { height: 7px; border-radius: 99px; background: var(--panel2); overflow: hidden; margin-top: 8px; }
+  .bcard .bfort > div { height: 100%; background: var(--gruen); border-radius: 99px; transition: width .2s; }
+  .st-alarme, .st-digest { display: grid; gap: 8px; }
+  .st-alarm { display: flex; align-items: center; gap: 10px; border: 2px solid var(--gruen-flaeche); border-radius: 12px;
+              padding: 10px 14px; background: var(--card); text-align: left; font-size: var(--t-m); }
+  .st-alarm b { font-variant-numeric: tabular-nums; }
+  .st-alarm small { color: var(--mut); }
+  .st-digest .dg { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--card);
+                   display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; font-size: var(--t-m); }
+  .st-digest .dg h4 { margin: 0 0 4px; font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .st-digest .dg .z { font-size: var(--t-xl); font-weight: 800; font-variant-numeric: tabular-nums; }
+  .st-digest .dg ul { margin: 0; padding: 0; list-style: none; }
+  .st-digest .dg li { padding: 2px 0; display: flex; justify-content: space-between; gap: 8px; }
+  .st-digest .dg li span:last-child { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .al-zeile { display: grid; grid-template-columns: minmax(0, 1fr) 110px 90px 28px; gap: 10px; align-items: center;
+              padding: 7px 0; border-top: 1px solid var(--line); font-size: var(--t-m); }
+  .al-zeile .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .al-zeile .nm small { display: block; color: var(--mut); font-weight: 500; font-size: var(--t-s); }
+  .al-zeile .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .al-zeile.trifft .nm { color: var(--gruen-text); }
+  .al-zeile button { color: var(--mut); font-size: var(--t-mp); }
+  @media (max-width: 700px) { .al-zeile { grid-template-columns: minmax(0, 1fr) 90px 28px; } .al-zeile .r.aktuell { display: none; } }
+  .sm-wahlleiste { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                   background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 12px;
+                   margin: 0 0 12px; font-size: var(--t-s); box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .sm-wahlleiste .feld { padding: 5px 8px; font-size: var(--t-s); width: auto; }
+  .sm-wahlleiste .btn { font-size: var(--t-s); padding: 6px 11px; }
+  .sm-wahlleiste b { font-variant-numeric: tabular-nums; }
+  .sm-karte.wahlbar { cursor: pointer; }
+  .sm-karte .sm-wahlbox { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 7px;
+                          border: 2px solid #fff; background: rgba(0,0,0,.45); color: #fff; font-size: var(--t-mp); font-weight: 800;
+                          display: none; align-items: center; justify-content: center; }
+  .sm-karte.wahlbar .sm-wahlbox { display: flex; }
+  .sm-karte.wahlbar .sm-weg { display: none; }
+  .sm-karte.gewaehlt { outline: 3px solid var(--blau); outline-offset: -1px; }
+  .sm-karte.gewaehlt .sm-wahlbox { background: var(--blau); }
+  .sm-bew { font-size: var(--t-xs); font-weight: 800; margin-left: 4px; color: var(--mut); }
+  .sm-bew.plus { color: var(--gruen-text); } .sm-bew.minus { color: var(--akzent-text); }
+  .sm-prog { display: block; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; min-width: 40px; }
+  .sm-prog i { display: block; height: 100%; background: var(--blau); border-radius: 4px; }
+  .mk-kachel .sm-prog { margin: 6px 0 2px; width: 100%; }
+  .set-kopf, .set-zeile { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 44px 84px 84px 64px; gap: 10px; align-items: center; }
+  .set-kopf { font-size: var(--t-xs); color: var(--mut); font-weight: 700; padding: 0 0 6px; border-bottom: 1.5px solid var(--line); }
+  .set-kopf .r, .set-zeile .pz, .set-zeile .n, .set-zeile .rest, .set-zeile .mk-dl { text-align: right; }
+  .set-zeile { padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .set-zeile:hover { background: var(--hover); }
+  .set-zeile .nm { min-width: 0; }
+  .set-zeile .nm b { display: block; font-weight: 700; font-size: var(--t-mp); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .set-zeile .nm small { color: var(--mut); font-size: var(--t-s); }
+  .set-zeile .pz, .set-zeile .n, .set-zeile .rest { font-size: var(--t-s); color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .set-zeile .rest { color: var(--ink); font-weight: 700; }
+  .sm-komplett { color: var(--gruen-text); font-weight: 800; }
+  .sm-zielmarke { color: var(--blau); font-weight: 700; }
+  .sm-hinweis { font-size: var(--t-s); color: var(--mut); margin: 2px 0 14px; line-height: 1.6; border: 1.5px solid var(--line);
+                border-radius: 12px; padding: 10px 12px; background: var(--panel2); }
+  /* Häkchenraster eines Sets: gedämpft = fehlt, voll = gehört mir */
+  .hk-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .hk-karte { position: relative; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2);
+              text-align: left; padding: 0; opacity: .5; transition: opacity .15s, border-color .15s; }
+  .hk-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .hk-karte.hab { opacity: 1; border-color: var(--gruen-flaeche); }
+  .hk-karte:hover { opacity: 1; }
+  .hk-karte .hk-nr { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,.62); color: #fff; font-size: var(--t-xs); font-weight: 800; padding: 1px 5px; border-radius: 999px; }
+  .hk-karte .hk-hab { position: absolute; top: 3px; right: 3px; background: var(--gruen-flaeche); color: #fff; font-size: var(--t-xs); font-weight: 800; padding: 1px 6px; border-radius: 999px; display: none; }
+  .hk-karte.hab .hk-hab { display: block; }
+  .hk-karte .hk-preis { display: block; font-size: var(--t-xs); font-weight: 700; padding: 3px 5px; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .hk-karte.hab .hk-preis { color: var(--ink); }
+  /* Ziele auf der Startseite */
+  .st-ziele { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .st-ziel { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--card); display: grid; gap: 6px; }
+  .st-ziel:hover { border-color: var(--kontur); }
+  .st-ziel .zk { display: flex; justify-content: space-between; gap: 8px; font-size: var(--t-m); align-items: baseline; }
+  .st-ziel .zk b { font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st-ziel .zk span { color: var(--mut); font-size: var(--t-s); white-space: nowrap; }
+  .st-ziel .zu { display: flex; justify-content: space-between; font-size: var(--t-s); color: var(--mut); font-weight: 600; }
+  /* Kaufpreis-Toast */
+  #toast-kauf input { width: 78px; padding: 5px 8px; border-radius: 8px; border: none; font-weight: 700; font-size: var(--t-m);
+                      background: rgba(255,255,255,.16); color: inherit; }
+  #toast-kauf input::placeholder { color: inherit; opacity: .5; }
+  #toast-kauf button { text-decoration: none; background: rgba(255,255,255,.2); padding: 5px 10px; border-radius: 8px; color: inherit; }
+  @media (max-width: 700px) {
+    .set-kopf span:nth-child(3), .set-kopf span:nth-child(4), .set-zeile .pz, .set-zeile .n { display: none; }
+    .hk-gitter { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+    #sammlung .sm-kopf .segment { order: 3; width: 100%; }
+    #sammlung .sm-kopf .segment button { flex: 1; padding: 7px 4px; font-size: var(--t-s); white-space: nowrap; }
+    #sammlung .sm-kopf .segment button strong { font-weight: 800; }
+    .set-kopf, .set-zeile { grid-template-columns: minmax(0, 1fr) 52px 66px 52px; gap: 6px; }
+  }
+
+  /* ===== Werkbank (Phase 3, 10.09.2026): Binder in der Mitte, Suche als Schublade, Inspektor rechts ===== */
+  .m-suchzeile, .f-rail { display: none !important; }
+  .lade-kopf { display: flex; align-items: center; gap: 8px; }
+  .lade-kopf input { flex: 1; min-width: 0; font-size: var(--t-mp); padding: 9px 12px; }
+  .lade-ziel { font-size: var(--t-s); font-weight: 700; color: var(--akzent-text); white-space: nowrap; }
+  .lade-ziel:empty { display: none; }
+  .seitenstreifen { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+  .seitenstreifen::-webkit-scrollbar { display: none; }
+  .seitenstreifen:empty { display: none; }
+  .seitenstreifen button { flex: 0 0 auto; min-width: 30px; height: 28px; padding: 0 8px; border-radius: 8px; font-size: var(--t-s); font-weight: 700; color: var(--mut); background: var(--panel2); position: relative; }
+  .seitenstreifen button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
+  .seitenstreifen button i { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--gruen); transform-origin: left; }
+  .seitenstreifen button.on i { background: var(--marke-gelb); }
+  #btn-suche-lade.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }
+  @media (min-width: 901px) {
+    .suche-lade { display: none; flex: 0 0 var(--lade-w, 520px); width: var(--lade-w, 520px); min-width: 0; border-right: 1.5px solid var(--line); background: var(--card); }
+    body.suche-offen .suche-lade { display: flex; }
+    .suche-lade .spalte-mitte { padding: 12px 14px; }
+    .suche-lade .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+    .spalte-filter { display: none; }
+    .spalte-filter.offen { display: flex; position: fixed; left: 0; top: 54px; bottom: 0; width: 320px; z-index: var(--z-menue); padding: 14px; overflow-y: auto; gap: 14px; box-shadow: 8px 0 30px rgba(0,0,0,.18); transform: none; background: var(--card); }
+    .spalte-filter.offen .f-kopf { display: flex; align-items: center; justify-content: space-between; font-size: var(--t-l); font-weight: 800; }
+    .m-backdrop.offen { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: calc(var(--z-menue) - 1); }
+    .spalte-binder { flex: 1 1 auto; width: auto; border-left: none; }
+    .spalte-binder .bp-kopf { max-width: 1100px; width: 100%; margin: 0 auto; }
+    #wb-slots, #wb-onb, .gal-umschalter, .seiten-nav, .seitenstreifen, #wb-sammel, #wb-rest, #wb-preise, #wb-verlauf, .bp-hilfe { max-width: var(--binder-w, 560px); width: 100%; margin-left: auto; margin-right: auto; }
+    .wb-alle { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .wb-alle .planer-seite { width: auto; }
+    .ps-titel .ps-akt { opacity: 0; transition: opacity .15s; }
+    .planer-seite:hover .ps-akt, .planer-seite:focus-within .ps-akt { opacity: 1; }
+    .inspektor { position: relative; flex: 0 0 300px; width: 300px; border-left: 1.5px solid var(--line); background: var(--card); padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .inspektor.hidden { display: none; }
+    .inspektor .ik-bild { width: 58%; margin: 6px auto 4px; border-radius: 8px; display: block; }
+    .inspektor .ik-name { font-weight: 800; font-size: var(--t-l); line-height: 1.25; }
+    .inspektor .ik-meta { font-size: var(--t-s); color: var(--mut); }
+    .inspektor .ik-preis { font-size: var(--t-xl); font-weight: 800; }
+    .inspektor .ik-zeile { display: flex; gap: 5px; flex-wrap: wrap; }
+    .inspektor .ik-lbl { font-size: var(--t-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-top: 6px; }
+    .inspektor .ik-akt { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+    .inspektor .ik-akt button { text-align: left; padding: 8px 10px; border-radius: 8px; font-size: var(--t-m); font-weight: 600; }
+    .inspektor .ik-akt button:hover { background: var(--hover); }
+    .inspektor .ik-akt button.gefahr { color: var(--akzent-text); }
+    .inspektor .ik-akt .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
+    .inspektor .ik-zu { position: absolute; right: 10px; top: 10px; }
+    .ik-chip { padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--line); font-size: var(--t-s); font-weight: 600; background: var(--card); }
+    .ik-chip.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }
+  }
+  @media (max-width: 900px) {
+    .suche-lade { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); top: 12vh; background: var(--card); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.25); transform: translateY(110%); transition: transform .25s ease; z-index: calc(var(--z-leiste) - 1); display: flex; flex-direction: column; }
+    body.suche-offen .suche-lade { transform: none; }
+    .suche-lade .spalte-mitte { flex: 1; min-height: 0; padding: 14px 10px 0; position: relative; }
+    .suche-lade .spalte-mitte::before { content: ""; position: absolute; left: 50%; top: 5px; width: 40px; height: 4px; border-radius: 2px; background: var(--line); transform: translateX(-50%); }
+    .suche-lade .ergebnisse { grid-template-columns: repeat(3, 1fr); }
+    body.binder-an .spalte-mitte { display: flex; }
+    .spalte-binder { display: flex; width: 100%; border-left: none; }
+    .m-seitenleiste { display: none !important; }
+    .inspektor { display: none !important; }
+    .mnav #mnav-binder { display: flex; }
+    body.suche-offen .toast { bottom: 80px; }
+  }
+
+  /* Karten-Dialog: Aktionen oben, Reiter statt langer Seite */
+  .d-tabs { display: flex; gap: 2px; border-bottom: 1.5px solid var(--line); margin: 12px 0 10px; }
+  .d-tabs button { padding: 7px 12px; font-size: var(--t-m); font-weight: 700; color: var(--mut); border-bottom: 2px solid transparent; margin-bottom: -1.5px; border-radius: 6px 6px 0 0; }
+  .d-tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .d-tabs button:hover { background: var(--hover); }
+  .d-tab-n { font-size: var(--t-xs); background: var(--panel2); border-radius: 999px; padding: 1px 6px; margin-left: 2px; }
+  .detail .d-aktion { position: static; margin: 4px 0 0; padding: 0; }
+  @media (max-width: 700px) {
+    .detail .d-aktion { position: sticky; top: 0; bottom: auto; z-index: 2; background: var(--card); padding: 8px 0; margin: 0; }
+  }
+
+  /* ===== Phase 4: Sammlung, Markt und Start am Handy ===== */
+  .sm-zeile { display: none; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--t-m); color: var(--mut); margin: -2px 0 10px; }
+  .sm-zeile b { color: var(--ink); font-size: var(--t-l); }
+  .sm-zeile .chip { font-size: var(--t-s); }
+  .sm-karte .sm-name { font-size: var(--t-s); }
+  .sm-karte .sm-meta { font-size: var(--t-xs); }
+  .sm-karte .sm-wert { font-size: var(--t-m); }
+  .sm-bew { padding: 1px 6px; border-radius: 999px; background: var(--panel2); }
+  .sm-bew.plus { background: var(--gruen-weich, rgba(47,143,91,.12)); }
+  .sm-bew.minus { background: rgba(228,50,43,.1); }
+  .stat-zeile.klickbar { cursor: pointer; border-radius: 6px; }
+  .stat-zeile.klickbar:hover { background: var(--hover); }
+  @media (max-width: 700px) {
+    #sm-band { display: none; }
+    .sm-zeile { display: flex; }
+    #sammlung .an-chips, #sm-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    #sammlung .an-chips::-webkit-scrollbar, #sm-filter::-webkit-scrollbar { display: none; }
+    #sammlung .an-chips .chip, #sm-filter .chip { flex-shrink: 0; }
+    /* Markt: Zurück und „Meine Sammlung" hat die Leiste; Reiter in einer Zeile zum Wischen */
+    .mk-zurueck, .mk-meine { display: none !important; }
+    #marktseite .planer-kopf { flex-wrap: wrap; row-gap: 8px; }
+    #mk-reiter { order: 10; flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0 !important; }
+    #mk-reiter::-webkit-scrollbar { display: none; }
+    #mk-reiter .chip { flex-shrink: 0; }
+    #mk-fenster { margin-left: auto; }
+    /* Markt-Zeilen als Karten: Rang, Name, Bewegung – der Verlauf darunter */
+    .mk-zeile { grid-template-columns: 18px minmax(0, 1fr) 64px; row-gap: 2px; }
+    .mk-zeile > svg { grid-column: 2 / 4; height: 22px; width: 100%; }
+    .mk-zeile .n { display: none; }
+    /* Start: Zahlenband als eine Karte, Binder als Zeilen, Vitrine wischbar */
+    .st-band { display: flex; gap: 0; border: 1.5px solid var(--line); border-radius: 14px; padding: 6px 4px; margin-bottom: 18px; }
+    .st-band .st-zahl { flex: 1; border: none; padding: 8px 10px; border-radius: 10px; }
+    .st-band .st-zahl .z { font-size: var(--t-xl); }
+    .st-band .st-zahl .l { font-size: var(--t-xs); }
+    .st-band .st-zahl .u { font-size: var(--t-xs); }
+    .binder-grid { grid-template-columns: 1fr; gap: 8px; }
+    .binder-grid .bcard { display: grid !important; grid-template-columns: 104px minmax(0, 1fr); gap: 2px 12px; align-items: center; padding: 8px; }
+    .binder-grid .bcard:nth-child(n+4):not(.neu) { display: none !important; }
+    .binder-grid.alle .bcard { display: grid !important; }
+    .binder-grid .bcard .bstapel, .binder-grid .bcard .bthumbs { grid-row: 1 / span 4; margin: 0; }
+    .binder-grid .bcard .badge { display: none; }
+    .binder-grid .bcard.neu { display: flex !important; justify-content: center; }
+    .st-vitrine { display: flex; overflow-x: auto; gap: 10px; scrollbar-width: none; padding-bottom: 4px; }
+    .st-vitrine::-webkit-scrollbar { display: none; }
+    .st-vitrine > * { flex: 0 0 150px; display: block !important; }
+  }
+  /* ===== Komponenten-Varianten (Phase 5) ===== */
+  .btn.leise { background: transparent; border-color: transparent; color: var(--mut); box-shadow: none; }
+  .btn.leise:hover { background: var(--hover); color: var(--ink); }
+  .btn.gefahr { color: var(--akzent-text); }
+  .btn.klein { padding: 5px 11px; font-size: var(--t-s); }
+  .chip.zahl { gap: 4px; }
+  .chip.zahl b { font-size: var(--t-xs); background: var(--panel2); border-radius: 999px; padding: 0 5px; }
+  /* Leerzustand: ein Satz, ein Weg */
+  .leer { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px; text-align: center; color: var(--mut); font-size: var(--t-mp); }
+  .leer strong { color: var(--ink); font-size: var(--t-l); }
+  .leer .btn { margin-top: 6px; }

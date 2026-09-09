@@ -1,0 +1,1470 @@
+// Binderplan – Übersetzungen, Zustand (S), Icons, Handy-Grundlagen, Design, Sprache.
+// Aus index.html herausgelöst (Phase 5, 10.09.2026); die Dateien laden per defer in dieser Reihenfolge:
+// kern → konto → werkbank → vitrine → preise → planer → detail → artwork → markt → sammlung.
+'use strict';
+
+// ---------- Übersetzungen ----------
+const T = {
+  de: {
+    sm_z_karten: '{n} Karten', sm_z_sets: '{n} Sets', sm_z_kaufpreise: 'Kaufpreise eintragen ›', sm_z_ziel: 'Ziel setzen ›',
+    d_tab_preise: 'Preise', d_tab_drucke: 'Drucke', d_tab_reihe: 'Reihe',
+    lade_fuer: 'Für Fach {n}', fach_wort: 'Fach', ik_leer_t: 'Fach {n} ist leer', ik_leer_u: 'Wähle eine Karte aus der Suche – sie landet hier.',
+    ik_aktionen: 'Aktionen', ik_hat: 'In der Sammlung', ik_hat_nicht: 'Hab ich', v_normal_kurz: 'Normal',
+    dr_art_karten: 'Platzhalter', dr_art_check: 'Checkliste', dr_art_kauf: 'Kaufliste CSV',
+    dr_check_u: 'Alle Karten des Binders als Liste zum Abhaken – ohne Bilder, immer gratis.',
+    dr_kauf_u: 'Die fehlenden Karten mit Cardmarket-Trendpreis als CSV – für Tabellen oder Cardmarket-Wants.',
+    dr_start_check: 'Checkliste erzeugen', dr_start_kauf: 'CSV herunterladen',
+    suche_knopf: 'Karten suchen', drucken: 'Drucken',
+    gast_registrieren: 'Kostenlos registrieren', gast_anmelden: 'Ich habe ein Konto',
+    gast_sammlung_t: 'Deine Sammlung – mit Konto', gast_sammlung_u: 'Karten abhaken, Sets vervollständigen, Wert und Bewegung deiner Karten sehen. Kostenlos, mit E-Mail und Passwort.',
+    gast_markt_t: 'Der Markt – mit Konto', gast_markt_u: 'Sets im Aufwind, Bewegungen deiner Karten, Preisverlauf je Karte. Der Überblick ist gratis, die Ranglisten gehören zu Plus.',
+    gast_start_t: 'Dein Binder bleibt hier nur im Browser', gast_start_u: 'Mit Konto liegt er auf allen Geräten, dazu Sammlung, Wunschliste und Preis-Alarme. Kostenlos.',
+    gast_start_grund: 'Kostenlos registrieren – dein Binder wird übernommen.',
+    st_gast_gruss: 'Willkommen bei Binderplan!', st_gast_u: 'Plane deinen ersten Binder – ohne Konto. Karte für Karte oder mit einer Vorlage.',
+    f_variante: 'Variante',
+    geb_ungueltig: 'Bitte ein gültiges Geburtsdatum eingeben (TT.MM.JJJJ).',
+    tarif_life_hinweis: 'Du hast Lifetime – alle Funktionen sind frei. Hier kannst du Credits für Kunstseiten nachkaufen.',
+    tk_anhaengen: 'Anhängen',
+    tk_in_fach: 'In Fach {n}',
+    tk_gesetzt: 'In Fach {n} gelegt',
+    binder_nav: 'Binder',
+    pl_shift: 'Shift wählt einen Bereich',
+    pl_hilfe_t: 'Fächer ordnen',
+    pl_h_1: 'Ein Fach anklicken wählt es aus. Shift wählt einen Bereich.',
+    pl_h_2: 'Gewählte Fächer lassen sich verschieben, sortieren und leeren — die Leiste unten zeigt womit.',
+    pl_h_3: 'Ziehen verschiebt ein Fach direkt; auf dem Handy gedrückt halten und ziehen.',
+    pl_h_4: 'Der Haken im Fach sagt „hab ich" und wandert in deine Sammlung.',
+    pl_h_5: 'Tastatur: Strg+A wählt alles, Pfeile verschieben, Entf leert, Esc hebt auf.',
+    verstanden: 'Verstanden',
+    mk_meine_link: 'Meine Sammlung ›',
+    st_womit: 'Womit fängst du an?',
+    st_weg_foto_u: 'Seiten abfotografieren, Binderplan erkennt die Karten am Bild.',
+    st_weg_vorlage: 'Mit einer Vorlage starten',
+    st_weg_vorlage_u: 'Master Set, Pokédex oder alle Karten eines Pokémon.',
+    st_weg_import_u: 'CSV aus Collectr, TCG Collector oder Cardmarket.',
+    st_alle_binder: 'Alle {n} Binder zeigen',
+    st_offen: 'Fächer noch leer',
+    st_offen_u: 'in {n} Bindern',
+    st_verschieden_n: '{n} verschiedene',
+    vt_beliebt: 'Beliebt',
+    vt_k_geholt: 'geholt',
+    vt_k_ansehen: 'Ansehen',
+    vt_seite_n: 'Seite {n} von {g}',
+    vt_ganz_oeffnen: 'Ganzen Binder öffnen',
+    al_t: 'Preis-Alarm',
+    al_kurz: 'Alarm',
+    al_unter: 'fällt unter',
+    al_ueber: 'steigt über',
+    al_schwelle: 'Schwelle in Euro',
+    al_setzen: 'Alarm setzen',
+    al_gesetzt: 'Alarm gesetzt — wird nach jedem Preislauf geprüft.',
+    al_trifft_jetzt: 'Die Schwelle trifft heute schon.',
+    al_hin_karte: 'Geprüft wird der Cardmarket-Trend, einmal täglich nach dem Preislauf. Löst der Alarm aus, steht er auf der Startseite — und kommt per E-Mail, sobald der Versand eingerichtet ist.',
+    al_hin_set: 'Geprüft wird der Rest zum Set: die Summe der Trendpreise aller Karten, die dir noch fehlen.',
+    al_set: 'Alarm für den Rest zum Set',
+    al_ausgeloest: 'Preis-Alarme',
+    al_alle: 'Alle Alarme',
+    al_liste_t: 'Preis-Alarme',
+    al_liste_u: 'Nach jedem Preislauf geprüft. Ohne Plus drei Alarme.',
+    al_leer: 'Noch kein Alarm. Im Kartendialog: 🔔 Alarm.',
+    al_aktuell: 'aktuell',
+    al_schwelle_k: 'Schwelle',
+    al_weg: 'Alarm entfernen',
+    al_rest: 'Rest zum Set',
+    al_frei: '{n} von {m} Alarmen ohne Plus',
+    al_trifft: 'trifft',
+    dg_t: 'Dein Wochenrückblick',
+    dg_wert: 'Sammlung heute',
+    dg_beweg: 'Größte Bewegungen (7 Tage)',
+    dg_monat: 'Set des Monats',
+    dg_guenstiger: 'Günstiger auf der Wunschliste',
+    dg_leer: 'diese Woche nichts',
+    dg_mail: 'Kommt auch per E-Mail, sobald der Versand eingerichtet ist.',
+    imp_ziel: 'Ziel',
+    imp_ziel_binder: 'In den Binder',
+    imp_ziel_sammlung: 'In die Sammlung',
+    imp_ziel_binder_u: 'Als Plan: die Karten landen in den Fächern.',
+    imp_ziel_sammlung_u: 'Als Bestand: mit Anzahl, Zustand, Sprache und Kaufpreis, wenn die Tabelle sie hat.',
+    imp_in_sammlung: 'In die Sammlung',
+    imp_sammlung_ok: '{n} Karten in die Sammlung aufgenommen.',
+    imp_tabelle: 'Tabelle mit Spalten erkannt',
+    sm_grading: 'Grading',
+    sm_zert: 'Zertifikat-Nr.',
+    sm_graded: 'Graded',
+    sm_grading_ohne: 'kein Grading',
+    sm_wahl: 'Auswählen',
+    sm_wahl_fertig: 'Fertig',
+    sm_wahl_n: '{n} gewählt',
+    sm_wahl_anwenden: 'Anwenden',
+    sm_wahl_binder: 'In den Binder',
+    sm_wahl_weg: 'Entfernen',
+    sm_wahl_weg_frage: '{n} Karten samt allen Posten aus der Sammlung entfernen?',
+    sm_wahl_ok: '{n} Karten geändert.',
+    sm_wahl_alle: 'Alle',
+    sm_wahl_keine: 'Keine',
+    sm_wahl_zustand: 'Zustand für alle',
+    sm_wahl_sprache: 'Sprache für alle',
+    sm_wahl_unveraendert: 'unverändert',
+    st_komplett_heute: 'Komplett heute',
+    aera_waehlen: 'Alle Sets dieser Ära',
+    sm2_karten: 'Karten',
+    sm2_sets: 'Sets',
+    sm2_sets_t: 'Deine Sets',
+    sm2_sets_u: 'Fortschritt nach besessenen Karten, Rest zu heutigen Preisen. Ein Klick öffnet das Häkchenraster.',
+    sm2_sets_fuss: 'Gesamtzahl = alle Karten des Sets im Katalog, auch Secret Rares. Rest = Summe der Trendpreise der fehlenden Karten, heute.',
+    sm_k_wert: 'Wert heute',
+    sm_k_sets: 'Sets angefangen',
+    sm_k_sets_u: '{f} fast komplett · {k} komplett',
+    sm_k_ziel: 'Fehlt zu den Zielen',
+    sm_k_ziel_u: '{n} Ziele · {k} Karten',
+    sm_k_ziel_leer: 'Noch kein Ziel — im Set-Reiter setzen',
+    sm_s_fortschritt: 'Fortschritt',
+    sm_s_rest: 'Rest zum Set',
+    sm_besessen: 'Besessen',
+    sm_ziel: 'Ziel',
+    sm_ziel_u: 'Ein Set mit Datum — der Fortschritt steht auf der Startseite.',
+    sm_ziel_setzen: 'Ziel setzen',
+    sm_ziel_weg: 'Ziel entfernen',
+    sm_ziel_tage: 'noch {n} Tage',
+    sm_ziel_vorbei: 'Datum vorbei',
+    sm_ziel_ohne_datum: 'ohne Datum',
+    sm_ziel_gesetzt: 'Ziel gesetzt.',
+    sm_fehlen_n: '{n} fehlen',
+    sm_rest_u: 'Trendpreise der fehlenden Karten',
+    sm_dein_wert: 'Deine Karten',
+    sm_teuer_fehlend: 'Teuerste fehlende Karten',
+    sm_teuer_fehlend_u: 'Was den Rest zum Set ausmacht.',
+    sm_raster: 'Häkchenraster',
+    sm_raster_u: 'Klick auf eine Karte: gehört mir / gehört mir nicht. Posten mit Zustand oder Sprache bleiben dabei erhalten.',
+    sm_rest_kurz: 'Rest {e}',
+    sm_komplett: 'komplett',
+    sm_guenstig: 'Günstig jetzt',
+    sm_guenstig_u: 'Karten deiner Wunschliste unter ihrem 30-Tage-Schnitt — der Kaufmoment.',
+    sm_kauf_frage: 'Gekauft für …?',
+    sm_kauf_gemerkt: 'Kaufpreis {e} gemerkt.',
+    sm_meine_beweg: 'Bewegung in deiner Sammlung',
+    sm_meine_beweg_u: 'Trend gegen den 7-Tage-Schnitt je Karte, größte Beträge zuerst.',
+    sm_beweg_summe: 'zusammen {e}',
+    sm_beweg_leer: 'Noch keine Bewegung über 50 Cent.',
+    sm_export: 'Export',
+    sm_export_csv: 'Sammlung als CSV (Plus)',
+    sm_export_pdf: 'Sammlungsübersicht als PDF (Plus)',
+    st_ziele: 'Deine Ziele',
+    mk_7t: '7 Tage',
+    mk_30t: '30 Tage',
+    mk_r_heute: 'Heute',
+    mk_r_sets: 'Sets',
+    mk_r_aeren: 'Ären',
+    mk_r_pokemon: 'Pokémon',
+    mk_r_regionen: 'Regionen',
+    mk_r_meine: 'Meine Karten',
+    mk_r_illu: 'Illustratoren',
+    mk_u: 'Der westliche Katalog, täglich neu bepreist. Bewegung als Median über die Karten einer Gruppe.',
+    mk_stand: 'Stand {d}',
+    mk_kein_stand: 'Der Tagesstand wird beim nächsten Preislauf gerechnet.',
+    mk_spark_leer: 'Noch keine Reihe',
+    mk_set_monat: 'Set des Monats',
+    mk_set_woche: 'Set der Woche',
+    mk_median_n: 'Median aus {n} Karten',
+    mk_geplant: 'Meistgeplant in Bindern',
+    mk_geplant_u: '{n} Fächer in echten Bindern',
+    mk_aufwind: 'Sets im Aufwind',
+    mk_aufwind_u: 'Median-Bewegung je Set über {f}, ab 25 Karten über 1 €.',
+    mk_druck: 'Sets unter Druck',
+    mk_druck_u: 'Gleiche Regel, negative Bewegung.',
+    mk_keine_bewegung: 'Noch keine Gruppe mit genug Karten für eine Aussage.',
+    mk_alle_sets: 'Alle Sets als Tabelle ›',
+    mk_ausreisser_hin: 'Karten mit mehr als dem Dreifachen oder weniger als einem Drittel ihres Schnitts fallen heraus — das ist fast immer eine falsche Zuordnung in der Quelle, keine Marktbewegung.',
+    mk_aeren: 'Ären',
+    mk_aeren_u: 'Wert je Ära und wie er sich bewegt. Gleiche Skala, sechs Kurven statt einer überladenen.',
+    mk_aeren_u2: 'Sechs Zeitfenster über den ganzen Katalog.',
+    mk_karten_u: 'Einzelne Karten, {f}, ab 2 € Kartenwert.',
+    mk_basis_karten: 'Grundlage: {n} Karten mit Trend und Schnitt, Ausreißer ausgelassen.',
+    mk_schnitt_jetzt: 'Schnitt → jetzt',
+    mk_s_bew30: 'Bewegung 30 Tage',
+    mk_s_bew7: 'Bewegung 7 Tage',
+    mk_s_summe: 'Wert',
+    mk_s_median: 'Median-Preis',
+    mk_s_hoechst: 'Teuerste',
+    mk_s_karten: 'Karten',
+    mk_s_geplant: 'Geplant',
+    mk_s_name: 'Name',
+    mk_illu_u2: 'Wessen Karten zusammen am meisten wert sind.',
+    mk_name_sp: 'Name',
+    mk_wert: 'Wert',
+    mk_verlauf: 'Verlauf',
+    mk_tab_fuss: 'Gezeigt werden Gruppen mit mindestens {n} bepreisten Karten.',
+    mk_set_bewegung: 'Bewegung 30 Tage',
+    mk_komplett: 'Alle Karten zusammen',
+    mk_komplett_u: 'über {n} bepreiste Karten',
+    mk_in_bindern: 'In Bindern geplant',
+    mk_in_bindern_u: 'Fächer über alle Binder',
+    mk_verteilung: 'Preisverteilung',
+    mk_verteilung_u: 'Wie viele Karten in welcher Preisklasse liegen.',
+    mk_bewegung_karten: 'Bewegung je Karte',
+    mk_bewegung_karten_u: 'Links gefallen, rechts gestiegen — Karten ab 1 €, sortiert nach Betrag.',
+    mk_teuerste_set_u: 'Was dieses Set oben führt.',
+    mk_dex_nr: 'Pokédex-Nummer {n}',
+    mk_wert_alle: 'Alle Karten zusammen',
+    mk_bewegung: 'Bewegung 30 Tage',
+    mk_median_u: 'Median über alle Karten',
+    mk_nach_jahr: 'Wert nach Erscheinungsjahr',
+    mk_nach_jahr_u: 'Was die Karten eines Jahrgangs heute zusammen wert sind.',
+    mk_teuerste_karten: 'Teuerste Karten',
+    mk_teuerste_poke_u: 'Nach heutigem Trendpreis.',
+    mk_meine_u: 'Deine Sammlung gegen den Markt.',
+    mk_meine_leer: 'Noch keine Karten in der Sammlung.',
+    mk_meine_wert: 'Wert deiner Sammlung',
+    mk_meine_sets: 'aus {n} Sets',
+    mk_meine_bestes: 'Größter Posten',
+    mk_meine_sets_t: 'Deine Sets',
+    mk_meine_sets_u: 'Wie sich die Sets bewegen, in denen du sammelst.',
+    mk_dein_wert: 'Dein Wert',
+    mk_meine_beweg: 'Bewegung in deiner Sammlung',
+    mk_meine_beweg_u: 'Größte Beträge über sieben Tage.',
+    mk_diff: 'Veränderung',
+    preis: 'Preis',
+    st_name_frage: 'Wie sollen wir dich nennen?',
+    st_sm_wert: 'Wert deiner Sammlung',
+    geb_ph: 'TT.MM.JJJJ',
+    up_login: 'Um einen Tarif zu wählen oder Credits zu kaufen, brauchst du ein kostenloses Konto.',
+    pr_ab_lbl: 'Günstigstes Angebot',
+    pr_usa_lbl: 'USA (TCGplayer-Markt)',
+    pr_mehr: 'Mehr Preise',
+    tk_hinzu: 'Ins Fach',
+    suchen_nav: 'Suchen',
+    planer_nav: 'Planer',
+    exportieren: 'Exportieren',
+    binder_privat: 'Dieser Binder ist privat oder existiert nicht mehr.',
+    f_rail: 'Filter',
+    // Creator-Übersicht: nur zeigen, was passiert ist — keine Nullen, keine Rangliste
+    j_artwork_anteil: 'Anteil aus Übernahme', j_artwork_uebernahme: 'Kunstseite übernommen',
+    cr_neu_t: 'Seit deinem letzten Besuch', cr_neu_ueb1: 'Ein Sammler hat eine deiner Seiten übernommen',
+    cr_neu_ueb: '{n}× wurden deine Seiten übernommen', cr_neu_credits: '+{n} Credits', cr_neu_herz1: '1 neues Herz',
+    cr_neu_herzen: '{n} neue Herzen', cr_ansehen: 'Ansehen', cr_t: 'Deine Kunstseiten',
+    cr_seiten: 'Seiten', cr_vitrine: 'in der Vitrine', cr_uebernahmen: 'Übernahmen', cr_verdient: 'Credits verdient',
+    cr_herzen: 'Herzen', cr_privat: 'privat', cr_uebernommen: '{n}× übernommen', cr_in_vitrine: 'In der Vitrine',
+    cr_freigeben: 'In die Vitrine', cr_hinweis: 'Jede Übernahme bringt dir {a} Credits. Wer nichts übernimmt, zahlt auch nichts — hier steht nur, was passiert ist.',
+    aw_t: 'Artwork-Seite gestalten', aw_menu: 'Artwork-Seite gestalten …',
+    aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
+    aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
+    aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
+    aw_kosten_hin: 'für diese Seite · du hast {s}', aw_ansicht_faecher: 'Fächer (wie gedruckt)', aw_ansicht_voll: 'Ganze Seite', aw_karte: 'Karte', aw_fach: 'Fach',
+    aw_uebernehmen: 'In den Binder übernehmen', aw_uebernommen: 'Artwork-Fächer im Binder eingetragen.', aw_layout_anders: 'Das Raster des Binders ist inzwischen anders – Artwork passt nicht mehr.',
+    s_artwork: 'Artwork-Seite öffnen', aw_laeuft: 'Die KI malt …', aw_im_binder: 'im Binder',
+    pf_export: 'Meine Daten herunterladen', kuend_link: 'Verträge hier kündigen', unbegrenzt_binder: 'Unbegrenzt viele Binder', binder_wort: 'Binder', unbegrenzt_pdf: 'Unbegrenzt drucken',
+    pdf_monat: 'Platzhalter-PDFs im Monat', checkliste_frei: 'Checkliste immer gratis',
+    preise_live: 'Preise jederzeit aktualisieren', preise_tag: 'Preise vom Vortag (1× täglich neu)',
+    kaufliste_csv: 'Kaufliste als CSV', zum_start: 'zum Start', beliebt: 'Beliebt',
+    up_recht_kurz: 'Endpreise, keine Umsatzsteuer (§ 19 UStG).',
+    best_agb_html: 'Ich akzeptiere die <a href="recht#agb" target="_blank" data-i18n="agb_kurz">AGB</a> und habe die <a href="recht#datenschutz" target="_blank">Datenschutzerklärung</a> sowie die <a href="recht#widerruf" target="_blank">Widerrufsbelehrung</a> gelesen.',
+    gate_credits: 'Dafür brauchst du {n} Credits, du hast {s}.', gate_tageslimit: 'Die KI-Werkstatt ist heute ausgelastet – bitte morgen noch einmal versuchen.',
+    mtl: 'Monatlich', jaehrl: 'Jährlich', spar: '−17 %', pro_monat: 'im Monat', pro_jahr: 'im Jahr',
+    pak_t: 'Credits einzeln kaufen', pak_u: 'Ohne Abo, ohne Verfall – ideal, wenn du nur ab und zu eine Artwork-Seite gestaltest.',
+    best_t: 'Bestellung prüfen', best_u: 'Bitte prüfe deine Bestellung. Danach geht es zur Zahlung bei Stripe.',
+    best_btn: 'Zahlungspflichtig bestellen', best_hin: 'Weiterleitung zu Stripe. Wir speichern keine Zahlungsdaten.',
+    best_leistung: 'Leistung', best_laufzeit: 'Laufzeit', best_gesamt: 'Gesamt heute', best_verlaengert: 'verlängert sich automatisch, jederzeit zum Laufzeitende kündbar',
+    best_einmalig: 'Einmalzahlung, kein Abo', best_fehlt: 'Bitte bestätige beide Punkte, um fortzufahren.',
+    credits: 'Credits', credits_kaufen: 'Credits kaufen',
+    guthaben: 'Guthaben', guthaben_abo: 'davon monatlich', guthaben_gekauft: 'davon gekauft',
+    journal: 'Letzte Buchungen', j_start: 'Startguthaben', j_kauf: 'Credits gekauft', j_artwork: 'Artwork-Seite',
+    j_abo_guthaben: 'Monatsguthaben', j_erstattung_fehler: 'Rückbuchung (fehlgeschlagen)', j_erstattung: 'Erstattung', j_test: 'Korrektur',
+    waehlen: 'Wählen', aktuell: 'Dein Tarif', kuendigen: 'Abo kündigen', kuendigen_frage: 'Abo wirklich zum Laufzeitende kündigen?',
+    gekuendigt: 'Gekündigt zum', reaktivieren: 'Kündigung zurücknehmen', reaktiviert: 'Dein Abo läuft weiter.',
+    abo_bis: 'Verlängert sich am',
+    aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
+    aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: 'Seite füllen',
+    aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
+    aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
+   
+   
+    aw_login: 'Zum Erzeugen von Artwork-Seiten bitte anmelden – die erste Seite ist kostenlos.',
+    aw_kein_anker: 'Lege zuerst mindestens eine Karte in ein Fach dieser Seite.', aw_kein_platz: 'Auf dieser Seite ist kein Fach frei, das die KI füllen könnte.',
+    aw_laeuft_schon: 'Es läuft bereits eine Artwork-Seite – bitte kurz warten.', aw_fehler: 'Das hat leider nicht geklappt', aw_geloescht: 'Artwork gelöscht.',
+    aw_p_gut: 'Die Karten passen zusammen', aw_p_bruch: 'Die Karten passen nur bedingt zusammen',
+    aw_p_gemeinsam: 'gemeinsam: {o}',
+    aw_p_rat: 'Die KI baut trotzdem eine Seite daraus – erwarte einen sichtbaren Übergang. Weniger Ankerkarten oder Karten mit ähnlichem Motiv geben ein ruhigeres Bild.',
+    aw_privat: 'KI-Bild für den privaten Gebrauch. Die Originalkarte bleibt unverändert im Fach; die Ausschnitte werden mit „Seite · Fach“ beschriftet.',
+    aw_druck_hint: 'Drucken auf festem Papier (≥ 200 g) oder Fotopapier, an den grauen Linien schneiden, in die leeren Hüllen stecken.',
+    aw_erg_info: '{k} Karte(n) · {f} Fächer mit Artwork · {s}',
+    stil_karte: 'Wie die Karte', stil_comic: 'Comic', stil_foto: 'Fotorealistisch', stil_aquarell: 'Aquarell', stil_oel: 'Ölgemälde', stil_anime: 'Anime',
+    stil_retro: 'Retro 90er', stil_pixel: 'Pixel-Art', stil_neon: 'Neon', stil_skizze: 'Bleistift', stil_minimal: 'Minimal', stil_dunkel: 'Dark Fantasy',
+    undo: 'Rückgängig', undo_ok: 'Rückgängig gemacht.', hinzugefuegt_1: 'Karte im Binder',
+    f_mehr: 'Erweiterte Filter', ansicht: 'Größe', sammeln: 'Sammel-Modus',
+    m_poke_t: 'Ein Pokémon – alle Karten', m_poke_u: 'Alle Drucke eines Pokémon, chronologisch von der ersten Karte bis heute – ideal für Lieblings-Pokémon-Binder.',
+    m_poke_jp: 'Japanische Karten dazunehmen', alle_karten: 'alle Karten', s_rainbow: 'Regenbogen (nach Typ)',
+    m_import_t: 'Liste importieren', m_import_u: 'Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.',
+    import_datei: 'Datei wählen (.csv/.txt)', import_pruefen: 'Prüfen', import_btn: 'In den Binder', imp_erkannt: 'erkannt', imp_unklar: 'unklar', imp_kein_treffer: 'kein Treffer',
+    onb_t: 'So geht’s', onb_1: 'Set wählen oder Karte suchen', onb_2: 'Auf „+“ tippen – die Karte landet hier im Fach', onb_3: 'Drucken, abhaken, Kaufliste mitnehmen',
+    tpl_master: 'Master Set', tpl_master_u: 'jede Karte eines Sets', tpl_dex: 'Pokédex', tpl_dex_u: 'ein Fach je Pokémon', tpl_poke: 'Ein Pokémon', tpl_poke_u: 'alle Karten, chronologisch', tpl_import: 'Import', tpl_import_u: 'Liste aus anderem Tool',
+    variante: 'Variante / Fach', v_normal: 'Normal', v_reverse: 'Reverse Holo', v_holo: 'Holo', v_first: '1st Edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
+    zustand_ph: 'Zustand (z. B. NM, PSA 10)', in_binder: 'In den Binder', im_binder: 'im Binder', andere_drucke: 'Andere Drucke dieses Pokémon',
+    preis_trend: 'Cardmarket-Trend', preis_holo: 'Holo-Trend', preis_laden: 'Preis wird geladen …', verlauf: 'Preisverlauf', tage: 'Tage', verlauf_bald: 'Preisverlauf entsteht ab jetzt täglich.',
+    bild_en: 'Bild in Englisch – für dieses Set gibt es keinen deutschen Scan.', planer_hinweis: 'Fächer anklicken, Shift für einen Bereich, ☑ wählt eine ganze Seite. Tastatur: Strg+A alle, Pfeile verschieben, Entf entfernt.',
+    pf_name: 'Anzeigename', speichern: 'Speichern', pdf_bilder: 'Bilder werden vorbereitet …', pdf_fertig: 'PDF ist fertig.',
+    ex_check: 'Checkliste (ohne Bilder)', neu: '+ Neu',
+    reg_west: 'Westlich', reg_jp: 'Japan', jp_hinweis: 'Für japanische Karten liegen Künstler, Seltenheit und Kartenart nicht vor – Suche, Ära, Set, Pokémon und Sortierung funktionieren.',
+    kartensprache: 'Kartensprache', s_zustand: 'Zustand', kein_scan: 'Kein Scan vorhanden', kein_preis: 'kein Cardmarket-Preis',
+    pr_ab: 'ab', pr_30: '30-Tage-Schnitt', pr_usa: 'USA',
+    zst_titel: 'Geschätzt nach Zustand',
+    zst_hin: 'Abgeleitet: der Trend gilt als Nähe-Neuwert, darunter die im Handel üblichen Abschläge; Poor nimmt den echten Tiefstpreis, wenn er niedriger liegt. Cardmarket veröffentlicht keine Preise je Zustand – das sind Rechenwerte, keine Messwerte.',
+    pr_zustand_hin: 'Preise je Zustand führt keine der beiden Börsen – der Trend gilt über alle Zustände, die US-Preise für Near Mint.',
+    preis_geteilt: 'Cardmarket führt diese Karte gemeinsam mit {n} weiteren unter einem Produkt – ein eigener Preis lässt sich daraus nicht ableiten.',
+    preis_ohne_quelle: 'Für dieses Set liefert unsere Preisquelle keine Cardmarket-Verknüpfung. Gehandelt wird die Karte dort trotzdem – uns fehlt nur die Zuordnung.',
+    pf_sprache_ui: 'Sprache der Oberfläche',
+    f_illu: 'Künstler', illu_suche: 'Künstler suchen …', alle_illu: 'Alle Künstler', illu_top: 'Meistgesammelt', illu_alle: 'Alle (A–Z)', f_sonder: 'Sonderdrucke', f_trainer: 'Trainer-Typ', f_jahr: 'Jahr von – bis', f_regmark: 'Regulation Mark',
+    m_illu_t: 'Künstler-Binder', m_illu_u: 'Alle Karten eines Illustrators, chronologisch – von Mitsuhiro Arita bis Yuka Morii.',
+    tpl_illu: 'Künstler', tpl_illu_u: 'alle Karten eines Illustrators', m_poke_umfang: 'Umfang', m_poke_einzeln: 'Nur dieses Pokémon', m_poke_familie: 'Ganze Entwicklungsreihe (Vorstufen + Entwicklungen)',
+    illu_karten: 'Karten', d_illu: 'Illustration', d_regmark: 'Regulation Mark', d_name_ja: 'Japanischer Kartenname', d_fam: 'Entwicklungsreihe', d_fam_btn: 'Entwicklungsreihe als Binder', d_illu_btn: 'Alle von diesem Künstler',
+    first_ed: '1st Edition', alle_trainer: 'Alle', pdf_erzeugt: 'PDF wird erzeugt …', pdf_oeffnen: 'PDF öffnen', pdf_geladen: 'PDF heruntergeladen –',
+    raster: 'Raster', auffuellen: 'Seite mit leeren Fächern auffüllen', hilfe2: 'Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.',
+    mehr_nav: 'Mehr', gewaehlt: 'gewählt', zu_leer: 'Fächer freimachen', eigener_binder: 'Eigenen Binder planen',
+    name_t: 'Wie sollen wir dich nennen?', name_u: 'Der Name erscheint in der Begrüßung – du kannst ihn im Profil jederzeit ändern.', spaeter: 'Später',
+    pw_hint: 'Mindestens 8 Zeichen.', up_r1: 'Gespeicherte Binder', up_r2: 'Platzhalter-PDF', up_r2f: '1 / Monat', up_r3: 'Checkliste & Preise ansehen', up_r4: 'Preise sofort aktualisieren', up_r4f: '1× täglich', up_r5: 'Kaufliste als CSV',
+    s_details: 'Details', s_frei_davor: 'Leeres Fach davor', s_frei_danach: 'Leeres Fach danach', s_zu_leer: 'Fach freimachen (Karte raus)', s_entfernen: 'Karte entfernen (Fach bleibt leer)',
+    s_seite_hoch: 'Seite nach vorn', s_seite_runter: 'Seite nach hinten', s_seite_weg: 'Seite entfernen', s_seite_fach: 'Leeres Fach anhängen', s_seite_wahl: 'Seite wählen',
+    erg_leer: 'Keine Karten gefunden.', ex_alle: 'Platzhalter-PDF – alle Karten', ex_fehlend: 'Platzhalter-PDF – nur fehlende',
+    verlauf_bald: 'Preisverlauf: ab morgen, täglich neu.', zustand_ph: 'Zustand, z. B. NM',
+    m_leer: 'Leerer Binder',
+    meine: 'Meine Binder', preise: 'Preise', planer: 'Planer', planen: 'Planen',
+    pl_alle: 'Alle Seiten', pl_alle_t: 'Alle Seiten des Binders nebeneinander',
+    pl_zurueck: '‹ Eine Seite', pl_eine: 'Seite', pl_alle_kurz: 'Alle',
+    pl_sort_nach: 'Auswahl sortieren nach', pl_sortieren: 'Sortieren', nach_links: 'Nach links', nach_rechts: 'Nach rechts', pdf: 'Drucken',
+    f_suche: 'Suche', f_pokemon: 'Pokémon', f_aera: 'Ära', f_art: 'Kartenart', f_rarity: 'Seltenheit',
+    f_typ: 'Typ', f_sort: 'Sortierung', absteigend: 'absteigend', f_reset: 'Filter zurücksetzen',
+    ri_t: 'Reihenfolge umdrehen', ri_alt: 'älteste zuerst', ri_neu: 'neueste zuerst', ri_az: 'A–Z', ri_za: 'Z–A',
+    ri_auf: 'aufsteigend', ri_ab: 'absteigend', ri_teuer: 'teuerste zuerst', ri_guenstig: 'günstigste zuerst',
+    ri_viele: 'meiste zuerst', ri_wenige: 'wenigste zuerst',
+    vt_fenster_woche: 'Diese Woche', vt_fenster_monat: 'Dieser Monat', vt_fenster_immer: 'Immer',
+    alle: '+ Alle Treffer …', alle_ende: '… ans Ende anhängen', alle_seite: '… ab nächster freier Seite',
+    mehr: 'Mehr laden', binder: 'Binder', seite: 'Seite', leeren: 'Binder leeren',
+   
+    m_master_t: 'Master Set anlegen', m_master_u: 'Jede Karte des Sets einmal, sortiert nach Setnummer.',
+    m_reverse: 'Reverse Holos zusätzlich einplanen (Karte erscheint doppelt)',
+    m_dex_t: 'Pokédex-Binder anlegen', m_dex_u: 'Jedes Pokémon bekommt ein Fach — gedruckt wird Nummer, Name und Bild.',
+    abbrechen: 'Abbrechen', anlegen: 'Binder anlegen', zurueck: 'Zurück', auswahl: 'Auswahl',
+    sortieren: 'Auswahl sortieren', nach_vorn: 'Nach vorn', ans_ende: 'Ans Ende', entfernen: 'Entfernen',
+    leere_seite: '+ Leere Seite', aufheben: 'Auswahl aufheben',
+    treffer: 'Karten gefunden', faecher: 'Fächer', seiten: 'Binderseiten', blaetter: 'A4-Blätter im Druck',
+    bv_titel: 'Durchblättern',
+    start_nav: 'Start', st_weiter: 'Weiter, wo du warst', st_weiterplanen: 'Weiterplanen',
+    st_tun: 'Was möchtest du tun', st_deine: 'Deine Binder', st_aus_vitrine: 'Aus der Vitrine',
+    st_alle_zeigen: 'Alle ansehen', st_neu_u: 'Master Set, Pokédex, ein Pokémon oder leer',
+    st_unter_voll: 'Alles auf einen Blick — Zahlen anklicken führt dich hin.',
+    st_unter_leer: 'Noch kein Binder. Fang mit einer Vorlage an oder fotografiere deinen Binder ab.',
+
+    th_unterwasser: 'Unter Wasser', th_nachts: 'Bei Nacht', th_mehrere: 'Mehrere Pokémon',
+    bv_bild: 'Doppelseite als Bild sichern', bv_bild_fertig: 'Bild gesichert',
+    bv_bild_fehler: 'Das Bild ließ sich nicht erzeugen',
+
+    // ---------- Auswertungen: Sammlung & Markt ----------
+    markt: 'Markt', an_t: 'Auswertung',
+    an_u: 'Was deine Sammlung wert ist, woher der Wert kommt und wie er sich bewegt. Preise von Cardmarket, täglich neu.',
+    an_30: '30 Tage', an_90: '90 Tage', an_365: '1 Jahr',
+    an_stk: 'Stück', an_tage: 'Tage', an_fehler: 'Die Zahlen ließen sich nicht laden. Versuch es gleich noch einmal.',
+    an_keine_daten: 'Dazu liegen noch keine Zahlen vor.',
+    an_leer: 'Deine Sammlung ist noch leer. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab. Danach steht hier, was sie wert ist.',
+    an_markt_login: 'Für die Marktzahlen brauchst du ein Konto.',
+    // Pro-Schranke
+    an_pro_t: 'Auswertung gehört zu Plus', an_mpro_t: 'Die Marktzahlen gehören zu Pro',
+    an_pro_u: 'Die Preise holen wir täglich für den ganzen Katalog. Das Rechnen daraus ist der Teil, für den Plus und Pro bezahlen.',
+    an_pro_1: 'Wert deiner Sammlung, Tag für Tag',
+    an_pro_2: 'Aufteilung nach Seltenheit, Set, Pokémon, Typ und Jahrzehnt',
+    an_pro_3: 'Einsatz gegen heutigen Wert – je Karte und im Ganzen',
+    an_pro_4: 'Live-Preise und die Kaufliste als CSV',
+    an_mpro_1: 'Indizes für alte, mittlere und neue Karten',
+    an_mpro_2: 'Die größten Bewegungen der Messreihe',
+    an_mpro_3: 'Europa gegen USA: wo dieselbe Karte günstiger ist',
+    an_mpro_4: 'Wertverteilung im Katalog und alle Sets im Vergleich',
+    an_kostprobe: 'Eine Kostprobe: die fünf Sets mit dem höchsten Schnitt.',
+    // Sammlung
+    an_wert: 'Wert', an_einsatz: 'Eingesetzt', an_gewinn: 'Gewinn',
+    an_mit_preis: 'mit Kaufpreis erfasst', an_auf_einsatz: 'auf den Einsatz',
+    an_kein_kaufpreis: 'Trag Kaufpreise ein, dann rechnen wir hier deine Rendite.',
+    an_ohne_preis: 'Ohne Preis', an_ohne_preis_u: 'Karten, für die Cardmarket keinen Wert führt',
+    an_verlauf: 'Wertverlauf',
+    an_verlauf_u: 'Auf fester Grundlage gerechnet: gezählt werden nur Karten, die am ersten und am letzten Tag einen Preis hatten. Sonst stiege die Kurve allein dadurch, dass mit der Zeit mehr Karten erfasst sind.',
+    an_basis: 'Grundlage: {n} von {g} Karten, die die Reihe von Anfang bis Ende tragen – {p} % des heutigen Werts.',
+    an_basis_index: 'Bewegung, nicht Wert: erster Tag = 100. Getragen von {n} deiner {g} Karten, das sind {p} % des heutigen Werts. Sobald der tägliche Preislauf länger läuft, steht hier wieder ein Eurobetrag.',
+    an_bewegung_kurz: 'Bewegung', an_ohne_angabe: 'ohne Angabe', an_uebrige: 'übrige',
+    an_mehr: 'Weitere {n} zeigen', an_leer_suchen: 'Karten suchen',
+    // Planer: Löschen räumt das Fach, Herausnehmen rückt nach
+    herausnehmen: 'Fach löschen (Karten rücken auf)', s_herausnehmen_t: 'Fach ganz entfernen – alles dahinter rückt auf',
+    hierher: 'Hierher …', ziel_hinweis: 'Jetzt das Fach anklicken, an das die Auswahl soll.',
+    luecken: 'Lücken schließen', keine_luecken: 'Es gibt keine leeren Fächer.',
+    luecken_zu: '{n} leere Fächer entfernt',
+    // Sammlung: Posten mit Zustand und Sprache
+    sm_aufnehmen_t: 'In die Sammlung aufnehmen', sm_aufgenommen: 'In der Sammlung: {n}×',
+    sm_posten_neu: 'Posten hinzufügen', sm_posten_aendern: 'Posten ändern',
+    sm_posten_u: 'Zustand und Sprache gehören zum Exemplar. Dieselbe Karte in zwei Ausprägungen sind zwei Posten.',
+    sm_ohne_angabe: 'offen', sm_gekauft_am: 'Gekauft am', sm_notiz: 'Notiz', sm_notiz_ph: 'z. B. Tausch mit Anna',
+    sm_wert_posten: 'Wert dieses Postens', sm_je_stueck: 'je Stück',
+    rk_fehlen: 'Dir fehlen noch {n} Karten', rk_ohne: 'Für {n} davon kennt Cardmarket keinen Preis.',
+    sm_ohne_zustand: 'ohne Zustand wird mit dem Trend gerechnet',
+    pl_zoom: 'Größe',
+    gemischt: '(gemischt)',
+    // Druckdialog
+    ex_dialog: 'Drucken …', dr_t: 'Drucken',
+    dr_u: 'Platzhalter zum Ausschneiden, im Maß echter Karten. Was du auswählst, landet fortlaufend auf A4-Blättern.',
+    dr_welche: 'Welche Seiten', dr_alle: 'Ganzer Binder', dr_aktuell: 'Nur Seite {n}', dr_frei: 'Bereich …',
+    dr_ph: 'z. B. 1-3, 7, 10-', dr_seiten_hin: 'Binderseiten, nicht Druckblätter. Leer lassen heißt: alle.',
+    dr_was: 'Was drucken', dr_nur_fehlend: 'Nur Karten, die mir noch fehlen',
+    dr_nur_art: 'Nur Artwork-Fächer', dr_farbe: 'Kartenbilder in Farbe',
+    dr_farbe_hin: 'Artwork-Seiten kommen immer in Farbe. Kartenbilder stehen sonst in Graustufen – als Platzhalter erkennbar und sparsam im Verbrauch.',
+    dr_start: 'PDF erzeugen',
+    dr_v_alle: 'Alle {g} Binderseiten', dr_v_seiten: '{n} von {g} Binderseiten',
+    dr_v_faecher: 'Fächer im Druck', dr_v_art: 'Artwork', dr_v_blaetter: 'A4-Blätter',
+    dr_v_nichts: 'Mit dieser Auswahl bleibt nichts zu drucken.', an_von_bis: 'Vorher → jetzt', an_aenderung: 'Änderung',
+    an_beide_boersen: 'Europa / USA', an_abstand: 'Abstand',
+    an_verworfen: '{n} weitere Paare lagen mehr als 70 % auseinander und sind ausgelassen – dort vergleicht die Quelle zwei verschiedene Drucke.',
+    an_reihe_kurz: 'Die Messreihe ist noch zu kurz für eine Kurve.',
+    an_reihe_kurz_s: 'Die Messreihe deiner Karten reicht erst über {n} Tage. Ab drei Tagen zeichnen wir hier den Verlauf – vorher wäre jede Steigung Zufall aus dem Erfassungslauf.',
+    an_aufteilung: 'Woher der Wert kommt',
+    an_aufteilung_u: 'Nicht wie viele Karten, sondern wie viel Wert in jeder Gruppe steckt.',
+    an_g_seltenheit: 'Seltenheit', an_g_set: 'Set', an_g_pokemon: 'Pokémon', an_g_typ: 'Typ',
+    an_g_art: 'Art', an_g_jahrzehnt: 'Jahrzehnt', an_g_zustand: 'Zustand',
+    an_posten: 'Größte Posten', an_posten_u: 'Deine Sammlung nach Wert sortiert.',
+    an_karte: 'Karte', an_anzahl: 'Anzahl', an_stueckpreis: 'Stück', an_gekauft: 'Gekauft für', an_rendite: 'Rendite',
+    // Markt
+    an_markt_t: 'Markt',
+    an_markt_u: 'Der ganze westliche Katalog, täglich neu bepreist. Cardmarket in Euro, TCGplayer in Dollar.',
+    an_erfasst: 'Karten mit Preis', an_erfasst_u: 'westlicher Katalog, Cardmarket',
+    an_us_preise: 'davon mit US-Preis', an_us_preise_u: 'TCGplayer, Grundlage des Vergleichs',
+    an_reihe: 'Messreihe', an_seit: 'seit {d}',
+    an_indizes: 'Indizes', 
+    an_indizes_u: 'Je die 400 teuersten Karten einer Ära, am ersten Tag auf 100 gesetzt. Alt heißt bis 2003, neu ab 2020.',
+    an_ix_alt: 'Alt (bis 2003)', an_ix_mitte: 'Mitte', an_ix_neu: 'Neu (ab 2020)',
+    an_index_hin: 'Nicht der Marktwert, sondern seine Bewegung: 100 ist der erste Tag der Reihe.',
+    an_index_kurz: 'Die Messreihe trägt noch keinen Index. Sie beginnt mit dem ersten vollständigen Preislauf und wächst täglich – ab drei Tagen zeichnen wir die Kurven.',
+    an_bewegung: 'Größte Bewegungen', an_bewegung_u: 'Vom ersten bis zum letzten Tag der Messreihe, ab 2 € Kartenwert.',
+    an_gewinner: 'Gestiegen', an_verlierer: 'Gefallen',
+    an_beweg_basis: 'Grundlage: {n} Karten mit Preis an beiden Tagen ({v} bis {b}).',
+    an_beweg_kurz: 'Für einen Vergleich braucht es zwei Tage in der Reihe. Morgen steht hier etwas.',
+    an_eu_us: 'Europa gegen USA',
+    an_eu_us_u: 'Dieselbe Karte, zwei Börsen. Der Umrechnungskurs steckt im Median aller Paare, ist also gemessen und nicht gesetzt. Sortiert nach dem Unterschied in Euro, nicht nach Prozent: an einer teuren Karte sind 40 % mehr wert als 70 % an einer billigen.',
+    an_hier_guenstiger: 'In Europa günstiger', an_dort_guenstiger: 'In den USA günstiger',
+    an_kurs_hin: 'Gemessener Kurs: {k} € je Dollar, aus {n} Kartenpaaren. Versand, Zoll und Einfuhrumsatzsteuer sind nicht eingerechnet.',
+    an_vg_kurz: 'Für den Vergleich fehlen noch Karten mit Preis auf beiden Börsen.',
+    an_verteilung: 'Wertverteilung', an_verteilung_u: 'Wie viele Karten in welcher Preisklasse liegen – und wie viel Wert dort steckt.',
+    an_wie_viele: 'Wie viele Karten', an_wie_viel_wert: 'Wie viel Wert',
+    an_sets: 'Sets im Vergleich', an_sets_u: 'Ab 15 bepreisten Karten, nach Schnitt sortiert.',
+    an_set: 'Set', an_karten: 'Karten', an_schnitt: 'Schnitt', an_summe: 'Summe', an_teuerste_karte: 'Teuerste',
+    an_teuerste: 'Teuerste Karten', an_teuerste_u: 'Was der Katalog gerade oben führt.',
+    // Marktseite: vier Bereiche
+    mk_ueberblick: 'Überblick', mk_struktur: 'Struktur', mk_sets: 'Sets', mk_regionen: 'Regionen',
+    mk_struktur_u: 'Woraus der Katalog besteht und wo sein Wert sitzt. Alle Zahlen über den bepreisten westlichen Katalog.',
+    mk_katalogwert: 'Katalogwert', mk_ueber: 'über {n} bepreiste Karten',
+    mk_schnitt_karte: 'Schnitt je Karte', mk_schnitt_u: 'Cardmarket-Trend, alle Karten',
+    mk_jahre: 'Wert nach Erscheinungsjahr',
+    mk_jahre_u: 'Was die Karten eines Jahrgangs heute zusammen wert sind.',
+    mk_jahre_hin: 'Nicht die Wertentwicklung über die Zeit, sondern der heutige Wert je Jahrgang — alte Jahrgänge sind klein, weil damals weniger Karten erschienen.',
+    mk_nach_wert: 'Nach Wert, nicht nach Anzahl.',
+    mk_pokemon: 'Wertvollste Pokémon', mk_pokemon_u: 'Alle Karten eines Pokémon zusammengerechnet.',
+    mk_illu: 'Wertvollste Illustratoren', mk_illu_u: 'Wessen Karten zusammen am meisten wert sind.',
+    mk_sets_u: 'Jedes Set mit mindestens 25 bepreisten Karten. Jede Spalte sortiert.',
+    mk_jahr: 'Jahr', mk_name: 'Name', mk_abdeckung: 'erfasst',
+    mk_abdeckung_hin: '„Erfasst" heißt: für so viel Prozent der Setgröße liegt ein Preis vor. Fehlende sind Karten, deren Cardmarket-Produkt mehreren Karten gehört.',
+    mk_regionen_u: 'Dieselbe Karte kostet nicht überall gleich. Zwei Gefälle, beide gemessen statt geschätzt.',
+    mk_jp: 'Japan gegen Westen',
+    mk_jp_u: 'Beide Kataloge im Schnitt, nicht dieselbe Karte zweimal: Japan und der Westen führen verschiedene Karten. Der Vergleich zeigt die Höhe der Märkte, nicht den Aufschlag auf ein einzelnes Stück.',
+    mk_jp_karten: 'Japanische Karten', mk_west_karten: 'Westliche Karten',
+    mk_jp_schnitt: 'Schnitt {p}', mk_faktor: 'Verhältnis der Schnitte', mk_faktor_u: 'Westlicher Schnitt geteilt durch japanischen',
+    mk_jp_top: 'Teuerste japanische Karten',
+    sammlung: 'Sammlung', sm_t: 'Meine Sammlung',
+    sm_u: 'Was du wirklich besitzt. Der Haken im Binder schreibt hierhin – der Binder bleibt der Plan, die Sammlung ist der Bestand.',
+    sm_bestand: 'Bestand', sm_s_neu: 'Zuletzt hinzugefügt', sm_s_wert: 'Wert', sm_s_anzahl: 'Anzahl', sm_s_name: 'Name',
+    sm_login: 'Für die Sammlung brauchst du ein Konto.',
+    sm_karten: 'Karten', sm_verschieden: 'verschiedene', sm_wert: 'Wert nach Cardmarket', sm_gezahlt: 'dafür gezahlt',
+    sm_alle: 'Alle', sm_doppelt: 'Doppelte', sm_ohne_binder: 'In keinem Binder', sm_fehlt: 'Wunschliste',
+    wl_titel: 'Wunschliste', wl_drauf: 'Auf der Wunschliste', wl_dazu: 'Auf die Wunschliste gesetzt',
+    wl_weg: 'Von der Wunschliste genommen', wl_leer: 'Deine Wunschliste ist leer. Setz Karten mit ☆ darauf – oder stell einen ganzen Binder dazu.',
+    wl_binder: 'Ganze Binder auf der Wunschliste', wl_binder_u: 'Alle Karten dieser Binder, die dir fehlen, stehen auf der Wunschliste.',
+    wl_einzeln: '{n} einzelne Karten', wl_summe: 'Wunschliste zusammen etwa {s}',
+    sm_entfernen: 'Aus der Sammlung nehmen',
+    sm_leer: 'Noch nichts drin. Hak im Binder die Karten ab, die du besitzt – oder fotografiere eine Seite ab.',
+    sm_leer_doppelt: 'Keine Doppelten. Sobald du eine Karte zweimal erfasst, taucht sie hier als Tauschmaterial auf.',
+    sm_leer_ohne: 'Alles, was du besitzt, ist auch in einem Binder geplant.',
+    sm_leer_fehlt: 'Du besitzt jede Karte, die du geplant hast. Respekt.',
+
+    best_offen: 'Bitte bestätige deine E-Mail ({m}) – dein Startguthaben wartet.',
+    best_nochmal: 'Nochmal senden', best_gesendet: 'Mail ist unterwegs',
+    best_schon: 'Deine E-Mail ist schon bestätigt', best_danke: 'Danke – E-Mail bestätigt!',
+    best_danke_credits: 'E-Mail bestätigt – {n} Credits sind da!',
+
+    pf_rufname: 'Dein Name (nur für die Begrüßung)', pf_vitrine: 'Vitrine',
+    pf_vitrine_u: 'Alles hier ist öffentlich sichtbar, sobald du einen Binder zeigst. Ohne veröffentlichten Binder sieht es niemand.',
+    pf_oeff_name: 'Öffentlicher Name', pf_oeff_text: 'Ein Satz über dich', pf_alter: 'Veröffentlichen',
+    pf_alter_ok: 'freigeschaltet', pf_alter_offen: 'Geburtsdatum fehlt noch',
+    pf_alter_zu_jung: 'erst ab {a} Jahren', pf_oeff_binder: 'Öffentliche Binder',
+    pf_mein_profil: 'Mein öffentliches Profil ansehen',
+    st_thema_u: 'Seite nach Bildmotiv füllen lassen', st_vitrine_u: 'Binder anderer Sammler ansehen',
+
+    vt_von: 'Binder von {n}', vt_geteilt: 'Geteilter Binder',
+    vt_seite_uebernehmen: 'Diese Seite übernehmen', vt_binder_kopieren: 'Ganzen Binder kopieren',
+    vt_seite_frage: '{n} Karten dieser Seite in „{b}" übernehmen?',
+    vt_uebernommen: '{n} Karten in „{b}" übernommen', vt_seite_leer: 'Diese Seite ist leer',
+    vt_kopie_name: 'Kopie von {n}', vt_kopiert: 'Kopie angelegt – du wirst hingebracht',
+    po_seit: 'Dabei seit {d}', po_leer: 'Noch keine öffentlichen Binder.',
+
+    vitrine: 'Vitrine', vt_t: 'Vitrine', vt_trend: 'Im Trend', vt_top: 'Bestenliste', vt_neu: 'Frisch',
+    vt_suche: 'Binder suchen …', vt_profil: 'Mein Profil',
+    vt_u: 'Öffentliche Binder anderer Sammler. Gefällt dir einer, gib ihm ein Herz – oder übernimm eine Seite in deinen eigenen Binder.',
+    vt_leer: 'Hier steht noch nichts. Sei der Erste und zeig deinen Binder.',
+    vt_login: 'Dafür brauchst du ein Konto.', vt_zeigen: 'In der Vitrine zeigen …',
+    vt_warnung: 'Damit wird dieser Binder öffentlich: Name, Karten und dein Anzeigename sind für alle sichtbar. Preise und dein Konto bleiben privat. Du kannst das jederzeit zurücknehmen.',
+    vt_steht_drin: 'Dein Binder steht jetzt in der Vitrine', vt_zurueckgezogen: 'Binder ist wieder privat',
+    karten_wort: 'Karten', seiten_wort: 'Seiten', laedt: 'lädt …', gespeichert: 'Gespeichert',
+    vpf_t: 'Dein Profil', vpf_u: 'Nur nötig, wenn du Binder öffentlich zeigen willst. Ohne veröffentlichten Binder sieht das niemand.',
+    vpf_name: 'Anzeigename', vpf_text: 'Ein Satz über dich (freiwillig)',
+    vpf_hinweis: 'Kein Klarname, keine Kontaktdaten, keine Links – das prüfen wir beim Speichern.',
+    gb_t: 'Kurz noch dein Geburtsdatum', gb_u: 'Binder öffentlich zu zeigen ist ab 16 erlaubt. Das Datum steht nirgends öffentlich und lässt sich später nicht ändern.',
+    md_t: 'Inhalt melden', md_u: 'Was stimmt mit diesem Binder nicht? Wir sehen uns das an.',
+    md_senden: 'Melden', md_danke: 'Danke – wir sehen uns das an.',
+
+    geburtsdatum: 'Geburtsdatum',
+    geb_hint: 'Brauchen wir nur, um zu wissen, ob du Binder öffentlich zeigen darfst — das ist ab 16 erlaubt. Es steht nirgends öffentlich.',
+    geb_noetig: 'Bitte gib dein Geburtsdatum an.',
+
+    tpl_foto: 'Aus Fotos', tpl_foto_u: 'Seiten abfotografieren, Karten werden erkannt',
+    foto_menu: 'Seiten abfotografieren …', foto_t: 'Binder aus Fotos',
+    foto_u: 'Fotografiere jede Binderseite einmal ab – die Karten werden über ihr Bild erkannt, nicht über den Text. Die Reihenfolge der Fotos ist die Reihenfolge der Seiten.',
+    foto_tipp: 'Am besten gerade von oben, die ganze Seite im Bild, gleichmäßiges Licht ohne starke Spiegelung. Karten dürfen in Hüllen stecken.',
+    foto_waehlen: 'Fotos auswählen', foto_los: 'Karten erkennen', foto_vor: 'Nach vorne', foto_zurueck: 'Nach hinten',
+    foto_lauf: 'Foto {i} von {n} wird ausgewertet …', foto_bilanz: '{n} Karten auf {s} Seiten erkannt.',
+    foto_unsicher: '{u} davon solltest du prüfen (gelb umrandet).', foto_pruefen: 'bitte prüfen',
+    foto_gelesen: 'Gelesen', foto_tauschen: 'Antippen für andere Treffer', foto_alternativen: 'Stattdessen diese Karte',
+    foto_keine_alt: 'Keine weiteren Treffer', foto_nochmal: 'Andere Fotos',
+    foto_anhaengen: 'An diesen Binder anhängen', foto_neu: 'Neuen Binder anlegen',
+    foto_bindername: 'Fotoimport', foto_fertig: '{n} Karten übernommen', foto_leer: 'Keine Karten erkannt',
+    foto_index: 'Kartenbilder sind erst zu {p} % eingelesen ({n}) – die Erkennung wird noch besser.',
+
+    neue_seite: 'Neue Seite angehängt', seitenfarbe: 'Seitenfarbe',
+    sf_dunkel: 'Schwarz', sf_hell: 'Weiß',
+
+    f_art_motiv: 'Bildmotiv', f_art_text: 'Im Bild zu sehen', f_art_ort: 'Wo spielt es',
+    f_art_alle: 'Seltene Motive zeigen', f_art_wenig: 'Nur häufige Motive',
+    f_art_wasser: 'Wasser', f_art_zeit: 'Tageszeit', f_art_merkmal: 'Was zu sehen ist',
+    f_art_tag: 'Tag', f_art_daemmerung: 'Dämmerung', f_art_nacht: 'Nacht',
+    f_art_w1: 'Wasser im Bild', f_art_w2: 'Berührt Wasser', f_art_w3: 'Unter Wasser',
+    f_art_stand: '{n} Illustrationen ausgewertet ({p} % aller Karten). Was noch fehlt, taucht hier nicht auf.',
+
+    th_titel: 'Seite nach Thema',
+    th_unter: 'Gesucht wird nicht der Kartentyp, sondern was das Bild zeigt: Ein Garados-Porträt vor blauem Grund ist kein Unterwasser-Motiv – ein Pikachu am Strand schon.',
+    th_thema: 'Thema', th_woraus: 'Woraus wählen', th_anzahl: 'Karten', th_los: 'Vorschlag erstellen',
+    th_scope_alle: 'Alle Karten', th_scope_set: 'Nur dieses Set', th_scope_binder: 'Nur Karten aus diesem Binder',
+    th_sucht: 'Die Bilder werden durchsucht — das dauert einige Sekunden …', th_andere: 'Andere Vorschläge',
+    th_anhaengen: 'Als neue Seite anhängen', th_seite: 'Auf diese Seite übernehmen',
+    th_gefunden: '{n} Karten', th_raus: 'Nicht übernehmen', th_kein_thema: 'Bitte ein Thema eingeben',
+    th_nichts: 'Dazu wurde nichts gefunden. Anderes Thema versuchen – oder der Bildindex deckt diesen Bereich noch nicht ab.',
+    th_nichts_gewaehlt: 'Keine Karte ausgewählt', th_uebernommen: 'Seite übernommen',
+    th_abdeckung: '{n} von {g} Kartenbildern sind erfasst ({p} %).',
+    th_ausgehend: 'Passend zu dieser Karte', th_anker_weg: 'Ohne Karte',
+    s_passend: 'Passende Seite dazu …',
+
+    alle_sets: 'Alle Sets', alle_aeren: 'Alle Ären', alle_rar: 'Alle Seltenheiten', alle_gen: 'Alle', gen: 'Gen',
+    leer_slot: 'leer', gesamt: 'Gesamtwert', preise_offen: 'Preise werden geladen … erneut aktivieren für den Rest.',
+    s_datum: 'Erscheinungsdatum', s_dex: 'Pokédex-Nummer', s_name: 'Alphabetisch', s_nummer: 'Set & Setnummer',
+    s_typ: 'Typ', s_rarity: 'Seltenheit',
+    kinds: { lvx: 'Lv.X', ex: 'ex', exgross: 'EX', gx: 'GX', tagteam: 'TAG TEAM', v: 'V', vmax: 'VMAX',
+      vstar: 'VSTAR', vunion: 'V-UNION', mega: 'MEGA', break: 'BREAK', prime: 'Prime', legend: 'LEGENDE',
+      sp: 'SP (Galaktik)', shining: 'Shining', goldstar: 'Gold Star ☆', shiny: 'Shiny / Baby-Shiny',
+      radiant: 'Strahlend', amazing: 'Amazing', delta: 'Delta δ', prism: 'Prisma-Stern ◇', acespec: 'ACE SPEC',
+      dark: 'Dunkle (Dark)', light: 'Helle (Light)', trainer: 'Trainer', energie: 'Energie' },
+    typen: { Grass: 'Pflanze', Fire: 'Feuer', Water: 'Wasser', Lightning: 'Elektro', Psychic: 'Psycho',
+      Fighting: 'Kampf', Darkness: 'Finsternis', Metal: 'Metall', Fairy: 'Fee', Dragon: 'Drache', Colorless: 'Farblos' },
+    bestaetigen_viele: 'Karten wirklich alle hinzufügen?',
+    bestaetigen_loeschen: 'Diesen Binder wirklich löschen?', binder_leer: 'Der Binder ist noch leer.',
+   
+    hinzugefuegt: 'Karten hinzugefügt', angelegt: 'Fächer angelegt',
+    speichert: 'speichert …', fehler_speichern: 'Speichern fehlgeschlagen!', neuer_binder: 'Mein Binder',
+    sync: 'Kartendatenbank wird aufgebaut …', keine_sets: 'Kein Set gefunden.', pokemon_gew: 'Pokémon ausgewählt',
+    erst_waehlen: 'Bitte erst auswählen', zu_viele: 'Mehr als 2000 Treffer – bitte enger filtern',
+    anmelden: 'Anmelden', registrieren: 'Registrieren', anmelden_t: 'Anmelden', passwort: 'Passwort',
+    agb_text: 'Ich akzeptiere die AGB und die Datenschutzerklärung.',
+    agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
+    tarif_frei: 'Kostenlos', upgrade: 'Tarif & Credits', abo_verwalten: 'Abo verwalten',
+   
+    ex_kauf: 'Kaufliste als CSV',
+    ex_teilen: 'Binder-Link teilen (nur Ansicht)', link_kopiert: 'Ansichts-Link kopiert!',
+    gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
+    gate_pdf: 'Für den PDF-Export brauchst du ein kostenloses Konto — dein erster Export ist frei.',
+    gate_binder: 'Mehr als 3 Binder gibt es ab Binderplan Plus.',
+    gate_export: 'Dein freier Export für diesen Monat ist verbraucht.',
+    gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
+   
+    preise_morgen: 'Free-Konto: Preise wurden heute schon aktualisiert — morgen wieder (oder mit Pro sofort).',
+    zahlung_ok: 'Zahlung erfolgreich — vielen Dank!', zahlung_abbruch: 'Zahlung abgebrochen.',
+    willkommen: 'Willkommen!', uebernommen: 'Binder wurden deinem Konto zugeordnet.',
+    up_t: 'Mehr aus deinem Binder holen', up_u: 'Unbegrenzt planen und drucken – und Credits für KI-Artwork-Seiten.',
+    up_monat: 'Monat', up_monat_k: 'monatlich kündbar', up_jahr: 'Jahr', up_jahr_k: '= 2,08 € im Monat',
+    up_empf: 'Beliebt · 2 Monate geschenkt', up_life_k: 'einmal zahlen, für immer',
+    up_recht: 'Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple Pay, Google Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.',
+    nur_ansicht: 'Geteilter Binder – nur Ansicht', exporte_uebrig: 'Export übrig diesen Monat',
+    app_titel: 'Binderplan – Werkbank', bw_t: 'Binder wechseln oder umbenennen', klang_t: 'Sprache der Karten: Namen, Bilder, PDF (die Oberfläche bleibt)', ph_suche: 'Karte oder Pokémon …', ph_dex: 'z. B. Glurak', preis_t: 'Cardmarket-Trendpreise in Euro einblenden', binder_opt_t: 'Raster, Größe, Auffüllen, Leeren', einst_t: 'Sprache & Design', ph_bindername: 'Name des Binders', s_vorherige: 'Vorherige Seite', s_naechste: 'Nächste Seite', bv_zurueck: 'Zurückblättern', bv_vor: 'Weiterblättern', schliessen_t: 'Schließen', recht_link: 'Impressum · AGB · Datenschutz', agb_kurz: 'AGB', ds_kurz: 'Datenschutz', imp_kurz: 'Impressum', wid_kurz: 'Widerruf', ansicht_zurueck: '← Zur Vitrine', aw_loeschen_frage: 'Diese Artwork-Seite endgültig löschen? Die Credits dafür kommen nicht zurück.', vt_zurueckziehen: 'Aus der Vitrine nehmen', ph_set: 'Set suchen …', ph_art_text: 'z. B. Mond, Wasserfall, Laterne', ph_illu: 'z. B. Mitsuhiro Arita', ph_import: 'sv1 25\nGlurak 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'z. B. Marcel', ph_vname: 'z. B. Karpador-Kai', ph_vtext: 'Sammle seit 1999', ph_vtext2: 'Sammle seit 1999, Schwerpunkt alte Sets', ph_thema: 'z. B. Pokémon unter Wasser', ph_melden: 'Kurz beschreiben', fehler_server: 'Der Server antwortet nicht – bitte später noch einmal versuchen.', fehler_laden: 'Konnte nicht geladen werden.', fehler_suche: 'Die Suche ist fehlgeschlagen.', fehler_preise: 'Preise konnten nicht geladen werden.', fehler_export: 'Der Export ist fehlgeschlagen.', fehler_kaufliste: 'Die Kaufliste konnte nicht erstellt werden.', arbeitet: 'Einen Moment …', keine_karten: 'Dazu gibt es keine Karten.', gate_login: 'Dafür brauchst du ein kostenloses Konto.', th_ueberschreiben: 'Auf dieser Seite liegen schon {n} Karten. Sollen sie ersetzt werden?', klang_lbl: 'Karten in', klang_folgen: 'folgt der Oberfläche', vl_t: 'Neuen Binder anlegen', vl_u: 'Womit soll er gefüllt werden?', vl_neu: 'Neuen Binder anlegen …', vl_leer_u: 'Karte für Karte selbst suchen', mm_drucken: 'Exportieren', mm_entdecken: 'Entdecken', mm_konto: 'Konto & Einstellungen', seite_menue: 'Seite …', s_ohne_preis: '{n} Karten ohne Cardmarket-Preis', neue_seite_lbl: 'Neue leere Seite anhängen', wv_woche: 'gegenüber der Vorwoche', pf_pw_stand: 'Zuletzt geändert am {d}', vt_hab: '{n} von {g} hast du schon', vt_fehlende: 'Fehlende übernehmen', vt_nichts_fehlt: 'Du hast schon alle Karten aus diesem Binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Künstler', vt_a_master: 'Master Set', vt_a_pokemon: 'Ein Pokémon', vt_f_art: 'Art', vt_f_groesse: 'Größe', vt_f_alle: 'alle', vt_f_klein: 'bis 40', vt_f_mittel: '40–150', vt_f_gross: 'über 150', vt_f_dop: 'Doppelseite', vt_f_dop_t: 'Zwei Seiten nebeneinander zeigen', po_binder_zahl: 'Binder', po_karten: 'Karten', po_herzen: 'Herzen', po_sortierung: 'Sortierung', po_s_neu: 'Neueste', po_s_herzen: 'Beliebteste', po_s_gross: 'Größte', gal_alle: 'Alle Seiten', gal_einzeln: 'Eine Seite', gal_bearbeiten: 'Diese Seite bearbeiten', wants_lbl: 'Dieser Binder steht auf der Wunschliste', wants_u: 'An: Alle Karten dieses Binders, die dir fehlen, stehen auf der Wunschliste. Aus (Standard): Der Binder ist ein Plan, keine Einkaufsliste.', wants_aus_kurz: 'nicht auf der Wunschliste', wants_an_toast: 'Steht auf der Wunschliste', wants_aus_toast: 'Nicht mehr auf der Wunschliste', sm_wants_hin: 'Gezählt werden nur Binder, die du auf die Wunschliste gestellt hast.', binder_aussehen: 'Aussehen …', planer_hinweis_touch: 'Fach antippen wählt aus · gedrückt halten und ziehen verschiebt.', sm_weg_suche: 'Karten suchen', vt_b_binder: 'Binder', vt_b_kunst: 'Kunstseiten', vt_u_kunst: 'Von Sammlern gestaltete Seiten. Übernimm eine in deinen Binder — der Ersteller bekommt Credits dafür.', vt_suche_kunst: 'Kunstseite suchen …', vt_k_top: 'Beliebt', vt_k_alt: 'Älteste Karten', vt_k_jung: 'Neueste Karten', vt_k_jahrgang: 'Jahrgang', vt_k_leer: 'Hier steht noch keine Kunstseite.', vt_k_geladen: 'geladen', vt_k_meine: 'Deine Seite', vt_k_einfuegen: 'In den Binder', vt_k_holen: 'Holen · {n} Credits', vt_k_preis: 'Eine Seite kostet {n} Credits', vt_k_frage: 'Diese Kunstseite für {n} Credits übernehmen? Sie gehört danach dauerhaft dir und lässt sich beliebig oft drucken.', vt_k_gekauft: '{n} Credits abgebucht', vt_k_schon: 'Gehört dir schon', vt_k_kein_binder: 'Öffne zuerst einen Binder.', vt_k_eingesetzt: 'Seite angehängt', awt_t: 'Andere diese Seite laden lassen?', awt_titel: 'Titel in der Vitrine', awt_ph: 'z. B. Glurak am Vulkan', awt_hin: 'Du kannst die Seite jederzeit zurückziehen. Bereits geladene Seiten bleiben bei ihren Besitzern.', awt_nein: 'Nein, privat lassen', awt_ja: 'Ja, freigeben', awt_ja_kurz: 'In die Vitrine stellen …', awt_u: 'Stell die Seite in die Kunstseiten-Vitrine. Jedes Mal, wenn sie jemand übernimmt, zahlt er {p} Credits — davon bekommst du {a} zurück.', awt_frei: 'Seite steht in der Vitrine', awt_frei_kurz: 'Freigeben', aw_seite_frei: 'Kunstseite in die Vitrine stellen …', awt_privat: 'Seite ist wieder privat', aw_oeffentlich: 'In der Vitrine', aw_verdient: '{n} Credits verdient', vt_k_binder_kosten: 'Dieser Binder enthält {n} Kunstseite(n) · {c} Credits', vt_k_ohne: 'Ohne Kunstseiten kopieren', vt_k_binder_frage: 'Dieser Binder enthält {n} fremde Kunstseite(n). Der Plan selbst ist frei — die Seiten kosten {c} Credits. Mitkopieren? (Abbrechen kopiert den Binder ohne sie.)', vt_k_mit: 'Mit Kunstseiten ({c} Credits)', st_karten_geplant: 'Karten geplant', st_karten_besitz: 'Karten im Besitz', pr_unsicher: 'Beide Börsen weichen stark ab – die Zahl ist unsicher.', pr_abstand: 'USA {f}× über dem üblichen Kurs — bei alten Karten normal, kann aber auch eine falsche Zuordnung sein.', pr_geschaetzt: 'aus dem US-Preis umgerechnet', pr_q_geschaetzt: 'Aus dem US-Marktpreis umgerechnet – Cardmarket führt für diese Karte keinen Trend.', pr_q_zweitquelle: 'Von pokemontcg.io statt TCGdex – dort hängt die Karte am richtigen Cardmarket-Produkt.', pr_q_unsicher: 'Europa und USA liegen weit auseinander.', pr_zweitquelle: 'zweite Quelle (pokemontcg.io)', pr_7: '7-Tage-Schnitt', pr_direkt: 'direkt aus dem Cardmarket-Preisverzeichnis', tk_klick: 'Klick legt die Karte ins Fach', tk_info: 'Details und Preise', tk_besitz: 'Hab ich', f_chip_weg: 'Filter entfernen', karten_zeigen: 'Karten zeigen', f_preset: 'Schnellauswahl', bv_wischen: 'Zum Blättern wischen', st_t: 'Was steckt in diesem Binder?', st_u: 'Alles aus den Karten, die schon drin sind.', st_sets: 'Sets', st_jahre: 'Jahrgänge', st_jahrgang: 'Nach Erscheinungsjahr', st_topsets: 'Häufigste Sets', st_selten: 'Seltenheiten', st_illu: 'Illustratoren', verschoben: 'Verschoben', hilfe_touch: 'Zum Umsortieren ein Fach gedrückt halten und ziehen.', po_tausch: 'Hat doppelt', po_tausch_u: 'Karten, die dieser Sammler mehrfach besitzt. Binderplan vermittelt keine Tauschgeschäfte.', vpf_tausch: 'Doppelte Karten öffentlich zeigen', vpf_tausch_u: 'Andere sehen, welche Karten du mehrfach hast. Ohne Nachrichten, ohne Preise.', imp_gekuerzt: 'Es wurden nur die ersten 300 Zeilen geprüft — {n} weitere blieben außen vor.', f_regmark_t: 'Turnierlegalität: Buchstabe unten links auf der Karte', sm_ph: 'Karte suchen …', pl_such_auf: 'Karte suchen', pl_such_zu: 'Suche ausblenden', pl_such_hinweis: 'Tippe einen Kartennamen — ein Klick auf den Treffer legt ihn in den Binder.',
+    pw_vergessen: 'Passwort vergessen?', pw_neu_t: 'Neues Passwort setzen', pw_neu_senden: 'Passwort speichern',
+    pw_email_noetig: 'Bitte oben deine E-Mail eintragen, dann auf „Passwort vergessen“ klicken.',
+    pw_mail_raus: 'Wenn die E-Mail existiert, ist der Link unterwegs — schau ins Postfach.',
+    mail_fehlt: 'Mail-Versand ist noch nicht eingerichtet — bitte beim Betreiber melden.',
+    pw_geaendert: 'Passwort geändert — du bist angemeldet.',
+    m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Suche',
+    start: 'Übersicht', profil: 'Profil & Konto',
+    hallo: 'Hallo',
+    st_binder: 'Binder', st_faecher: 'Fächer geplant',
+    st_neu: 'Neuer Binder', st_zuletzt: 'zuletzt',
+    mode_master: 'Master Set', mode_dex: 'Pokédex', mode_custom: 'Frei geplant',
+    pf_konto: 'Konto', pf_tarif: 'Tarif', pf_binderzahl: 'Binder',
+    pf_exporte: 'PDF-Exporte diesen Monat übrig',
+    pf_einstellungen: 'Einstellungen', pf_sprache: 'Sprache', pf_design: 'Design',
+    pf_pw: 'Passwort ändern', pf_pw_alt: 'Aktuelles Passwort', pf_pw_neu: 'Neues Passwort (mindestens 8 Zeichen)',
+    pf_pw_btn: 'Passwort speichern', pf_pw_ok: 'Passwort geändert ✓',
+    pf_recht: 'Rechtliches', pf_gefahr: 'Konto löschen',
+    pf_loeschen_hint: 'Löscht dein Konto und alle deine Binder endgültig — das lässt sich nicht rückgängig machen.',
+    pf_loeschen_pw: 'Zum Bestätigen Passwort eingeben', pf_loeschen_btn: 'Konto endgültig löschen',
+    pf_loeschen_frage: 'Wirklich? Konto und alle Binder werden endgültig gelöscht.',
+    pf_geloescht: 'Dein Konto wurde gelöscht.',
+  },
+  en: {
+    sm_z_karten: '{n} cards', sm_z_sets: '{n} sets', sm_z_kaufpreise: 'Add purchase prices ›', sm_z_ziel: 'Set a goal ›',
+    d_tab_preise: 'Prices', d_tab_drucke: 'Printings', d_tab_reihe: 'Line',
+    lade_fuer: 'For slot {n}', fach_wort: 'Slot', ik_leer_t: 'Slot {n} is empty', ik_leer_u: 'Pick a card from the search – it lands here.',
+    ik_aktionen: 'Actions', ik_hat: 'In collection', ik_hat_nicht: 'I have it', v_normal_kurz: 'Normal',
+    dr_art_karten: 'Placeholders', dr_art_check: 'Checklist', dr_art_kauf: 'Buy list CSV',
+    dr_check_u: 'Every card of the binder as a list to tick off – no images, always free.',
+    dr_kauf_u: 'The missing cards with Cardmarket trend price as CSV – for spreadsheets or Cardmarket wants.',
+    dr_start_check: 'Create checklist', dr_start_kauf: 'Download CSV',
+    suche_knopf: 'Find cards', drucken: 'Print',
+    gast_registrieren: 'Sign up for free', gast_anmelden: 'I have an account',
+    gast_sammlung_t: 'Your collection – with an account', gast_sammlung_u: 'Tick off cards, complete sets, see value and movement of your cards. Free, with e-mail and password.',
+    gast_markt_t: 'The market – with an account', gast_markt_u: 'Sets on the rise, movement of your cards, price history per card. The overview is free, rankings are part of Plus.',
+    gast_start_t: 'Your binder only lives in this browser', gast_start_u: 'With an account it is on all your devices, plus collection, wishlist and price alerts. Free.',
+    gast_start_grund: 'Sign up for free – your binder comes along.',
+    st_gast_gruss: 'Welcome to Binderplan!', st_gast_u: 'Plan your first binder – no account needed. Card by card or from a template.',
+    f_variante: 'Variant',
+    geb_ungueltig: 'Please enter a valid date of birth (DD.MM.YYYY).',
+    tarif_life_hinweis: 'You have Lifetime – everything is unlocked. Buy credits for artwork pages here.',
+    tk_anhaengen: 'Append',
+    tk_in_fach: 'Into slot {n}',
+    tk_gesetzt: 'Placed in slot {n}',
+    binder_nav: 'Binder',
+    pl_shift: 'Shift selects a range',
+    pl_hilfe_t: 'Arranging slots',
+    pl_h_1: 'Clicking a slot selects it. Shift selects a range.',
+    pl_h_2: 'Selected slots can be moved, sorted and emptied — the bar below shows how.',
+    pl_h_3: 'Dragging moves a slot directly; on a phone press and hold, then drag.',
+    pl_h_4: 'The check mark in a slot means “I own this” and goes into your collection.',
+    pl_h_5: 'Keyboard: Ctrl+A selects all, arrows move, Del empties, Esc clears.',
+    verstanden: 'Got it',
+    mk_meine_link: 'My collection ›',
+    st_womit: 'Where do you start?',
+    st_weg_foto_u: 'Photograph your pages, Binderplan recognises the cards by their picture.',
+    st_weg_vorlage: 'Start from a template',
+    st_weg_vorlage_u: 'Master set, Pokédex or every card of one Pokémon.',
+    st_weg_import_u: 'CSV from Collectr, TCG Collector or Cardmarket.',
+    st_alle_binder: 'Show all {n} binders',
+    st_offen: 'Slots still empty',
+    st_offen_u: 'across {n} binders',
+    st_verschieden_n: '{n} different',
+    vt_beliebt: 'Popular',
+    vt_k_geholt: 'taken',
+    vt_k_ansehen: 'View',
+    vt_seite_n: 'Page {n} of {g}',
+    vt_ganz_oeffnen: 'Open the whole binder',
+    al_t: 'Price alert',
+    al_kurz: 'Alert',
+    al_unter: 'drops below',
+    al_ueber: 'rises above',
+    al_schwelle: 'Threshold in euro',
+    al_setzen: 'Set alert',
+    al_gesetzt: 'Alert set — checked after every price run.',
+    al_trifft_jetzt: 'The threshold is already met today.',
+    al_hin_karte: 'Checks the Cardmarket trend once a day after the price run. A triggered alert shows on the home page — and arrives by e-mail once sending is set up.',
+    al_hin_set: 'Checks what is left to complete the set: the sum of trend prices of all cards you are still missing.',
+    al_set: 'Alert for the set remainder',
+    al_ausgeloest: 'Price alerts',
+    al_alle: 'All alerts',
+    al_liste_t: 'Price alerts',
+    al_liste_u: 'Checked after every price run. Three alerts without Plus.',
+    al_leer: 'No alert yet. In the card dialog: 🔔 Alert.',
+    al_aktuell: 'now',
+    al_schwelle_k: 'Threshold',
+    al_weg: 'Remove alert',
+    al_rest: 'Left to complete',
+    al_frei: '{n} of {m} alerts without Plus',
+    al_trifft: 'hit',
+    dg_t: 'Your weekly digest',
+    dg_wert: 'Collection today',
+    dg_beweg: 'Largest moves (7 days)',
+    dg_monat: 'Set of the month',
+    dg_guenstiger: 'Cheaper on your wishlist',
+    dg_leer: 'nothing this week',
+    dg_mail: 'Also arrives by e-mail once sending is set up.',
+    imp_ziel: 'Target',
+    imp_ziel_binder: 'Into the binder',
+    imp_ziel_sammlung: 'Into the collection',
+    imp_ziel_binder_u: 'As a plan: the cards go into the slots.',
+    imp_ziel_sammlung_u: 'As owned cards: with quantity, condition, language and price paid when the table has them.',
+    imp_in_sammlung: 'Into the collection',
+    imp_sammlung_ok: '{n} cards added to your collection.',
+    imp_tabelle: 'table with columns detected',
+    sm_grading: 'Grading',
+    sm_zert: 'Certificate no.',
+    sm_graded: 'Graded',
+    sm_grading_ohne: 'not graded',
+    sm_wahl: 'Select',
+    sm_wahl_fertig: 'Done',
+    sm_wahl_n: '{n} selected',
+    sm_wahl_anwenden: 'Apply',
+    sm_wahl_binder: 'Into the binder',
+    sm_wahl_weg: 'Remove',
+    sm_wahl_weg_frage: 'Remove {n} cards with all their entries from the collection?',
+    sm_wahl_ok: '{n} cards changed.',
+    sm_wahl_alle: 'All',
+    sm_wahl_keine: 'None',
+    sm_wahl_zustand: 'Condition for all',
+    sm_wahl_sprache: 'Language for all',
+    sm_wahl_unveraendert: 'unchanged',
+    st_komplett_heute: 'Complete today',
+    aera_waehlen: 'Every set of this era',
+    sm2_karten: 'Cards',
+    sm2_sets: 'Sets',
+    sm2_sets_t: 'Your sets',
+    sm2_sets_u: 'Progress by cards owned, remainder at today’s prices. Click opens the checklist grid.',
+    sm2_sets_fuss: 'Total = every card of the set in the catalogue, secret rares included. Remainder = sum of trend prices of the missing cards, today.',
+    sm_k_wert: 'Value today',
+    sm_k_sets: 'Sets started',
+    sm_k_sets_u: '{f} almost complete · {k} complete',
+    sm_k_ziel: 'Missing for your goals',
+    sm_k_ziel_u: '{n} goals · {k} cards',
+    sm_k_ziel_leer: 'No goal yet — set one in the Sets tab',
+    sm_s_fortschritt: 'Progress',
+    sm_s_rest: 'Left to complete',
+    sm_besessen: 'Owned',
+    sm_ziel: 'Goal',
+    sm_ziel_u: 'A set with a date — progress shows on the home page.',
+    sm_ziel_setzen: 'Set a goal',
+    sm_ziel_weg: 'Remove goal',
+    sm_ziel_tage: '{n} days left',
+    sm_ziel_vorbei: 'date passed',
+    sm_ziel_ohne_datum: 'no date',
+    sm_ziel_gesetzt: 'Goal set.',
+    sm_fehlen_n: '{n} missing',
+    sm_rest_u: 'trend prices of the missing cards',
+    sm_dein_wert: 'Your cards',
+    sm_teuer_fehlend: 'Most expensive missing cards',
+    sm_teuer_fehlend_u: 'What makes up the remainder.',
+    sm_raster: 'Checklist grid',
+    sm_raster_u: 'Click a card: owned / not owned. Entries with condition or language are kept.',
+    sm_rest_kurz: 'Left {e}',
+    sm_komplett: 'complete',
+    sm_guenstig: 'Cheap right now',
+    sm_guenstig_u: 'Cards on your wishlist below their 30-day average — the moment to buy.',
+    sm_kauf_frage: 'Bought for …?',
+    sm_kauf_gemerkt: 'Purchase price {e} saved.',
+    sm_meine_beweg: 'Movement in your collection',
+    sm_meine_beweg_u: 'Trend against the 7-day average per card, largest amounts first.',
+    sm_beweg_summe: '{e} in total',
+    sm_beweg_leer: 'No movement above 50 cents yet.',
+    sm_export: 'Export',
+    sm_export_csv: 'Collection as CSV (Plus)',
+    sm_export_pdf: 'Collection overview as PDF (Plus)',
+    st_ziele: 'Your goals',
+    mk_7t: '7 days',
+    mk_30t: '30 days',
+    mk_r_heute: 'Today',
+    mk_r_sets: 'Sets',
+    mk_r_aeren: 'Eras',
+    mk_r_pokemon: 'Pokémon',
+    mk_r_regionen: 'Regions',
+    mk_r_meine: 'My cards',
+    mk_r_illu: 'Illustrators',
+    mk_u: 'The western catalogue, repriced daily. Movement as the median across the cards of a group.',
+    mk_stand: 'As of {d}',
+    mk_kein_stand: 'The daily figures are calculated with the next price run.',
+    mk_spark_leer: 'No series yet',
+    mk_set_monat: 'Set of the month',
+    mk_set_woche: 'Set of the week',
+    mk_median_n: 'median of {n} cards',
+    mk_geplant: 'Most planned in binders',
+    mk_geplant_u: '{n} slots in real binders',
+    mk_aufwind: 'Sets on the rise',
+    mk_aufwind_u: 'Median movement per set over {f}, from 25 cards above €1.',
+    mk_druck: 'Sets under pressure',
+    mk_druck_u: 'Same rule, negative movement.',
+    mk_keine_bewegung: 'No group has enough cards for a statement yet.',
+    mk_alle_sets: 'All sets as a table ›',
+    mk_ausreisser_hin: 'Cards more than three times or less than a third of their average are left out — that is almost always a wrong link in the source, not a market move.',
+    mk_aeren: 'Eras',
+    mk_aeren_u: 'Value per era and how it moves. Same scale, six curves instead of one crowded chart.',
+    mk_aeren_u2: 'Six time windows across the whole catalogue.',
+    mk_karten_u: 'Individual cards, {f}, from €2 card value.',
+    mk_basis_karten: 'Basis: {n} cards with a trend and an average, outliers left out.',
+    mk_schnitt_jetzt: 'average → now',
+    mk_s_bew30: 'Movement 30 days',
+    mk_s_bew7: 'Movement 7 days',
+    mk_s_summe: 'Value',
+    mk_s_median: 'Median price',
+    mk_s_hoechst: 'Most expensive',
+    mk_s_karten: 'Cards',
+    mk_s_geplant: 'Planned',
+    mk_s_name: 'Name',
+    mk_illu_u2: 'Whose cards are worth the most together.',
+    mk_name_sp: 'Name',
+    mk_wert: 'Value',
+    mk_verlauf: 'Trend',
+    mk_tab_fuss: 'Groups with at least {n} priced cards are shown.',
+    mk_set_bewegung: 'Movement 30 days',
+    mk_komplett: 'All cards together',
+    mk_komplett_u: 'across {n} priced cards',
+    mk_in_bindern: 'Planned in binders',
+    mk_in_bindern_u: 'slots across all binders',
+    mk_verteilung: 'Price distribution',
+    mk_verteilung_u: 'How many cards sit in which price class.',
+    mk_bewegung_karten: 'Movement per card',
+    mk_bewegung_karten_u: 'Down on the left, up on the right — cards from €1, sorted by size.',
+    mk_teuerste_set_u: 'What tops this set.',
+    mk_dex_nr: 'Pokédex number {n}',
+    mk_wert_alle: 'All cards together',
+    mk_bewegung: 'Movement 30 days',
+    mk_median_u: 'median across all cards',
+    mk_nach_jahr: 'Value by release year',
+    mk_nach_jahr_u: 'What the cards of one year are worth together today.',
+    mk_teuerste_karten: 'Most expensive cards',
+    mk_teuerste_poke_u: 'By today’s trend price.',
+    mk_meine_u: 'Your collection against the market.',
+    mk_meine_leer: 'No cards in your collection yet.',
+    mk_meine_wert: 'Value of your collection',
+    mk_meine_sets: 'from {n} sets',
+    mk_meine_bestes: 'Largest holding',
+    mk_meine_sets_t: 'Your sets',
+    mk_meine_sets_u: 'How the sets you collect are moving.',
+    mk_dein_wert: 'Your value',
+    mk_meine_beweg: 'Movement in your collection',
+    mk_meine_beweg_u: 'Largest amounts over seven days.',
+    mk_diff: 'Change',
+    preis: 'Price',
+    st_name_frage: 'What should we call you?',
+    st_sm_wert: 'Value of your collection',
+    geb_ph: 'DD.MM.YYYY',
+    up_login: 'To choose a plan or buy credits you need a free account.',
+    pr_ab_lbl: 'Lowest offer',
+    pr_usa_lbl: 'US (TCGplayer market)',
+    pr_mehr: 'More prices',
+    tk_hinzu: 'Add',
+    suchen_nav: 'Search',
+    planer_nav: 'Planner',
+    exportieren: 'Export',
+    binder_privat: 'This binder is private or no longer exists.',
+    f_rail: 'Filters',
+    // Creator overview: shows only what happened — no zeros, no ranking
+    j_artwork_anteil: 'Share from a download', j_artwork_uebernahme: 'Art page taken',
+    cr_neu_t: 'Since your last visit', cr_neu_ueb1: 'A collector took one of your pages',
+    cr_neu_ueb: 'Your pages were taken {n} times', cr_neu_credits: '+{n} credits', cr_neu_herz1: '1 new heart',
+    cr_neu_herzen: '{n} new hearts', cr_ansehen: 'See', cr_t: 'Your art pages',
+    cr_seiten: 'pages', cr_vitrine: 'in the showcase', cr_uebernahmen: 'downloads', cr_verdient: 'credits earned',
+    cr_herzen: 'hearts', cr_privat: 'private', cr_uebernommen: 'taken {n}×', cr_in_vitrine: 'In the showcase',
+    cr_freigeben: 'Share', cr_hinweis: 'Every download earns you {a} credits. Only what actually happened is listed here.',
+    aw_t: 'Design an artwork page', aw_menu: 'Design an artwork page …',
+    aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
+    aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
+    aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
+    aw_kosten_hin: 'for this page · you have {s}', aw_ansicht_faecher: 'Pockets (as printed)', aw_ansicht_voll: 'Whole page', aw_karte: 'Card', aw_fach: 'Slot',
+    aw_uebernehmen: 'Apply to binder', aw_uebernommen: 'Artwork pockets added to the binder.', aw_layout_anders: 'The binder grid has changed – this artwork no longer fits.',
+    s_artwork: 'Open artwork page', aw_laeuft: 'The AI is painting …', aw_im_binder: 'in binder',
+    pf_export: 'Download my data', kuend_link: 'Cancel contracts here', unbegrenzt_binder: 'Unlimited binders', binder_wort: 'binders', unbegrenzt_pdf: 'Unlimited printing',
+    pdf_monat: 'placeholder PDFs per month', checkliste_frei: 'Checklist always free',
+    preise_live: 'Refresh prices any time', preise_tag: 'Prices from the previous day (refreshed once daily)',
+    kaufliste_csv: 'Shopping list as CSV', zum_start: 'to start with', beliebt: 'Popular',
+    up_recht_kurz: 'Final prices, no VAT (§ 19 UStG, German small business rule).',
+    best_agb_html: 'I accept the <a href="recht#agb" target="_blank">terms</a> and have read the <a href="recht#datenschutz" target="_blank">privacy policy</a> and the <a href="recht#widerruf" target="_blank">right of withdrawal</a>.',
+    gate_credits: 'This needs {n} credits, you have {s}.', gate_tageslimit: 'The AI workshop is busy today – please try again tomorrow.',
+    mtl: 'Monthly', jaehrl: 'Yearly', spar: '−17 %', pro_monat: 'per month', pro_jahr: 'per year',
+    pak_t: 'Buy credits separately', pak_u: 'No subscription, no expiry – ideal if you only make an artwork page now and then.',
+    best_t: 'Review your order', best_u: 'Please review your order. Payment is handled by Stripe.',
+    best_btn: 'Order with obligation to pay', best_hin: 'You will be redirected to Stripe. We never store payment details.',
+    best_leistung: 'Product', best_laufzeit: 'Term', best_gesamt: 'Total today', best_verlaengert: 'renews automatically, cancel any time to the end of the term',
+    best_einmalig: 'One-off payment, no subscription', best_fehlt: 'Please confirm both points to continue.',
+    credits: 'Credits', credits_kaufen: 'Buy credits',
+    guthaben: 'Balance', guthaben_abo: 'monthly allowance', guthaben_gekauft: 'purchased',
+    journal: 'Recent entries', j_start: 'Welcome credits', j_kauf: 'Credits purchased', j_artwork: 'Artwork page',
+    j_abo_guthaben: 'Monthly allowance', j_erstattung_fehler: 'Refund (failed run)', j_erstattung: 'Refund', j_test: 'Correction',
+    waehlen: 'Choose', aktuell: 'Your plan', kuendigen: 'Cancel subscription', kuendigen_frage: 'Really cancel at the end of the term?',
+    gekuendigt: 'Cancelled as of', reaktivieren: 'Undo cancellation', reaktiviert: 'Your subscription continues.',
+    abo_bis: 'Renews on',
+    aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
+    aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: 'Fill the page',
+    aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
+    aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
+   
+   
+    aw_login: 'Please sign in to create artwork pages – the first one is free.',
+    aw_kein_anker: 'Place at least one card in a pocket of this page first.', aw_kein_platz: 'There is no free pocket on this page for the AI to fill.',
+    aw_laeuft_schon: 'An artwork page is already being generated – please wait a moment.', aw_fehler: 'That did not work', aw_geloescht: 'Artwork deleted.',
+    aw_p_gut: 'These cards fit together', aw_p_bruch: 'These cards only partly fit together',
+    aw_p_gemeinsam: 'shared: {o}',
+    aw_p_rat: 'The AI will still build the page – expect a visible seam. Fewer anchor cards, or cards with a similar setting, give a calmer picture.',
+    aw_privat: 'AI image for private use. The original card stays untouched in its pocket; the cut-outs are labelled “Page · Slot”.',
+    aw_druck_hint: 'Print on heavy paper (≥ 200 g) or photo paper, cut along the grey lines, slide into the empty sleeves.',
+    aw_erg_info: '{k} card(s) · {f} pockets with artwork · {s}',
+    stil_karte: 'Like the card', stil_comic: 'Comic', stil_foto: 'Photorealistic', stil_aquarell: 'Watercolor', stil_oel: 'Oil painting', stil_anime: 'Anime',
+    stil_retro: 'Retro 90s', stil_pixel: 'Pixel art', stil_neon: 'Neon', stil_skizze: 'Pencil', stil_minimal: 'Minimal', stil_dunkel: 'Dark fantasy',
+    undo: 'Undo', undo_ok: 'Undone.', hinzugefuegt_1: 'Card added',
+    f_mehr: 'Advanced filters', ansicht: 'Size', sammeln: 'Collect mode',
+    m_poke_t: 'One Pokémon – all cards', m_poke_u: 'Every print of one Pokémon, from the first card to today – perfect for a favourite-Pokémon binder.',
+    m_poke_jp: 'Include Japanese cards', alle_karten: 'all cards', s_rainbow: 'Rainbow (by type)',
+    m_import_t: 'Import a list', m_import_u: 'One card per line – e.g. “sv1 25”, “Charizard 4/102”, “1x Charizard (Base Set) 4” or the CSV exports of TCG Collector, Collectr and Cardmarket wants.',
+    import_datei: 'Choose file (.csv/.txt)', import_pruefen: 'Check', import_btn: 'Add to binder', imp_erkannt: 'matched', imp_unklar: 'unclear', imp_kein_treffer: 'no match',
+    onb_t: 'How it works', onb_1: 'Pick a set or search a card', onb_2: 'Tap “+” – the card lands in a slot here', onb_3: 'Print, tick off, take the buy list',
+    tpl_master: 'Master set', tpl_master_u: 'every card of a set', tpl_dex: 'Pokédex', tpl_dex_u: 'one slot per Pokémon', tpl_poke: 'One Pokémon', tpl_poke_u: 'all cards, chronological', tpl_import: 'Import', tpl_import_u: 'list from another tool',
+    variante: 'Variant / slot', v_normal: 'Normal', v_reverse: 'Reverse holo', v_holo: 'Holo', v_first: '1st edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
+    zustand_ph: 'Condition (e.g. NM, PSA 10)', in_binder: 'Add to binder', im_binder: 'in binder', andere_drucke: 'Other prints of this Pokémon',
+    preis_trend: 'Cardmarket trend', preis_holo: 'Holo trend', preis_laden: 'loading price …', verlauf: 'Price history', tage: 'days', verlauf_bald: 'Price history builds up daily from now on.',
+    bild_en: 'English image – no German scan exists for this set.', planer_hinweis: 'Click slots, Shift for a range, ☑ selects a whole page. Keyboard: Ctrl+A all, arrows move, Del removes.',
+    vpf_name: 'Display name', speichern: 'Save', pdf_bilder: 'Preparing images …', pdf_fertig: 'PDF is ready.',
+    ex_check: 'Checklist (no images)', neu: '+ New',
+    reg_west: 'Western', reg_jp: 'Japan', jp_hinweis: 'Japanese cards have no artist, rarity or card-type data – search, era, set, Pokémon and sorting work.',
+    kartensprache: 'Card language', s_zustand: 'Condition', kein_scan: 'No scan available', kein_preis: 'no Cardmarket price',
+    pr_ab: 'from', pr_30: '30-day average', pr_usa: 'US',
+    zst_titel: 'Estimated by condition',
+    zst_hin: 'Derived: the trend stands for near-new, below it the discounts common in the trade; Poor takes the real lowest price where that is lower. Cardmarket publishes no prices per condition – these are calculated, not measured.',
+    pr_zustand_hin: 'Neither marketplace publishes prices per condition – the trend covers all conditions, the US prices are for Near Mint.',
+    preis_geteilt: 'Cardmarket lists this card together with {n} others under one product – no price of its own can be derived from that.',
+    preis_ohne_quelle: 'Our price source carries no Cardmarket link for this set. The card is traded there all the same – what is missing is the mapping.',
+    pf_sprache_ui: 'Interface language',
+    f_illu: 'Artist', illu_suche: 'Search artist …', alle_illu: 'All artists', illu_top: 'Most collected', illu_alle: 'All (A–Z)', f_sonder: 'Special prints', f_trainer: 'Trainer type', f_jahr: 'Year from – to', f_regmark: 'Regulation mark',
+    m_illu_t: 'Artist binder', m_illu_u: 'Every card by one illustrator, chronological – from Mitsuhiro Arita to Yuka Morii.',
+    tpl_illu: 'Artist', tpl_illu_u: 'all cards by one illustrator', m_poke_umfang: 'Scope', m_poke_einzeln: 'Only this Pokémon', m_poke_familie: 'Whole evolution line (pre-evolutions + evolutions)',
+    illu_karten: 'cards', d_illu: 'Illustration', d_regmark: 'Regulation mark', d_name_ja: 'Japanese card name', d_fam: 'Evolution line', d_fam_btn: 'Evolution line as binder', d_illu_btn: 'All by this artist',
+    first_ed: '1st edition', alle_trainer: 'All', pdf_erzeugt: 'Generating PDF …', pdf_oeffnen: 'Open PDF', pdf_geladen: 'PDF downloaded –',
+    raster: 'Grid', auffuellen: 'Fill page with empty slots', hilfe2: 'Drag to reorder, ⋯ on a slot for free slots, ✕ removes.',
+    mehr_nav: 'More', gewaehlt: 'selected', zu_leer: 'Free the slots', eigener_binder: 'Plan your own binder',
+    name_t: 'What should we call you?', name_u: 'Shown in the greeting – change it any time in your profile.', spaeter: 'Later',
+    pw_hint: 'At least 8 characters.', up_r1: 'Saved binders', up_r2: 'Placeholder PDF', up_r2f: '1 / month', up_r3: 'Checklist & prices', up_r4: 'Refresh prices instantly', up_r4f: 'once a day', up_r5: 'Buy list as CSV',
+    s_details: 'Details', s_frei_davor: 'Empty slot before', s_frei_danach: 'Empty slot after', s_zu_leer: 'Free the slot (remove card)', s_entfernen: 'Remove card (slot stays empty)',
+    s_seite_hoch: 'Move page forward', s_seite_runter: 'Move page back', s_seite_weg: 'Remove page', s_seite_fach: 'Append empty slot', s_seite_wahl: 'Select page',
+    erg_leer: 'No cards found.', ex_alle: 'Placeholder PDF – all cards', ex_fehlend: 'Placeholder PDF – missing only',
+    verlauf_bald: 'Price history: from tomorrow, updated daily.', zustand_ph: 'Condition, e.g. NM',
+    m_leer: 'Empty binder',
+    meine: 'My binders', preise: 'Prices', planer: 'Planner', planen: 'Plan',
+    pl_alle: 'All pages', pl_alle_t: 'Every page of the binder side by side',
+    pl_zurueck: '‹ One page', pl_eine: 'Page', pl_alle_kurz: 'All',
+    pl_sort_nach: 'Sort selection by', pl_sortieren: 'Sort', nach_links: 'Move left', nach_rechts: 'Move right', pdf: 'Print',
+    f_suche: 'Search', f_pokemon: 'Pokémon', f_aera: 'Era', f_art: 'Card type', f_rarity: 'Rarity',
+    f_typ: 'Type', f_sort: 'Sort by', absteigend: 'descending', f_reset: 'Reset filters',
+    ri_t: 'Reverse order', ri_alt: 'oldest first', ri_neu: 'newest first', ri_az: 'A–Z', ri_za: 'Z–A',
+    ri_auf: 'ascending', ri_ab: 'descending', ri_teuer: 'priciest first', ri_guenstig: 'cheapest first',
+    ri_viele: 'most first', ri_wenige: 'fewest first',
+    vt_fenster_woche: 'This week', vt_fenster_monat: 'This month', vt_fenster_immer: 'All time',
+    alle: '+ All results …', alle_ende: '… append at the end', alle_seite: '… start on next free page',
+    mehr: 'Load more', binder: 'Binder', seite: 'Page', leeren: 'Clear binder',
+   
+    m_master_t: 'Create master set', m_master_u: 'Every card of the set once, ordered by set number.',
+    m_reverse: 'Also plan reverse holos (card appears twice)',
+    m_dex_t: 'Create Pokédex binder', m_dex_u: 'One slot per Pokémon — prints number, name and image.',
+    abbrechen: 'Cancel', anlegen: 'Create binder', zurueck: 'Back', auswahl: 'Selection',
+    sortieren: 'Sort selection', nach_vorn: 'To front', ans_ende: 'To end', entfernen: 'Remove',
+    leere_seite: '+ Empty page', aufheben: 'Clear selection',
+    treffer: 'cards found', bv_titel: 'Flip through',
+    start_nav: 'Home', st_weiter: 'Pick up where you left off', st_weiterplanen: 'Continue', st_tun: 'What would you like to do', st_deine: 'Your binders', st_aus_vitrine: 'From the showcase', st_alle_zeigen: 'See all', st_neu_u: 'Master set, Pokédex, one Pokémon or empty', st_unter_voll: 'Everything at a glance — tap a number to go there.', st_unter_leer: 'No binder yet. Start from a template or photograph your binder.',
+
+    th_unterwasser: 'Underwater', th_nachts: 'At night', th_mehrere: 'Several Pokémon', bv_bild: 'Save spread as image', bv_bild_fertig: 'Image saved', bv_bild_fehler: 'Could not create the image',
+
+    // ---------- Analytics: collection & market ----------
+    markt: 'Market', an_t: 'Analytics',
+    an_u: 'What your collection is worth, where that value sits and how it moves. Cardmarket prices, refreshed daily.',
+    an_30: '30 days', an_90: '90 days', an_365: '1 year',
+    an_stk: 'cards', an_tage: 'days', an_fehler: 'Could not load the figures. Please try again.',
+    an_keine_daten: 'No figures for this yet.',
+    an_leer: 'Your collection is still empty. Tick the cards you own in the binder – or photograph a page. Then this page tells you what it is worth.',
+    an_markt_login: 'You need an account for the market figures.',
+    an_pro_t: 'Analytics is part of Plus', an_mpro_t: 'The market figures are part of Pro',
+    an_pro_u: 'We fetch prices for the whole catalogue every day. Turning them into figures is the work Pro pays for.',
+    an_pro_1: 'The value of your collection, day by day',
+    an_pro_2: 'Split by rarity, set, Pokémon, type and decade',
+    an_pro_3: 'What you paid against what it is worth – per card and in total',
+    an_pro_4: 'Live prices and the shopping list as CSV',
+    an_mpro_1: 'Indices for old, middle and new cards',
+    an_mpro_2: 'The biggest movers in the series',
+    an_mpro_3: 'Europe against the US: where the same card is cheaper',
+    an_mpro_4: 'Value spread across the catalogue and every set compared',
+    an_kostprobe: 'A taste: the five sets with the highest average.',
+    an_wert: 'Value', an_einsatz: 'Spent', an_gewinn: 'Gain',
+    an_mit_preis: 'recorded with a purchase price', an_auf_einsatz: 'on what you spent',
+    an_kein_kaufpreis: 'Add purchase prices and we will work out your return here.',
+    an_ohne_preis: 'No price', an_ohne_preis_u: 'cards Cardmarket carries no value for',
+    an_verlauf: 'Value over time',
+    an_verlauf_u: 'Worked out on a fixed basis: only cards that had a price on both the first and the last day count. Otherwise the line would rise simply because more cards get priced over time.',
+    an_basis: 'Basis: {n} of {g} cards carry the series from start to end – {p} % of today\'s value.',
+    an_basis_index: 'Movement, not value: first day = 100. Carried by {n} of your {g} cards, which is {p} % of today\'s value. Once the daily price run has been going longer, a euro figure returns here.',
+    an_bewegung_kurz: 'Movement', an_ohne_angabe: 'not stated', an_uebrige: 'others',
+    an_mehr: 'Show {n} more', an_leer_suchen: 'Find cards',
+    herausnehmen: 'Delete slot (cards move up)', s_herausnehmen_t: 'Remove the slot entirely – everything behind moves up',
+    hierher: 'Move here …', ziel_hinweis: 'Now click the slot the selection should go to.',
+    luecken: 'Close gaps', keine_luecken: 'There are no empty slots.',
+    luecken_zu: '{n} empty slots removed',
+    sm_aufnehmen_t: 'Add to collection', sm_aufgenommen: 'In your collection: {n}×',
+    sm_posten_neu: 'Add entry', sm_posten_aendern: 'Edit entry',
+    sm_posten_u: 'Condition and language belong to the copy. The same card in two forms is two entries.',
+    sm_ohne_angabe: 'open', sm_gekauft_am: 'Bought on', sm_notiz: 'Note', sm_notiz_ph: 'e.g. trade with Anna',
+    sm_wert_posten: 'Value of this entry', sm_je_stueck: 'each',
+    rk_fehlen: 'You are still missing {n} cards', rk_ohne: 'Cardmarket has no price for {n} of them.',
+    sm_ohne_zustand: 'without a condition the trend is used',
+    pl_zoom: 'Size',
+    gemischt: '(mixed)',
+    ex_dialog: 'Print …', dr_t: 'Print',
+    dr_u: 'Placeholders to cut out, at real card size. What you pick fills A4 sheets in order.',
+    dr_welche: 'Which pages', dr_alle: 'Whole binder', dr_aktuell: 'Page {n} only', dr_frei: 'Range …',
+    dr_ph: 'e.g. 1-3, 7, 10-', dr_seiten_hin: 'Binder pages, not print sheets. Leave empty for all.',
+    dr_was: 'What to print', dr_nur_fehlend: 'Only cards I am still missing',
+    dr_nur_art: 'Artwork slots only', dr_farbe: 'Card images in colour',
+    dr_farbe_hin: 'Artwork pages always print in colour. Card images are greyscale otherwise – recognisable as placeholders and easy on the ink.',
+    dr_start: 'Create PDF',
+    dr_v_alle: 'All {g} binder pages', dr_v_seiten: '{n} of {g} binder pages',
+    dr_v_faecher: 'Slots in this print', dr_v_art: 'artwork', dr_v_blaetter: 'A4 sheets',
+    dr_v_nichts: 'Nothing left to print with this selection.', an_von_bis: 'Before → now', an_aenderung: 'Change',
+    an_beide_boersen: 'Europe / US', an_abstand: 'Gap',
+    an_verworfen: '{n} further pairs sat more than 70 % apart and were left out – there the source compares two different printings.',
+    an_reihe_kurz: 'The series is still too short to draw.',
+    an_reihe_kurz_s: 'The series for your cards only spans {n} days. From three days on we draw the line here – before that any slope is an artefact of the price run.',
+    an_aufteilung: 'Where the value sits',
+    an_aufteilung_u: 'Not how many cards, but how much value each group holds.',
+    an_g_seltenheit: 'Rarity', an_g_set: 'Set', an_g_pokemon: 'Pokémon', an_g_typ: 'Type',
+    an_g_art: 'Kind', an_g_jahrzehnt: 'Decade', an_g_zustand: 'Condition',
+    an_posten: 'Biggest holdings', an_posten_u: 'Your collection sorted by value.',
+    an_karte: 'Card', an_anzahl: 'Count', an_stueckpreis: 'Each', an_gekauft: 'Paid', an_rendite: 'Return',
+    an_markt_t: 'Market',
+    an_markt_u: 'The whole western catalogue, repriced daily. Cardmarket in euros, TCGplayer in dollars.',
+    an_erfasst: 'Cards with a price', an_erfasst_u: 'western catalogue, Cardmarket',
+    an_us_preise: 'of those with a US price', an_us_preise_u: 'TCGplayer, the basis of the comparison',
+    an_reihe: 'Series', an_seit: 'since {d}',
+    an_indizes: 'Indices',
+    an_indizes_u: 'The 400 most expensive cards of each era, set to 100 on the first day. Old means up to 2003, new from 2020.',
+    an_ix_alt: 'Old (to 2003)', an_ix_mitte: 'Middle', an_ix_neu: 'New (from 2020)',
+    an_index_hin: 'Not the market value but its movement: 100 is the first day of the series.',
+    an_index_kurz: 'The series does not carry an index yet. It starts with the first full price run and grows daily – we draw the lines from three days on.',
+    an_bewegung: 'Biggest movers', an_bewegung_u: 'First to last day of the series, cards from €2 up.',
+    an_gewinner: 'Up', an_verlierer: 'Down',
+    an_beweg_basis: 'Basis: {n} cards priced on both days ({v} to {b}).',
+    an_beweg_kurz: 'A comparison needs two days in the series. Come back tomorrow.',
+    an_eu_us: 'Europe against the US',
+    an_eu_us_u: 'Same card, two marketplaces. The exchange rate is the median of every pair, so it is measured rather than set. Sorted by the difference in euros rather than percent: 40 % on an expensive card beats 70 % on a cheap one.',
+    an_hier_guenstiger: 'Cheaper in Europe', an_dort_guenstiger: 'Cheaper in the US',
+    an_kurs_hin: 'Measured rate: €{k} per dollar, from {n} card pairs. Shipping, customs and import VAT are not included.',
+    an_vg_kurz: 'Not enough cards priced on both marketplaces yet.',
+    an_verteilung: 'Value spread', an_verteilung_u: 'How many cards sit in each price band – and how much value sits there.',
+    an_wie_viele: 'How many cards', an_wie_viel_wert: 'How much value',
+    an_sets: 'Sets compared', an_sets_u: 'From 15 priced cards up, sorted by average.',
+    an_set: 'Set', an_karten: 'Cards', an_schnitt: 'Average', an_summe: 'Total', an_teuerste_karte: 'Top card',
+    an_teuerste: 'Most expensive cards', an_teuerste_u: 'What the catalogue currently carries at the top.',
+    mk_ueberblick: 'Overview', mk_struktur: 'Structure', mk_sets: 'Sets', mk_regionen: 'Regions',
+    mk_struktur_u: 'What the catalogue is made of and where its value sits. All figures across the priced western catalogue.',
+    mk_katalogwert: 'Catalogue value', mk_ueber: 'across {n} priced cards',
+    mk_schnitt_karte: 'Average per card', mk_schnitt_u: 'Cardmarket trend, all cards',
+    mk_jahre: 'Value by release year',
+    mk_jahre_u: 'What the cards of each year are worth together today.',
+    mk_jahre_hin: 'Not value over time, but today\'s value per year of release — older years are small because fewer cards came out then.',
+    mk_nach_wert: 'By value, not by count.',
+    mk_pokemon: 'Most valuable Pokémon', mk_pokemon_u: 'All cards of one Pokémon added up.',
+    mk_illu: 'Most valuable illustrators', mk_illu_u: 'Whose cards are worth the most together.',
+    mk_sets_u: 'Every set with at least 25 priced cards. Every column sorts.',
+    mk_jahr: 'Year', mk_name: 'Name', mk_abdeckung: 'covered',
+    mk_abdeckung_hin: '"Covered" means: a price exists for that share of the set. The missing ones are cards whose Cardmarket product belongs to several cards.',
+    mk_regionen_u: 'The same card does not cost the same everywhere. Two gaps, both measured rather than guessed.',
+    mk_jp: 'Japan against the West',
+    mk_jp_u: 'Both catalogues on average, not the same card twice: Japan and the West carry different cards. The comparison shows the level of the two markets, not the premium on any single card.',
+    mk_jp_karten: 'Japanese cards', mk_west_karten: 'Western cards',
+    mk_jp_schnitt: 'average {p}', mk_faktor: 'Ratio of averages', mk_faktor_u: 'Western average divided by Japanese',
+    mk_jp_top: 'Most expensive Japanese cards',
+    sm_bestand: 'Owned', sm_s_neu: 'Recently added', sm_s_wert: 'Value', sm_s_anzahl: 'Quantity', sm_s_name: 'Name',
+    sammlung: 'Collection', sm_t: 'My collection', sm_u: 'What you actually own. The tick in the binder writes here – the binder stays the plan, the collection is the stock.', sm_login: 'You need an account for the collection.', sm_karten: 'cards', sm_verschieden: 'different', sm_wert: 'value at Cardmarket', sm_gezahlt: 'paid for it', sm_alle: 'All', sm_doppelt: 'Duplicates', sm_ohne_binder: 'In no binder', sm_fehlt: 'Wishlist',
+    wl_titel: 'Wishlist', wl_drauf: 'On the wishlist', wl_dazu: 'Added to the wishlist',
+    wl_weg: 'Removed from the wishlist', wl_leer: 'Your wishlist is empty. Add cards with ☆ – or put a whole binder on it.',
+    wl_binder: 'Whole binders on the wishlist', wl_binder_u: 'Every card of these binders you do not own yet is on the wishlist.',
+    wl_einzeln: '{n} single cards', wl_summe: 'wishlist worth about {s}', sm_entfernen: 'Remove from collection', sm_leer: 'Nothing here yet. Tick the cards you own in the binder – or photograph a page.', sm_leer_doppelt: 'No duplicates yet.', sm_leer_ohne: 'Everything you own is planned in a binder.', sm_leer_fehlt: 'You own every card you planned. Respect.',
+
+    best_offen: 'Please confirm your e-mail ({m}) – your starting credits are waiting.', best_nochmal: 'Send again', best_gesendet: 'Mail on its way', best_schon: 'Your e-mail is already confirmed', best_danke: 'Thanks – e-mail confirmed!', best_danke_credits: 'E-mail confirmed – {n} credits added!',
+
+    pf_rufname: 'Your name (only for the greeting)', pf_vitrine: 'Showcase', pf_vitrine_u: 'Everything here becomes visible as soon as you show a binder. Without a public binder nobody sees it.', pf_oeff_name: 'Public name', pf_oeff_text: 'One line about you', pf_alter: 'Publishing', pf_alter_ok: 'unlocked', pf_alter_offen: 'date of birth missing', pf_alter_zu_jung: 'from age {a}', pf_oeff_binder: 'Public binders', pf_mein_profil: 'View my public profile', st_thema_u: 'Fill a page by artwork motif', st_vitrine_u: 'Browse other collectors',
+
+    vt_von: 'Binder by {n}', vt_geteilt: 'Shared binder', vt_seite_uebernehmen: 'Take this page', vt_binder_kopieren: 'Copy whole binder', vt_seite_frage: 'Take {n} cards of this page into “{b}”?', vt_uebernommen: '{n} cards added to “{b}”', vt_seite_leer: 'This page is empty', vt_kopie_name: 'Copy of {n}', vt_kopiert: 'Copy created – taking you there', po_seit: 'Member since {d}', po_leer: 'No public binders yet.',
+
+    vitrine: 'Showcase', vt_t: 'Showcase', vt_trend: 'Trending', vt_top: 'Top rated', vt_neu: 'Fresh', vt_suche: 'Search binders …', vt_profil: 'My profile', vt_u: 'Public binders from other collectors. Like one? Give it a heart – or take a page into your own binder.', vt_leer: 'Nothing here yet. Be the first to show your binder.', vt_login: 'You need an account for that.', vt_zeigen: 'Show in the showcase …', vt_warnung: 'This makes the binder public: its name, its cards and your display name are visible to everyone. Prices and your account stay private. You can undo this at any time.', vt_steht_drin: 'Your binder is in the showcase now', vt_zurueckgezogen: 'Binder is private again', karten_wort: 'cards', seiten_wort: 'pages', laedt: 'loading …', gespeichert: 'Saved', vpf_t: 'Your profile', vpf_u: 'Only needed if you want to show binders publicly.', vpf_name: 'Display name', vpf_text: 'One line about you (optional)', vpf_hinweis: 'No real name, no contact details, no links – we check on save.', gb_t: 'One more thing: your date of birth', gb_u: 'Showing binders publicly is allowed from 16. It is never shown publicly and cannot be changed later.', md_t: 'Report content', md_u: 'What is wrong with this binder? We will look into it.', md_senden: 'Report', md_danke: 'Thank you – we will look into it.',
+
+    geburtsdatum: 'Date of birth', geb_hint: 'Only used to know whether you may show binders publicly — allowed from 16. It is never shown publicly.',
+    geb_noetig: 'Please enter your date of birth.',
+
+    tpl_foto: 'From photos', tpl_foto_u: 'Photograph your pages, cards get recognised', foto_menu: 'Photograph pages …', foto_t: 'Binder from photos', foto_u: 'Photograph each binder page once – cards are recognised by their picture, not by their text. The order of the photos is the order of the pages.', foto_tipp: 'Straight from above, the whole page in frame, even light without strong glare. Sleeves are fine.', foto_waehlen: 'Choose photos', foto_los: 'Recognise cards', foto_vor: 'Move earlier', foto_zurueck: 'Move later', foto_lauf: 'Reading photo {i} of {n} …', foto_bilanz: '{n} cards on {s} pages recognised.', foto_unsicher: '{u} of them are worth checking (outlined yellow).', foto_pruefen: 'please check', foto_gelesen: 'Read', foto_tauschen: 'Tap for other matches', foto_alternativen: 'Use this card instead', foto_keine_alt: 'No further matches', foto_nochmal: 'Other photos', foto_anhaengen: 'Append to this binder', foto_neu: 'Create new binder', foto_bindername: 'Photo import', foto_fertig: '{n} cards added', foto_leer: 'No cards recognised', foto_index: 'Card pictures are only {p} % indexed ({n}) – recognition will improve.',
+
+    neue_seite: 'New page added', seitenfarbe: 'Page colour', sf_dunkel: 'Black', sf_hell: 'White',
+
+    f_art_motiv: 'Artwork', f_art_text: 'Visible in the picture', f_art_ort: 'Setting',
+    f_art_alle: 'Show rare motifs', f_art_wenig: 'Common motifs only', f_art_wasser: 'Water', f_art_zeit: 'Time of day', f_art_merkmal: 'What is shown', f_art_tag: 'Day', f_art_daemmerung: 'Dusk', f_art_nacht: 'Night', f_art_w1: 'Water in frame', f_art_w2: 'Touching water', f_art_w3: 'Underwater', f_art_stand: '{n} artworks analysed ({p} % of all cards). Anything missing will not show up here.',
+
+    th_titel: 'Theme page', th_unter: 'It searches what the artwork shows, not the card type: a Gyarados portrait on a blue background is no underwater motif – a Pikachu on the beach is.', th_thema: 'Theme', th_woraus: 'Search in', th_anzahl: 'Cards', th_los: 'Suggest a page', th_scope_alle: 'All cards', th_scope_set: 'This set only', th_scope_binder: 'Cards in this binder only', th_sucht: 'Searching the artworks — this takes a few seconds …', th_andere: 'Other suggestions', th_anhaengen: 'Append as new page', th_seite: 'Put on this page', th_gefunden: '{n} cards', th_raus: 'Leave out', th_kein_thema: 'Please enter a theme', th_nichts: 'Nothing found. Try another theme – or the artwork index does not cover this area yet.', th_nichts_gewaehlt: 'No card selected', th_uebernommen: 'Page applied', th_abdeckung: '{n} of {g} card artworks indexed ({p} %).', th_ausgehend: 'Matching this card', th_anker_weg: 'Without a card', s_passend: 'Plan a matching page …',
+ faecher: 'slots', seiten: 'binder pages', blaetter: 'A4 sheets to print',
+    alle_sets: 'All sets', alle_aeren: 'All eras', alle_rar: 'All rarities', alle_gen: 'All', gen: 'Gen',
+    leer_slot: 'empty', gesamt: 'Total value', preise_offen: 'Prices loading … toggle again for the rest.',
+    s_datum: 'Release date', s_dex: 'Pokédex number', s_name: 'Alphabetical', s_nummer: 'Set & number',
+    s_typ: 'Type', s_rarity: 'Rarity',
+    kinds: { lvx: 'Lv.X', ex: 'ex', exgross: 'EX', gx: 'GX', tagteam: 'TAG TEAM', v: 'V', vmax: 'VMAX',
+      vstar: 'VSTAR', vunion: 'V-UNION', mega: 'MEGA', break: 'BREAK', prime: 'Prime', legend: 'LEGEND',
+      sp: 'SP (Galactic)', shining: 'Shining', goldstar: 'Gold Star ☆', shiny: 'Shiny / baby shiny',
+      radiant: 'Radiant', amazing: 'Amazing', delta: 'Delta δ', prism: 'Prism Star ◇', acespec: 'ACE SPEC',
+      dark: 'Dark', light: 'Light', trainer: 'Trainer', energie: 'Energy' },
+    typen: { Grass: 'Grass', Fire: 'Fire', Water: 'Water', Lightning: 'Lightning', Psychic: 'Psychic',
+      Fighting: 'Fighting', Darkness: 'Darkness', Metal: 'Metal', Fairy: 'Fairy', Dragon: 'Dragon', Colorless: 'Colorless' },
+    bestaetigen_viele: 'really add all of them?',
+    bestaetigen_loeschen: 'Really delete this binder?', binder_leer: 'This binder is still empty.',
+   
+    hinzugefuegt: 'cards added', angelegt: 'slots created',
+    speichert: 'saving …', fehler_speichern: 'Saving failed!', neuer_binder: 'My binder',
+    sync: 'Building card database …', keine_sets: 'No set found.', pokemon_gew: 'Pokémon selected',
+    erst_waehlen: 'Please choose first', zu_viele: 'More than 2000 results – please narrow the filters',
+    anmelden: 'Sign in', registrieren: 'Sign up', anmelden_t: 'Sign in', passwort: 'Password',
+    agb_text: 'I accept the terms of service and the privacy policy.',
+    agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
+    tarif_frei: 'Free', upgrade: 'Plans & credits', abo_verwalten: 'Manage subscription',
+   
+    ex_kauf: 'Buy list as CSV',
+    ex_teilen: 'Share binder link (view only)', link_kopiert: 'View link copied!',
+    gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
+    gate_pdf: 'PDF export needs a free account — your first export is free.',
+    gate_binder: 'More than 3 binders come with Binderplan Plus.',
+    gate_export: 'Your free export for this month is used up.',
+    gate_pro: 'This feature is part of Binderplan Pro.',
+   
+    preise_morgen: 'Free account: prices were already refreshed today — again tomorrow (or instantly with Pro).',
+    zahlung_ok: 'Payment successful — thank you!', zahlung_abbruch: 'Payment cancelled.',
+    willkommen: 'Welcome!', uebernommen: 'Your binders were linked to your account.',
+    up_t: 'Get more out of your binder', up_u: 'Plan and print without limits – plus credits for AI artwork pages.',
+    up_monat: 'Month', up_monat_k: 'cancel monthly', up_jahr: 'Year', up_jahr_k: '= €2.08 per month',
+    up_empf: 'Popular · 2 months free', up_life_k: 'pay once, keep forever',
+    up_recht: 'Final prices; no VAT under German small business rules (§ 19 UStG). Payments via Stripe (card, PayPal, Apple Pay, Google Pay, Klarna). Subscriptions renew automatically and can be cancelled any time to the end of the term.',
+    nur_ansicht: 'Shared binder – view only', exporte_uebrig: 'export left this month',
+    app_titel: 'Binderplan – Workbench', bw_t: 'Switch or rename binder', klang_t: 'Card language: names, images, PDF (the interface stays as it is)', ph_suche: 'Card or Pokémon …', ph_dex: 'e.g. Charizard', preis_t: 'Show Cardmarket trend prices in euros', binder_opt_t: 'Grid, size, fill up, clear', einst_t: 'Language & theme', ph_bindername: 'Binder name', s_vorherige: 'Previous page', s_naechste: 'Next page', bv_zurueck: 'Previous spread', bv_vor: 'Next spread', schliessen_t: 'Close', recht_link: 'Legal notice · Terms · Privacy', agb_kurz: 'Terms', ds_kurz: 'Privacy', imp_kurz: 'Legal notice', wid_kurz: 'Withdrawal', ansicht_zurueck: '← Showcase', aw_loeschen_frage: 'Delete this artwork page for good? The credits spent on it are not refunded.', vt_zurueckziehen: 'Remove from the showcase', ph_set: 'Search sets …', ph_art_text: 'e.g. moon, waterfall, lantern', ph_illu: 'e.g. Mitsuhiro Arita', ph_import: 'sv1 25\nCharizard 4/102\n1x Charizard (Base Set) 4', ph_rufname: 'e.g. Marcel', ph_vname: 'e.g. Magikarp-Max', ph_vtext: 'Collecting since 1999', ph_vtext2: 'Collecting since 1999, mostly old sets', ph_thema: 'e.g. Pokémon underwater', ph_melden: 'Describe briefly', fehler_server: 'The server is not responding – please try again later.', fehler_laden: 'Could not be loaded.', fehler_suche: 'The search failed.', fehler_preise: 'Prices could not be loaded.', fehler_export: 'The export failed.', fehler_kaufliste: 'The buy list could not be created.', arbeitet: 'One moment …', keine_karten: 'There are no cards for that.', gate_login: 'You need a free account for that.', th_ueberschreiben: 'This page already holds {n} cards. Replace them?', klang_lbl: 'Cards in', klang_folgen: 'follows the interface', vl_t: 'Create a new binder', vl_u: 'What should go in it?', vl_neu: 'Create a new binder …', vl_leer_u: 'search card by card yourself', mm_drucken: 'Export', mm_entdecken: 'Explore', mm_konto: 'Account & settings', seite_menue: 'Page …', s_ohne_preis: '{n} cards without a Cardmarket price', neue_seite_lbl: 'Append an empty page', wv_woche: 'compared to last week', pf_pw_stand: 'Last changed on {d}', vt_hab: 'you already own {n} of {g}', vt_fehlende: 'Take the missing ones', vt_nichts_fehlt: 'You already own every card in this binder.', vt_a_dex: 'Pokédex', vt_a_artwork: 'Artwork', vt_a_kuenstler: 'Artist', vt_a_master: 'Master set', vt_a_pokemon: 'One Pokémon', vt_f_art: 'Kind', vt_f_groesse: 'Size', vt_f_alle: 'all', vt_f_klein: 'up to 40', vt_f_mittel: '40–150', vt_f_gross: 'over 150', vt_f_dop: 'Two pages', vt_f_dop_t: 'Show two pages side by side', po_binder_zahl: 'binders', po_karten: 'cards', po_herzen: 'hearts', po_sortierung: 'Sort by', po_s_neu: 'Newest', po_s_herzen: 'Most liked', po_s_gross: 'Largest', gal_alle: 'All pages', gal_einzeln: 'One page', gal_bearbeiten: 'Edit this page', wants_lbl: 'This binder is on the wishlist', wants_u: 'On: every card of this binder you do not own yet goes on the wishlist. Off (default): the binder is a plan, not a shopping list.', wants_aus_kurz: 'no buy list', wants_an_toast: 'Now on the wishlist', wants_aus_toast: 'No longer on the wishlist', sm_wants_hin: 'Only binders you put on the wishlist are counted.', binder_aussehen: 'Appearance …', planer_hinweis_touch: 'Tap a slot to select · press and hold to move it.', sm_weg_suche: 'Search cards', vt_b_binder: 'Binders', vt_b_kunst: 'Art pages', vt_u_kunst: 'Pages designed by collectors. Take one into your binder — the creator earns credits for it.', vt_suche_kunst: 'Search art pages …', vt_k_top: 'Popular', vt_k_alt: 'Oldest cards', vt_k_jung: 'Newest cards', vt_k_jahrgang: 'Year', vt_k_leer: 'No art page here yet.', vt_k_geladen: 'taken', vt_k_meine: 'Your page', vt_k_einfuegen: 'Add to binder', vt_k_holen: 'Get · {n} credits', vt_k_preis: 'One page costs {n} credits', vt_k_frage: 'Take this art page for {n} credits? It is yours for good afterwards and can be printed as often as you like.', vt_k_gekauft: '{n} credits charged', vt_k_schon: 'Already yours', vt_k_kein_binder: 'Open a binder first.', vt_k_eingesetzt: 'Page appended', awt_t: 'Let others download this page?', awt_titel: 'Title in the showcase', awt_ph: 'e.g. Charizard at the volcano', awt_hin: 'You can withdraw the page at any time. Pages already taken stay with their owners.', awt_nein: 'No, keep it private', awt_ja: 'Yes, share it', awt_ja_kurz: 'Put into the showcase …', awt_u: 'Put the page into the art showcase. Every time someone takes it they pay {p} credits — {a} of those come back to you.', awt_frei: 'Page is in the showcase', awt_frei_kurz: 'Share', aw_seite_frei: 'Put art page into the showcase …', awt_privat: 'Page is private again', aw_oeffentlich: 'In the showcase', aw_verdient: '{n} credits earned', vt_k_binder_kosten: 'This binder holds {n} art page(s) · {c} credits', vt_k_ohne: 'Copy without art pages', vt_k_binder_frage: 'This binder holds {n} art page(s) by someone else. The plan itself is free — the pages cost {c} credits. Include them? (Cancel copies the binder without them.)', vt_k_mit: 'With art pages ({c} credits)', st_karten_geplant: 'Cards planned', st_karten_besitz: 'Cards owned', pr_unsicher: 'The two exchanges differ widely – treat this figure with care.', pr_abstand: 'US price is {f}× the usual rate — common for older cards, but it can also mean a wrong product link.', pr_geschaetzt: 'converted from the US price', pr_q_geschaetzt: 'Converted from the US market price – Cardmarket has no trend for this card.', pr_q_zweitquelle: 'From pokemontcg.io instead of TCGdex – there the card is linked to the right Cardmarket product.', pr_q_unsicher: 'Europe and the US are far apart.', pr_zweitquelle: 'second source (pokemontcg.io)', pr_7: '7-day average', pr_direkt: 'straight from the Cardmarket price guide', tk_klick: 'Click adds the card to a slot', tk_info: 'Details and prices', tk_besitz: 'Got it', f_chip_weg: 'Remove filter', karten_zeigen: 'Show cards', f_preset: 'Quick pick', bv_wischen: 'Swipe to turn the page', st_t: 'What is in this binder?', st_u: 'Everything from the cards already in it.', st_sets: 'sets', st_jahre: 'years', st_jahrgang: 'By release year', st_topsets: 'Most common sets', st_selten: 'Rarities', st_illu: 'Illustrators', verschoben: 'Moved', hilfe_touch: 'Press and hold a slot to move it.', po_tausch: 'Has duplicates', po_tausch_u: 'Cards this collector owns more than once. Binderplan does not broker trades.', vpf_tausch: 'Show duplicate cards publicly', vpf_tausch_u: 'Others see which cards you own more than once. No messages, no prices.', imp_gekuerzt: 'Only the first 300 lines were checked — {n} more were left out.', pf_name: 'Display name', f_regmark_t: 'Tournament legality: the letter bottom left on the card', sm_ph: 'Search cards …', pl_such_auf: 'Find a card', pl_such_zu: 'Hide search', pl_such_hinweis: 'Type a card name — one click on a result puts it into the binder.',
+    pw_vergessen: 'Forgot password?', pw_neu_t: 'Set a new password', pw_neu_senden: 'Save password',
+    pw_email_noetig: 'Enter your email above, then click “forgot password”.',
+    pw_mail_raus: 'If that email exists, the link is on its way — check your inbox.',
+    mail_fehlt: 'Email sending is not set up yet — please contact the operator.',
+    pw_geaendert: 'Password changed — you are signed in.',
+    m_filter: 'Filter', m_binder: 'Binder', m_suche: 'Search',
+    start: 'Overview', profil: 'Profile & account',
+    hallo: 'Hello',
+    st_binder: 'Binders', st_faecher: 'Slots planned',
+    st_neu: 'New binder', st_zuletzt: 'updated',
+    mode_master: 'Master set', mode_dex: 'Pokédex', mode_custom: 'Custom',
+    pf_konto: 'Account', pf_tarif: 'Plan', pf_binderzahl: 'Binders',
+    pf_exporte: 'PDF exports left this month',
+    pf_einstellungen: 'Settings', pf_sprache: 'Language', pf_design: 'Theme',
+    pf_pw: 'Change password', pf_pw_alt: 'Current password', pf_pw_neu: 'New password (at least 8 characters)',
+    pf_pw_btn: 'Save password', pf_pw_ok: 'Password changed ✓',
+    pf_recht: 'Legal', pf_gefahr: 'Delete account',
+    pf_loeschen_hint: 'Permanently deletes your account and all your binders — this cannot be undone.',
+    pf_loeschen_pw: 'Enter your password to confirm', pf_loeschen_btn: 'Delete account permanently',
+    pf_loeschen_frage: 'Really? Your account and all binders will be deleted for good.',
+    pf_geloescht: 'Your account has been deleted.',
+  },
+};
+/** Beim allerersten Besuch die Browsersprache übernehmen: wer nicht auf Deutsch
+ *  surft, bekommt Englisch — Oberfläche und Kartennamen. Danach zählt nur noch,
+ *  was der Nutzer selbst eingestellt hat. */
+function spracheVomBrowser() {
+  const wunsch = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'de']);
+  for (const w of wunsch) {
+    const kurz = String(w).toLowerCase().slice(0, 2);
+    if (kurz === 'de') return 'de';
+    if (kurz) return 'en';
+  }
+  return 'de';
+}
+let LANG = localStorage.getItem('bp_lang') || spracheVomBrowser();     // Sprache der Oberfläche
+// Kartennamen, Bilder und PDF folgen der Oberfläche, solange niemand sie ausdrücklich
+// getrennt hat. Zwei gleich aussehende „DE | EN“-Schalter nebeneinander waren die häufigste
+// Verwechslung in der Werkbank.
+let KLANG_EIGEN = localStorage.getItem('bp_klang_eigen') === '1';
+let KLANG = KLANG_EIGEN ? (localStorage.getItem('bp_klang') || LANG) : LANG;
+const t = (k) => T[LANG][k] || T.de[k] || k;
+// Bild-/Namenssprache: japanische Karten haben nur einen Scan (liegt in der en-Spalte)
+const kl = () => (filter.region === 'jp' ? 'en' : KLANG);
+
+// ---------- Zustand ----------
+const S = {
+  meta: null, binder: null, pokedex: null, preise: {}, preiseHolo: {}, preiseAn: false, preiseAngefragt: new Set(),
+  ergebnisse: [], gesamt: 0, offset: 0, seite: 0, speicherTimer: null,
+  auswahl: new Set(),
+  token: localStorage.getItem('bp_token') || '', user: null, nurAnsicht: false,
+  // Muss gesetzt sein, nicht undefined: `classList.toggle(name, undefined)` schaltet um,
+  // statt zu setzen. In der Werkbank blieb das Feld leer, und jeder zweite Seitenwechsel
+  // blendete das Fächerraster aus — die Seite war „auf einmal weg".
+  // „Alle Seiten" ist der Zustand, der aus Werkbank, Galerie und Planer einen Ort macht.
+  alleSeiten: localStorage.getItem('bp_alle_seiten') === '1',
+};
+const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
+const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
+const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc',
+  illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '', region: 'intl',
+  artOrte: new Set(), artMerkmale: new Set(), artZeit: '', artWasser: 0, artText: '' };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ---------- Icons ----------
+// Ein Satz eigener Zeichen statt Emoji: 20er-Raster, 1.8 Strich, runde Enden,
+// alles in currentColor. Emoji sehen auf jedem Gerät anders aus, lassen sich nicht
+// einfärben und gehören keiner Marke — diese hier gehören uns.
+const ICONS = {
+  x:        '<path d="M5.5 5.5 14.5 14.5M14.5 5.5 5.5 14.5"/>',
+  haken:    '<path d="M4.5 10.5 8.2 14.2 15.5 6.4"/>',
+  plus:     '<path d="M10 4.6v10.8M4.6 10h10.8"/>',
+  minus:    '<path d="M4.6 10h10.8"/>',
+  links:    '<path d="M12.4 4.8 7.2 10l5.2 5.2"/>',
+  rechts:   '<path d="M7.6 4.8 12.8 10l-5.2 5.2"/>',
+  hoch:     '<path d="M4.8 12.4 10 7.2l5.2 5.2"/>',
+  runter:   '<path d="M4.8 7.6 10 12.8l5.2-5.2"/>',
+  zurueck:  '<path d="M8.6 5.4 4 10l4.6 4.6M4.4 10H16"/>',
+  lupe:     '<circle cx="9" cy="9" r="4.9"/><path d="M12.6 12.6 16.4 16.4"/>',
+  motiv:    '<circle cx="9" cy="9" r="4.9"/><path d="M12.6 12.6 16.4 16.4"/><path d="M6.5 10.2c1-.9 1.9-.9 2.9 0s1.9.9 2.9 0"/>',
+  palette:  '<path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/>',
+  kamera:   '<path d="M3 7.6a1.6 1.6 0 0 1 1.6-1.6h1.9l1-1.6h5l1 1.6h1.9A1.6 1.6 0 0 1 17 7.6v6.8a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 14.4z"/><circle cx="10" cy="10.8" r="2.9"/>',
+  vitrine:  '<rect x="3.2" y="4" width="13.6" height="12" rx="1.8"/><path d="M3.2 8h13.6M8 8v8M12 8v8"/>',
+  sammlung: '<rect x="2.8" y="5.2" width="9" height="11.4" rx="1.4"/><path d="M6.6 3.6h8.2a1.4 1.4 0 0 1 1.4 1.4v9.6"/>',
+  buch:     '<path d="M10 4.5C8.4 3.4 6.4 3 4 3.2v11.4c2.4-.2 4.4.2 6 1.3 1.6-1.1 3.6-1.5 6-1.3V3.2c-2.4-.2-4.4.2-6 1.3z"/><path d="M10 4.5v12"/>',
+  seiteNeu: '<rect x="3.5" y="2.8" width="13" height="14.4" rx="2"/><path d="M10 7v6M7 10h6"/>',
+  seiteVor: '<rect x="3" y="4" width="9" height="12" rx="1.6"/><path d="M16 12.5V7.5M13.6 9.9 16 7.4l2.4 2.5"/>',
+  seiteZur: '<rect x="8" y="4" width="9" height="12" rx="1.6"/><path d="M4 7.5v5M1.6 10.1 4 12.6l2.4-2.5"/>',
+  muell:    '<path d="M4.4 5.8h11.2M8.2 5.8V4.2h3.6v1.6M5.8 5.8l.7 9.4a1.4 1.4 0 0 0 1.4 1.3h4.2a1.4 1.4 0 0 0 1.4-1.3l.7-9.4"/>',
+  zahnrad:  '<circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/>',
+  fahne:    '<path d="M5 17V3.6M5 4.2h8.6l-1.6 3 1.6 3H5"/>',
+  herz:     '<path d="M10 16.2S3.4 12.3 3.4 7.9A3.5 3.5 0 0 1 10 6.2a3.5 3.5 0 0 1 6.6 1.7c0 4.4-6.6 8.3-6.6 8.3z"/>',
+  stern:    '<path d="m10 3.2 2.1 4.4 4.8.6-3.5 3.4.9 4.8L10 14.1l-4.3 2.3.9-4.8L3.1 8.2l4.8-.6z"/>',
+  funke:    '<path d="m10 3 1.6 4.6L16.2 9.2l-4.6 1.6L10 15.4l-1.6-4.6L3.8 9.2l4.6-1.6z"/>',
+  hakenKasten: '<rect x="3.4" y="3.4" width="13.2" height="13.2" rx="2"/><path d="M6.6 10.2 8.9 12.5 13.6 7.6"/>',
+  kontrast: '<circle cx="10" cy="10" r="6.6"/><path d="M10 3.4a6.6 6.6 0 0 0 0 13.2z" fill="currentColor" stroke="none"/>',
+  konto:    '<circle cx="10" cy="7.2" r="3.1"/><path d="M4 16.6c.6-3 3-4.6 6-4.6s5.4 1.6 6 4.6"/>',
+  haus:     '<path d="M3.4 9.2 10 3.6l6.6 5.6"/><path d="M5.2 8.6v7.8h9.6V8.6"/><path d="M8.4 16.4v-4.2h3.2v4.2"/>',
+  drucker:  '<path d="M6 7.4V3.6h8v3.8"/><rect x="3.2" y="7.4" width="13.6" height="5.8" rx="1.4"/><path d="M6 11.4h8v5H6z"/>',
+  liste:    '<path d="M7 5.6h9M7 10h9M7 14.4h9M4 5.6h.01M4 10h.01M4 14.4h.01"/>',
+  raster:   '<rect x="3.4" y="3.4" width="13.2" height="13.2" rx="1.6"/><path d="M8 3.4v13.2M12 3.4v13.2M3.4 8h13.2M3.4 12h13.2"/>',
+  wechsel:  '<path d="M4.4 7.6h9.2l-2.4-2.4M15.6 12.4H6.4l2.4 2.4"/>',
+  stift:    '<path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/>',
+  teilen:   '<path d="M10 2.8v9M6.9 5.7 10 2.6l3.1 3.1"/><path d="M4.2 12v3.6A1.6 1.6 0 0 0 5.8 17h8.4a1.6 1.6 0 0 0 1.6-1.6V12"/>',
+  info:     '<circle cx="10" cy="10" r="6.8"/><path d="M10 9.2v4.2M10 6.6h.01"/>',
+  schloss:  '<rect x="4.4" y="8.6" width="11.2" height="7.8" rx="1.6"/><path d="M7 8.6V6.8a3 3 0 0 1 6 0v1.8"/>',
+};
+
+/** Icon als HTML. `ic('kamera')` oder `ic('herz', 22, 'voll')` (voll = gefüllt). */
+function ic(name, groesse, art) {
+  const d = ICONS[name] || ICONS.info;
+  const g = groesse || 18;
+  const fuellung = art === 'voll' ? 'currentColor' : 'none';
+  return `<svg class="ic" width="${g}" height="${g}" viewBox="0 0 20 20" fill="${fuellung}" stroke="currentColor" `
+    + `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+
+/** Ladeanzeige: eine Binderseite, in die nacheinander Karten rutschen. */
+function lader(groesse, text) {
+  const k = groesse === 'gross' ? ' gross' : groesse === 'klein' ? ' klein' : '';
+  const seite = `<span class="lader${k}" role="status" aria-live="polite" aria-label="${t('laedt')}">`
+    + '<i></i>'.repeat(9) + '</span>';
+  return text ? `<div class="ladezeile">${seite}<span>${esc(text)}</span></div>` : seite;
+}
+
+// Browser-Autofill strikt unterbinden — für alle Browser und Passwort-Manager.
+// autocomplete="off" reicht Chrome & Co. nicht; dazu kommen die Ignorier-Attribute
+// der gängigen Passwort-Manager (LastPass, 1Password, Bitwarden, Dashlane).
+function autofillSperren() {
+  document.querySelectorAll('input').forEach((el) => {
+    if (!el.getAttribute('autocomplete')) el.setAttribute('autocomplete', el.type === 'password' ? 'new-password' : 'off');
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', '');
+    el.setAttribute('data-bwignore', '');
+    el.setAttribute('data-form-type', 'other');
+  });
+}
+async function api(pfad, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers);
+  if (S.token) opts.headers['Authorization'] = 'Bearer ' + S.token;
+  const r = await fetch(pfad, opts);
+  if (!r.ok) {
+    let code = null; let msg = 'API ' + r.status;
+    try {
+      const d = await r.json();
+      if (d.detail && d.detail.code) { code = d.detail.code; var detail = d.detail; }
+      else if (typeof d.detail === 'string') msg = d.detail;
+    } catch (e) {}
+    const err = new Error(msg); err.code = code; err.status = r.status; err.detail = typeof detail !== 'undefined' ? detail : null;
+    throw err;
+  }
+  return r.json();
+}
+
+// Zentrale Behandlung der Konto-/Limit-Fehlercodes
+function gate(err) {
+  if (err.code === 'login') { loginOeffnen(t(err.detail && err.detail.grund ? err.detail.grund : 'gate_login')); return true; }
+  if (err.code === 'limit_binder') { upgradeOeffnen(t('gate_binder')); return true; }
+  if (err.code === 'limit_export') { upgradeOeffnen(t('gate_export')); return true; }
+  if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro')); return true; }
+  if (err.code === 'keine_credits') {
+    const d = err.detail || {};
+    upgradeOeffnen(t('gate_credits').replace('{n}', d.benoetigt || '').replace('{s}', d.saldo || 0));
+    return true;
+  }
+  if (err.code === 'tageslimit') { toast(t('gate_tageslimit')); return true; }
+  return false;
+}
+const nm = (k) => (KLANG === 'en' ? (k.name_en || k.name) : (k.name || k.name_en)) || '';
+const setNm = (k) => (KLANG === 'en' ? (k.set_name_en || k.set_name) : (k.set_name || k.set_name_en)) || '';
+const imgUrl = (id, extra) => 'api/img/card/' + encodeURIComponent(id) + '?lang=' + (/^[A-Z]/.test(id) ? 'en' : KLANG) + (extra || '');
+
+let toastTimer = null;
+function toast(text) {
+  const el = $('toast'); $('toast-text').textContent = text; $('toast-undo').classList.add('hidden'); el.classList.add('zeig');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('zeig'), 2600);
+}
+
+// ---------- Mobile: Filter-Schublade & Ansichts-Umschalter ----------
+function mobilFilter(an) {
+  const drawer = document.querySelector('.spalte-filter');
+  const offen = an !== undefined ? an : !drawer.classList.contains('offen');
+  drawer.classList.toggle('offen', offen);
+  $('m-backdrop').classList.toggle('offen', offen);
+  const mf = $('mnav-filter');            // der Knopf ist aus der Leiste in die Suchzeile gewandert
+  if (mf) mf.classList.toggle('on', offen);
+  const bf = $('btn-filter-mobil');
+  if (bf) bf.classList.toggle('on', offen);
+}
+/** Der erste Knopf der unteren Leiste führt zur Startseite — die gibt es aber erst mit Konto.
+ *  Gäste bekommen dort stattdessen die Filter, die sie in der Suche am häufigsten brauchen. */
+/** Genau ein Eintrag der unteren Leiste ist markiert. */
+function mnavMarkieren(id) {
+  ['mnav-start', 'mnav-binder', 'mnav-sammlung', 'mnav-markt', 'mnav-vitrine'].forEach((k) => {
+    const el = $(k);
+    if (el) el.classList.toggle('on', k === id);
+  });
+}
+
+function mnavStart() { ansicht('start'); }
+
+/** Dieselben fünf Orte für Gäste und Konten – Gäste bekamen vorher einen Reiter „Filter". */
+function mnavAnpassen() {}
+
+function mobilAnsicht(w) {
+  // Vitrine, Sammlung, Profil und Startseite liegen über der Werkbank — wer unten auf
+  // „Suche“ oder „Binder“ tippt, will dorthin zurück, nicht dahinter.
+  vitrineSchliessen();
+  sammlungSchliessen();
+  profilseiteSchliessen();
+  if (!$('startseite').classList.contains('hidden')) startSchliessen();
+  if (!$('profilseite').classList.contains('hidden')) profilSchliessen();
+  document.body.classList.add('binder-an');
+  mnavMarkieren('mnav-binder');   // Suche ist ein Zustand des Binders, kein eigener Ort
+  if (w === 'suche') sucheLadeOeffnen(); else sucheLadeZu();
+  zeichneBinder();
+}
+
+/** Die Seitenleiste am unteren Rand: welche Seite gerade das Ziel ist und wie voll sie ist.
+ *  Sie erscheint nur am Handy und nur in der Suche — im Binder sieht man die Seite selbst. */
+function zeichneSeitenleiste() {
+  const bar = $('m-seitenleiste');
+  if (!bar) return;
+  const zeigen = window.innerWidth < 900 && S.binder && !S.nurAnsicht
+    && !document.body.classList.contains('binder-an')
+    && $('startseite').classList.contains('hidden') && $('vitrine').classList.contains('hidden')
+    && $('sammlung').classList.contains('hidden') && $('marktseite').classList.contains('hidden');
+  bar.classList.toggle('hidden', !zeigen);
+  if (!zeigen) return;
+  const plan = seitenPlan();
+  const sp = plan[Math.min(S.seite, plan.length - 1)] || plan[0];
+  if (!sp) return;
+  $('msl-nr').textContent = `${t('seite')} ${sp.nr + 1}/${plan.length}`;
+  let faecher = '';
+  for (let i = 0; i < sp.laenge; i++) {
+    const item = S.binder.items[sp.start + i];
+    faecher += `<i class="${item && item.type !== 'empty' ? 'voll' : ''}"></i>`;
+  }
+  const raster = $('msl-raster');
+  raster.style.gridTemplateColumns = `repeat(${sp.cols}, 1fr)`;
+  raster.innerHTML = faecher;
+  const voll = Array.from({ length: sp.laenge }, (_, i) => S.binder.items[sp.start + i])
+    .filter((x) => x && x.type !== 'empty').length;
+  $('msl-zahl').textContent = `${voll}/${sp.laenge}`;
+}
+
+// ---------- Hell/Dunkel (Auto -> Hell -> Dunkel) ----------
+const THEMES = ['auto', 'hell', 'dunkel'];
+let THEME = localStorage.getItem('bp_theme') || 'auto';
+function themeAnwenden() {
+  const root = document.documentElement;
+  if (THEME === 'hell') root.dataset.theme = 'light';
+  else if (THEME === 'dunkel') root.dataset.theme = 'dark';
+  else delete root.dataset.theme;
+  const lbl = { auto: 'Auto', hell: LANG === 'en' ? 'Light' : 'Hell', dunkel: LANG === 'en' ? 'Dark' : 'Dunkel' };
+  document.querySelectorAll('.theme-stand').forEach((el) => { el.textContent = lbl[THEME]; });
+  document.querySelectorAll('[data-theme-opt]').forEach((b) => {
+    b.classList.toggle('on', b.dataset.themeOpt === THEME);
+    b.textContent = lbl[b.dataset.themeOpt];
+  });
+}
+function themeSetzen(v) {
+  if (!THEMES.includes(v)) return;
+  THEME = v;
+  localStorage.setItem('bp_theme', THEME);
+  themeAnwenden();
+}
+function themeWechsel() {
+  THEME = THEMES[(THEMES.indexOf(THEME) + 1) % THEMES.length];
+  localStorage.setItem('bp_theme', THEME);
+  themeAnwenden();
+}
+themeAnwenden();
+
+// ---------- Sprache ----------
+// Kartensprache (Filterspalte DE|EN): Namen, Bilder, Set-Namen, PDF – die Oberfläche bleibt, wie sie ist
+function setKartensprache(lang, automatisch) {
+  KLANG = lang;
+  localStorage.setItem('bp_klang', lang);
+  if (!automatisch) { KLANG_EIGEN = true; localStorage.setItem('bp_klang_eigen', '1'); }
+  if ($('f-klang-hinweis')) $('f-klang-hinweis').classList.toggle('hidden', !KLANG_EIGEN);
+  $('f-lang-de').classList.toggle('on', lang === 'de'); $('f-lang-en').classList.toggle('on', lang === 'en');
+  zeichneErgebnisse(); zeichneBinder(); baueSetSelect(); zeichneSetWahlKnopf();
+}
+/** Zurück zum Normalfall: Kartensprache = Oberfläche. */
+function kartenspracheFolgen() {
+  KLANG_EIGEN = false;
+  localStorage.removeItem('bp_klang_eigen');
+  setKartensprache(LANG, true);
+}
+
+function setLang(lang) {
+  LANG = lang; localStorage.setItem('bp_lang', lang);
+  if (!KLANG_EIGEN && KLANG !== lang) setKartensprache(lang, true);   // Karten folgen der Oberfläche
+  try { document.cookie = 'bp_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}   // Startseite / vs. /en
+  if ($('lang-de')) { $('lang-de').classList.toggle('on', lang === 'de'); $('lang-en').classList.toggle('on', lang === 'en'); }
+  document.querySelectorAll('[data-lang-opt]').forEach((b) => b.classList.toggle('on', b.dataset.langOpt === lang));
+  if ($('f-lang-de')) { $('f-lang-de').classList.toggle('on', KLANG === 'de'); $('f-lang-en').classList.toggle('on', KLANG === 'en'); }
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
+  // Tooltips und Vorlese-Namen: ein Schlüssel für title und aria-label, damit beide nie auseinanderlaufen
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    el.title = t(el.dataset.i18nTitle);
+    if (el.hasAttribute('aria-label')) el.setAttribute('aria-label', t(el.dataset.i18nTitle));
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  document.querySelectorAll('.recht-link').forEach((el) => { el.textContent = t('recht_link'); });
+  if (typeof vitrineKnopf === 'function') vitrineKnopf();
+  document.documentElement.lang = lang;
+  document.title = t('app_titel');
+  themeAnwenden();
+  baueFilterLeiste(); mehrFilterZahl();
+  zeichneErgebnisse();
+  zeichneBinder();
+  baueDexNamen();
+  document.querySelectorAll('.lang-stand').forEach((el) => { el.textContent = lang.toUpperCase(); });
+  if (S.user) kontoAnzeigen();
+  if ($('modal-artwork') && !$('modal-artwork').classList.contains('hidden') && S.binder) {
+    zeichneArtworkStile(); zeichneArtworkGrid('aw-grid', true); artworkKontingentText();
+    if (AW.aktuell) artworkZeigen(AW.aktuell);
+    artworkGalerieLaden();
+  }
+}
+

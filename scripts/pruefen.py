@@ -40,12 +40,13 @@ for m in re.finditer(r'<div\s+id="(modal-[\w-]+)"\s+class="([^"]*)"', html):
         befunde.append(f'Dialog #{m.group(1)} ohne Klasse overlay (hat: "{m.group(2)}")')
 
 # 3. Übersetzungsschlüssel – de reicht von „de: {" bis „en: {", en bis zum Ende des T-Objekts
-t_start = html.find('const T = {')
-t_ende = html.find('\n};', t_start)
-de_start = html.find('  de: {', t_start); en_start = html.find('  en: {', t_start)
+quelle_t = html if 'const T = {' in html else js_dateien.get('assets/kern.js', '')
+t_start = quelle_t.find('const T = {')
+t_ende = quelle_t.find('\n};', t_start)
+de_start = quelle_t.find('  de: {', t_start); en_start = quelle_t.find('  en: {', t_start)
 schl = re.compile(r'(?:^\s*|,\s+)([a-z][a-z0-9_]*):\s', re.M)
-de = set(schl.findall(html[de_start:en_start]))
-en = set(schl.findall(html[en_start:t_ende]))
+de = set(schl.findall(quelle_t[de_start:en_start]))
+en = set(schl.findall(quelle_t[en_start:t_ende]))
 schluessel = set(re.findall(r'data-i18n(?:-title|-ph)?="([a-z0-9_]+)"', html))
 for datei, quelle in js_dateien.items():
     schluessel |= set(re.findall(r"\bt\('([a-z0-9_]+)'\)", quelle))
@@ -55,7 +56,15 @@ for k in sorted(schluessel):
     elif k not in en:
         befunde.append(f'Übersetzung fehlt (en): {k}')
 
-# 4. Assets
+# 4. Assets: vorhanden und mit ?v= versehen; Schriftgrößen nur aus der Skala (DESIGN.md)
+for m in re.finditer(r'(?:src|href)="(assets/[^"?]+)(\?v=[A-Za-z0-9]+)?"', html):
+    if m.group(1).endswith(('.js', '.css')) and not m.group(2):
+        befunde.append(f'Asset ohne ?v=: {m.group(1)}')
+css_dateien = {n: open(os.path.join(assets_dir, n), encoding='utf-8').read() for n in os.listdir(assets_dir) if n.endswith('.css') and n not in ('landing.css', 'schrift.css', 'quicksand.css')}
+for datei, quelle in list(js_dateien.items()) + list(css_dateien.items()):
+    for m in re.finditer(r'font-size:\s*([0-9.]+)px', quelle):
+        if float(m.group(1)) < 11:
+            befunde.append(f'Schrift unter 11 px in {datei}: {m.group(0)} – Skala-Token verwenden (--t-xs …)')
 for m in re.finditer(r'(?:src|href)="(assets/[^"?]+)', html):
     if not os.path.exists(os.path.join(wurzel, m.group(1))):
         befunde.append(f'Asset fehlt: {m.group(1)}')

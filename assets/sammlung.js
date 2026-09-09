@@ -446,8 +446,8 @@ function smZielFormular(setId) {
   k.innerHTML = `<small>${t('sm_ziel')}</small>
     <input class="feld" id="sm-zieldatum" type="text" inputmode="numeric" autocomplete="off" maxlength="10"
            placeholder="TT.MM.JJJJ" oninput="gebTippen(this)" style="margin:4px 0">
-    <div style="display:flex;gap:6px"><button class="btn" style="font-size:12.5px;padding:6px 12px" onclick="smZielSpeichern('${esc(setId)}')">${t('speichern')}</button>
-      <button class="btn sekundaer" style="font-size:12.5px;padding:6px 12px" onclick="zeichneSmSetSeite()">${t('abbrechen')}</button></div>`;
+    <div style="display:flex;gap:6px"><button class="btn" style="font-size: var(--t-s);padding:6px 12px" onclick="smZielSpeichern('${esc(setId)}')">${t('speichern')}</button>
+      <button class="btn sekundaer" style="font-size: var(--t-s);padding:6px 12px" onclick="zeichneSmSetSeite()">${t('abbrechen')}</button></div>`;
   $('sm-zieldatum').focus();
 }
 async function smZielSpeichern(setId) {
@@ -568,7 +568,7 @@ async function digestStartLaden() {
     <div><h4>${t('dg_beweg')}</h4>${(d.bewegung || []).length ? `<ul>${d.bewegung.map((b) => li(b, `<span class="${b.diff >= 0 ? 'an-plus' : 'an-minus'}">${b.diff >= 0 ? '+' : ''}${anEur(b.diff)}</span>`)).join('')}</ul>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
     <div><h4>${t('dg_monat')}</h4>${d.set_monat ? `<button class="mk-link" style="margin:0" onclick="startSchliessen();ansicht('markt')">${esc(d.set_monat.name)} ${mkDelta(d.set_monat.bew30)}</button>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
     <div><h4>${t('dg_guenstiger')}</h4>${(d.guenstiger || []).length ? `<ul>${d.guenstiger.map((g) => li(g, `${anEur(g.eur)} ${mkDelta(g.prozent)}`)).join('')}</ul>` : `<span style="color:var(--mut)">${t('dg_leer')}</span>`}</div>
-    <div style="grid-column:1/-1;font-size:11.5px;color:var(--mut)">${t('dg_mail')}</div></div>`;
+    <div style="grid-column:1/-1;font-size: var(--t-s);color:var(--mut)">${t('dg_mail')}</div></div>`;
   if (!d.gesehen) api('api/digest/gesehen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
 }
 
@@ -881,7 +881,7 @@ function zeichneAuswertung() {
     kurve = anLinie([{ name: inEuro ? t('an_wert') : t('an_bewegung_kurz'), farbe: 'var(--d1)',
                        punkte: v.punkte.map((p) => ({ datum: p.datum, wert: inEuro ? p.eur : p.eur / start * 100 })) }],
                     { titel: t('an_verlauf'), index: !inEuro, fmt: inEuro ? null : (x) => x.toFixed(0) })
-      + `<div class="unter" style="margin:10px 0 0;font-size:11.5px">${
+      + `<div class="unter" style="margin:10px 0 0;font-size: var(--t-s)">${
           (inEuro ? t('an_basis') : t('an_basis_index'))
             .replace('{n}', anZahl(v.von || v.basis)).replace('{g}', anZahl(v.gesamt || 0))
             .replace('{p}', deckung.toLocaleString(LANG === 'en' ? 'en' : 'de'))}</div>`;
