@@ -510,6 +510,22 @@
     body.nur-ansicht .vt-ansichtleiste .vt-hab { font-size: 11.5px; white-space: nowrap; }
     body.nur-ansicht .rumpf { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
+    /* Die Startseite hatte keine einzige eigene Regel für kleine Schirme: sie wurde
+       4.832 px lang, weil alles nur über auto-fit umbrach. */
+    .st-band { grid-template-columns: 1fr 1fr; }
+    .st-band .st-zahl:nth-child(3) { grid-column: 1 / -1; }
+    .binder-grid .bcard:nth-child(n+4):not(.neu) { display: none; }   /* „alle zeigen" blendet ein */
+    .binder-grid.alle .bcard { display: block; }
+    .st-weiter { flex-wrap: wrap; }
+    .st-weiter .txt { min-width: 0; flex: 1 1 100%; order: 2; }
+    .st-weiter .vor { order: 1; }
+    .st-weiter .btn { order: 3; width: 100%; justify-content: center; }
+    .st-digest .dg { grid-template-columns: 1fr; }
+    /* Die Kunstseiten sind hochformatige Binderseiten: einspaltig nahmen vier Kacheln
+       2.204 px, die halbe Seite. Zwei nebeneinander, zwei genügen. */
+    .st-vitrine { grid-template-columns: 1fr 1fr; }
+    .st-vitrine > *:nth-child(n+3) { display: none; }
+
     /* Fingerziele in der Vitrine: der Besitzer-Link war 39 × 12 px, das Herz 60 × 29 px.
        Die Norm liegt bei 44 px, und der Besitzer ist der einzige Weg in ein fremdes Profil. */
     #vitrine .vt-meta a, #vitrine .km a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; }
@@ -766,6 +782,16 @@
   .st-zahl:hover { border-color: var(--kontur); }
   .st-zahl .z { font-size: 25px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
   .st-zahl .l { font-size: 11.5px; color: var(--mut); font-weight: 600; margin-top: 2px; }
+  .st-mehr { display: none; }
+  @media (max-width: 700px) { .st-mehr { display: block; width: 100%; margin-top: 10px; padding: 11px;
+    border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); font-weight: 700; font-size: 13.5px; } }
+  .st-wege { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .st-weg { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 15px 17px;
+            background: var(--card); display: grid; gap: 4px; }
+  .st-weg:hover { border-color: var(--kontur); }
+  .st-weg strong { font-size: 15px; font-weight: 800; }
+  .st-weg span { font-size: 12.5px; color: var(--mut); line-height: 1.45; }
+  .st-zahl .u { font-size: 11.5px; color: var(--mut); font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
   .st-zahl.gruen .z { color: var(--gruen-text); }
 
   /* Creator-Übersicht: Karte auf der Startseite nur bei Ereignissen, Block im Profil */
@@ -1772,6 +1798,8 @@
   /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
   #sammlung .mk-band { margin: 10px 0 16px; }
   .bcard .bwert { margin-top: 2px; }
+  .bcard .bfort { height: 7px; border-radius: 99px; background: var(--panel2); overflow: hidden; margin-top: 8px; }
+  .bcard .bfort > div { height: 100%; background: var(--gruen); border-radius: 99px; transition: width .2s; }
   .st-alarme, .st-digest { display: grid; gap: 8px; }
   .st-alarm { display: flex; align-items: center; gap: 10px; border: 2px solid var(--gruen-flaeche); border-radius: 12px;
               padding: 10px 14px; background: var(--card); text-align: left; font-size: 13px; }
@@ -2706,15 +2734,33 @@
 
     <div class="st-band" id="st-band"></div>
 
+    <!-- Reihenfolge nach Dringlichkeit: erst was passiert ist (Alarme), dann die Arbeit
+         (Weiter, Ziele, Binder), zuletzt die Zusammenfassung. Der Wochenrückblick ändert
+         sich einmal pro Woche und stand vorher vor dem Block, der die Arbeit fortsetzt. -->
+    <div class="st-abschnitt" id="st-leer" hidden>
+      <div class="st-titel"><h2 data-i18n="st_womit">Womit fängst du an?</h2></div>
+      <div class="st-wege">
+        <button class="st-weg" onclick="startSchliessen();fotoOeffnen()">
+          <strong data-i18n="tpl_foto">Binder fotografieren</strong>
+          <span data-i18n="st_weg_foto_u">Seiten abfotografieren, Binderplan erkennt die Karten am Bild.</span></button>
+        <button class="st-weg" onclick="vorlagenOeffnen()">
+          <strong data-i18n="st_weg_vorlage">Mit einer Vorlage starten</strong>
+          <span data-i18n="st_weg_vorlage_u">Master Set, Pokédex oder alle Karten eines Pokémon.</span></button>
+        <button class="st-weg" onclick="startSchliessen();importOeffnen('sammlung')">
+          <strong data-i18n="tpl_import">Liste importieren</strong>
+          <span data-i18n="st_weg_import_u">CSV aus Collectr, TCG Collector oder Cardmarket.</span></button>
+      </div>
+    </div>
+
     <div class="st-abschnitt" id="st-alarme-block" hidden>
       <div class="st-titel"><h2 data-i18n="al_ausgeloest">Preis-Alarme</h2>
         <span class="mehr" onclick="startSchliessen();ansichtSammlung('wunsch')" data-i18n="al_alle">Alle Alarme</span></div>
       <div class="st-alarme" id="st-alarme"></div>
     </div>
 
-    <div class="st-abschnitt" id="st-digest-block" hidden>
-      <div class="st-titel"><h2 data-i18n="dg_t">Dein Wochenrückblick</h2><span class="mehr" id="st-digest-woche"></span></div>
-      <div class="st-digest" id="st-digest"></div>
+    <div class="st-abschnitt" id="st-weiter-block" hidden>
+      <div class="st-titel"><h2 data-i18n="st_weiter">Weiter, wo du warst</h2></div>
+      <div class="st-weiter" id="st-weiter"></div>
     </div>
 
     <div class="st-abschnitt" id="st-ziele-block" hidden>
@@ -2723,15 +2769,17 @@
       <div class="st-ziele" id="st-ziele"></div>
     </div>
 
-    <div class="st-abschnitt" id="st-weiter-block" hidden>
-      <div class="st-titel"><h2 data-i18n="st_weiter">Weiter, wo du warst</h2></div>
-      <div class="st-weiter" id="st-weiter"></div>
-    </div>
-
     <div class="st-abschnitt">
       <div class="st-titel"><h2 data-i18n="st_deine">Deine Binder</h2>
         <span class="mehr" onclick="vorlagenOeffnen()" data-i18n="st_neu">Neuer Binder</span></div>
       <div class="binder-grid" id="st-grid"></div>
+      <button class="st-mehr" id="st-mehr-binder" hidden
+              onclick="$('st-grid').classList.add('alle');this.hidden=true"></button>
+    </div>
+
+    <div class="st-abschnitt" id="st-digest-block" hidden>
+      <div class="st-titel"><h2 data-i18n="dg_t">Dein Wochenrückblick</h2><span class="mehr" id="st-digest-woche"></span></div>
+      <div class="st-digest" id="st-digest"></div>
     </div>
 
     <div class="st-abschnitt" id="st-vitrine-block" hidden>
@@ -3167,6 +3215,15 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    st_womit: 'Womit fängst du an?',
+    st_weg_foto_u: 'Seiten abfotografieren, Binderplan erkennt die Karten am Bild.',
+    st_weg_vorlage: 'Mit einer Vorlage starten',
+    st_weg_vorlage_u: 'Master Set, Pokédex oder alle Karten eines Pokémon.',
+    st_weg_import_u: 'CSV aus Collectr, TCG Collector oder Cardmarket.',
+    st_alle_binder: 'Alle {n} Binder zeigen',
+    st_offen: 'Fächer noch leer',
+    st_offen_u: 'in {n} Bindern',
+    st_verschieden_n: '{n} verschiedene',
     vt_beliebt: 'Beliebt',
     vt_k_geholt: 'geholt',
     vt_k_ansehen: 'Ansehen',
@@ -3745,6 +3802,15 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    st_womit: 'Where do you start?',
+    st_weg_foto_u: 'Photograph your pages, Binderplan recognises the cards by their picture.',
+    st_weg_vorlage: 'Start from a template',
+    st_weg_vorlage_u: 'Master set, Pokédex or every card of one Pokémon.',
+    st_weg_import_u: 'CSV from Collectr, TCG Collector or Cardmarket.',
+    st_alle_binder: 'Show all {n} binders',
+    st_offen: 'Slots still empty',
+    st_offen_u: 'across {n} binders',
+    st_verschieden_n: '{n} different',
     vt_beliebt: 'Popular',
     vt_k_geholt: 'taken',
     vt_k_ansehen: 'View',
@@ -4609,8 +4675,9 @@ async function boot() {
     if (pn && $('f-dex')) $('f-dex').value = (LANG === 'en' ? pn.name_en : pn.name) || '';
   }
   mehrFilterZahl();
-  sucheNeu();
-  if (zeigeStart) startOeffnen();
+  // Die Trefferliste gehört zur Suche, nicht zur Startseite. Wer die App auf der Startseite
+  // öffnet, lud vorher 51 Kartenbilder eines Sets im Rücken — 242 Anfragen beim Start.
+  if (zeigeStart) { S.sucheOffen = false; startOeffnen(); } else { S.sucheOffen = true; sucheNeu(); }
   if (einstieg && einstieg.art === 'karte') setTimeout(() => detailOeffnenId(einstieg.id), 300);
   if (new URLSearchParams(location.search).get('upgrade')) { history.replaceState(null, '', location.pathname + location.hash); upgradeOeffnen(''); }
   const bestToken = new URLSearchParams(location.search).get('bestaetigen');
@@ -5019,14 +5086,23 @@ async function startOeffnen() {
   await startLaden();
 }
 function startSchliessen() {
+  // Wer die Startseite verlässt, landet in der Werkbank — dann wird die Trefferliste gebraucht.
+  if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
   $('startseite').classList.add('hidden');
   reiterSetzen('seg-suche');
   if (S.binder && S.binder.id) hashSetzen('binder/' + S.binder.id);
   else neuLeer(true);
 }
 async function startLaden() {
-  let liste = [];
-  try { liste = (await api('api/binders?ids=' + binderIds().join(','))).binder; } catch (e) {}
+  // Drei Anfragen ohne Datenabhängigkeit liefen nacheinander: bis zur ersten Zahl vergingen
+  // drei Server-Rundreisen. Jetzt starten sie zusammen.
+  const [bl, smAntwort, vt] = await Promise.allSettled([
+    api('api/binders?ids=' + binderIds().join(',')),
+    S.user ? api('api/sammlung/uebersicht') : Promise.resolve(null),
+    api('api/vitrine/artwork?sortierung=top&limit=4'),
+  ]);
+  const liste = bl.status === 'fulfilled' ? (bl.value.binder || []) : [];
+  const sm = smAntwort.status === 'fulfilled' ? smAntwort.value : null;
   const faecher = liste.reduce((a, b) => a + b.anzahl, 0);
 
   // Kopf
@@ -5041,21 +5117,24 @@ async function startLaden() {
   if (typeof alarmeStartLaden === 'function') alarmeStartLaden();
   if (typeof digestStartLaden === 'function') digestStartLaden();
 
-  // Zahlenband — jede Kachel führt irgendwohin
-  let sm = null;
-  if (S.user) { try { sm = await api('api/sammlung/uebersicht'); } catch (e) {} }
+  // Zahlenband: drei Kacheln statt vier. Zwei der alten vier sagten, wie viel *geplant* ist,
+  // und keine sagte, was sich verändert hat — dabei rechnet die Sammlung die 7-Tage-Bewegung
+  // seit September. „Karten geplant" ist eine Zahl ohne Handlung; die offenen Fächer, die
+  // daneben stehen, sind eine.
   const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
     { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
-  // Ein frisches Konto sah hier vier Nullen und „0 € Wert nach Cardmarket" — die Seite
-  // begann mit einer Leermeldung. Die Zahlen kommen erst, wenn es welche gibt.
   const hatZahlen = liste.length > 0 || (sm && sm.karten > 0);
   $('st-band').classList.toggle('hidden', !hatZahlen);
+  const offen = liste.reduce((a, b) => a + Math.max(0, (b.anzahl || 0) - (b.gesammelt || 0)), 0);
+  const bew = sm && sm.bew7 != null
+    ? `<span class="${sm.bew7 > 0.05 ? 'an-plus' : sm.bew7 < -0.05 ? 'an-minus' : ''}">${anProz(sm.bew7)}</span> · ${t('mk_7t')}`
+    : '';
   $('st-band').innerHTML = !hatZahlen ? '' : [
-    [liste.length, t('st_binder'), '', 'startSchliessen()'],
-    [faecher, t('st_karten_geplant'), '', 'startSchliessen()'],
-    [sm ? sm.karten : '–', t('st_karten_besitz'), '', "startSchliessen();ansicht('sammlung')"],
-    [sm ? eur(sm.wert) : '–', t('st_sm_wert'), sm && sm.wert > 0 ? 'gruen' : '', "startSchliessen();ansicht('sammlung')"],
-  ].map(([z, l, k, fn]) => `<button class="st-zahl ${k}" onclick="${fn}"><div class="z">${z}</div><div class="l">${esc(l)}</div></button>`).join('');
+    [sm ? eur(sm.wert) : '–', t('st_sm_wert'), sm && sm.wert > 0 ? 'gruen' : '', "startSchliessen();ansicht('sammlung')", bew],
+    [sm ? sm.karten : '–', t('st_karten_besitz'), '', "startSchliessen();ansicht('sammlung')",
+      sm && sm.verschiedene ? t('st_verschieden_n').replace('{n}', sm.verschiedene) : ''],
+    [offen, t('st_offen'), '', 'startSchliessen()', t('st_offen_u').replace('{n}', liste.length)],
+  ].map(([z, l, k, fn, unten]) => `<button class="st-zahl ${k}" onclick="${fn}"><div class="z">${z}</div><div class="l">${esc(l)}</div>${unten ? `<div class="u">${unten}</div>` : ''}</button>`).join('');
 
   // Weiter, wo du warst
   // Der Binder, in dem man gerade steckt, hat Vorrang vor dem zuletzt geänderten — sonst
@@ -5068,7 +5147,7 @@ async function startLaden() {
     $('st-weiter').innerHTML = `
       <div class="vor">${bilder || ''}</div>
       <div class="txt"><strong>${esc(zuletzt.name)}</strong>
-        <div>${zuletzt.anzahl} ${t('faecher')} · ${t('st_zuletzt')} ${(zuletzt.updated_at || '').slice(0, 10)}</div></div>
+        <div>${zuletzt.karten != null ? zuletzt.karten : zuletzt.anzahl} ${t('karten_wort')} · ${zuletzt.seiten} ${t('seiten_wort')} · ${t('st_zuletzt')} ${(zuletzt.updated_at || '').slice(0, 10)}</div></div>
       <button class="btn" style="font-size:13px" onclick="startBinderOeffnen('${zuletzt.id}')">${t('st_weiterplanen')}</button>`;
   }
 
@@ -5080,7 +5159,7 @@ async function startLaden() {
   // Kunstseiten statt Binder: die Vitrine führt sie seit September vorn, und sie sind das
   // Einzige hier, in dem echte Arbeit steckt. Ein Klick öffnet die Vitrine bei dieser Seite.
   try {
-    const v = await api('api/vitrine/artwork?sortierung=top&limit=4');
+    const v = vt.status === 'fulfilled' ? vt.value : { artworks: [] };
     const kunst = (v.artworks || []).slice(0, 4);
     $('st-vitrine-block').hidden = !kunst.length;
     $('st-vitrine').innerHTML = kunst.map((a) => `
@@ -5106,15 +5185,28 @@ function zeichneStartBinder(liste) {
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
-      <div class="bmeta">${b.anzahl} ${t('faecher')} · ${b.layout.replace('x', '×')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}</div>
+      <div class="bmeta">${b.karten != null ? b.karten : b.anzahl} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}${
+        b.anzahl ? ` · <span class="${b.gesammelt ? 'an-plus' : ''}">${b.gesammelt || 0} / ${b.anzahl} ✓</span>` : ''}</div>
       ${b.wert ? `<div class="bmeta bwert">${t('st_komplett_heute')} ≈ <strong>${anEur(b.wert, 0)}</strong>${b.bew30 != null ? ` · <span class="${b.bew30 > 0.05 ? 'an-plus' : b.bew30 < -0.05 ? 'an-minus' : ''}">${anProz(b.bew30)}</span>` : ''}</div>` : ''}
-      ${b.anzahl ? `<div style="height:7px;border-radius:99px;background:var(--panel2);overflow:hidden"><div style="height:100%;background:var(--gruen);width:${proz}%"></div></div>
-      <div class="bmeta" style="color:var(--gruen-text);font-weight:700">${b.gesammelt || 0} / ${b.anzahl} ✓</div>` : ''}
+      ${b.anzahl ? `<div class="bfort"><div style="width:${proz}%"></div></div>` : ''}
     </div>`;
   }).join('') + `
     <div class="bcard neu" onclick="vorlagenOeffnen()">
       <div style="font-size:26px">+</div><div style="font-weight:700">${t('st_neu')}</div>
     </div>`;
+  // Ein leeres Konto sah bisher nur diese eine gestrichelte Karte. Die drei Wege, die die
+  // Sammlung in ihrem eigenen Leerzustand anbietet, gehören auf die Seite, auf der ein
+  // neues Konto landet.
+  const leerBlock = $('st-leer');
+  if (leerBlock) leerBlock.hidden = liste.length > 0;
+  // Am Handy stehen drei Binder, der Rest hinter einem Knopf — sonst war die Seite fünf
+  // Bildschirme lang, bevor irgendetwas anderes kam.
+  const mehr = $('st-mehr-binder');
+  if (mehr) {
+    mehr.hidden = liste.length <= 3;
+    mehr.textContent = t('st_alle_binder').replace('{n}', liste.length);
+    $('st-grid').classList.remove('alle');
+  }
 }
 
 
@@ -8395,7 +8487,12 @@ function ansicht(w) {
   // Wer auf „Suche" geht, will suchen. Die Galerie ist eine Binder-Ansicht und wird beim
   // Wechsel dorthin zurückgestellt — sonst stand man vor der Werkbank ohne Trefferliste
   // und ohne zu wissen, warum.
-  if (w === 'suche') { if (S.galerie) galerieUmschalten(false); werkbankZeigen(); }
+  if (w === 'suche') {
+    if (S.galerie) galerieUmschalten(false);
+    werkbankZeigen();
+    // Beim ersten Öffnen der Suche die Trefferliste nachholen (beim Start wurde sie gespart).
+    if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
+  }
 }
 function planerOeffnen() {
   hashSetzen('planer');

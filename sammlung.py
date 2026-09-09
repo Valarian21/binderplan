@@ -303,12 +303,21 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         besitz = _besitz(user["id"])
         preise = _preise(list(besitz))
         con = get_db()
-        # Der Gesamtwert summiert die Posten einzeln, damit der Zustand zählt.
-        wert = 0.0
+        # Der Gesamtwert summiert die Posten einzeln, damit der Zustand zählt. Die
+        # 7-Tage-Bewegung kommt gleich mit: die Startseite zeigte den Wert ohne jede
+        # Veränderung, obwohl sie zwei Klicks weiter längst berechnet wird.
+        wert = basis7 = diff7 = 0.0
         for r in con.execute("SELECT card_id, variante, zustand, anzahl FROM sammlung"
                              " WHERE user_id = ?", (user["id"],)):
-            w = _posten_wert(preise.get(r["card_id"]), dict(r))
-            wert += (w or 0) * (r["anzahl"] or 0)
+            posten = dict(r)
+            pr = preise.get(r["card_id"]) or {}
+            w = _posten_wert(pr, posten)
+            n = r["anzahl"] or 0
+            wert += (w or 0) * n
+            d = _wert.bewegung_euro({**pr, **posten}, "eur_avg7", anzahl=n)
+            if d is not None:
+                diff7 += d
+                basis7 += (pr.get("eur_avg7") or 0) * n
         gezahlt = con.execute("SELECT SUM(kaufpreis * anzahl) s FROM sammlung WHERE user_id = ?"
                               " AND kaufpreis IS NOT NULL", (user["id"],)).fetchone()["s"] or 0
         mit_preis = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id = ? AND kaufpreis IS NOT NULL",
@@ -325,6 +334,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             "doppelte": sum(1 for n in besitz.values() if n >= 2),
             "ohne_binder": sum(1 for c in besitz if c not in geplant),
             "fehlt": fehlt, "graded": graded,
+            "bew7_eur": round(diff7, 2),
+            "bew7": round(diff7 / basis7 * 100, 1) if basis7 else None,
         }
 
     @app.post("/api/sammlung/toggle")

@@ -5927,7 +5927,11 @@ def binder_list(request: Request, ids: str = ""):
         wert, bew30 = _items_wert(con, items)
         result.append({
             "id": r["id"], "name": r["name"], "mode": r["mode"], "layout": r["layout"],
+            # „anzahl" sind Fächer (Innensicht des Planers), „karten" echte Karten. Die
+            # Vitrine zählte immer Karten, die Startseite Fächer — derselbe Binder hatte
+            # zwei Größen: „117 Fächer" gegen „20 Karten".
             "anzahl": len(items), "wert": wert, "bew30": bew30,
+            "karten": sum(1 for i in items if i.get("type") == "card" and i.get("id")),
             "seiten": len(_seiten_plan({"items": items, "layout": r["layout"],
                                         "options": optionen})),
             # Weicht mindestens eine Seite vom Standardraster ab? Sonst behauptet die
