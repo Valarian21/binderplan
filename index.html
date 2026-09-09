@@ -1929,6 +1929,67 @@
     #sammlung .sm-kopf .segment button strong { font-weight: 800; }
     .set-kopf, .set-zeile { grid-template-columns: minmax(0, 1fr) 52px 66px 52px; gap: 6px; }
   }
+
+  /* ===== Werkbank (Phase 3, 10.09.2026): Binder in der Mitte, Suche als Schublade, Inspektor rechts ===== */
+  .m-suchzeile, .f-rail { display: none !important; }
+  .lade-kopf { display: flex; align-items: center; gap: 8px; }
+  .lade-kopf input { flex: 1; min-width: 0; font-size: 14px; padding: 9px 12px; }
+  .lade-ziel { font-size: 12.5px; font-weight: 700; color: var(--akzent-text); white-space: nowrap; }
+  .lade-ziel:empty { display: none; }
+  .seitenstreifen { display: flex; gap: 4px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+  .seitenstreifen::-webkit-scrollbar { display: none; }
+  .seitenstreifen:empty { display: none; }
+  .seitenstreifen button { flex: 0 0 auto; min-width: 30px; height: 28px; padding: 0 8px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: var(--mut); background: var(--panel2); position: relative; }
+  .seitenstreifen button.on { background: var(--aktiv-bg); color: var(--aktiv-fg); }
+  .seitenstreifen button i { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--gruen); transform-origin: left; }
+  .seitenstreifen button.on i { background: #F5C518; }
+  #btn-suche-lade.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }
+  @media (min-width: 901px) {
+    .suche-lade { display: none; flex: 0 0 var(--lade-w, 520px); width: var(--lade-w, 520px); min-width: 0; border-right: 1.5px solid var(--line); background: var(--card); }
+    body.suche-offen .suche-lade { display: flex; }
+    .suche-lade .spalte-mitte { padding: 12px 14px; }
+    .suche-lade .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+    .spalte-filter { display: none; }
+    .spalte-filter.offen { display: flex; position: fixed; left: 0; top: 54px; bottom: 0; width: 320px; z-index: var(--z-menue); padding: 14px; overflow-y: auto; gap: 14px; box-shadow: 8px 0 30px rgba(0,0,0,.18); transform: none; background: var(--card); }
+    .spalte-filter.offen .f-kopf { display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 800; }
+    .m-backdrop.offen { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: calc(var(--z-menue) - 1); }
+    .spalte-binder { flex: 1 1 auto; width: auto; border-left: none; }
+    .spalte-binder .bp-kopf { max-width: 1100px; width: 100%; margin: 0 auto; }
+    #wb-slots, #wb-onb, .gal-umschalter, .seiten-nav, .seitenstreifen, #wb-sammel, #wb-rest, #wb-preise, #wb-verlauf, .bp-hilfe { max-width: var(--binder-w, 560px); width: 100%; margin-left: auto; margin-right: auto; }
+    .wb-alle { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+    .wb-alle .planer-seite { width: auto; }
+    .ps-titel .ps-akt { opacity: 0; transition: opacity .15s; }
+    .planer-seite:hover .ps-akt, .planer-seite:focus-within .ps-akt { opacity: 1; }
+    .inspektor { position: relative; flex: 0 0 300px; width: 300px; border-left: 1.5px solid var(--line); background: var(--card); padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .inspektor.hidden { display: none; }
+    .inspektor .ik-bild { width: 58%; margin: 6px auto 4px; border-radius: 8px; display: block; }
+    .inspektor .ik-name { font-weight: 800; font-size: 15px; line-height: 1.25; }
+    .inspektor .ik-meta { font-size: 12.5px; color: var(--mut); }
+    .inspektor .ik-preis { font-size: 20px; font-weight: 800; }
+    .inspektor .ik-zeile { display: flex; gap: 5px; flex-wrap: wrap; }
+    .inspektor .ik-lbl { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--mut); margin-top: 6px; }
+    .inspektor .ik-akt { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+    .inspektor .ik-akt button { text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .inspektor .ik-akt button:hover { background: var(--hover); }
+    .inspektor .ik-akt button.gefahr { color: var(--akzent-text); }
+    .inspektor .ik-akt .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
+    .inspektor .ik-zu { position: absolute; right: 10px; top: 10px; }
+    .ik-chip { padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--line); font-size: 12px; font-weight: 600; background: var(--card); }
+    .ik-chip.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }
+  }
+  @media (max-width: 900px) {
+    .suche-lade { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); top: 12vh; background: var(--card); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.25); transform: translateY(110%); transition: transform .25s ease; z-index: calc(var(--z-leiste) - 1); display: flex; flex-direction: column; }
+    body.suche-offen .suche-lade { transform: none; }
+    .suche-lade .spalte-mitte { flex: 1; min-height: 0; padding: 14px 10px 0; position: relative; }
+    .suche-lade .spalte-mitte::before { content: ""; position: absolute; left: 50%; top: 5px; width: 40px; height: 4px; border-radius: 2px; background: var(--line); transform: translateX(-50%); }
+    .suche-lade .ergebnisse { grid-template-columns: repeat(3, 1fr); }
+    body.binder-an .spalte-mitte { display: flex; }
+    .spalte-binder { display: flex; width: 100%; border-left: none; }
+    .m-seitenleiste { display: none !important; }
+    .inspektor { display: none !important; }
+    .mnav #mnav-binder { display: flex; }
+    body.suche-offen .toast { bottom: 80px; }
+  }
 </style>
 </head>
 <body>
@@ -1985,6 +2046,8 @@
   <div class="rumpf">
     <!-- Zwischen 901 und 1180 px (Laptop) ist die Filterspalte eine schmale Schiene;
          ein Klick öffnet sie als Überlagerung wie am Handy. -->
+    <!-- Suche: Schublade links (Desktop) bzw. Sheet von unten (Handy). Der Binder ist das Dokument. -->
+    <div class="suche-lade" id="suche-lade">
     <button class="f-rail" onclick="mobilFilter(true)" title="Filter" data-i18n-title="f_rail">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 3.5h15L11 11v5.5l-3 1.5V11z"/></svg>
       <span data-i18n="f_rail">Filter</span><b class="f-rail-zahl hidden" id="f-rail-zahl"></b>
@@ -2114,9 +2177,14 @@
 
     <!-- Treffer -->
     <div class="spalte-mitte">
-      <!-- Am Handy standen drei Bedienzeilen über der ersten Karte: Suchfeld, Vorauswahl-Chips
-           und Filter. Jetzt eine: Suchen und Filtern nebeneinander, die Chips liegen in der
-           Filterschublade. -->
+      <div class="lade-kopf">
+        <span class="lade-ziel" id="lade-ziel"></span>
+        <input type="search" class="feld" id="f-suche-lade" placeholder="Karte oder Pokémon …" data-i18n-ph="ph_suche" oninput="sucheMobilSync(this.value)">
+        <button class="btn sekundaer" style="font-size:12.5px;padding:9px 12px;white-space:nowrap" onclick="mobilFilter(true)" id="btn-filter-lade">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 3h12L9.5 8.5V13l-3 1.5V8.5L2 3z"/></svg>
+          <span data-i18n="m_filter">Filter</span><span id="filter-zahl-lade"></span></button>
+        <button class="btn sekundaer" style="padding:9px 11px" onclick="sucheLadeZu()" aria-label="Suche schließen" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+      </div>
       <div class="mobil-only m-suchzeile">
         <input type="search" class="feld" id="f-suche-mobil" placeholder="Karte oder Pokémon …"
                data-i18n-ph="ph_suche" oninput="sucheMobilSync(this.value)">
@@ -2148,6 +2216,7 @@
       <button class="btn sekundaer hidden" id="btn-mehr" style="align-self:center;font-size:13px" onclick="sucheLaden()" data-i18n="mehr">Mehr laden</button>
     </div>
 
+    </div>
     <!-- Binder -->
     <div class="spalte-binder">
       <div class="bp-kopf">
@@ -2167,7 +2236,7 @@
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
           <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-          <button class="btn sekundaer mobil-only" style="font-size:12.5px;padding:5px 10px" onclick="mobilAnsicht('suche')">
+          <button class="btn sekundaer" style="font-size:12.5px;padding:5px 10px" onclick="sucheLadeToggle()" id="btn-suche-lade">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
             <span data-i18n="suche_knopf">Karten suchen</span></button>
           <button class="btn sekundaer" style="font-size:12.5px;padding:5px 10px" onclick="druckOeffnen()" title="Platzhalter, Checkliste, Kaufliste" data-i18n-title="dr_t">
@@ -2253,6 +2322,7 @@
           </div>
         </div>
       </div>
+      <div class="seitenstreifen" id="wb-streifen"></div>
       <div id="wb-sammel" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen-text)"></strong></div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
@@ -2262,6 +2332,9 @@
       <div id="wb-verlauf" class="hidden wv-box"></div>
       <div class="bp-hilfe" data-i18n="hilfe2">Karten aus der Trefferliste ins Fach ziehen, Ziehen im Binder sortiert um, ⋯ für freie Plätze, ✕ entfernt.</div>
     </div>
+    <!-- Inspektor: das gewählte Fach – Karte, Preis, Zustand, Sprache, Aktionen. Ersetzt am
+         Desktop das Fach-Menü; am Handy bleibt das Menü. -->
+    <aside class="inspektor hidden" id="inspektor"></aside>
   </div>
 
   <!-- Mobile Navigationsleiste -->
@@ -3219,6 +3292,8 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    lade_fuer: 'Für Fach {n}', fach_wort: 'Fach', ik_leer_t: 'Fach {n} ist leer', ik_leer_u: 'Wähle eine Karte aus der Suche – sie landet hier.',
+    ik_aktionen: 'Aktionen', ik_hat: 'In der Sammlung', ik_hat_nicht: 'Hab ich', v_normal_kurz: 'Normal',
     dr_art_karten: 'Platzhalter', dr_art_check: 'Checkliste', dr_art_kauf: 'Kaufliste CSV',
     dr_check_u: 'Alle Karten des Binders als Liste zum Abhaken – ohne Bilder, immer gratis.',
     dr_kauf_u: 'Die fehlenden Karten mit Cardmarket-Trendpreis als CSV – für Tabellen oder Cardmarket-Wants.',
@@ -3833,6 +3908,8 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    lade_fuer: 'For slot {n}', fach_wort: 'Slot', ik_leer_t: 'Slot {n} is empty', ik_leer_u: 'Pick a card from the search – it lands here.',
+    ik_aktionen: 'Actions', ik_hat: 'In collection', ik_hat_nicht: 'I have it', v_normal_kurz: 'Normal',
     dr_art_karten: 'Placeholders', dr_art_check: 'Checklist', dr_art_kauf: 'Buy list CSV',
     dr_check_u: 'Every card of the binder as a list to tick off – no images, always free.',
     dr_kauf_u: 'The missing cards with Cardmarket trend price as CSV – for spreadsheets or Cardmarket wants.',
@@ -4561,11 +4638,10 @@ function mobilAnsicht(w) {
   profilseiteSchliessen();
   if (!$('startseite').classList.contains('hidden')) startSchliessen();
   if (!$('profilseite').classList.contains('hidden')) profilSchliessen();
-  document.body.classList.toggle('binder-an', w === 'binder');
+  document.body.classList.add('binder-an');
   mnavMarkieren('mnav-binder');   // Suche ist ein Zustand des Binders, kein eigener Ort
-  mobilFilter(false);
-  if (w === 'binder') zeichneBinder();
-  zeichneSeitenleiste();
+  if (w === 'suche') sucheLadeOeffnen(); else sucheLadeZu();
+  zeichneBinder();
 }
 
 /** Die Seitenleiste am unteren Rand: welche Seite gerade das Ziel ist und wie voll sie ist.
@@ -4755,7 +4831,7 @@ async function boot() {
   mehrFilterZahl();
   // Die Trefferliste gehört zur Suche, nicht zur Startseite. Wer die App auf der Startseite
   // öffnet, lud vorher 51 Kartenbilder eines Sets im Rücken — 242 Anfragen beim Start.
-  if (zeigeStart) { S.sucheOffen = false; startOeffnen(); } else { S.sucheOffen = true; sucheNeu(); }
+  if (zeigeStart) { S.sucheOffen = false; startOeffnen(); } else { S.sucheOffen = false; }
   if (einstieg && einstieg.art === 'karte') setTimeout(() => detailOeffnenId(einstieg.id), 300);
   if (new URLSearchParams(location.search).get('upgrade')) { history.replaceState(null, '', location.pathname + location.hash); upgradeOeffnen(''); }
   const bestToken = new URLSearchParams(location.search).get('bestaetigen');
@@ -4767,6 +4843,10 @@ async function boot() {
   // Grundzustand und braucht kein eigenes Öffnen.
   if (ROUTEN.includes(hash) && hash !== 'suche' && !(hash === 'start' && zeigeStart)) ansicht(hash);
   bestaetigungAnzeigen();
+  // Werkbank-Grundzustand: am Handy ist der Binder immer da (die Suche ein Sheet); am Desktop
+  // öffnet sich die Schublade nur, wenn der Binder noch leer ist.
+  if (window.innerWidth < 901) document.body.classList.add('binder-an');
+  else if (!zeigeStart && S.binder && !S.binder.items.length && !S.nurAnsicht) sucheLadeOeffnen(false);
 }
 
 function ansichtAktivieren() {
@@ -4809,6 +4889,7 @@ function ansichtAktivieren() {
  *  Reiter — beide zeigten dieselben Seiten mit denselben Fächern. */
 function binderAnsicht(alle) {
   S.alleSeiten = !!alle;
+  if (S.alleSeiten && window.innerWidth >= 901 && typeof sucheLadeZu === 'function') sucheLadeZu();
   try { localStorage.setItem('bp_alle_seiten', S.alleSeiten ? '1' : ''); } catch (e) {}
   if (!S.alleSeiten) S.auswahl.clear();
   hashSetzen(S.alleSeiten ? 'planer' : 'suche');     // beide Adressen bleiben gültig
@@ -5155,7 +5236,6 @@ async function startOeffnen() {
 }
 function startSchliessen() {
   // Wer die Startseite verlässt, landet in der Werkbank — dann wird die Trefferliste gebraucht.
-  if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
   $('startseite').classList.add('hidden');
   reiterSetzen('seg-suche');
   if (S.binder && S.binder.id) hashSetzen('binder/' + S.binder.id);
@@ -6087,7 +6167,7 @@ function zeichneErgebnisse() {
     // den öffentlichen Seiten. Vorher legte er sie in den Binder, und das Detail versteckte
     // sich hinter einem 18 Pixel großen „i". Hinzufügen ist der beschriftete Knopf darunter,
     // dazu weiterhin das Ziehen ins Fach.
-    return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="detailOeffnen(${i})" title="${esc(nm(k))} – ${t('tk_info')}">
+    return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="tkKlick(event,${i})" ontouchstart="tkDruck(${i})" ontouchend="tkLos()" ontouchmove="tkLos()" ontouchcancel="tkLos()" title="${esc(nm(k))} – ${t('tk_info')}">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}${preisBadge(k.id)}</div>
       ${enb}${jpb}
       ${n ? `<span class="anz" title="${t('im_binder')}">${n}</span>` : ''}
@@ -6415,6 +6495,7 @@ function zeichneBinder() {
   const leer = !S.nurAnsicht && S.binder.items.length === 0;
   $('wb-onb').classList.toggle('hidden', !leer);
   $('wb-slots').classList.toggle('hidden', !!(leer || S.alleSeiten));
+  zeichneStreifen();
   $('wb-alle').classList.toggle('hidden', !!(leer || !S.alleSeiten));
   $('wb-nav').classList.toggle('hidden', !!leer);
   if (S.alleSeiten && !leer) zeichneAlleSeiten();
@@ -8564,7 +8645,7 @@ function ansicht(w) {
     werkbankZeigen();
     reiterSetzen('seg-suche');
     mnavMarkieren('mnav-binder');
-    if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
+    if (window.innerWidth < 901) document.body.classList.add('binder-an');
   }
 }
 /* Die beiden Namen bleiben, weil sie an vielen Stellen gerufen werden — sie schalten jetzt
@@ -8928,6 +9009,7 @@ document.addEventListener('keydown', (ev) => {
   const feld = ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName);
   if (feld) return;
   if (ev.key === 'Escape' && S.auswahl.size) { ev.preventDefault(); auswahlLeeren(); return; }
+  if (ev.key === 'Escape' && document.body.classList.contains('suche-offen') && !document.querySelector('.overlay:not(.hidden)')) { ev.preventDefault(); sucheLadeZu(); return; }
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a') {
     ev.preventDefault();
     S.binder.items.forEach((_, i) => S.auswahl.add(i));
@@ -9318,6 +9400,7 @@ function teilen() {
  *  Beide schreiben in dasselbe Filterfeld, damit sie nie auseinanderlaufen. */
 function sucheMobilSync(wert) {
   $('f-suche').value = wert;
+  ['f-suche-mobil', 'f-suche-lade'].forEach((id) => { const el = $(id); if (el && el.value !== wert) el.value = wert; });
   sucheBegriff(wert);
 }
 /** Suchbegriff aus einem der drei Felder übernehmen und suchen.
@@ -9332,7 +9415,7 @@ function sucheBegriff(wert) {
 }
 
 let suchTimer = null;
-$('f-suche').addEventListener('input', () => { clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
+$('f-suche').addEventListener('input', () => { if ($('f-suche-lade')) $('f-suche-lade').value = $('f-suche').value; clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
 $('f-dex').addEventListener('focus', ladePokedex);
 $('f-dex').addEventListener('input', () => {
   const v = $('f-dex').value.trim().toLowerCase();
@@ -9443,6 +9526,7 @@ function freiesFach(idx) {
   S.auswahl.clear();
   S.auswahl.add(idx);
   speichern(); zeichneBinder();
+  sucheLadeOeffnen(false);
 }
 /**
  * Ein aufgeklapptes Menü so legen, dass es ganz im Sichtfeld bleibt.
@@ -9491,6 +9575,119 @@ function slotMenue(ev, idx) {
   ev.stopPropagation();
 }
 function slotMenueZu() { $('menu-slot').classList.add('hidden'); }
+
+// ---------- Suche als Schublade (Desktop) bzw. Sheet (Handy) ----------
+// Der Binder ist das Dokument, die Suche das Werkzeug. Sie öffnet sich, wenn ein leeres Fach
+// gewählt wird oder jemand „Karten suchen" drückt – und schließt sich in „Alle Seiten".
+const LADE = { lang: false, timer: null, info: {} };
+function sucheLadeOeffnen(fokus) {
+  if (S.nurAnsicht) return;
+  if (S.alleSeiten && window.innerWidth >= 901) binderAnsicht(false);
+  document.body.classList.add('suche-offen');
+  const btn = $('btn-suche-lade'); if (btn) btn.classList.add('on');
+  if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
+  ladeZielZeichnen();
+  if (fokus !== false && window.innerWidth >= 901) { const f = $('f-suche-lade'); if (f) f.focus(); }
+}
+function sucheLadeZu() {
+  document.body.classList.remove('suche-offen');
+  const btn = $('btn-suche-lade'); if (btn) btn.classList.remove('on');
+  mobilFilter(false);
+}
+function sucheLadeToggle() { document.body.classList.contains('suche-offen') ? sucheLadeZu() : sucheLadeOeffnen(); }
+function ladeZielZeichnen() {
+  const el = $('lade-ziel'); if (!el) return;
+  const z = zielFach();
+  el.textContent = z === null ? '' : t('lade_fuer').replace('{n}', z + 1);
+}
+/** Trefferkarte: am Handy im Sheet legt ein Tipp die Karte ins Fach, langes Drücken öffnet das
+ *  Detail. Mit Maus bleibt der Klick das Detail – der beschriftete Knopf legt sie ab. */
+function tkKlick(ev, i) {
+  if (LADE.lang) { LADE.lang = false; return; }
+  if (document.body.classList.contains('suche-offen') && window.innerWidth < 901 && matchMedia('(hover: none)').matches) return kartAdd(i);
+  detailOeffnen(i);
+}
+function tkDruck(i) { clearTimeout(LADE.timer); LADE.lang = false; LADE.timer = setTimeout(() => { LADE.lang = true; detailOeffnen(i); }, 520); }
+function tkLos() { clearTimeout(LADE.timer); }
+
+/** Seitenstreifen unter der Seite: eine Zahl je Seite, Füllstand als Strich. Ersetzt das
+ *  Suchen im „Seite …"-Dialog, wenn man nur blättern will. */
+function zeichneStreifen() {
+  const box = $('wb-streifen'); if (!box || !S.binder) return;
+  const plan = seitenPlan();
+  if (plan.length < 2 || S.alleSeiten || S.nurAnsicht) { box.innerHTML = ''; return; }
+  box.innerHTML = plan.map((sp) => {
+    let voll = 0;
+    for (let i = 0; i < sp.laenge; i++) { const it = S.binder.items[sp.start + i]; if (it && it.type !== 'empty') voll++; }
+    return `<button class="${sp.nr === S.seite ? 'on' : ''}" onclick="S.seite=${sp.nr};zeichneBinder()" title="${t('seite')} ${sp.nr + 1} · ${voll}/${sp.laenge}">${sp.nr + 1}<i style="transform:scaleX(${(voll / sp.laenge).toFixed(2)})"></i></button>`;
+  }).join('');
+  const on = box.querySelector('.on');
+  if (on) { const r = on.getBoundingClientRect(), b = box.getBoundingClientRect(); if (r.left < b.left || r.right > b.right) box.scrollLeft += r.left - b.left - b.width / 2 + r.width / 2; }
+}
+
+/** Inspektor (Desktop): das eine gewählte Fach mit Karte, Preis, Zustand, Sprache und allen
+ *  Aktionen, die vorher im Fach-Menü, im Detail-Dialog und in der Auswahlleiste verteilt lagen. */
+async function inspektorZeichnen() {
+  const box = $('inspektor'); if (!box) return;
+  const idx = S.auswahl.size === 1 ? [...S.auswahl][0] : null;
+  const item = idx !== null && S.binder ? S.binder.items[idx] : null;
+  if (S.nurAnsicht || !item || window.innerWidth < 901) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const zu = `<button class="btn sekundaer ik-zu" style="padding:4px 9px" onclick="auswahlLeeren()" aria-label="Schließen">✕</button>`;
+  const lage = `${t('seite')} ${seiteBei(idx) + 1} · ${t('fach_wort')} ${idx - seiteInfo(seiteBei(idx)).start + 1}`;
+  const gefahr = `<button class="gefahr" onclick="slotHerausnehmen(${idx})" title="${t('s_herausnehmen_t')}">${t('herausnehmen')}</button>`;
+  if (item.type === 'empty') {
+    box.innerHTML = `${zu}<div class="ik-name">${t('ik_leer_t').replace('{n}', idx + 1)}</div><div class="ik-meta">${lage}<br>${t('ik_leer_u')}</div>
+      <div class="ik-akt" style="margin-top:10px"><button class="btn" style="text-align:center" onclick="sucheLadeOeffnen()">${t('suche_knopf')}</button><div class="trenn"></div>${gefahr}</div>`;
+    return;
+  }
+  if (item.type === 'art') {
+    box.innerHTML = `${zu}<div class="ik-name">${t('s_artwork')}</div><div class="ik-meta">${lage}</div><div class="ik-akt"><button onclick="artworkOeffnen(${seiteBei(idx)})">${t('s_artwork')}</button><button onclick="kunstFreigeben('${esc(item.artwork)}')">${t('aw_seite_frei')}</button><div class="trenn"></div><button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>${gefahr}</div>`;
+    return;
+  }
+  if (item.type === 'dex') {
+    box.innerHTML = `${zu}<div class="ik-name">#${String(item.dex).padStart(3, '0')}</div><div class="ik-meta">${lage}</div><div class="ik-akt"><button onclick="fachEinfuegen(${idx})">${t('s_frei_davor')}</button><button onclick="fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button><div class="trenn"></div><button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>${gefahr}</div>`;
+    return;
+  }
+  let info = LADE.info[item.id];
+  if (!info) {
+    box.innerHTML = `${zu}<img class="ik-bild" src="${imgUrl(item.id)}" alt=""><div class="ik-meta">${lage}</div>`;
+    try { info = await api('api/cards/' + encodeURIComponent(item.id) + '/detail'); } catch (e) { info = { id: item.id }; }
+    LADE.info[item.id] = info;
+    if (!S.auswahl.has(idx) || S.auswahl.size !== 1) return;
+  }
+  const name = (LANG === 'en' ? (info.name_en || info.name) : (info.name || info.name_en)) || item.id;
+  const setName = (LANG === 'en' ? (info.set_name_en || info.set_name) : (info.set_name || info.set_name_en)) || '';
+  const preis = preisFuer(item);
+  const sn = S.user ? (S.besitz[item.id] || 0) : (item.have ? 1 : 0);
+  const chips = (liste, akt, fn, lbl) => liste.map((v) => `<button class="ik-chip ${v === akt ? 'on' : ''}" onclick="${fn}('${v}')">${lbl ? lbl(v) : v.toUpperCase()}</button>`).join('');
+  box.innerHTML = `${zu}<img class="ik-bild" src="${imgUrl(item.id)}" alt="" onclick="detailOeffnen('${esc(item.id)}')" style="cursor:zoom-in">
+    <div class="ik-name">${esc(name)}</div>
+    <div class="ik-meta">${esc(setName)}${info.local_id ? ' · ' + esc(info.local_id) : ''}${info.rarity ? ' · ' + esc(info.rarity) : ''}<br>${lage}</div>
+    ${preis != null ? `<div class="ik-preis">${preis.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</div>` : ''}
+    <div class="ik-lbl">${t('f_variante')}</div><div class="ik-zeile">${chips(VARIANTEN, item.variant || 'normal', 'ikVariante', (v) => v === 'normal' ? t('v_normal_kurz') : (VMARK[v] || v))}</div>
+    <div class="ik-lbl">${t('kartensprache')}</div><div class="ik-zeile">${chips(['de', 'en', 'jp'], item.sprache || 'de', 'ikSprache')}</div>
+    <div class="ik-lbl">${t('s_zustand')}</div><div class="ik-zeile">${chips(['', ...Object.keys(zustandFaktoren())], (item.zustand || '').toUpperCase(), 'ikZustand', (v) => v || '–')}</div>
+    <div class="ik-lbl">${t('ik_aktionen')}</div>
+    <div class="ik-akt">
+      <button onclick="hatToggle(${idx});setTimeout(inspektorZeichnen,50)">${sn ? '✓ ' + t('ik_hat') : t('ik_hat_nicht')}</button>
+      <button onclick="wunschToggle('${esc(item.id)}');setTimeout(inspektorZeichnen,300)">${wunschHat(item.id) ? '★ ' : '☆ '}${t('wl_titel')}</button>
+      <button onclick="alarmOeffnen('karte','${esc(item.id)}',${JSON.stringify(name).replace(/"/g, '&quot;')},${preis || 0})">${t('al_t')}</button>
+      <button onclick="detailOeffnen('${esc(item.id)}')">${t('s_details')}</button>
+      <button onclick="themaOeffnen('${esc(item.id)}')">${t('s_passend')}</button>
+      <div class="trenn"></div>
+      <button onclick="fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
+      <button onclick="fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
+      <div class="trenn"></div>
+      <button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>
+      ${gefahr}
+    </div>`;
+}
+function ikItem() { const idx = S.auswahl.size === 1 ? [...S.auswahl][0] : null; return idx === null ? null : S.binder.items[idx]; }
+function ikVariante(v) { const it = ikItem(); if (!it) return; if (v === 'normal') delete it.variant; else it.variant = v; speichern(); zeichneBinder(); inspektorZeichnen(); }
+function ikSprache(v) { const it = ikItem(); if (!it) return; if (v === 'de') delete it.sprache; else it.sprache = v; speichern(); zeichneBinder(); inspektorZeichnen(); }
+function ikZustand(v) { const it = ikItem(); if (!it) return; if (!v) delete it.zustand; else it.zustand = v; speichern(); zeichneBinder(); inspektorZeichnen(); }
+
 document.addEventListener('click', (ev) => { if (!ev.target.closest('#menu-slot') && !ev.target.closest('.slot .mehr')) slotMenueZu(); });
 function fachSprache(idx) {
   const item = S.binder.items[idx]; if (!item) return;
@@ -9603,6 +9800,8 @@ function fachKlick(ev, idx) {
   }
   letzterKlick = idx;
   auswahlZeigen();
+  const it = S.binder.items[idx];
+  if (it && it.type === 'empty' && S.auswahl.size === 1 && S.auswahl.has(idx)) sucheLadeOeffnen(false);
 }
 /** Alter Name, damit ältere Aufrufer nicht brechen. */
 function slotKlick(idx) { fachKlick(null, idx); }
@@ -9739,6 +9938,7 @@ function mehrFilterZahl() {
   if ($('filter-zahl-mobil')) setTimeout(() => {
     const n = ($('f-mehr-zahl') && $('f-mehr-zahl').textContent) || '';
     $('filter-zahl-mobil').textContent = n ? ' ' + n : '';
+    if ($('filter-zahl-lade')) $('filter-zahl-lade').textContent = n ? ' ' + n : '';
   }, 0);
   const n = filter.kinds.size + (filter.typ ? 1 : 0) + (filter.trainer ? 1 : 0) + filter.regmark.size + (filter.first ? 1 : 0) + (filter.jahrVon || filter.jahrBis ? 1 : 0);
   const el = $('f-mehr-zahl'); if (el) el.textContent = n ? `(${n})` : '';
@@ -10237,6 +10437,8 @@ function auswahlAktionen() {
   // Der Hinzufügen-Knopf jeder Trefferkarte nennt sein Ziel — es hängt an der Auswahl.
   const txt = '＋ ' + zielText();
   document.querySelectorAll('#ergebnisse .hinzu').forEach((el) => { el.textContent = txt; });
+  ladeZielZeichnen();
+  inspektorZeichnen();
 }
 function planerAktionen() { auswahlAktionen(); }
 
@@ -10661,8 +10863,8 @@ async function artworkLoeschen() {
 boot();
 </script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609100033"></script>
+<script defer src="assets/markt.js?v=202609100043"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609100033"></script>
+<script defer src="assets/sammlung.js?v=202609100043"></script>
 </body>
 </html>
