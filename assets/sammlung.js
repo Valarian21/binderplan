@@ -38,7 +38,8 @@ function besitzt(item) {
 /* ------------------------------------------------------------------ Öffnen & Reiter */
 
 function ansichtSammlung(bereich) {
-  if (!S.user) return loginOeffnen(t('sm_login'));
+  if (!S.user) return gastOrt('sammlung', sammlungSchliessen, 'seg-sammlung', 'mnav-sammlung', t('gast_sammlung_t'), t('gast_sammlung_u'), t('sm_login'));
+  gastKarteWeg('sammlung');
   if (bereich && SM_BEREICHE.includes(bereich)) SM.bereich = bereich;
   else if (!bereich) {
     try { SM.bereich = localStorage.getItem('bp_sm') || 'karten'; } catch (e) { SM.bereich = 'karten'; }

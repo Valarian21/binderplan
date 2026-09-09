@@ -15,7 +15,8 @@
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
 <style>
-  :root { --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518;
+  :root { --z-inhalt:1; --z-ort:40; --z-leiste:60; --z-menue:80; --z-dialog:100;
+          --bg:#FFFFFF; --ink:#14161C; --mut:#565C68; --line:#DCDEE4; --card:#FFFFFF; --akzent:#E4322B; --akzent-dunkel:#C1231D; --gruen:#2F8F5B; --panel2:#F6F7F9; --kontur:#14161C; --blau:#2A4B9B; --gelb:#F5C518;
           --d1:#E4322B; --d2:#2A4B9B; --d3:#2F8F5B; --d-gitter:rgba(20,22,28,.09);
           --aktiv-bg:#14161C; --aktiv-fg:#FFFFFF;
           --blau-flaeche:#2A4B9B; --blau-fg:#FFFFFF;
@@ -62,7 +63,7 @@
      sich ein Blatt um den Rücken — Vorderseite ist die alte rechte Seite,
      Rückseite die neue linke. Die Fächer zeichnet dieselbe Funktion wie in der
      Werkbank, damit Vorschau und Arbeitsansicht nie auseinanderlaufen. */
-  #blaettern { position: fixed; inset: 0; z-index: 95; background: rgba(8,9,12,1);
+  #blaettern { position: fixed; inset: 0; z-index: calc(var(--z-dialog) + 5); background: rgba(8,9,12,1);
                display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 20px; }
   #blaettern.hidden { display: none !important; }
   .bv-kopf { display: flex; align-items: center; gap: 14px; color: #fff; font-size: 14px; font-weight: 700; }
@@ -250,7 +251,7 @@
 
   /* ---------- Vitrine ---------- */
   /* Wie der Planer eine eigene Ebene ueber der Suche, sonst haengt sie darunter. */
-  #vitrine { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 40;
+  #vitrine { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: var(--z-ort);
              background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
   .vt-kopf { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .vt-kopf h2 { margin: 0; font-size: 20px; }
@@ -408,7 +409,7 @@
   .an-vorschau .an-kurve { width: 100%; height: 130px; margin-top: 14px; }
   /* Großansicht einer Kunstseite: Kopf, Bühne, Fuß. Die Bühne trägt die Seite in ihrem echten
      Seitenverhältnis, damit die Fächer stimmen; Pfeile links und rechts blättern weiter. */
-  .kw-box { position: fixed; inset: 0; background: rgba(10,11,14,.93); z-index: 120; display: flex;
+  .kw-box { position: fixed; inset: 0; background: rgba(10,11,14,.93); z-index: calc(var(--z-dialog) + 20); display: flex;
             flex-direction: column; padding: 14px 16px 16px; gap: 12px; }
   .kw-box.hidden { display: none; }
   body.kw-offen { overflow: hidden; }
@@ -501,7 +502,7 @@
     /* Begleitleiste eines geteilten Binders: eine schmale Leiste am unteren Rand statt eines
        Kastens vor dem Inhalt. Die untere Navigation ist in der geteilten Ansicht ausgeblendet,
        der Platz ist frei; die Leiste wischt seitlich, wenn sie nicht in eine Zeile passt. */
-    body.nur-ansicht .vt-ansichtleiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: 59; margin: 0; max-width: none;
+    body.nur-ansicht .vt-ansichtleiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: calc(var(--z-leiste) - 1); margin: 0; max-width: none;
                         border-radius: 14px 14px 0 0; border-width: 1.5px 0 0;
                         padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 6px; flex-wrap: nowrap;
                         overflow-x: auto; scrollbar-width: none; box-shadow: 0 -8px 22px rgba(0,0,0,.14); }
@@ -620,7 +621,7 @@
   .vt-ansichtleiste .vt-wer strong { font-weight: 800; }
   .vt-ansichtleiste .vt-wer a { color: var(--blau); cursor: pointer; text-decoration: underline; }
   /* Profilseite */
-  #profil-oeffentlich { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 41;
+  #profil-oeffentlich { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: calc(var(--z-ort) + 1);
                         background: var(--bg); overflow-y: auto; padding: 20px 18px 40px; }
   .po-kopf { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; flex-wrap: wrap; }
   .po-kopf h2 { margin: 0; font-size: 24px; }
@@ -669,7 +670,7 @@
 
 
   /* ---------- Sammlung ---------- */
-  #sammlung { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: 40;
+  #sammlung { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; z-index: var(--z-ort);
               background: var(--bg); overflow-y: auto; padding: 16px 18px 40px; }
   .sm-kopf { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   .sm-kopf h2 { margin: 0; font-size: 20px; }
@@ -879,11 +880,11 @@
   #app { height: 100vh; display: flex; flex-direction: column; }
   .kopf { display: flex; align-items: center; gap: 10px; padding: 0 16px; height: 54px; background: var(--card);
           border-bottom: 1.5px solid var(--line); flex-shrink: 0; flex-wrap: nowrap;
-          position: sticky; top: 0; z-index: 45; }
+          position: sticky; top: 0; z-index: calc(var(--z-ort) + 5); }
   .kopf .logo { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
   .menuwrap { position: relative; }
   .menu { position: absolute; top: 110%; right: 0; background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
-          box-shadow: 0 12px 30px rgba(58,50,39,.14); min-width: 250px; z-index: 30; padding: 6px; }
+          box-shadow: 0 12px 30px rgba(58,50,39,.14); min-width: 250px; z-index: var(--z-menue); padding: 6px; }
   .menu button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 9px 12px;
                  border-radius: 8px; font-size: 13.5px; font-weight: 600; }
   .menu button:hover { background: var(--hover); }
@@ -1006,7 +1007,7 @@
   .schalter input { width: 15px; height: 15px; accent-color: var(--akzent-text); }
 
   /* ---------- Modale & Planer ---------- */
-  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: 80; display: flex; align-items: center; justify-content: center; }
+  .overlay { position: fixed; inset: 0; background: rgba(58,50,39,.45); z-index: var(--z-dialog); display: flex; align-items: center; justify-content: center; }
   .modal { position: relative; background: var(--card); border-radius: 18px; padding: 22px; width: min(680px, 94vw); max-height: 88vh;
            overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
   .modal-x { position: absolute; top: 12px; right: 12px; width: 30px; height: 30px; border-radius: 50%;
@@ -1045,7 +1046,7 @@
   .m-seitenleiste { display: none; }
   @media (max-width: 900px) {
     .m-seitenleiste { display: flex; align-items: center; gap: 10px; position: fixed; left: 0; right: 0;
-      bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 58; background: var(--card);
+      bottom: calc(60px + env(safe-area-inset-bottom)); z-index: calc(var(--z-leiste) - 2); background: var(--card);
       border-top: 1.5px solid var(--line); padding: 7px 14px; cursor: pointer; }
     .m-seitenleiste.hidden { display: none; }
     .msl-nr { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
@@ -1108,7 +1109,7 @@
   .feld-lbl { font-size: 12px; font-weight: 700; margin: 12px 0 5px; }
   .ansicht-banner { background: var(--hover); border-bottom: 1.5px solid var(--line); text-align: center; font-size: 13px; padding: 8px; font-weight: 600; }
   .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--aktiv-bg); color: var(--aktiv-fg);
-           font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 90; }
+           font-size: 13.5px; font-weight: 600; padding: 10px 20px; border-radius: 999px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: calc(var(--z-dialog) + 10); }
   .toast.zeig { opacity: 1; }
   .sync-banner { background: #fdf1e3; border-bottom: 1.5px solid #f3ddc0; color: #7a5c33; font-size: 12.5px; padding: 7px 16px; text-align: center; }
 
@@ -1118,7 +1119,7 @@
      sie den Kopf ab und der eigene Rumpf war der einzige scrollende Bereich — nach dem
      Umbau hieß der anders, also scrollte gar nichts mehr. */
   .seite-voll { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg);
-                z-index: 41; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+                z-index: calc(var(--z-ort) + 1); overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .seite-voll > .planer-kopf { position: sticky; top: 0; z-index: 2; }
   .st-rumpf, .pf-rumpf { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
   @media (max-width: 860px) { .seite-voll { top: 50px; } }
@@ -1254,12 +1255,12 @@
     .ergebnisse { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 7px; }
 
     /* Filter als Schublade von links */
-    .spalte-filter { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: 70;
+    .spalte-filter { display: flex; position: fixed; top: 0; left: 0; bottom: 0; z-index: calc(var(--z-leiste) + 10);
       width: min(85vw, 330px); border-right: 1.5px solid var(--line);
       transform: translateX(-105%); transition: transform .22s ease; box-shadow: 8px 0 30px rgba(0,0,0,.18);
       padding-bottom: 0; }
     .spalte-filter.offen { transform: translateX(0); }
-    .m-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 65; }
+    .m-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: calc(var(--z-leiste) + 5); }
     .m-backdrop.offen { display: block; }
 
     /* Binder als eigene Vollbild-Ansicht (Umschalter unten) */
@@ -1270,7 +1271,7 @@
     .slots { max-width: 430px; margin: 0 auto; width: 100%; }
 
     /* Untere Navigationsleiste */
-    .mnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    .mnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-leiste);
       background: var(--card); border-top: 1.5px solid var(--line); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
     .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
       font-size: 11px; font-weight: 700; color: var(--mut); padding: 5px 2px; border-radius: 10px; min-height: 44px; }
@@ -1278,7 +1279,7 @@
     .mnav .mzahl { display: none; position: absolute; margin-left: 32px; margin-top: -5px; background: var(--akzent-flaeche); color: var(--akzent-fg);
       font-size: 11px; font-weight: 700; min-width: 18px; border-radius: 999px; padding: 1px 5px; line-height: 1.4; }
     #mobil-mehr { position: fixed; left: 10px; right: 10px; top: 60px; bottom: auto; min-width: 0;
-                  max-height: calc(100vh - 80px); overflow-y: auto; z-index: 70; }
+                  max-height: calc(100vh - 80px); overflow-y: auto; z-index: var(--z-menue); }
     #mobil-mehr button { flex-direction: row; justify-content: flex-start; gap: 6px; min-height: 0; color: var(--ink); font-size: 13.5px; padding: 10px 14px; }
 
     .planer-kopf { gap: 6px; padding: 8px 10px; }
@@ -1325,6 +1326,17 @@
   #menu-konto .konto-mail { padding: 9px 12px; font-size: 12px; color: var(--mut); word-break: break-all; }
   /* Binder-Panel: Kopf mit Stats und Werkzeugen */
   .bp-kopf { display: flex; flex-direction: column; gap: 8px; }
+  .bp-kopf .menuwrap.bw { align-self: flex-start; max-width: 100%; }
+  .bp-kopf .menuwrap.bw .menu.links { left: 0; right: auto; }
+  button.bp-titel { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+  button.bp-titel .bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gast-karte { position: absolute; inset: 0; background: var(--bg); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 5; }
+  .gast-box, .st-gast { display: flex; flex-direction: column; gap: 8px; max-width: 480px; background: var(--panel2); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .gast-box strong, .st-gast strong { font-size: 17px; }
+  .gast-box span, .st-gast span { font-size: 13.5px; color: var(--mut); line-height: 1.5; }
+  .gast-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .st-gast { margin: 12px 0 18px; }
+  .st-gast[hidden] { display: none; }
   .bp-stats { font-size: 12.5px; color: var(--mut); font-weight: 600; }
   .bp-tools { display: flex; align-items: center; gap: 12px; }
   .bp-tools .menuwrap { margin-left: auto; }
@@ -1346,7 +1358,7 @@
   .ps-titel .ps-akt { display: inline-flex; gap: 2px; }
   .ps-titel .ps-akt button { font-size: 12px; color: var(--mut); padding: 1px 5px; border-radius: 6px; }
   .ps-titel .ps-akt button:hover { background: var(--panel2); color: var(--ink); }
-  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--pl-bar-unten, 18px); background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; z-index: 45; max-width: 96vw; flex-wrap: wrap; justify-content: center; }
+  .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--pl-bar-unten, 18px); background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: 13px; z-index: calc(var(--z-leiste) - 5); max-width: 96vw; flex-wrap: wrap; justify-content: center; }
   .planer-bar .btn { font-size: 12.5px; padding: 6px 12px; }
   .planer-bar .pl-strich { width: 1px; height: 18px; background: var(--line); }
   /* In einer Leiste am unteren Rand muss ein Menü nach oben aufklappen. */
@@ -1931,19 +1943,6 @@
       <svg width="20" height="20" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>
       <span class="logo-text">Binderplan</span>
     </div>
-    <!-- Binder-Wechsler: aktueller Binder, Name ändern, meine Binder, neu anlegen -->
-    <div class="menuwrap bw">
-      <button class="btn sekundaer bw-btn" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen" data-i18n-title="bw_t"><span class="bw-name" id="bw-name">Mein Binder</span><span class="bw-caret">▾</span></button>
-      <div class="menu links hidden" id="menu-bw">
-        <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" data-i18n-ph="ph_bindername" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
-        <div class="trenn"></div>
-        <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
-        <div class="bw-liste" id="bw-liste"></div>
-        <div class="trenn"></div>
-        <div class="trenn"></div>
-        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
-      </div>
-    </div>
     <div class="segment desktop-only" role="tablist">
       <button id="seg-start" onclick="ansicht('start')" data-i18n="start_nav">Start</button>
       <!-- Ein Reiter für den Binder. „Suchen" benannte ein Werkzeug, „Planer" eine Tätigkeit,
@@ -1953,43 +1952,32 @@
            Reiter ohnehin seit jeher „Binder". -->
       <button id="seg-suche" class="on" onclick="ansicht('suche')" data-i18n="binder_nav">Binder</button>
       <button id="seg-sammlung" onclick="ansicht('sammlung')" data-i18n="sammlung">Sammlung</button>
-      <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
       <button id="seg-markt" onclick="ansicht('markt')" data-i18n="markt">Markt</button>
+      <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
     </div>
     <div style="flex:1"></div>
-    <div class="menuwrap desktop-only">
-      <button class="btn sekundaer" style="font-size:13px" onclick="menuToggle('menu-export')">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
-        <span data-i18n="exportieren">Exportieren</span>
-      </button>
-      <div class="menu hidden" id="menu-export">
-        <button onclick="druckOeffnen()" data-i18n="ex_dialog">Drucken …</button>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <div class="trenn"></div>
-        <button onclick="kaufliste()"><span data-i18n="ex_kauf">Kaufliste als CSV</span> <span class="an-marke plan-marke" style="margin-left:4px">Plus</span></button>
-      </div>
-    </div>
-    <div class="menuwrap desktop-only">
-      <button class="btn sekundaer" style="font-size:13px;padding:7px 11px" onclick="menuToggle('menu-einst')" title="Sprache & Design" aria-label="Einstellungen" data-i18n-title="einst_t"><svg class="ic" width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2M10 15.4v2M17.4 10h-2M4.6 10h-2M15.2 4.8l-1.4 1.4M6.2 13.8l-1.4 1.4M15.2 15.2l-1.4-1.4M6.2 6.2 4.8 4.8"/></svg></button>
-      <div class="menu hidden" id="menu-einst" style="min-width:200px">
-        <div class="menu-lbl" data-i18n="pf_sprache_ui">Sprache der Oberfläche</div>
-        <div class="lang-toggle" style="margin:4px 12px 8px"><button id="lang-de" class="on" onclick="setLang('de')">DE</button><button id="lang-en" onclick="setLang('en')">EN</button></div>
-        <div class="menu-lbl" data-i18n="pf_design">Design</div>
-        <div class="lang-toggle theme-wahl" style="margin:4px 12px 8px"><button data-theme-opt="auto" onclick="themeSetzen('auto')">Auto</button><button data-theme-opt="hell" onclick="themeSetzen('hell')">Hell</button><button data-theme-opt="dunkel" onclick="themeSetzen('dunkel')">Dunkel</button></div>
-        <div class="trenn"></div>
-        <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
-        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
-      </div>
-    </div>
     <div class="menuwrap">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
       <div class="menu hidden" id="menu-konto"></div>
     </div>
-    <div class="menuwrap mobil-only">
+    <div class="menuwrap">
       <button class="btn sekundaer" style="font-size:13px;padding:7px 9px" onclick="menuToggle('mobil-mehr')" id="btn-mehr-mobil" aria-label="Mehr" title="Mehr" data-i18n-title="mehr_nav">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="8" r="1.6"></circle><circle cx="8" cy="8" r="1.6"></circle><circle cx="13" cy="8" r="1.6"></circle></svg>
       </button>
-    </div>
+      <div class="menu hidden" id="mobil-mehr">
+        <div class="menu-lbl" data-i18n="mm_konto">Konto &amp; Einstellungen</div>
+        <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
+        <div class="mm-einst">
+          <div><div class="menu-lbl" data-i18n="pf_sprache">Sprache</div>
+            <div class="lang-toggle" style="margin:2px 12px 6px"><button class="lang-opt" data-lang-opt="de" onclick="setLang('de')">DE</button><button class="lang-opt" data-lang-opt="en" onclick="setLang('en')">EN</button></div></div>
+          <div><div class="menu-lbl" data-i18n="pf_design">Design</div>
+            <div class="lang-toggle theme-wahl" style="margin:2px 12px 6px"><button data-theme-opt="auto" onclick="themeSetzen('auto')">Auto</button><button data-theme-opt="hell" onclick="themeSetzen('hell')">Hell</button><button data-theme-opt="dunkel" onclick="themeSetzen('dunkel')">Dunkel</button></div></div>
+        </div>
+        <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
+        <!-- Der Kündigungsweg bleibt im Menü: § 312k verlangt, dass er leicht auffindbar ist. -->
+        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
+      </div>
+      </div>
     <a class="btn sekundaer ansicht-zurueck hidden" href="/app#vitrine" data-i18n="ansicht_zurueck">← Zur Vitrine</a>
     <a class="btn ansicht-cta hidden" href="/app" data-i18n="eigener_binder">Eigenen Binder planen</a>
   </div>
@@ -2163,10 +2151,28 @@
     <!-- Binder -->
     <div class="spalte-binder">
       <div class="bp-kopf">
-        <div class="bp-titel" id="wb-titel" onclick="wechslerOeffnen()" title="Binder wechseln" data-i18n-title="bw_t"></div>
+    <!-- Binder-Wechsler: aktueller Binder, Name ändern, meine Binder, neu anlegen -->
+    <div class="menuwrap bw">
+      <button class="bp-titel" id="bw-btn" onclick="wechslerOeffnen()" title="Binder wechseln oder umbenennen" data-i18n-title="bw_t"><span class="bw-name" id="wb-titel">Mein Binder</span></button>
+      <div class="menu links hidden" id="menu-bw">
+        <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" data-i18n-ph="ph_bindername" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
+        <div class="trenn"></div>
+        <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
+        <div class="bw-liste" id="bw-liste"></div>
+        <div class="trenn"></div>
+        <div class="trenn"></div>
+        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
+      </div>
+    </div>
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
           <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
+          <button class="btn sekundaer mobil-only" style="font-size:12.5px;padding:5px 10px" onclick="mobilAnsicht('suche')">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
+            <span data-i18n="suche_knopf">Karten suchen</span></button>
+          <button class="btn sekundaer" style="font-size:12.5px;padding:5px 10px" onclick="druckOeffnen()" title="Platzhalter, Checkliste, Kaufliste" data-i18n-title="dr_t">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
+            <span data-i18n="drucken">Drucken</span></button>
           <div class="menuwrap">
             <button class="btn sekundaer" style="font-size:13px;padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen" data-i18n-title="binder_opt_t">⋯</button>
             <div class="menu hidden" id="menu-binder" style="min-width:260px">
@@ -2275,11 +2281,7 @@
         <path d="M3 9.2 10 3.5l7 5.7"/><path d="M5 8.6V16.5h10V8.6"/></svg>
       <span id="mnav-start-lbl" data-i18n="start_nav">Start</span>
     </button>
-    <button id="mnav-suche" class="on" onclick="mobilAnsicht('suche')">
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
-      <span data-i18n="m_suche">Suche</span>
-    </button>
-    <button id="mnav-binder" onclick="mobilAnsicht('binder')">
+    <button id="mnav-binder" class="on" onclick="mobilAnsicht('binder')">
       <span class="mzahl" id="mnav-binder-zahl">0</span>
       <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="2.5" width="16" height="17" rx="2.5"></rect><line x1="7.5" y1="2.5" x2="7.5" y2="19.5"></line><circle cx="14" cy="9" r="2.4"></circle></svg>
       <span data-i18n="m_binder">Binder</span>
@@ -2293,6 +2295,11 @@
         <path d="M4 5.5h9.5a1.5 1.5 0 0 1 1.5 1.5v9.5H5.5A1.5 1.5 0 0 1 4 15V5.5z"/><path d="M6.5 3.5h9.5A1.5 1.5 0 0 1 17.5 5v9.5"/><path d="m7 11 2 2 3.5-4"/></svg>
       <span data-i18n="sammlung">Sammlung</span>
     </button>
+    <button id="mnav-markt" onclick="ansicht('markt')">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M2.5 15.5 7 10l3.5 3 7-8"/><path d="M13 5h4.5v4.5"/></svg>
+      <span data-i18n="markt">Markt</span>
+    </button>
     <button id="mnav-vitrine" onclick="ansicht('vitrine')">
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
         <rect x="2.5" y="3.5" width="15" height="13" rx="2"/><path d="M2.5 8h15M7.5 8v8.5M12.5 8v8.5"/></svg>
@@ -2301,35 +2308,6 @@
   </div>
   <!-- Das Menü hängt am ⋯-Knopf der Kopfzeile (mobil-only), liegt aber am Ende des
        Dokuments, damit es über allem schwebt. -->
-  <div class="menuwrap mobil-only" id="mobil-mehr-wrap" style="position:static">
-      <div class="menu hidden" id="mobil-mehr">
-        <div class="menu-lbl" data-i18n="mm_drucken">Drucken</div>
-        <button onclick="druckOeffnen()" data-i18n="ex_dialog">Drucken …</button>
-        <button onclick="exportPdf('checkliste',0)" data-i18n="ex_check">Checkliste</button>
-        <button onclick="kaufliste()"><span data-i18n="ex_kauf">Kaufliste als CSV</span> <span class="an-marke plan-marke" style="margin-left:4px">Plus</span></button>
-        <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
-        <div class="trenn"></div>
-        <!-- Achtzehn Einträge waren eine zweite, vollständige Navigation. „Vitrine" stand
-             hier und in der unteren Leiste, „Sammlung" ebenso. Geblieben ist, was sonst
-             nirgends erreichbar ist. -->
-        <div class="menu-lbl" data-i18n="mm_entdecken">Entdecken</div>
-        <button onclick="ansicht('markt')"><span data-i18n="markt">Markt</span> <span class="an-marke plan-marke" style="margin-left:4px">Pro</span></button>
-        <button onclick="ansicht('auswertung')"><span data-i18n="an_t">Auswertung</span> <span class="an-marke plan-marke" style="margin-left:4px">Plus</span></button>
-        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
-        <div class="trenn"></div>
-        <div class="menu-lbl" data-i18n="mm_konto">Konto &amp; Einstellungen</div>
-        <button onclick="profilOeffnen()" data-i18n="vt_profil">Mein Profil</button>
-        <div class="mm-einst">
-          <div><div class="menu-lbl" data-i18n="pf_sprache">Sprache</div>
-            <div class="lang-toggle" style="margin:2px 12px 6px"><button class="lang-opt" data-lang-opt="de" onclick="setLang('de')">DE</button><button class="lang-opt" data-lang-opt="en" onclick="setLang('en')">EN</button></div></div>
-          <div><div class="menu-lbl" data-i18n="pf_design">Design</div>
-            <div class="lang-toggle theme-wahl" style="margin:2px 12px 6px"><button data-theme-opt="auto" onclick="themeSetzen('auto')">Auto</button><button data-theme-opt="hell" onclick="themeSetzen('hell')">Hell</button><button data-theme-opt="dunkel" onclick="themeSetzen('dunkel')">Dunkel</button></div></div>
-        </div>
-        <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
-        <!-- Der Kündigungsweg bleibt im Menü: § 312k verlangt, dass er leicht auffindbar ist. -->
-        <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
-      </div>
-  </div>
 </div>
 
 <!-- Druckdialog: was aufs Blatt kommt, wird vorher entschieden -->
@@ -2338,7 +2316,14 @@
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h2 data-i18n="dr_t">Drucken</h2>
     <div class="unter" data-i18n="dr_u">Platzhalter zum Ausschneiden, im Maß echter Karten. Was du auswählst, landet fortlaufend auf A4-Blättern.</div>
-
+    <!-- Drucken, Checkliste und Kaufliste waren drei Einträge in drei Menüs. Ein Dialog, drei Arten. -->
+    <div class="segment" id="dr-art" role="tablist" style="margin-bottom:14px;display:inline-flex">
+      <button id="dra-karten" class="on" onclick="druckArt('karten')" data-i18n="dr_art_karten">Platzhalter</button>
+      <button id="dra-checkliste" onclick="druckArt('checkliste')" data-i18n="dr_art_check">Checkliste</button>
+      <button id="dra-kaufliste" onclick="druckArt('kaufliste')"><span data-i18n="dr_art_kauf">Kaufliste CSV</span> <span class="an-marke plan-marke" style="margin-left:4px">Plus</span></button>
+    </div>
+    <div class="unter hidden" id="dr-art-hinweis" style="margin-bottom:14px"></div>
+    <div id="dr-optionen">
     <div class="f-lbl" data-i18n="dr_welche">Welche Seiten</div>
     <div class="f-chips" id="dr-umfang" style="margin-bottom:10px"></div>
     <input class="feld" id="dr-seiten" placeholder="z. B. 1-3, 7, 10-" data-i18n-ph="dr_ph"
@@ -2352,10 +2337,11 @@
     <div class="unter" style="margin:-8px 0 16px;font-size:11.5px" data-i18n="dr_farbe_hin">Artwork-Seiten kommen immer in Farbe. Kartenbilder stehen sonst in Graustufen – als Platzhalter erkennbar und sparsam im Verbrauch.</div>
 
     <div class="bestell-box" id="dr-vorschau"></div>
+    </div>
 
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
-      <button class="btn" onclick="druckStarten()" data-i18n="dr_start">PDF erzeugen</button>
+      <button class="btn" id="dr-start-btn" onclick="druckStarten()" data-i18n="dr_start">PDF erzeugen</button>
     </div>
   </div>
 </div>
@@ -2742,8 +2728,9 @@
 <div id="startseite" class="seite-voll hidden">
   <div class="st-rumpf">
     <div class="st-gruss"><h1 id="st-gruss"></h1><span class="plan" id="st-plan"></span>
-      <button class="btn sekundaer" style="font-size:12.5px;margin-left:auto" onclick="profilOeffnen()" data-i18n="profil">Profil &amp; Konto</button></div>
+      <button class="btn sekundaer" id="st-profil-btn" style="font-size:12.5px;margin-left:auto" onclick="if(S.user)profilOeffnen();else loginOeffnen('')">Profil &amp; Konto</button></div>
     <div class="st-unter" id="st-unter"></div>
+    <div class="st-gast" id="st-gast" hidden></div>
 
     <div class="st-neu hidden" id="st-creator-neu"></div>
 
@@ -3232,6 +3219,17 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    dr_art_karten: 'Platzhalter', dr_art_check: 'Checkliste', dr_art_kauf: 'Kaufliste CSV',
+    dr_check_u: 'Alle Karten des Binders als Liste zum Abhaken – ohne Bilder, immer gratis.',
+    dr_kauf_u: 'Die fehlenden Karten mit Cardmarket-Trendpreis als CSV – für Tabellen oder Cardmarket-Wants.',
+    dr_start_check: 'Checkliste erzeugen', dr_start_kauf: 'CSV herunterladen',
+    suche_knopf: 'Karten suchen', drucken: 'Drucken',
+    gast_registrieren: 'Kostenlos registrieren', gast_anmelden: 'Ich habe ein Konto',
+    gast_sammlung_t: 'Deine Sammlung – mit Konto', gast_sammlung_u: 'Karten abhaken, Sets vervollständigen, Wert und Bewegung deiner Karten sehen. Kostenlos, mit E-Mail und Passwort.',
+    gast_markt_t: 'Der Markt – mit Konto', gast_markt_u: 'Sets im Aufwind, Bewegungen deiner Karten, Preisverlauf je Karte. Der Überblick ist gratis, die Ranglisten gehören zu Plus.',
+    gast_start_t: 'Dein Binder bleibt hier nur im Browser', gast_start_u: 'Mit Konto liegt er auf allen Geräten, dazu Sammlung, Wunschliste und Preis-Alarme. Kostenlos.',
+    gast_start_grund: 'Kostenlos registrieren – dein Binder wird übernommen.',
+    st_gast_gruss: 'Willkommen bei Binderplan!', st_gast_u: 'Plane deinen ersten Binder – ohne Konto. Karte für Karte oder mit einer Vorlage.',
     f_variante: 'Variante',
     geb_ungueltig: 'Bitte ein gültiges Geburtsdatum eingeben (TT.MM.JJJJ).',
     tarif_life_hinweis: 'Du hast Lifetime – alle Funktionen sind frei. Hier kannst du Credits für Kunstseiten nachkaufen.',
@@ -3835,6 +3833,17 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    dr_art_karten: 'Placeholders', dr_art_check: 'Checklist', dr_art_kauf: 'Buy list CSV',
+    dr_check_u: 'Every card of the binder as a list to tick off – no images, always free.',
+    dr_kauf_u: 'The missing cards with Cardmarket trend price as CSV – for spreadsheets or Cardmarket wants.',
+    dr_start_check: 'Create checklist', dr_start_kauf: 'Download CSV',
+    suche_knopf: 'Find cards', drucken: 'Print',
+    gast_registrieren: 'Sign up for free', gast_anmelden: 'I have an account',
+    gast_sammlung_t: 'Your collection – with an account', gast_sammlung_u: 'Tick off cards, complete sets, see value and movement of your cards. Free, with e-mail and password.',
+    gast_markt_t: 'The market – with an account', gast_markt_u: 'Sets on the rise, movement of your cards, price history per card. The overview is free, rankings are part of Plus.',
+    gast_start_t: 'Your binder only lives in this browser', gast_start_u: 'With an account it is on all your devices, plus collection, wishlist and price alerts. Free.',
+    gast_start_grund: 'Sign up for free – your binder comes along.',
+    st_gast_gruss: 'Welcome to Binderplan!', st_gast_u: 'Plan your first binder – no account needed. Card by card or from a template.',
     f_variante: 'Variant',
     geb_ungueltig: 'Please enter a valid date of birth (DD.MM.YYYY).',
     tarif_life_hinweis: 'You have Lifetime – everything is unlocked. Buy credits for artwork pages here.',
@@ -4533,26 +4542,16 @@ function mobilFilter(an) {
  *  Gäste bekommen dort stattdessen die Filter, die sie in der Suche am häufigsten brauchen. */
 /** Genau ein Eintrag der unteren Leiste ist markiert. */
 function mnavMarkieren(id) {
-  ['mnav-start', 'mnav-suche', 'mnav-binder', 'mnav-sammlung', 'mnav-vitrine'].forEach((k) => {
+  ['mnav-start', 'mnav-binder', 'mnav-sammlung', 'mnav-markt', 'mnav-vitrine'].forEach((k) => {
     const el = $(k);
     if (el) el.classList.toggle('on', k === id);
   });
 }
 
-function mnavStart() {
-  if (S.user) { ansicht('start'); return; }
-  mobilFilter();
-}
+function mnavStart() { ansicht('start'); }
 
-function mnavAnpassen() {
-  const start = $('mnav-start'), lbl = $('mnav-start-lbl');
-  if (!start || !lbl) return;
-  lbl.textContent = S.user ? t('start_nav') : t('m_filter');
-  start.title = S.user ? t('start_nav') : t('m_filter');
-  start.querySelector('svg').innerHTML = S.user
-    ? '<path d="M3 9.2 10 3.5l7 5.7" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 8.6V16.5h10V8.6" fill="none" stroke="currentColor" stroke-width="1.7"/>'
-    : '<path d="M2.5 3.5h15L11 11v5.5l-3 1.5V11z" fill="none" stroke="currentColor" stroke-width="1.7"/>';
-}
+/** Dieselben fünf Orte für Gäste und Konten – Gäste bekamen vorher einen Reiter „Filter". */
+function mnavAnpassen() {}
 
 function mobilAnsicht(w) {
   // Vitrine, Sammlung, Profil und Startseite liegen über der Werkbank — wer unten auf
@@ -4563,7 +4562,7 @@ function mobilAnsicht(w) {
   if (!$('startseite').classList.contains('hidden')) startSchliessen();
   if (!$('profilseite').classList.contains('hidden')) profilSchliessen();
   document.body.classList.toggle('binder-an', w === 'binder');
-  mnavMarkieren(w === 'binder' ? 'mnav-binder' : 'mnav-suche');
+  mnavMarkieren('mnav-binder');   // Suche ist ein Zustand des Binders, kein eigener Ort
   mobilFilter(false);
   if (w === 'binder') zeichneBinder();
   zeichneSeitenleiste();
@@ -4646,8 +4645,7 @@ function setLang(lang) {
   LANG = lang; localStorage.setItem('bp_lang', lang);
   if (!KLANG_EIGEN && KLANG !== lang) setKartensprache(lang, true);   // Karten folgen der Oberfläche
   try { document.cookie = 'bp_lang=' + lang + '; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}   // Startseite / vs. /en
-  $('lang-de').classList.toggle('on', lang === 'de');
-  $('lang-en').classList.toggle('on', lang === 'en');
+  if ($('lang-de')) { $('lang-de').classList.toggle('on', lang === 'de'); $('lang-en').classList.toggle('on', lang === 'en'); }
   document.querySelectorAll('[data-lang-opt]').forEach((b) => b.classList.toggle('on', b.dataset.langOpt === lang));
   if ($('f-lang-de')) { $('f-lang-de').classList.toggle('on', KLANG === 'de'); $('f-lang-en').classList.toggle('on', KLANG === 'en'); }
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
@@ -4744,7 +4742,7 @@ async function boot() {
       if (d.binder.length) { S.binder = await api('api/binders/' + d.binder[0].id); merkeBinderId(S.binder.id); }
     } catch (e) {}
   }
-  const zeigeStart = S.user && (!hash || hash === 'start');
+  const zeigeStart = (S.user && !hash) || hash === 'start';
   if (!S.binder && !zeigeStart) S.binder = lokalerBinder();   // wird erst mit der ersten Karte gespeichert
   if (S.binder) binderAnzeigen();
   if (einstieg && einstieg.art === 'set') { filter.set = einstieg.id; $('f-set').value = einstieg.id; zeichneSetWahlKnopf(); }
@@ -4776,7 +4774,7 @@ function ansichtAktivieren() {
   document.querySelector('.spalte-mitte').classList.add('hidden');
   document.body.classList.add('nur-ansicht');
   document.querySelectorAll('#wb-sammel, .mobil-only').forEach((el) => el.classList.add('hidden'));
-  $('bw-name').textContent = S.binder.name;
+  $('wb-titel').textContent = S.binder.name;
   // Mobil: direkt die Binder-Ansicht zeigen, Such-/Filter-Knöpfe ausblenden
   document.body.classList.add('binder-an');
   ['mnav-filter', 'mnav-suche', 'mnav-binder'].forEach((id) => { const el = $(id); if (el) el.classList.add('hidden'); });
@@ -5140,8 +5138,10 @@ async function aboVerwalten() {
 
 // ---------- Übersichtsseite ----------
 async function startOeffnen() {
-  if (!S.user) return;
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // sammlung.js kommt per defer nach diesem Skript – beim Start kann es noch fehlen
+  vitrineSchliessen(); if (typeof sammlungSchliessen === 'function') sammlungSchliessen();
+  if (typeof marktSchliessen === 'function') marktSchliessen();
   $('profilseite').classList.add('hidden');
   $('profilseite').classList.add('hidden');
   $('startseite').classList.remove('hidden');
@@ -5149,6 +5149,7 @@ async function startOeffnen() {
   mnavMarkieren('mnav-start');
   reiterSetzen('seg-start');
   hashSetzen('start');
+  if (typeof zeichneSeitenleiste === 'function') zeichneSeitenleiste();
   $('st-gruss').textContent = S.user && S.user.name ? t('hallo') + ', ' + S.user.name + '!' : t('hallo') + '!'; startNameFrage();
   await startLaden();
 }
@@ -5173,16 +5174,27 @@ async function startLaden() {
   const faecher = liste.reduce((a, b) => a + b.anzahl, 0);
 
   // Kopf
-  $('st-gruss').textContent = S.user && S.user.name ? t('hallo') + ', ' + S.user.name + '!' : t('hallo') + '!'; startNameFrage();
+  $('st-gruss').textContent = !S.user ? t('st_gast_gruss') : S.user.name ? t('hallo') + ', ' + S.user.name + '!' : t('hallo') + '!'; startNameFrage();
   const bezahlt = S.user && S.user.plan && S.user.plan !== 'free';
   $('st-plan').textContent = (S.user && S.user.plan_name) || t('tarif_frei');
   $('st-plan').classList.toggle('bezahlt', !!bezahlt);
-  $('st-unter').textContent = liste.length ? t('st_unter_voll') : t('st_unter_leer');
+  $('st-plan').classList.toggle('hidden', !S.user);
+  $('st-profil-btn').textContent = S.user ? t('profil') : t('anmelden');
+  $('st-unter').textContent = !S.user ? t('st_gast_u') : liste.length ? t('st_unter_voll') : t('st_unter_leer');
+  // Gäste: dieselbe Seite, ein Kasten mit dem Angebot statt der Konto-Blöcke
+  $('st-gast').hidden = !!S.user;
+  if (!S.user) $('st-gast').innerHTML = `<strong>${t('gast_start_t')}</strong><span>${t('gast_start_u')}</span>
+      <div class="gast-knoepfe"><button class="btn" onclick="loginOeffnen(t('gast_start_grund'))">${t('gast_registrieren')}</button>
+      <button class="btn sekundaer" onclick="loginOeffnen('');authTab('login')">${t('gast_anmelden')}</button></div>`;
 
-  creatorNeuLaden();
-  if (typeof zieleStartLaden === 'function') zieleStartLaden();
-  if (typeof alarmeStartLaden === 'function') alarmeStartLaden();
-  if (typeof digestStartLaden === 'function') digestStartLaden();
+  if (S.user) {
+    creatorNeuLaden();
+    if (typeof zieleStartLaden === 'function') zieleStartLaden();
+    if (typeof alarmeStartLaden === 'function') alarmeStartLaden();
+    if (typeof digestStartLaden === 'function') digestStartLaden();
+  } else {
+    ['st-alarme-block', 'st-ziele-block', 'st-digest-block', 'st-creator-neu'].forEach((id) => { const el = $(id); if (el) el.hidden = true; });
+  }
 
   // Zahlenband: drei Kacheln statt vier. Zwei der alten vier sagten, wie viel *geplant* ist,
   // und keine sagte, was sich verändert hat — dabei rechnet die Sammlung die 7-Tage-Bewegung
@@ -5510,7 +5522,7 @@ function binderAnzeigen() {
   hashSetzen(S.binder.id ? 'binder/' + S.binder.id : '');
   vitrineKnopf();
   $('wb-name').value = S.binder.name;
-  $('bw-name').textContent = S.binder.name || t('neuer_binder');
+  $('wb-titel').textContent = S.binder.name || t('neuer_binder');
   S.seite = 0; S.preise = {};
   zeichneLayouts();
   wantsSchalterSetzen();
@@ -7991,7 +8003,7 @@ function routeLesen() {
 }
 
 // Ansichten, die eine eigene Adresse führen
-const ROUTEN = ['start', 'suche', 'planer', 'sammlung', 'vitrine', 'markt', 'auswertung'];
+const ROUTEN = ['start', 'suche', 'planer', 'sammlung', 'vitrine', 'markt', 'auswertung', 'profil'];
 
 function ebeneOeffnen(schliesser) {
   EBENEN.push(schliesser);
@@ -8532,6 +8544,7 @@ function ansicht(w) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (w !== 'profil' && !$('profilseite').classList.contains('hidden')) profilSchliessen();   // Reiter über der Profilseite
   if (w === 'start') { startOeffnen(); return; }
+  if (w === 'profil') { profilOeffnen(); return; }
   if (typeof startSchliessen === 'function' && !$('startseite').classList.contains('hidden')) startSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
   if (w !== 'sammlung' && w !== 'auswertung') sammlungSchliessen();
@@ -8550,7 +8563,7 @@ function ansicht(w) {
     else { breiteAnpassen(); zeichneBinder(); }
     werkbankZeigen();
     reiterSetzen('seg-suche');
-    mnavMarkieren(document.body.classList.contains('binder-an') ? 'mnav-binder' : 'mnav-suche');
+    mnavMarkieren('mnav-binder');
     if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
   }
 }
@@ -8748,18 +8761,39 @@ function marktFensterZeichnen() {
   l.classList.toggle('on', MKT.fenster === 30);
 }
 function marktOeffnen() {
-  if (!S.user) return loginOeffnen(t('an_markt_login'));
+  if (!S.user) return gastOrt('marktseite', marktSchliessen, 'seg-markt', 'mnav-markt', t('gast_markt_t'), t('gast_markt_u'), t('an_markt_login'));
+  gastKarteWeg('marktseite');
   hashSetzen('markt');
   planerSchliessen(); vitrineSchliessen(); sammlungSchliessen(); auswertungSchliessen(); profilseiteSchliessen();
   $('marktseite').classList.remove('hidden');
   ebeneOeffnen(marktSchliessen);
   reiterSetzen('seg-markt');
-  mnavMarkieren('mnav-mehr');
+  mnavMarkieren('mnav-markt');
   const marke = $('mk-marke');
   if (marke) marke.classList.toggle('hidden', !!(S.user && S.user.plan && S.user.plan !== 'free'));
   marktFensterZeichnen();
   marktLaden();
 }
+/** Ein Ort für Gäste: die Fläche bleibt, darüber liegt ein Kasten mit dem Angebot und den
+ *  beiden Wegen ins Konto. Vorher sprang ein Anmelde-Dialog auf, und der Reiter wirkte kaputt. */
+function gastOrt(id, schliesser, reiter, mnav, titel, text, grund) {
+  document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  vitrineSchliessen(); if (typeof sammlungSchliessen === 'function') sammlungSchliessen(); profilseiteSchliessen();
+  if (typeof marktSchliessen === 'function' && id !== 'marktseite') marktSchliessen();
+  if (!$('startseite').classList.contains('hidden')) startSchliessen();
+  const ort = $(id);
+  const war = !ort.classList.contains('hidden');
+  ort.classList.remove('hidden');
+  if (!war) ebeneOeffnen(schliesser);
+  reiterSetzen(reiter); mnavMarkieren(mnav);
+  let karte = ort.querySelector('.gast-karte');
+  if (!karte) { karte = document.createElement('div'); karte.className = 'gast-karte'; ort.appendChild(karte); }
+  karte.innerHTML = `<div class="gast-box"><strong>${esc(titel)}</strong><span>${esc(text)}</span>
+    <div class="gast-knoepfe"><button class="btn" onclick="loginOeffnen(${JSON.stringify(grund).replace(/"/g, '&quot;')})">${t('gast_registrieren')}</button>
+    <button class="btn sekundaer" onclick="loginOeffnen('');authTab('login')">${t('gast_anmelden')}</button></div></div>`;
+}
+function gastKarteWeg(id) { const k = $(id) && $(id).querySelector('.gast-karte'); if (k) k.remove(); }
+
 function marktSchliessen() {
   if (!$('marktseite') || $('marktseite').classList.contains('hidden')) return;
   ebeneAufraeumen(marktSchliessen);
@@ -9105,6 +9139,7 @@ function druckOeffnen() {
   if (!S.binder.items.length) return toast(t('binder_leer'));
   if (!S.user) return loginOeffnen(t('gate_pdf'));
   DR.umfang = 'alle';
+  druckArt('karten');
   $('dr-seiten').value = '';
   $('dr-fehlend').checked = false;
   $('dr-nurart').checked = false;
@@ -9177,7 +9212,20 @@ function druckVorschau() {
   $('dr-vorschau').dataset.n = n;
 }
 
+/** Art des Drucks: Platzhalter (mit allen Optionen), Checkliste, Kaufliste als CSV. */
+function druckArt(art) {
+  DR.art = art;
+  ['karten', 'checkliste', 'kaufliste'].forEach((a) => { const b = $('dra-' + a); if (b) b.classList.toggle('on', a === art); });
+  $('dr-optionen').classList.toggle('hidden', art !== 'karten');
+  const hin = $('dr-art-hinweis');
+  hin.classList.toggle('hidden', art === 'karten');
+  hin.textContent = art === 'checkliste' ? t('dr_check_u') : art === 'kaufliste' ? t('dr_kauf_u') : '';
+  $('dr-start-btn').textContent = art === 'checkliste' ? t('dr_start_check') : art === 'kaufliste' ? t('dr_start_kauf') : t('dr_start');
+}
+
 function druckStarten() {
+  if (DR.art === 'checkliste') { modalSchliessen(); return exportPdf('checkliste', 0); }
+  if (DR.art === 'kaufliste') { modalSchliessen(); return kaufliste(); }
   if (Number($('dr-vorschau').dataset.n || 0) === 0) return toast(t('dr_v_nichts'));
   const seiten = DR.umfang === 'alle' ? '' : $('dr-seiten').value.trim();
   modalSchliessen();
@@ -9327,7 +9375,7 @@ $('f-rgroup-select').addEventListener('change', () => { rgroupToggle($('f-rgroup
 $('f-trainer').addEventListener('change', () => { filter.trainer = $('f-trainer').value; mehrFilterZahl(); sucheNeu(); });
 $('f-jahr-von').addEventListener('change', () => { filter.jahrVon = Number($('f-jahr-von').value) || 0; mehrFilterZahl(); sucheNeu(); });
 $('f-jahr-bis').addEventListener('change', () => { filter.jahrBis = Number($('f-jahr-bis').value) || 0; mehrFilterZahl(); sucheNeu(); });
-$('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; $('bw-name').textContent = S.binder.name || t('neuer_binder'); speichern(); } });
+$('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $('wb-name').value; $('wb-titel').textContent = S.binder.name || t('neuer_binder'); speichern(); } });
 
 
 // ============================================================================
@@ -10613,8 +10661,8 @@ async function artworkLoeschen() {
 boot();
 </script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609100022"></script>
+<script defer src="assets/markt.js?v=202609100033"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609100022"></script>
+<script defer src="assets/sammlung.js?v=202609100033"></script>
 </body>
 </html>

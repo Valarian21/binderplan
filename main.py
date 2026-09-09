@@ -4718,7 +4718,8 @@ def _hash_pw(pw: str, salt: str) -> str:
 # Der Cookie existiert nur, damit <img src="…">-Tags Bilder laden können — dort lässt sich
 # kein Authorization-Kopf setzen. Für alles andere zählt allein der Bearer-Token: sonst genügt
 # ein Link auf /api/binders/<id>/pdf, um beim Opfer einen Monats-Export und Credits zu verbrauchen.
-_COOKIE_PFADE = ("/api/artwork/",)
+# Bild-Adressen, die der Browser ohne Bearer-Header lädt (<img>): dort zählt der Cookie.
+_COOKIE_PFADE = ("/api/artwork/", "/api/binders/")
 
 
 def _current_user(request: Request):
