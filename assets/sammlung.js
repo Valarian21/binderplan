@@ -181,22 +181,31 @@ async function sammlungLaden() {
 /** Vier Zahlen, die auf jedem Reiter stehen: Wert und Bewegung, Einsatz und Gewinn,
  *  Sets, Rest zu den Zielen. Vorher war es eine Zeile ohne Bewegung und ohne Ziel. */
 function zeichneSammlungKopf() {
-  const k = SM.kopf || {}, band = $('sm-band');
-  if (k.leer) { band.innerHTML = ''; band.classList.add('hidden'); return; }
+  const k = SM.kopf || {}, band = $('sm-band'), zeile = $('sm-zeile');
+  if (k.leer) { band.innerHTML = ''; band.classList.add('hidden'); if (zeile) zeile.innerHTML = ''; return; }
   band.classList.toggle('hidden', !!SM.seite);
+  if (zeile) zeile.classList.toggle('hidden', !!SM.seite);
   const gewinnText = k.einsatz != null
     ? `${k.gewinn >= 0 ? '+' : ''}${anEur(k.gewinn, 0)} · ${anProz(k.gewinn_proz)}` : t('an_kein_kaufpreis');
+  // Kacheln nur, wo es Zahlen gibt: „Eingesetzt" und „Ziele" standen leer mit Erklärtext da
+  // und nahmen die halbe Seite ein.
   band.innerHTML = mkKachel({ lbl: t('sm_k_wert'), zahl: anEur(k.wert, 0), delta: k.bew7,
                               unter: k.bew7_eur != null ? `${k.bew7_eur >= 0 ? '+' : ''}${anEur(k.bew7_eur, 0)} · ${t('mk_7t')}` : t('mk_7t') })
-    + mkKachel({ lbl: t('an_einsatz'), zahl: k.einsatz != null ? anEur(k.einsatz, 0) : '—',
-                 delta: k.einsatz != null ? k.gewinn_proz : undefined, unter: gewinnText,
-                 klick: `sammlungBereich('auswertung')` })
+    + (k.einsatz != null ? mkKachel({ lbl: t('an_einsatz'), zahl: anEur(k.einsatz, 0), delta: k.gewinn_proz, unter: gewinnText,
+                                      klick: `sammlungBereich('auswertung')` }) : '')
     + mkKachel({ lbl: t('sm_k_sets'), zahl: anZahl(k.sets),
                  unter: t('sm_k_sets_u').replace('{f}', k.sets_fast).replace('{k}', k.sets_komplett),
                  klick: `sammlungBereich('sets')` })
-    + mkKachel({ lbl: t('sm_k_ziel'), zahl: k.ziele ? anEur(k.ziel_rest, 0) : '—',
-                 unter: k.ziele ? t('sm_k_ziel_u').replace('{n}', k.ziele).replace('{k}', anZahl(k.ziel_fehlt)) : t('sm_k_ziel_leer'),
-                 klick: `sammlungBereich('sets')` });
+    + (k.ziele ? mkKachel({ lbl: t('sm_k_ziel'), zahl: anEur(k.ziel_rest, 0),
+                            unter: t('sm_k_ziel_u').replace('{n}', k.ziele).replace('{k}', anZahl(k.ziel_fehlt)),
+                            klick: `sammlungBereich('sets')` }) : '');
+  // Handy: eine Zeile – Wert, Bewegung, Karten, Sets – und die fehlenden Angaben als Chip
+  if (zeile) {
+    const bew = k.bew7 != null ? `<span class="${k.bew7 > 0.05 ? 'an-plus' : k.bew7 < -0.05 ? 'an-minus' : ''}">${anProz(k.bew7)}</span>` : '';
+    zeile.innerHTML = `<b>${anEur(k.wert, 0)}</b>${bew ? ' · ' + bew : ''} · ${t('sm_z_karten').replace('{n}', anZahl(k.karten || SM.karten.length))} · ${t('sm_z_sets').replace('{n}', anZahl(k.sets))}`
+      + (k.einsatz == null ? ` <button class="chip" onclick="sammlungBereich('auswertung')">${t('sm_z_kaufpreise')}</button>` : '')
+      + (k.ziele ? '' : ` <button class="chip" onclick="sammlungBereich('sets')">${t('sm_z_ziel')}</button>`);
+  }
 }
 
 /** Kachel wie im Markt: Zahl, Bewegung, Zeile darunter. Fällt auf eine schlichte Form

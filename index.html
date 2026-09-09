@@ -1990,6 +1990,64 @@
     .mnav #mnav-binder { display: flex; }
     body.suche-offen .toast { bottom: 80px; }
   }
+
+  /* Karten-Dialog: Aktionen oben, Reiter statt langer Seite */
+  .d-tabs { display: flex; gap: 2px; border-bottom: 1.5px solid var(--line); margin: 12px 0 10px; }
+  .d-tabs button { padding: 7px 12px; font-size: 13px; font-weight: 700; color: var(--mut); border-bottom: 2px solid transparent; margin-bottom: -1.5px; border-radius: 6px 6px 0 0; }
+  .d-tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .d-tabs button:hover { background: var(--hover); }
+  .d-tab-n { font-size: 11px; background: var(--panel2); border-radius: 999px; padding: 1px 6px; margin-left: 2px; }
+  .detail .d-aktion { position: static; margin: 4px 0 0; padding: 0; }
+  @media (max-width: 700px) {
+    .detail .d-aktion { position: sticky; top: 0; bottom: auto; z-index: 2; background: var(--card); padding: 8px 0; margin: 0; }
+  }
+
+  /* ===== Phase 4: Sammlung, Markt und Start am Handy ===== */
+  .sm-zeile { display: none; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--mut); margin: -2px 0 10px; }
+  .sm-zeile b { color: var(--ink); font-size: 15px; }
+  .sm-zeile .chip { font-size: 11.5px; }
+  .sm-karte .sm-name { font-size: 12.5px; }
+  .sm-karte .sm-meta { font-size: 11px; }
+  .sm-karte .sm-wert { font-size: 13px; }
+  .sm-bew { padding: 1px 6px; border-radius: 999px; background: var(--panel2); }
+  .sm-bew.plus { background: var(--gruen-weich, rgba(47,143,91,.12)); }
+  .sm-bew.minus { background: rgba(228,50,43,.1); }
+  .stat-zeile.klickbar { cursor: pointer; border-radius: 6px; }
+  .stat-zeile.klickbar:hover { background: var(--hover); }
+  @media (max-width: 700px) {
+    #sm-band { display: none; }
+    .sm-zeile { display: flex; }
+    #sammlung .an-chips, #sm-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    #sammlung .an-chips::-webkit-scrollbar, #sm-filter::-webkit-scrollbar { display: none; }
+    #sammlung .an-chips .chip, #sm-filter .chip { flex-shrink: 0; }
+    /* Markt: Zurück und „Meine Sammlung" hat die Leiste; Reiter in einer Zeile zum Wischen */
+    .mk-zurueck, .mk-meine { display: none !important; }
+    #marktseite .planer-kopf { flex-wrap: wrap; row-gap: 8px; }
+    #mk-reiter { order: 10; flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0 !important; }
+    #mk-reiter::-webkit-scrollbar { display: none; }
+    #mk-reiter .chip { flex-shrink: 0; }
+    #mk-fenster { margin-left: auto; }
+    /* Markt-Zeilen als Karten: Rang, Name, Bewegung – der Verlauf darunter */
+    .mk-zeile { grid-template-columns: 18px minmax(0, 1fr) 64px; row-gap: 2px; }
+    .mk-zeile > svg { grid-column: 2 / 4; height: 22px; width: 100%; }
+    .mk-zeile .n { display: none; }
+    /* Start: Zahlenband als eine Karte, Binder als Zeilen, Vitrine wischbar */
+    .st-band { display: flex; gap: 0; border: 1.5px solid var(--line); border-radius: 14px; padding: 6px 4px; margin-bottom: 18px; }
+    .st-band .st-zahl { flex: 1; border: none; padding: 8px 10px; border-radius: 10px; }
+    .st-band .st-zahl .z { font-size: 18px; }
+    .st-band .st-zahl .l { font-size: 11px; }
+    .st-band .st-zahl .u { font-size: 10.5px; }
+    .binder-grid { grid-template-columns: 1fr; gap: 8px; }
+    .binder-grid .bcard { display: grid !important; grid-template-columns: 104px minmax(0, 1fr); gap: 2px 12px; align-items: center; padding: 8px; }
+    .binder-grid .bcard:nth-child(n+4):not(.neu) { display: none !important; }
+    .binder-grid.alle .bcard { display: grid !important; }
+    .binder-grid .bcard .bstapel, .binder-grid .bcard .bthumbs { grid-row: 1 / span 4; margin: 0; }
+    .binder-grid .bcard .badge { display: none; }
+    .binder-grid .bcard.neu { display: flex !important; justify-content: center; }
+    .st-vitrine { display: flex; overflow-x: auto; gap: 10px; scrollbar-width: none; padding-bottom: 4px; }
+    .st-vitrine::-webkit-scrollbar { display: none; }
+    .st-vitrine > * { flex: 0 0 150px; display: block !important; }
+  }
 </style>
 </head>
 <body>
@@ -3238,6 +3296,8 @@
     </div>
   </div>
   <div class="mk-band" id="sm-band"></div>
+  <!-- Am Handy: eine Zeile statt vier Kacheln, die halb leer waren -->
+  <div class="sm-zeile" id="sm-zeile"></div>
   <div id="sm-rumpf"></div>
   <div id="sm-karten-teil">
     <div class="sm-leiste">
@@ -3265,12 +3325,12 @@
 <!-- Marktseite -->
 <div id="marktseite" class="seite-voll hidden">
   <div class="planer-kopf">
-    <button class="btn sekundaer" style="font-size:13px" onclick="marktSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
+    <button class="btn sekundaer mk-zurueck" style="font-size:13px" onclick="marktSchliessen()">‹ <span data-i18n="zurueck">Zurück</span></button>
     <div style="font-size:15px;font-weight:700" data-i18n="markt">Markt</div>
     <span class="an-marke" id="mk-marke">Pro</span>
     <div class="f-chips" id="mk-reiter" style="margin-left:8px"></div>
     <div style="flex:1"></div>
-    <button class="btn sekundaer" style="font-size:12.5px" onclick="ansichtSammlung('sets')"
+    <button class="btn sekundaer mk-meine" style="font-size:12.5px" onclick="ansichtSammlung('sets')"
             data-i18n="mk_meine_link">Meine Sammlung ›</button>
     <!-- Zwei Fenster statt drei Zeiträume: die Bewegung kommt aus den Cardmarket-Schnitten
          über 7 und 30 Tage, längere Zeiträume gäbe die Quelle nicht her. -->
@@ -3292,6 +3352,8 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    sm_z_karten: '{n} Karten', sm_z_sets: '{n} Sets', sm_z_kaufpreise: 'Kaufpreise eintragen ›', sm_z_ziel: 'Ziel setzen ›',
+    d_tab_preise: 'Preise', d_tab_drucke: 'Drucke', d_tab_reihe: 'Reihe',
     lade_fuer: 'Für Fach {n}', fach_wort: 'Fach', ik_leer_t: 'Fach {n} ist leer', ik_leer_u: 'Wähle eine Karte aus der Suche – sie landet hier.',
     ik_aktionen: 'Aktionen', ik_hat: 'In der Sammlung', ik_hat_nicht: 'Hab ich', v_normal_kurz: 'Normal',
     dr_art_karten: 'Platzhalter', dr_art_check: 'Checkliste', dr_art_kauf: 'Kaufliste CSV',
@@ -3908,6 +3970,8 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    sm_z_karten: '{n} cards', sm_z_sets: '{n} sets', sm_z_kaufpreise: 'Add purchase prices ›', sm_z_ziel: 'Set a goal ›',
+    d_tab_preise: 'Prices', d_tab_drucke: 'Printings', d_tab_reihe: 'Line',
     lade_fuer: 'For slot {n}', fach_wort: 'Slot', ik_leer_t: 'Slot {n} is empty', ik_leer_u: 'Pick a card from the search – it lands here.',
     ik_aktionen: 'Actions', ik_hat: 'In collection', ik_hat_nicht: 'I have it', v_normal_kurz: 'Normal',
     dr_art_karten: 'Placeholders', dr_art_check: 'Checklist', dr_art_kauf: 'Buy list CSV',
@@ -8969,8 +9033,9 @@ async function statistikOeffnen() {
   const selten = zaehl((k) => k.rarity).slice(0, 8);
   const illus = zaehl((k) => k.illustrator).slice(0, 5);
 
-  const balken = (liste, gesamt) => liste.map(([name, n]) => `
-    <div class="stat-zeile">
+  // Ein Balken ist ein Filter: der Illustrator-Balken öffnet die Suche mit genau diesem Künstler.
+  const balken = (liste, gesamt, klick) => liste.map(([name, n]) => `
+    <div class="stat-zeile ${klick ? 'klickbar' : ''}" ${klick ? `onclick="${klick(name)}" role="button" tabindex="0"` : ''}>
       <span class="stat-name">${esc(name)}</span>
       <span class="stat-bar"><i style="width:${Math.max(3, n / gesamt * 100).toFixed(1)}%"></i></span>
       <span class="stat-n">${n}</span>
@@ -8986,7 +9051,7 @@ async function statistikOeffnen() {
     ${jahre.length > 1 ? `<h3 class="stat-h">${t('st_jahrgang')}</h3>${balken(jahre, groesste)}` : ''}
     ${setz.length ? `<h3 class="stat-h">${t('st_topsets')}</h3>${balken(setz, setz[0][1])}` : ''}
     ${selten.length ? `<h3 class="stat-h">${t('st_selten')}</h3>${balken(selten, selten[0][1])}` : ''}
-    ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1])}` : ''}`;
+    ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1], (n) => `modalSchliessen();illuSetzen(${JSON.stringify(n).replace(/"/g, '&quot;')});sucheLadeOeffnen()`)}` : ''}`;
 }
 
 function planerKlick(ev, idx) { fachKlick(ev, idx); }
@@ -9955,6 +10020,12 @@ function detailModalZeigen() {
   if ($('modal-detail').classList.contains('hidden')) modalOeffnen('modal-detail');
 }
 
+/** Reiter im Karten-Dialog: Preise (Trend, Zustände, Verlauf) · Drucke (andere Ausgaben) · Reihe. */
+function detailTab(name, btn) {
+  document.querySelectorAll('#detail-inhalt .d-tab').forEach((el) => el.classList.toggle('hidden', el.dataset.tab !== name));
+  document.querySelectorAll('#detail-tabs button').forEach((b) => b.classList.toggle('on', b === btn));
+}
+
 async function detailOeffnen(idOrIdx) {
   const id = typeof idOrIdx === 'number' ? (S.ergebnisse[idOrIdx] || {}).id : idOrIdx;
   if (!id) return;
@@ -10012,7 +10083,20 @@ async function detailOeffnen(idOrIdx) {
         <h2>${esc(nm(k))}</h2>
         <div class="d-meta">${k.name_ja && k.name_ja !== nm(k) ? `<span title="${t('d_name_ja')}">${esc(k.name_ja)}</span> · ` : ''}${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · JP' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
         ${k.illustrator ? `<div class="d-meta" style="margin-top:-8px">${t('d_illu')}: <span class="d-illu" onclick="modalSchliessen();illuSetzen('${esc(k.illustrator).replace(/'/g, "\\'")}');mobilAnsicht('suche')" title="${t('d_illu_btn')}">${esc(k.illustrator)}</span></div>` : ''}
-        ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent-text);color:var(--akzent-text)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
+        <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
+          <button class="btn sekundaer" id="detail-hab" onclick="sammlungAufnehmen('${esc(k.id)}')"
+                  title="${t('sm_aufnehmen_t')}" aria-label="${t('tk_besitz')}">${(S.user && S.besitz[k.id]) ? '✓ ' + S.besitz[k.id] + '× <span class="txt">' + t('tk_besitz') + '</span>' : '✓ <span class="txt">' + t('tk_besitz') + '</span>'}</button>
+          <button class="btn sekundaer" id="detail-wunsch" onclick="wunschToggle('${esc(k.id)}', 1)" aria-label="${t('wl_titel')}">${wunschHat(k.id) ? '★ <span class="txt">' + t('wl_drauf') + '</span>' : '☆ <span class="txt">' + t('wl_titel') + '</span>'}</button>
+          <button class="btn sekundaer" id="detail-alarm" onclick="alarmOeffnen('karte', '${esc(k.id)}', ${JSON.stringify(nm(k) + ' · ' + setNm(k) + ' ' + (k.local_id || '')).replace(/"/g, '&quot;')}, ${detailPreis(k, detailVariante) || 0})" title="${t('al_t')}" aria-label="${t('al_t')}">🔔 <span class="txt">${t('al_kurz')}</span></button>
+          <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
+        </div>
+        <div class="d-tabs" id="detail-tabs">
+          <button class="on" onclick="detailTab('preise',this)">${t('d_tab_preise')}</button>
+          ${andere ? `<button onclick="detailTab('drucke',this)">${t('d_tab_drucke')} <span class="d-tab-n">${k.andere_gesamt || k.andere.length}</span></button>` : ''}
+          ${(k.familie || []).length > 1 ? `<button onclick="detailTab('reihe',this)">${t('d_tab_reihe')}</button>` : ''}
+        </div>
+        <div class="d-tab" data-tab="preise">
         <div class="d-preise">
           <div class="d-preis"><div class="z" id="detail-preis-zahl">${fmt(detailPreis(k, detailVariante))}</div><div class="l" id="detail-preis-lbl">${t('preis_trend')}</div></div>
           ${preis.eur_holo && (k.normal !== false || k.reverse) ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
@@ -10022,15 +10106,13 @@ async function detailOeffnen(idOrIdx) {
         </div>
         ${spark}
         <div class="d-zustand"><input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()"></div>
-        <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
-          <button class="btn sekundaer" id="detail-hab" onclick="sammlungAufnehmen('${esc(k.id)}')"
-                  title="${t('sm_aufnehmen_t')}" aria-label="${t('tk_besitz')}">${(S.user && S.besitz[k.id]) ? '✓ ' + S.besitz[k.id] + '× <span class="txt">' + t('tk_besitz') + '</span>' : '✓ <span class="txt">' + t('tk_besitz') + '</span>'}</button>
-          <button class="btn sekundaer" id="detail-wunsch" onclick="wunschToggle('${esc(k.id)}', 1)" aria-label="${t('wl_titel')}">${wunschHat(k.id) ? '★ <span class="txt">' + t('wl_drauf') + '</span>' : '☆ <span class="txt">' + t('wl_titel') + '</span>'}</button>
-          <button class="btn sekundaer" id="detail-alarm" onclick="alarmOeffnen('karte', '${esc(k.id)}', ${JSON.stringify(nm(k) + ' · ' + setNm(k) + ' ' + (k.local_id || '')).replace(/"/g, '&quot;')}, ${detailPreis(k, detailVariante) || 0})" title="${t('al_t')}" aria-label="${t('al_t')}">🔔 <span class="txt">${t('al_kurz')}</span></button>
-          <span style="font-size:12px;color:var(--mut)" id="detail-anz">${anzahlImBinder(k.id) ? anzahlImBinder(k.id) + '× ' + t('im_binder') : ''}</span>
         </div>
-        ${andere ? `<div class="f-lbl" style="margin-top:16px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
+        <div class="d-tab hidden" data-tab="drucke">
+        ${andere ? `<div class="f-lbl" style="margin-top:6px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
+        </div>
+        <div class="d-tab hidden" data-tab="reihe">
+        ${(k.familie || []).length > 1 ? `<div class="d-fam"><span class="f-lbl" style="margin:0">${t('d_fam')}</span>${k.familie.map((f) => `<span class="chip klein" style="cursor:default${f.dex === k.dex ? ';border-color:var(--akzent-text);color:var(--akzent-text)' : ''}">${esc(f.name)}</span>`).join('<span style="color:var(--mut)">→</span>')}<button class="btn sekundaer" style="font-size:11.5px;padding:4px 10px" onclick="familieErstellen(${k.dex})">${t('d_fam_btn')}</button></div>` : ''}
+        </div>
       </div>
     </div>`;
   if (!k.cm_url) cardmarketNachtragen(k.id);
@@ -10863,8 +10945,8 @@ async function artworkLoeschen() {
 boot();
 </script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609100043"></script>
+<script defer src="assets/markt.js?v=202609100049"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609100043"></script>
+<script defer src="assets/sammlung.js?v=202609100049"></script>
 </body>
 </html>
