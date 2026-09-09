@@ -6812,9 +6812,17 @@ def asset(name: str):
     f = BASE / "assets" / name
     if not f.exists():
         raise HTTPException(404)
+    endung = name.rsplit(".", 1)[-1]
     typ = {"css": "text/css; charset=utf-8", "woff2": "font/woff2",
-           "js": "text/javascript; charset=utf-8"}.get(name.rsplit(".", 1)[-1])
-    return FileResponse(f, media_type=typ, headers=IMG_HEADERS)
+           "js": "text/javascript; charset=utf-8"}.get(endung)
+    # Bilder und Schriften ändern sich nie — ein Jahr, unveränderlich. Skripte und
+    # Stilblätter schon: sie tragen keinen Hash im Namen, und ein „immutable" darauf hieß,
+    # dass eine ausgelieferte Fassung ein Jahr im Browser bleibt. Nach dem Umbau des Markts
+    # rief eine solche Altfassung einen Endpunkt auf, den es nicht mehr gab. Sie werden
+    # deshalb bei jedem Aufruf nachgefragt und mit 304 beantwortet, solange sie gleich sind
+    # (FileResponse setzt ETag und Last-Modified selbst).
+    kopf = {"Cache-Control": "no-cache"} if endung in ("js", "css") else IMG_HEADERS
+    return FileResponse(f, media_type=typ, headers=kopf)
 
 
 @app.get("/api/binders/{binder_id}/vorschau.png")
