@@ -24,6 +24,8 @@ import datetime
 import json
 import statistics
 
+import wert as _wert
+
 # Ab hier zählt eine Karte für die Bewegung: darunter sind die Sprünge Rundung.
 MIN_PREIS = 1.0
 # Ausreißergrenze (Trend geteilt durch Schnitt).
@@ -543,9 +545,11 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
             return {"pro": False}
         con = get_db()
         tag = _letzter_tag(con)
+        # Zustand, Ausprägung und geschätzte Preise gehören dazu: ohne sie stand hier eine
+        # andere Zahl als in der Sammlung — bei gebrauchten Karten 79 % daneben.
         posten = [dict(r) for r in con.execute(
-            "SELECT s.card_id, s.anzahl, s.variante, c.set_id, c.name_de, c.name_en, c.local_id,"
-            " p.eur, p.eur_avg7, p.eur_avg30,"
+            "SELECT s.card_id, s.anzahl, s.variante, s.zustand, c.set_id, c.name_de, c.name_en,"
+            f" c.local_id, {_wert.sql_eur()} eur, p.eur_holo, p.eur_low, p.eur_avg7, p.eur_avg30,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id"
             " LEFT JOIN card_prices p ON p.card_id = s.card_id"
@@ -558,7 +562,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         sets = []
         for sid, liste in nach_set.items():
             m = marktzeilen.get(sid, {})
-            wert = sum((p["eur"] or 0) * (p["anzahl"] or 0) for p in liste)
+            wert, _n, _o = _wert.zeilen_wert(liste)
             sets.append({"set_id": sid, "name": liste[0]["set_name"] or sid,
                          "karten": len(liste), "wert": round(wert, 2),
                          "bew30": m.get("bew30"), "markt_n": m.get("n")})
@@ -567,14 +571,12 @@ def register(app, *, get_db, current_user, require_user, ist_pro, ist_pro_stufe,
         sets.sort(key=lambda s: -s["wert"])
         bewegung = []
         for p in posten:
-            if not p["eur"] or not p["eur_avg7"] or ist_ausreisser(p["eur"], p["eur_avg7"]):
-                continue
-            diff = (p["eur"] - p["eur_avg7"]) * (p["anzahl"] or 1)
-            if abs(diff) < 0.5:
+            diff = _wert.bewegung_euro(p, "eur_avg7")
+            if diff is None or abs(diff) < 0.5:
                 continue
             bewegung.append({"id": p["card_id"], "name": p["name_de"] or p["name_en"],
                              "set": p["set_name"], "nr": p["local_id"],
-                             "anzahl": p["anzahl"], "diff": round(diff, 2),
+                             "anzahl": p["anzahl"], "diff": diff,
                              "prozent": round((p["eur"] / p["eur_avg7"] - 1) * 100, 1)})
         bewegung.sort(key=lambda z: -abs(z["diff"]))
         con.close()

@@ -189,7 +189,7 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             " c.name_de, c.name_en, c.rarity, c.set_id, c.types, c.first_dex, c.release_date,"
             " c.category, c.region, c.local_id, s.sprache,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name,"
-            " p.eur, p.eur_holo, p.eur_low, p.usd, p.eur_avg7, p.eur_avg30"
+            " COALESCE(p.eur, p.eur_geschaetzt) eur, p.eur_holo, p.eur_low, p.usd, p.eur_avg7, p.eur_avg30"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id"
             " LEFT JOIN card_prices p ON p.card_id = s.card_id"
             " WHERE s.user_id = ? AND s.anzahl > 0", (user["id"],))]

@@ -17,6 +17,8 @@ import json
 import re
 import time
 
+import wert as _wert
+
 from fastapi import HTTPException, Request
 
 _dep = {}
@@ -176,7 +178,7 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         ids = list(card_ids)
         for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
             marken = ",".join("?" * len(teil))
-            for r in con.execute("SELECT card_id, COALESCE(eur, eur_geschaetzt) eur,"
+            for r in con.execute(f"SELECT card_id, {_wert.sql_eur('card_prices')} eur,"
                                  " eur_holo, eur_low, status, eur_avg7, eur_avg30 FROM card_prices"
                                  f" WHERE card_id IN ({marken})", teil):
                 if r["eur"]:
@@ -257,6 +259,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             kurz["varianten"] = kurz["posten"]      # alter Name, solange die Oberfläche ihn nutzt
             pr = preise.get(r["id"])
             kurz["eur"] = pr["eur"] if pr else None
+            # Für die Wertvorschau im Posten-Dialog: dort wird mit derselben Regel gerechnet.
+            kurz["eur_holo"] = pr.get("eur_holo") if pr else None
+            kurz["eur_low"] = pr.get("eur_low") if pr else None
             # Woher die Zahl kommt, gehört an die Zahl. „geschaetzt" heißt aus dem
             # US-Preis umgerechnet, „zweitquelle" heißt von pokemontcg.io statt TCGdex.
             kurz["preis_quelle"] = pr.get("quelle") if pr else None
@@ -639,16 +644,9 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
     # mit einer Zahl darüber. Die Bewegung kommt — wie im Markt — aus den 7- und 30-Tage-
     # Schnitten von Cardmarket, weil die eigene Preishistorie noch zu jung ist.
 
-    AUS_UNTEN, AUS_OBEN = 1 / 3, 3.0
-
     def _bewegung(pr, feld):
-        """Prozent gegen den Schnitt; Ausreißer (Zuordnungsfehler der Quelle) bleiben leer."""
-        if not pr or not pr.get("eur") or not pr.get(feld) or pr[feld] <= 0:
-            return None
-        q = pr["eur"] / pr[feld]
-        if q > AUS_OBEN or q < AUS_UNTEN or pr["eur"] < 1 or pr[feld] < 1:
-            return None
-        return round((q - 1) * 100, 1)
+        """Prozent gegen den Schnitt — dieselbe Regel wie überall sonst (wert.py)."""
+        return _wert.bewegung_prozent((pr or {}).get("eur"), (pr or {}).get(feld))
 
     def _heute():
         return time.strftime("%Y-%m-%d")

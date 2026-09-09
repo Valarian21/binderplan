@@ -2308,7 +2308,7 @@
     <div class="unter" data-i18n="sm_posten_u">Zustand und Sprache gehören zum Exemplar. Dieselbe Karte in zwei Ausprägungen sind zwei Posten.</div>
     <div class="f-zweispaltig">
       <div><div class="f-lbl" data-i18n="f_variante">Variante</div>
-        <select class="feld" id="smp-variante"></select></div>
+        <select class="feld" id="smp-variante" onchange="smPostenWert()"></select></div>
       <div><div class="f-lbl" data-i18n="s_zustand">Zustand</div>
         <select class="feld" id="smp-zustand" onchange="smPostenWert()"></select></div>
     </div>
@@ -9501,19 +9501,16 @@ async function detailOeffnen(idOrIdx) {
   // der Trend als Nähe-Neuwert, der Tiefstpreis als das untere Ende, dazwischen die
   // Abschläge, mit denen im Handel üblicherweise gerechnet wird. Das ist eine Ableitung
   // und wird auch so benannt — keine gemessene Zahl.
-  const ZUSTAND_FAKTOR = [['M', 1.10], ['NM', 1.00], ['EX', 0.85], ['GD', 0.70],
-                          ['LP', 0.55], ['PL', 0.42], ['PO', 0.30]];
   if (preis.eur && $('detail-zustaende')) {
-    const zeilen = ZUSTAND_FAKTOR.map(([z, f]) => {
-      // Poor bekommt den echten Tiefstpreis, wenn Cardmarket einen kennt und er unter
-      // dem geschätzten liegt — ein tatsächliches Angebot schlägt jede Schätzung.
-      let wert = preis.eur * f;
-      if (z === 'PO' && preis.eur_low != null) wert = Math.min(wert, preis.eur_low);
+    // Basis ist die gewählte Ausprägung: für ein Holo-Exemplar standen hier die Preise der
+    // Normalfassung. Poor bekommt den echten Tiefstpreis, wo Cardmarket einen kennt.
+    const zeilen = Object.keys(zustandFaktoren()).map((z) => {
+      const wert = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, z);
       return `<div><span>${z}</span><strong>${fmt(wert)}</strong></div>`;
     }).join('');
     // Sieben Kacheln waren der größte Block im Dialog, obwohl es eine Ableitung ist.
     // Jetzt eine Zeile mit Aufklapper — der Nahe-Neuwert steht sichtbar, der Rest auf Klick.
-    const nm = preis.eur;
+    const nm = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, 'NM');
     $('detail-zustaende').innerHTML =
       `<button class="zst-auf" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').textContent=this.nextElementSibling.classList.contains('hidden')?'▾':'▴'">
          <span>${t('zst_titel')}</span><strong>NM ${fmt(nm)}</strong><i>▾</i></button>
@@ -9568,6 +9565,25 @@ async function detailOeffnen(idOrIdx) {
 /** Der Preis der gewählten Ausprägung. `preis.varianten` kommt aus `variants_detailed`
  *  bei TCGdex — dort hat jede Druckvariante ihr eigenes Cardmarket-Produkt. Fehlt sie,
  *  gilt die alte Zuordnung: Trend für die Grundausgabe, Trend-Holo für die zweite. */
+/* Die Zustandsfaktoren standen dreimal im Browser-Code, mit drei verschiedenen Verhalten:
+   zwei kannten den Poor-Deckel nicht, zwei rechneten nie mit dem Holo-Preis. Jetzt kommen sie
+   aus /api/meta — dieselbe Tabelle wie im Backend (wert.py) — und es gibt genau eine Funktion,
+   die sie anwendet. */
+const ZUSTAND_FAKTOR_FALLBACK = { M: 1.10, NM: 1.00, EX: 0.85, GD: 0.70, LP: 0.55, PL: 0.42, PO: 0.30 };
+function zustandFaktoren() {
+  return (S.meta && S.meta.zustand_faktor) || ZUSTAND_FAKTOR_FALLBACK;
+}
+/** Was ein Exemplar wert ist — dieselbe Regel wie wert.posten_wert() auf dem Server. */
+function postenWert(eur, eurHolo, eurLow, variante, zustand) {
+  const basis = (variante === 'holo' || variante === 'reverse') && eurHolo ? eurHolo : eur;
+  if (basis == null) return null;
+  const f = zustandFaktoren()[(zustand || '').toUpperCase()];
+  if (!f) return Math.round(basis * 100) / 100;
+  let w = basis * f;
+  if ((zustand || '').toUpperCase() === 'PO' && eurLow != null) w = Math.min(w, eurLow);
+  return Math.round(w * 100) / 100;
+}
+
 function detailPreis(k, variante) {
   const p = (k && k.preis) || {};
   const v = p.varianten || {};

@@ -329,30 +329,13 @@ def get_db():
     return con
 
 
-# Preise je Zustand veröffentlicht keine Börse. Was sich vertreten lässt: der Trend
-# steht für ein nahezu neues Exemplar, darunter die Abschläge, mit denen im Handel
-# gerechnet wird. Für Poor gilt der echte Tiefstpreis, wo er darunter liegt — ein
-# tatsächliches Angebot schlägt jede Ableitung. Dieselben Werte stehen im Kartendetail;
-# beide Stellen müssen zusammenpassen, sonst widersprechen sich Anzeige und Bewertung.
-ZUSTAND_FAKTOR = {"M": 1.10, "NM": 1.00, "EX": 0.85, "GD": 0.70,
-                  "LP": 0.55, "PL": 0.42, "PO": 0.30}
+# Was eine Karte wert ist, entscheidet ein einziges Modul: wert.py. Vorher rechnete jede
+# Ansicht selbst, und dieselbe Sammlung hatte fünf Werte — bei gebrauchten Karten lagen 79 %
+# dazwischen. Die Namen hier bleiben, damit die Aufrufer unverändert weiterlaufen.
+import wert as _wert  # noqa: E402
 
-
-def preis_fuer_posten(eur, eur_holo, eur_low, variante="normal", zustand=""):
-    """Was ein einzelnes Exemplar wert ist — Ausprägung und Zustand eingerechnet.
-
-    Ohne Zustandsangabe bleibt es beim Trend: wer nichts angegeben hat, soll keine
-    stillschweigende Abwertung bekommen."""
-    basis = eur_holo if (variante in ("holo", "reverse") and eur_holo) else eur
-    if basis is None:
-        return None
-    f = ZUSTAND_FAKTOR.get((zustand or "").upper())
-    if not f:
-        return round(basis, 2)
-    wert = basis * f
-    if (zustand or "").upper() == "PO" and eur_low is not None:
-        wert = min(wert, eur_low)
-    return round(wert, 2)
+ZUSTAND_FAKTOR = _wert.ZUSTAND_FAKTOR
+preis_fuer_posten = _wert.posten_wert
 
 
 def _spalte_da(con, tabelle, spalte):
@@ -3846,6 +3829,9 @@ def meta():
         "rarities": rarities,
         "types": TYPES_DE,
         "gens": [{"gen": g, "von": lo, "bis": hi} for g, lo, hi in GEN_RANGES],
+        # Die Zustandsfaktoren standen dreimal im Browser-Code und wichen dort voneinander ab.
+        # Jetzt kommen sie von hier; im Frontend wird nur noch nachgeschlagen.
+        "zustand_faktor": _wert.ZUSTAND_FAKTOR,
     }
 
 
@@ -5884,21 +5870,26 @@ def _items_wert(con, items):
     for start in range(0, len(ids), 600):
         teil = ids[start:start + 600]
         marken = ",".join("?" * len(teil))
-        for r in con.execute(f"SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, eur_avg30"
-                             f" FROM card_prices WHERE card_id IN ({marken})", teil):
+        for r in con.execute(f"SELECT card_id, {_wert.sql_eur('card_prices')} eur, eur_holo, eur_low,"
+                             f" eur_avg30 FROM card_prices WHERE card_id IN ({marken})", teil):
             preise[r["card_id"]] = r
-    wert = basis = diff = 0.0
+    # Jedes Fach ist ein Exemplar: liegt dieselbe Karte zweimal im Binder, zählt sie zweimal.
+    # Und ein Fach kann einen Zustand tragen (Kartendialog „Zustand" beim Einlegen) — der zählt
+    # hier genauso wie in Kaufliste und Checkliste, sonst hat derselbe Binder zwei Werte.
+    zeilen = []
+    basis = diff = 0.0
     for i in karten:
         pr = preise.get(i["id"])
         if not pr or not pr["eur"]:
             continue
-        e = pr["eur_holo"] if (i.get("variant") in ("holo", "reverse") and pr["eur_holo"]) else pr["eur"]
-        wert += e
+        zeilen.append({"eur": pr["eur"], "eur_holo": pr["eur_holo"], "eur_low": pr["eur_low"],
+                       "variante": i.get("variant") or "normal", "zustand": i.get("zustand") or ""})
         s = pr["eur_avg30"]
-        if s and pr["eur"] >= 1 and s >= 1 and 1 / 3 <= pr["eur"] / s <= 3:
+        if _wert.bewegung_prozent(pr["eur"], s) is not None:
             basis += s
             diff += pr["eur"] - s
-    return round(wert, 2), (round(diff / basis * 100, 1) if basis else None)
+    wert, _n, _ohne = _wert.zeilen_wert(zeilen, anzahl_feld=None)
+    return wert, (round(diff / basis * 100, 1) if basis else None)
 
 
 @app.get("/api/binders")

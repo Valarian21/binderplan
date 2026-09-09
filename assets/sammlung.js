@@ -730,18 +730,18 @@ function smPostenOeffnen(cardId, posten) {
   modalOeffnen('modal-sm-posten');
 }
 
-/** Was dieses Exemplar mit dem gewählten Zustand wert ist — sofort beim Umstellen.
- *  Dieselben Faktoren wie im Backend; sie stehen dort als ZUSTAND_FAKTOR. */
-const ZUSTAND_FAKTOR = { M: 1.10, NM: 1.00, EX: 0.85, GD: 0.70, LP: 0.55, PL: 0.42, PO: 0.30 };
+/** Was dieses Exemplar wert ist — sofort beim Umstellen von Ausprägung oder Zustand.
+ *  Rechnet über postenWert() aus dem Hauptskript, also mit derselben Regel wie der Server:
+ *  vorher stand hier immer der Grundpreis, für ein Holo-Exemplar also eine andere Zahl als
+ *  die, die nach dem Speichern auf der Kachel erschien. */
 function smPostenWert() {
   const el = $('smp-wert'); if (!el) return;
   const k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
-  const basis = k && k.eur;
-  if (!basis) { el.textContent = ''; return; }
+  if (!k || k.eur == null) { el.textContent = ''; return; }
   const z = $('smp-zustand').value;
-  const f = ZUSTAND_FAKTOR[z] || 1;
+  const stueck = postenWert(k.eur, k.eur_holo, k.eur_low, $('smp-variante').value, z);
+  if (stueck == null) { el.textContent = ''; return; }
   const anz = Math.max(1, parseInt($('smp-anzahl').value, 10) || 1);
-  const stueck = basis * f;
   el.innerHTML = `${t('sm_wert_posten')}: <strong>${(stueck * anz).toFixed(2).replace('.', ',')} €</strong>`
     + (anz > 1 ? ` <span style="opacity:.7">(${stueck.toFixed(2).replace('.', ',')} € ${t('sm_je_stueck')})</span>` : '')
     + (z ? '' : ` <span style="opacity:.7">– ${t('sm_ohne_zustand')}</span>`);

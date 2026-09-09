@@ -22,6 +22,8 @@ import json
 import re
 import time
 
+import wert as _wert
+
 from fastapi import HTTPException, Request
 
 ALARME_FREI = 3          # ohne Plus: drei Alarme, damit man sieht, was es bringt
@@ -166,7 +168,7 @@ def _digest_fuer(con, user_id):
     posten = [dict(r) for r in con.execute(
         "SELECT s.card_id, s.variante, s.anzahl, s.zustand, c.name_de, c.name_en, c.local_id,"
         " (SELECT name FROM sets WHERE sets.id = c.set_id) set_name,"
-        " COALESCE(p.eur, p.eur_geschaetzt) eur, p.eur_holo, p.eur_avg7"
+        f" {_wert.sql_eur()} eur, p.eur_holo, p.eur_low, p.eur_avg7"
         " FROM sammlung s JOIN cards c ON c.id = s.card_id LEFT JOIN card_prices p ON p.card_id = s.card_id"
         " WHERE s.user_id = ? AND s.anzahl > 0", (user_id,))]
     wants = [dict(r) for r in con.execute(
@@ -177,22 +179,21 @@ def _digest_fuer(con, user_id):
         " WHERE w.user_id = ?", (user_id,))]
     if not posten and not wants:
         return None
-    wert = diff = basis = 0.0
+    # Der Zustand wurde hier geladen und nie benutzt: der Rückblick nannte einen anderen Wert
+    # als die Kachel darüber. Jetzt rechnet er wie die Sammlung.
+    wert, _n, _ohne = _wert.zeilen_wert(posten)
+    diff = basis = 0.0
     bewegung = []
     for p in posten:
-        e = p["eur_holo"] if (p["variante"] in ("holo", "reverse") and p["eur_holo"]) else p["eur"]
-        if not e:
+        d = _wert.bewegung_euro(p, "eur_avg7")
+        if d is None:
             continue
-        n = p["anzahl"] or 0
-        wert += e * n
-        s7 = p["eur_avg7"]
-        if s7 and e >= 1 and s7 >= 1 and 1 / 3 <= e / s7 <= 3:
-            d = (e - s7) * n
-            diff += d
-            basis += s7 * n
-            if abs(d) >= 0.5:
-                bewegung.append({"id": p["card_id"], "name": p["name_de"] or p["name_en"], "set": p["set_name"],
-                                 "nr": p["local_id"], "diff": round(d, 2), "prozent": round((e / s7 - 1) * 100, 1)})
+        diff += d
+        basis += (p["eur_avg7"] or 0) * (p["anzahl"] or 0)
+        if abs(d) >= 0.5:
+            bewegung.append({"id": p["card_id"], "name": p["name_de"] or p["name_en"], "set": p["set_name"],
+                             "nr": p["local_id"], "diff": d,
+                             "prozent": _wert.bewegung_prozent(p["eur"], p["eur_avg7"])})
     bewegung.sort(key=lambda b: -abs(b["diff"]))
     besitz = {p["card_id"] for p in posten}
     guenstiger = []
@@ -217,7 +218,7 @@ def _digest_fuer(con, user_id):
         pass
     return {
         "woche": _woche(), "stand": _heute(),
-        "wert": round(wert, 2), "bew7_eur": round(diff, 2),
+        "wert": wert, "bew7_eur": round(diff, 2),
         "bew7": round(diff / basis * 100, 1) if basis else None,
         "karten": sum(p["anzahl"] or 0 for p in posten),
         "bewegung": bewegung[:3], "guenstiger": guenstiger[:3], "set_monat": set_monat,
