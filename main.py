@@ -6537,7 +6537,7 @@ try:
     _sammlung_kennzahlen = _sammlung.register(
         app, get_db=get_db, current_user=_current_user, require_user=_require_user, env=_env,
         card_query=_card_query, card_select=_CARD_SELECT, card_brief=_card_brief,
-        preis_fuer_posten=preis_fuer_posten,
+        preis_fuer_posten=preis_fuer_posten, ist_bezahlt=_ist_pro,
     )
 except Exception as _e:  # pragma: no cover
     print("Sammlung-Modul nicht geladen:", _e)

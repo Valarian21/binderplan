@@ -189,7 +189,7 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             " c.name_de, c.name_en, c.rarity, c.set_id, c.types, c.first_dex, c.release_date,"
             " c.category, c.region, c.local_id, s.sprache,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name,"
-            " p.eur, p.eur_holo, p.eur_low, p.usd"
+            " p.eur, p.eur_holo, p.eur_low, p.usd, p.eur_avg7, p.eur_avg30"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id"
             " LEFT JOIN card_prices p ON p.card_id = s.card_id"
             " WHERE s.user_id = ? AND s.anzahl > 0", (user["id"],))]
@@ -274,6 +274,23 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             })
         einzeln.sort(key=lambda x: -x["wert"])
 
+        # Bewegung in der Sammlung: heutiger Trend gegen den 7-Tage-Schnitt je Karte, in Euro
+        # mal Stückzahl. Ausreißer (mehr als 3× oder unter ⅓ des Schnitts) sind Zuordnungs-
+        # fehler der Quelle, keine Marktbewegung — dieselbe Regel wie im Markt.
+        bewegung = []
+        for z in besitz:
+            g, s7 = z["eur"], z["eur_avg7"]
+            if not g or not s7 or g < 1 or s7 < 1 or g / s7 > 3 or g / s7 < 1 / 3:
+                continue
+            p = preis(z) or 0
+            diff = (g - s7) * (p / g) * stk(z)
+            if abs(diff) < 0.5:
+                continue
+            bewegung.append({"id": z["card_id"], "name": z["name_de"] or z["name_en"],
+                             "set": z["set_name"] or z["set_id"], "nr": z["local_id"], "anzahl": stk(z),
+                             "diff": round(diff, 2), "prozent": round((g / s7 - 1) * 100, 1)})
+        bewegung.sort(key=lambda b: -abs(b["diff"]))
+
         con.close()
         return {
             "pro": True, "leer": False,
@@ -292,6 +309,8 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             "nach_jahrzehnt": _gruppieren(besitz, lambda z: (z["release_date"][:3] + "0er") if z["release_date"] else None, wert_z, stk, 5),
             "nach_zustand": _gruppieren(besitz, lambda z: _oder_leer(z["zustand"]), wert_z, stk, 8),
             "karten_liste": einzeln[:60],
+            "bewegung": bewegung[:14],
+            "bewegung_summe": round(sum(b["diff"] for b in bewegung), 2),
         }
 
     # ------------------------------------------------------------------- Markt

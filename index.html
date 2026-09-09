@@ -485,12 +485,19 @@
     #vitrine .vt-u { display: none; }
     #vitrine h2, #vitrine .vt-kopf h2 { font-size: 20px; }
 
-    /* Begleitleiste eines geteilten Binders: die zwei Knöpfe nebeneinander statt untereinander */
-    .vt-ansichtleiste { gap: 7px; padding: 8px 10px; }
-    .vt-ansichtleiste .btn { flex: 1; min-width: 0; font-size: 12px !important; padding: 8px 10px;
-                             justify-content: center; }
-    .vt-ansichtleiste .vt-wer { flex-basis: 100%; font-size: 12px; }
-    .vt-ansichtleiste .vt-hab { flex-basis: 100%; }
+    /* Begleitleiste eines geteilten Binders: eine schmale Leiste am unteren Rand statt eines
+       Kastens vor dem Inhalt. Die untere Navigation ist in der geteilten Ansicht ausgeblendet,
+       der Platz ist frei; die Leiste wischt seitlich, wenn sie nicht in eine Zeile passt. */
+    body.nur-ansicht .vt-ansichtleiste { position: fixed; left: 0; right: 0; bottom: 0; z-index: 59; margin: 0; max-width: none;
+                        border-radius: 14px 14px 0 0; border-width: 1.5px 0 0;
+                        padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); gap: 6px; flex-wrap: nowrap;
+                        overflow-x: auto; scrollbar-width: none; box-shadow: 0 -8px 22px rgba(0,0,0,.14); }
+    body.nur-ansicht .vt-ansichtleiste::-webkit-scrollbar { display: none; }
+    body.nur-ansicht .vt-ansichtleiste > * { flex-shrink: 0; }
+    body.nur-ansicht .vt-ansichtleiste .btn { font-size: 12px !important; padding: 8px 11px; }
+    body.nur-ansicht .vt-ansichtleiste .vt-wer { font-size: 12px; white-space: nowrap; }
+    body.nur-ansicht .vt-ansichtleiste .vt-hab { font-size: 11.5px; white-space: nowrap; }
+    body.nur-ansicht .rumpf { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
     /* Umschalter der Galerie: eine Zeile, wischbar */
     .gal-umschalter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -963,6 +970,11 @@
   .setzeile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 13px;
               border-bottom: 1px solid var(--line); font-size: 13.5px; }
   .setzeile:hover { background: var(--hover); }
+  .serie-kopf.wahl { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;
+                     cursor: pointer; padding: 8px 13px 5px; font-size: 11px; font-weight: 800; letter-spacing: .05em;
+                     text-transform: uppercase; color: var(--mut); background: var(--panel2); }
+  .serie-kopf.wahl span { font-size: 10.5px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+  .serie-kopf.wahl:hover, .serie-kopf.wahl.on { color: var(--blau); }
   .setzeile.on { background: var(--hover); }
   .setzeile .datum { margin-left: auto; color: var(--mut); font-size: 12px; white-space: nowrap; }
   .setzeile .set-sym { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
@@ -1604,7 +1616,7 @@
     body.nur-ansicht .bp-stats { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
     body.nur-ansicht .bp-kopf > * { min-width: 0; }
     /* Übernehmen-Leiste der geteilten Ansicht: kompakt, nicht vor dem Inhalt in voller Größe */
-    .vt-ansichtleiste .btn { flex: 1 1 auto; }
+    .vt-ansichtleiste .btn { flex: none; }
     /* Kopf der geteilten Ansicht: Titel und Kennzahlen untereinander statt in einer Zeile,
        die rechts aus dem Bild lief; die Lücke des ausgeblendeten Preis-Schalters schließt. */
     body.nur-ansicht .bp-kopf { display: flex !important; flex-direction: column !important; align-items: flex-start; gap: 4px; }
@@ -1737,6 +1749,61 @@
     .mk-div .dz { grid-template-columns: minmax(0, 88px) 1fr 52px; }
     .mk-kopfzeile h1 { font-size: 19px; }
   }
+
+  /* ================= Sammlung als Werkzeug (Welle C, 09.09.2026) ================= */
+  #sammlung .mk-band { margin: 10px 0 16px; }
+  .sm-bew { font-size: 10px; font-weight: 800; margin-left: 4px; color: var(--mut); }
+  .sm-bew.plus { color: var(--gruen-text); } .sm-bew.minus { color: var(--akzent-text); }
+  .sm-prog { display: block; height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; min-width: 40px; }
+  .sm-prog i { display: block; height: 100%; background: var(--blau); border-radius: 4px; }
+  .mk-kachel .sm-prog { margin: 6px 0 2px; width: 100%; }
+  .set-kopf, .set-zeile { display: grid; grid-template-columns: minmax(0, 1.4fr) 1fr 44px 84px 84px 64px; gap: 10px; align-items: center; }
+  .set-kopf { font-size: 11px; color: var(--mut); font-weight: 700; padding: 0 0 6px; border-bottom: 1.5px solid var(--line); }
+  .set-kopf .r, .set-zeile .pz, .set-zeile .n, .set-zeile .rest, .set-zeile .mk-dl { text-align: right; }
+  .set-zeile { padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .set-zeile:hover { background: var(--hover); }
+  .set-zeile .nm { min-width: 0; }
+  .set-zeile .nm b { display: block; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .set-zeile .nm small { color: var(--mut); font-size: 11.5px; }
+  .set-zeile .pz, .set-zeile .n, .set-zeile .rest { font-size: 12px; color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .set-zeile .rest { color: var(--ink); font-weight: 700; }
+  .sm-komplett { color: var(--gruen-text); font-weight: 800; }
+  .sm-zielmarke { color: var(--blau); font-weight: 700; }
+  .sm-hinweis { font-size: 11.5px; color: var(--mut); margin: 2px 0 14px; line-height: 1.6; border: 1.5px solid var(--line);
+                border-radius: 12px; padding: 10px 12px; background: var(--panel2); }
+  /* Häkchenraster eines Sets: gedämpft = fehlt, voll = gehört mir */
+  .hk-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .hk-karte { position: relative; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2);
+              text-align: left; padding: 0; opacity: .5; transition: opacity .15s, border-color .15s; }
+  .hk-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .hk-karte.hab { opacity: 1; border-color: var(--gruen-flaeche); }
+  .hk-karte:hover { opacity: 1; }
+  .hk-karte .hk-nr { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,.62); color: #fff; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 999px; }
+  .hk-karte .hk-hab { position: absolute; top: 3px; right: 3px; background: var(--gruen-flaeche); color: #fff; font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px; display: none; }
+  .hk-karte.hab .hk-hab { display: block; }
+  .hk-karte .hk-preis { display: block; font-size: 10.5px; font-weight: 700; padding: 3px 5px; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .hk-karte.hab .hk-preis { color: var(--ink); }
+  /* Ziele auf der Startseite */
+  .st-ziele { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .st-ziel { text-align: left; border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--card); display: grid; gap: 6px; }
+  .st-ziel:hover { border-color: var(--kontur); }
+  .st-ziel .zk { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; align-items: baseline; }
+  .st-ziel .zk b { font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st-ziel .zk span { color: var(--mut); font-size: 12px; white-space: nowrap; }
+  .st-ziel .zu { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--mut); font-weight: 600; }
+  /* Kaufpreis-Toast */
+  #toast-kauf input { width: 78px; padding: 5px 8px; border-radius: 8px; border: none; font-weight: 700; font-size: 13px;
+                      background: rgba(255,255,255,.16); color: inherit; }
+  #toast-kauf input::placeholder { color: inherit; opacity: .5; }
+  #toast-kauf button { text-decoration: none; background: rgba(255,255,255,.2); padding: 5px 10px; border-radius: 8px; color: inherit; }
+  @media (max-width: 700px) {
+    .set-kopf span:nth-child(3), .set-kopf span:nth-child(4), .set-zeile .pz, .set-zeile .n { display: none; }
+    .hk-gitter { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+    #sammlung .sm-kopf .segment { order: 3; width: 100%; }
+    #sammlung .sm-kopf .segment button { flex: 1; padding: 7px 4px; font-size: 11.5px; white-space: nowrap; }
+    #sammlung .sm-kopf .segment button strong { font-weight: 800; }
+    .set-kopf, .set-zeile { grid-template-columns: minmax(0, 1fr) 52px 66px 52px; gap: 6px; }
+  }
 </style>
 </head>
 <body>
@@ -1846,7 +1913,10 @@
            Die Ära steht über dem Set, weil sie ihm übergeordnet ist: sie *filtert* die
            Set-Liste (siehe baueSetSelect). Vorher stand sie unter „Erweiterte Filter",
            also hinter dem, was sie einschränkt. -->
-      <div>
+      <!-- Die Ära ist kein eigenes Feld mehr: der Set-Wähler gruppiert nach Ära, und ein
+           Klick auf den Gruppenkopf wählt die ganze Ära. Das Feld bleibt versteckt, weil die
+           Filterlogik (filter.serie) weiter über seinen Wert läuft. -->
+      <div class="hidden">
         <div class="f-lbl" data-i18n="f_aera">Ära</div>
         <select class="feld" id="f-serie"></select>
       </div>
@@ -2543,6 +2613,12 @@
 
     <div class="st-band" id="st-band"></div>
 
+    <div class="st-abschnitt" id="st-ziele-block" hidden>
+      <div class="st-titel"><h2 data-i18n="st_ziele">Deine Ziele</h2>
+        <span class="mehr" onclick="startSchliessen();ansicht('sammlung');sammlungBereich('sets')" data-i18n="sm2_sets">Sets</span></div>
+      <div class="st-ziele" id="st-ziele"></div>
+    </div>
+
     <div class="st-abschnitt" id="st-weiter-block" hidden>
       <div class="st-titel"><h2 data-i18n="st_weiter">Weiter, wo du warst</h2></div>
       <div class="st-weiter" id="st-weiter"></div>
@@ -2913,50 +2989,46 @@
 </div>
 
 <div id="sammlung" class="hidden">
-  <!-- Die Wunschliste war ein Chip neben „Alle" und „Doppelte", ist aber keine Teilmenge
-       der Sammlung, sondern ihr Gegenteil — und der Chip verwandelte die ganze Seite.
-       Jetzt ein Segment wie in der Vitrine. Die drei Zahlenkacheln und der Erklärsatz
-       füllten am Handy den ersten Bildschirm, bevor die erste Karte kam. -->
+  <!-- Vier Reiter statt Bestand/Wunschliste plus einer eigenen Auswertungsseite: Karten, Sets,
+       Wunschliste, Auswertung. Sammler denken in Sets („Grundset 34 von 102"), und die
+       Auswertung ist ein Reiter, kein Ort mit eigenem Rückweg. Darüber vier Kacheln mit
+       Bewegung — der Grund, morgen wiederzukommen. -->
   <div class="sm-kopf">
     <h2 data-i18n="sm_t">Meine Sammlung</h2>
     <div class="segment" id="sm-bereich" role="tablist">
-      <button id="smb-bestand" class="on" onclick="sammlungBereich('')" data-i18n="sm_bestand">Bestand</button>
-      <button id="smb-wunsch" onclick="sammlungBereich('fehlt')" data-i18n="sm_fehlt">Wunschliste</button>
+      <button id="smb-karten" class="on" onclick="sammlungBereich('karten')" data-i18n="sm2_karten">Karten</button>
+      <button id="smb-sets" onclick="sammlungBereich('sets')" data-i18n="sm2_sets">Sets</button>
+      <button id="smb-wunsch" onclick="sammlungBereich('wunsch')">Wunschliste</button>
+      <button id="smb-auswertung" onclick="sammlungBereich('auswertung')" data-i18n="an_t">Auswertung</button>
     </div>
     <div style="flex:1"></div>
-    <div class="sm-zahlenzeile" id="sm-zahlen"></div>
-  </div>
-  <div class="sm-leiste">
-    <div class="f-chips" id="sm-filter"></div>
-    <div style="flex:1"></div>
-    <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" data-i18n-ph="sm_ph" oninput="sammlungSuchen()">
-    <div class="sortwahl" id="sm-sortwahl">
-      <select class="feld" id="sm-sort" onchange="smRichtungZeichnen();sammlungLaden()" title="Sortierung" data-i18n-title="f_sort">
-        <option value="neu" data-i18n="sm_s_neu">Zuletzt hinzugefügt</option>
-        <option value="wert" data-i18n="sm_s_wert">Wert</option>
-        <option value="anzahl" data-i18n="sm_s_anzahl">Anzahl</option>
-        <option value="name" data-i18n="sm_s_name">Name</option>
-      </select>
-      <button class="btn sekundaer richtung" id="sm-richtung" onclick="smRichtungWechseln()"></button>
+    <div style="position:relative">
+      <button class="btn sekundaer" style="font-size:13px" onclick="smExportMenu()"><span data-i18n="sm_export">Export</span> ▾</button>
+      <div class="menu hidden" id="menu-sm-export">
+        <button onclick="sammlungExport('csv')" data-i18n="sm_export_csv">Sammlung als CSV (Plus)</button>
+        <button onclick="sammlungExport('pdf')" data-i18n="sm_export_pdf">Sammlungsübersicht als PDF (Plus)</button>
+      </div>
     </div>
   </div>
-  <div class="sm-gitter" id="sm-gitter"></div>
-</div>
-
-<!-- Auswertung der eigenen Sammlung -->
-<div id="auswertungseite" class="seite-voll hidden">
-  <div class="planer-kopf">
-    <button class="btn sekundaer" style="font-size:13px" onclick="auswertungSchliessen()">‹ <span data-i18n="sammlung">Sammlung</span></button>
-    <div style="font-size:15px;font-weight:700" data-i18n="an_t">Auswertung</div>
-    <span class="an-marke">Plus</span>
-    <div style="flex:1"></div>
-    <select class="feld" id="an-zeit" style="width:auto" onchange="auswertungLaden()">
-      <option value="30" data-i18n="an_30">30 Tage</option>
-      <option value="90" selected data-i18n="an_90">90 Tage</option>
-      <option value="365" data-i18n="an_365">1 Jahr</option>
-    </select>
+  <div class="mk-band" id="sm-band"></div>
+  <div id="sm-rumpf"></div>
+  <div id="sm-karten-teil">
+    <div class="sm-leiste">
+      <div class="f-chips" id="sm-filter"></div>
+      <div style="flex:1"></div>
+      <input class="feld" id="sm-suche" style="width:170px" placeholder="Karte suchen …" data-i18n-ph="sm_ph" oninput="sammlungSuchen()">
+      <div class="sortwahl" id="sm-sortwahl">
+        <select class="feld" id="sm-sort" onchange="smRichtungZeichnen();sammlungLaden()" title="Sortierung" data-i18n-title="f_sort">
+          <option value="neu" data-i18n="sm_s_neu">Zuletzt hinzugefügt</option>
+          <option value="wert" data-i18n="sm_s_wert">Wert</option>
+          <option value="anzahl" data-i18n="sm_s_anzahl">Anzahl</option>
+          <option value="name" data-i18n="sm_s_name">Name</option>
+        </select>
+        <button class="btn sekundaer richtung" id="sm-richtung" onclick="smRichtungWechseln()"></button>
+      </div>
+    </div>
+    <div class="sm-gitter" id="sm-gitter"></div>
   </div>
-  <div class="seite-rumpf st-rumpf" id="an-rumpf"></div>
 </div>
 
 <!-- Marktseite -->
@@ -2978,6 +3050,8 @@
 </div>
 
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
+<!-- Nach „Hab ich": der Kaufpreis wird gefragt, solange man ihn noch weiß. -->
+<div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <script>
 'use strict';
@@ -2985,6 +3059,50 @@
 // ---------- Übersetzungen ----------
 const T = {
   de: {
+    aera_waehlen: 'Alle Sets dieser Ära',
+    sm2_karten: 'Karten',
+    sm2_sets: 'Sets',
+    sm2_sets_t: 'Deine Sets',
+    sm2_sets_u: 'Fortschritt nach besessenen Karten, Rest zu heutigen Preisen. Ein Klick öffnet das Häkchenraster.',
+    sm2_sets_fuss: 'Gesamtzahl = alle Karten des Sets im Katalog, auch Secret Rares. Rest = Summe der Trendpreise der fehlenden Karten, heute.',
+    sm_k_wert: 'Wert heute',
+    sm_k_sets: 'Sets angefangen',
+    sm_k_sets_u: '{f} fast komplett · {k} komplett',
+    sm_k_ziel: 'Fehlt zu den Zielen',
+    sm_k_ziel_u: '{n} Ziele · {k} Karten',
+    sm_k_ziel_leer: 'Noch kein Ziel — im Set-Reiter setzen',
+    sm_s_fortschritt: 'Fortschritt',
+    sm_s_rest: 'Rest zum Set',
+    sm_besessen: 'Besessen',
+    sm_ziel: 'Ziel',
+    sm_ziel_u: 'Ein Set mit Datum — der Fortschritt steht auf der Startseite.',
+    sm_ziel_setzen: 'Ziel setzen',
+    sm_ziel_weg: 'Ziel entfernen',
+    sm_ziel_tage: 'noch {n} Tage',
+    sm_ziel_vorbei: 'Datum vorbei',
+    sm_ziel_ohne_datum: 'ohne Datum',
+    sm_ziel_gesetzt: 'Ziel gesetzt.',
+    sm_fehlen_n: '{n} fehlen',
+    sm_rest_u: 'Trendpreise der fehlenden Karten',
+    sm_dein_wert: 'Deine Karten',
+    sm_teuer_fehlend: 'Teuerste fehlende Karten',
+    sm_teuer_fehlend_u: 'Was den Rest zum Set ausmacht.',
+    sm_raster: 'Häkchenraster',
+    sm_raster_u: 'Klick auf eine Karte: gehört mir / gehört mir nicht. Posten mit Zustand oder Sprache bleiben dabei erhalten.',
+    sm_rest_kurz: 'Rest {e}',
+    sm_komplett: 'komplett',
+    sm_guenstig: 'Günstig jetzt',
+    sm_guenstig_u: 'Karten deiner Wunschliste unter ihrem 30-Tage-Schnitt — der Kaufmoment.',
+    sm_kauf_frage: 'Gekauft für …?',
+    sm_kauf_gemerkt: 'Kaufpreis {e} gemerkt.',
+    sm_meine_beweg: 'Bewegung in deiner Sammlung',
+    sm_meine_beweg_u: 'Trend gegen den 7-Tage-Schnitt je Karte, größte Beträge zuerst.',
+    sm_beweg_summe: 'zusammen {e}',
+    sm_beweg_leer: 'Noch keine Bewegung über 50 Cent.',
+    sm_export: 'Export',
+    sm_export_csv: 'Sammlung als CSV (Plus)',
+    sm_export_pdf: 'Sammlungsübersicht als PDF (Plus)',
+    st_ziele: 'Deine Ziele',
     mk_7t: '7 Tage',
     mk_30t: '30 Tage',
     mk_r_heute: 'Heute',
@@ -3459,6 +3577,50 @@ const T = {
     pf_geloescht: 'Dein Konto wurde gelöscht.',
   },
   en: {
+    aera_waehlen: 'Every set of this era',
+    sm2_karten: 'Cards',
+    sm2_sets: 'Sets',
+    sm2_sets_t: 'Your sets',
+    sm2_sets_u: 'Progress by cards owned, remainder at today’s prices. Click opens the checklist grid.',
+    sm2_sets_fuss: 'Total = every card of the set in the catalogue, secret rares included. Remainder = sum of trend prices of the missing cards, today.',
+    sm_k_wert: 'Value today',
+    sm_k_sets: 'Sets started',
+    sm_k_sets_u: '{f} almost complete · {k} complete',
+    sm_k_ziel: 'Missing for your goals',
+    sm_k_ziel_u: '{n} goals · {k} cards',
+    sm_k_ziel_leer: 'No goal yet — set one in the Sets tab',
+    sm_s_fortschritt: 'Progress',
+    sm_s_rest: 'Left to complete',
+    sm_besessen: 'Owned',
+    sm_ziel: 'Goal',
+    sm_ziel_u: 'A set with a date — progress shows on the home page.',
+    sm_ziel_setzen: 'Set a goal',
+    sm_ziel_weg: 'Remove goal',
+    sm_ziel_tage: '{n} days left',
+    sm_ziel_vorbei: 'date passed',
+    sm_ziel_ohne_datum: 'no date',
+    sm_ziel_gesetzt: 'Goal set.',
+    sm_fehlen_n: '{n} missing',
+    sm_rest_u: 'trend prices of the missing cards',
+    sm_dein_wert: 'Your cards',
+    sm_teuer_fehlend: 'Most expensive missing cards',
+    sm_teuer_fehlend_u: 'What makes up the remainder.',
+    sm_raster: 'Checklist grid',
+    sm_raster_u: 'Click a card: owned / not owned. Entries with condition or language are kept.',
+    sm_rest_kurz: 'Left {e}',
+    sm_komplett: 'complete',
+    sm_guenstig: 'Cheap right now',
+    sm_guenstig_u: 'Cards on your wishlist below their 30-day average — the moment to buy.',
+    sm_kauf_frage: 'Bought for …?',
+    sm_kauf_gemerkt: 'Purchase price {e} saved.',
+    sm_meine_beweg: 'Movement in your collection',
+    sm_meine_beweg_u: 'Trend against the 7-day average per card, largest amounts first.',
+    sm_beweg_summe: '{e} in total',
+    sm_beweg_leer: 'No movement above 50 cents yet.',
+    sm_export: 'Export',
+    sm_export_csv: 'Collection as CSV (Plus)',
+    sm_export_pdf: 'Collection overview as PDF (Plus)',
+    st_ziele: 'Your goals',
     mk_7t: '7 days',
     mk_30t: '30 days',
     mk_r_heute: 'Today',
@@ -4633,6 +4795,7 @@ async function startLaden() {
   $('st-unter').textContent = liste.length ? t('st_unter_voll') : t('st_unter_leer');
 
   creatorNeuLaden();
+  if (typeof zieleStartLaden === 'function') zieleStartLaden();
 
   // Zahlenband — jede Kachel führt irgendwohin
   let sm = null;
@@ -5279,7 +5442,9 @@ function setSymbol(s, cls) {
 }
 function zeichneSetWahlKnopf() {
   const s = (S.meta.sets || []).find((x) => x.id === filter.set);
-  $('f-set-lbl').innerHTML = s ? `${setSymbol(s, '')}<span>${esc(setName(s))}</span>` : `<span>${t('alle_sets')}</span>`;
+  const se = !s && filter.serie ? (S.meta.series || []).find((x) => x.id === filter.serie) : null;
+  $('f-set-lbl').innerHTML = s ? `${setSymbol(s, '')}<span>${esc(setName(s))}</span>`
+    : se ? `<span>${t('f_aera')}: ${esc(se.name)}</span>` : `<span>${t('alle_sets')}</span>`;
 }
 function setWahlToggle() {
   menuToggle('set-popover');
@@ -5298,14 +5463,27 @@ function setWahlToggle() {
 function zeichneSetWahl() {
   const q = ($('set-popover-suche').value || '').toLowerCase();
   const sets = (S.meta.sets || []).filter((s) => (s.region || 'intl') === filter.region && (!filter.serie || s.aera === filter.serie) && (!q || setName(s).toLowerCase().includes(q) || s.id.toLowerCase().includes(q)));
-  let html = `<button class="setzeile ${filter.set ? '' : 'on'}" onclick="setWaehlen('')"><img class="set-sym leer" alt=""><span style="font-weight:600">${t('alle_sets')}</span></button>`;
+  let html = `<button class="setzeile ${filter.set || filter.serie ? '' : 'on'}" onclick="aeraWaehlen('')"><img class="set-sym leer" alt=""><span style="font-weight:600">${t('alle_sets')}</span></button>`;
   let letzte = null;
   for (const s of sets) {
     const aera = (LANG === 'en' ? (s.aera_name_en || s.aera_name) : s.aera_name) || '—';
-    if (aera !== letzte) { letzte = aera; html += `<div class="serie-kopf">${esc(aera)}</div>`; }
+    if (aera !== letzte) {
+      letzte = aera;
+      // Der Gruppenkopf ist ein Knopf: „alle Sets dieser Ära" — so entfällt das eigene Ära-Feld.
+      const n = sets.filter((x) => (x.aera || '') === (s.aera || '')).length;
+      html += `<button class="serie-kopf wahl ${filter.serie && filter.serie === s.aera && !filter.set ? 'on' : ''}" onclick="aeraWaehlen('${esc(s.aera || '')}')" title="${t('aera_waehlen')}">${esc(aera)}<span>${n} Sets ›</span></button>`;
+    }
     html += `<button class="setzeile ${filter.set === s.id ? 'on' : ''}" onclick="setWaehlen('${s.id}')">${setSymbol(s, 'set-sym')}<span style="font-weight:600">${esc(setName(s))}</span><span style="color:var(--mut);font-size:11.5px">${s.official || s.total || '?'} ${t('po_karten')}</span><span class="datum">${(s.release_date || '').slice(0, 4)}</span></button>`;
   }
   $('set-popover-liste').innerHTML = html || `<div style="padding:14px;color:var(--mut)">${t('keine_sets')}</div>`;
+}
+/** Ganze Ära wählen (oder mit '' alles zurücksetzen): das ersetzt das frühere Ära-Feld. */
+function aeraWaehlen(id) {
+  filter.serie = id || ''; filter.set = '';
+  $('f-serie').value = filter.serie; $('f-set').value = '';
+  baueSetSelect();
+  $('set-popover').classList.add('hidden');
+  sucheNeu();
 }
 function setWaehlen(id) {
   filter.set = id; $('f-set').value = id;
@@ -6488,6 +6666,11 @@ function zeichneVitrineTabs() {
 
 /** Filter über dem Gitter: wonach jemand stöbert, ist entweder eine Art von Binder
  *  („zeig mir Pokédex-Binder“) oder eine Größe („eine schöne Seite, kein Mammutprojekt“). */
+// Jahrgänge als Ären — zwei Zahlenfelder waren am Handy eine Fummelei, und Sammler fragen
+// ohnehin nach „alte WotC-Karten", nicht nach „1999 bis 2003".
+const VT_JAHRGAENGE = [[1996, 2003, '1996–2003 · WotC'], [2004, 2010, '2004–2010 · EX bis Platin'],
+                       [2011, 2016, '2011–2016 · HGSS bis XY'], [2017, 2019, '2017–2019 · Sonne & Mond'],
+                       [2020, 2022, '2020–2022 · Schwert & Schild'], [2023, 2035, '2023+ · Karmesin & Purpur']];
 function zeichneVitrineFilter() {
   const box = $('vt-filter');
   if (!box) return;
@@ -6508,15 +6691,10 @@ function zeichneVitrineFilter() {
         <option value="">${t('vt_f_alle')}</option>
         ${VT.stile.map((x) => `<option value="${esc(x)}" ${VT.kunstStil === x ? 'selected' : ''}>${esc(t('stil_' + x) !== 'stil_' + x ? t('stil_' + x) : x)}</option>`).join('')}
       </select>
-      <span class="vt-lbl">${t('vt_k_jahrgang')}</span>
-      <input class="feld" type="number" inputmode="numeric" style="width:82px" id="vt-jahr-von"
-             min="1996" max="2030" placeholder="${VT.jahrMin || 1996}" value="${VT.jahrVon || ''}"
-             onchange="VT.jahrVon=this.value;vitrineLaden()">
-      <span class="vt-lbl">–</span>
-      <input class="feld" type="number" inputmode="numeric" style="width:82px" id="vt-jahr-bis"
-             min="1996" max="2030" placeholder="${VT.jahrMax || new Date().getFullYear()}" value="${VT.jahrBis || ''}"
-             onchange="VT.jahrBis=this.value;vitrineLaden()">
-      ${VT.jahrVon || VT.jahrBis ? `<button class="chip" onclick="VT.jahrVon='';VT.jahrBis='';vitrineLaden()">${t('f_chip_weg')}</button>` : ''}
+      <select class="feld" style="width:190px" onchange="const [v, b] = this.value.split('-'); VT.jahrVon = v || ''; VT.jahrBis = b || ''; vitrineLaden()">
+        <option value="">${t('vt_k_jahrgang')}: ${t('vt_f_alle')}</option>
+        ${VT_JAHRGAENGE.map(([v, b, l]) => `<option value="${v}-${b}" ${String(VT.jahrVon) === String(v) && String(VT.jahrBis) === String(b) ? 'selected' : ''}>${l}</option>`).join('')}
+      </select>
       <div style="flex:1"></div>
       <span class="vt-lbl">${t('vt_k_preis').replace('{n}', VT.preis)}</span>`;
     return;
@@ -7425,388 +7603,8 @@ async function bestaetigungEinloesen(token) {
 }
 
 // ---------- Sammlung ----------
-// Eine Wahrheit, zwei Blicke: der Binder ist der Plan, die Sammlung der Bestand.
-// Deshalb schreibt der Haken im Fach in die Sammlung und liest von dort — es gibt
-// kein zweites Häkchen, das auseinanderlaufen könnte.
-const SM = { filter: '', karten: [], zahlen: null, laeuft: false, posten: null, postenAlt: {}, umgekehrt: false };
-S.besitz = {};          // card_id → Anzahl, für die Fachanzeige im Binder
-
-async function besitzLaden() {
-  if (!S.user) { S.besitz = {}; return; }
-  try {
-    const d = await api('api/sammlung/besitz');
-    S.besitz = d.besitz || {};
-    S.wunsch = new Set(d.wants || []);
-  } catch (e) { S.besitz = {}; S.wunsch = new Set(); }
-}
-
-/** Gehört mir diese Karte? Ohne Konto zählt weiterhin das Häkchen im Binder. */
-function besitzt(item) {
-  if (!item || item.type !== 'card') return false;
-  return S.user ? !!S.besitz[item.id] : !!item.have;
-}
-
-function ansichtSammlung() {
-  if (!S.user) return loginOeffnen(t('sm_login'));
-  hashSetzen('sammlung');
-  mnavMarkieren('mnav-sammlung');
-  planerSchliessen(); vitrineSchliessen(); profilseiteSchliessen();
-  $('sammlung').classList.remove('hidden');
-  ebeneOeffnen(sammlungSchliessen);
-  reiterSetzen('seg-sammlung');
-  zeichneSammlungFilter();
-  sammlungLaden();
-}
-function sammlungSchliessen() {
-  if ($('sammlung').classList.contains('hidden')) return;
-  ebeneAufraeumen(sammlungSchliessen);
-  $('sammlung').classList.add('hidden');
-  routeZurueck();
-  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
-}
-
-/** Die Auswahllisten des Postendialogs einmal befüllen. */
-function smAuswahlenFuellen() {
-  const v = $('smp-variante'); if (!v || v.options.length) return;
-  v.innerHTML = ['normal', 'reverse', 'holo', 'first', 'pokeball', 'masterball']
-    .map((x) => `<option value="${x}">${t('v_' + x) || x}</option>`).join('');
-  $('smp-zustand').innerHTML = SM_ZUSTAENDE
-    .map((x) => `<option value="${x}">${x || t('sm_ohne_angabe')}</option>`).join('');
-  $('smp-sprache').innerHTML = SM_SPRACHEN
-    .map((x) => `<option value="${x}">${x ? x.toUpperCase() : t('sm_ohne_angabe')}</option>`).join('');
-}
-
-function zeichneSammlungFilter() {
-  smAuswahlenFuellen();
-  const z = SM.zahlen || {};
-  // „Fehlt mir noch" ist die Frage, mit der man diese Seite öffnet — sie stand ganz
-  // rechts und war der einzige Chip mit Inhalt.
-  const wunsch = SM.filter === 'fehlt';
-  $('smb-bestand').classList.toggle('on', !wunsch);
-  $('smb-wunsch').classList.toggle('on', wunsch);
-  $('smb-wunsch').innerHTML = `${t('sm_fehlt')}${z.fehlt != null ? ` <strong>${z.fehlt}</strong>` : ''}`;
-  // Suche und Sortierung gelten nur für den Bestand — die Wunschliste ist eine feste Liste.
-  $('sm-suche').classList.toggle('hidden', wunsch);
-  $('sm-sortwahl').classList.toggle('hidden', wunsch);
-  $('sm-filter').innerHTML = wunsch ? '' : [
-    ['', t('sm_alle'), z.verschiedene],
-    ['doppelt', t('sm_doppelt'), z.doppelte],
-    ['ohne_binder', t('sm_ohne_binder'), z.ohne_binder],
-  ].map(([w, l, n]) => `<button class="chip ${SM.filter === w ? 'on' : ''}" onclick="sammlungFilter('${w}')">${l}${n != null ? ` <strong>${n}</strong>` : ''}</button>`).join('');
-  smRichtungZeichnen();
-  zeichneSammlungHinweis();
-}
-function sammlungFilter(w) { SM.filter = w; zeichneSammlungFilter(); sammlungLaden(); }
-function sammlungBereich(w) { SM.filter = w; zeichneSammlungFilter(); sammlungLaden(); }
-/** Reihenfolge umdrehen. Die natürliche Richtung hängt an der Sortierung: „Zuletzt
- *  hinzugefügt" und „Wert" beginnen oben mit dem Größten, „Name" mit A. */
-function smRichtungZeichnen() {
-  const b = $('sm-richtung'); if (!b) return;
-  const sort = $('sm-sort').value;
-  const natuerlichAuf = sort === 'name';
-  const richtung = (natuerlichAuf !== SM.umgekehrt) ? 'asc' : 'desc';
-  b.innerHTML = `<span class="pf">${richtung === 'desc' ? '↓' : '↑'}</span>${esc(richtungText(sort, richtung))}`;
-  b.title = t('ri_t');
-}
-function smRichtungWechseln() { SM.umgekehrt = !SM.umgekehrt; smRichtungZeichnen(); sammlungLaden(); }
-
-/** Unter der Wunschliste steht, woraus sie besteht — und dort stellt man ganze Binder
- *  dazu. Ohne diese Zeile sucht man den Schalter im Binder-Menü und findet ihn nicht. */
-function zeichneSammlungHinweis() {
-  let box = $('sm-hinweis');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'sm-hinweis';
-    // Unter die *ganze* Leiste, nicht neben die Chips: in der Flex-Reihe der Filter
-    // wurde daraus sonst eine vierte Spalte zwischen Suche und Sortierung.
-    box.style.cssText = 'font-size:11.5px;color:var(--mut);margin:2px 0 14px;line-height:1.6;'
-      + 'border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel2)';
-    ($('sm-filter').closest('.sm-leiste') || $('sm-filter')).after(box);
-  }
-  box.classList.toggle('hidden', SM.filter !== 'fehlt');
-  if (SM.filter !== 'fehlt') { box.innerHTML = ''; return; }
-  const w = SM.wunsch || {};
-  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
-    { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
-  box.innerHTML = `<div style="margin-bottom:5px">${t('wl_binder')} — <span style="opacity:.85">${t('wl_binder_u')}</span></div>
-    <div class="f-chips">${(w.binder || []).map((b) =>
-      `<button class="chip ${b.an ? 'on' : ''}" onclick="wunschBinder('${esc(b.id)}', ${b.an ? 0 : 1})"
-        title="${esc(b.name)} · ${b.karten}">${b.an ? '★ ' : '＋ '}${esc(b.name)}</button>`).join('')
-      || `<span style="opacity:.7">–</span>`}</div>
-    <div style="margin-top:6px">${t('wl_einzeln').replace('{n}', (w.einzeln || []).length)}${
-      w.summe ? ' · ' + t('wl_summe').replace('{s}', eur(w.summe)) : ''}</div>`;
-}
-
-/** Einen ganzen Binder auf die Wunschliste stellen oder herunternehmen. */
-async function wunschBinder(id, an) {
-  try {
-    await api('api/wants/binder', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ binder_id: id, an: !!an }) });
-    if (S.binder && S.binder.id === id) {
-      S.binder.options = S.binder.options || {};
-      S.binder.options.wants = !!an;
-      wantsSchalterSetzen();
-    }
-    sammlungLaden();
-  } catch (e) { toast(e.message); }
-}
-let smTimer = null;
-function sammlungSuchen() { clearTimeout(smTimer); smTimer = setTimeout(sammlungLaden, 350); }
-
-async function sammlungLaden() {
-  if (SM.laeuft) return;
-  SM.laeuft = true;
-  $('sm-gitter').innerHTML = `<div class="sm-leer">${lader('gross', t('laedt'))}</div>`;
-  try {
-    SM.zahlen = await api('api/sammlung/uebersicht');
-    zeichneSammlungZahlen();
-    zeichneSammlungFilter();
-    const q = encodeURIComponent($('sm-suche').value.trim());
-    const sort = $('sm-sort').value;
-    if (SM.filter === 'fehlt') {
-      const d = await api('api/wants');
-      SM.wunsch = d;
-      S.wunsch = new Set(d.einzeln || []);
-      const einzeln = new Set(d.einzeln || []);
-      SM.karten = (d.karten || []).map((k) => ({ ...k, anzahl: 0, fehlt: true,
-                                                 wunsch_einzeln: einzeln.has(k.id) }));
-      zeichneSammlungHinweis();
-    } else {
-      const d = await api(`api/sammlung?nur=${SM.filter}&q=${q}&sortierung=${sort}&umgekehrt=${SM.umgekehrt ? 1 : 0}&limit=120`);
-      SM.karten = d.karten || [];
-    }
-    zeichneSammlung();
-  } catch (e) {
-    $('sm-gitter').innerHTML = `<div class="sm-leer">${esc(e.message || '')}</div>`;
-  } finally { SM.laeuft = false; }
-}
-
-function zeichneSammlungZahlen() {
-  const z = SM.zahlen || {};
-  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-  // Eine Zeile statt drei Kacheln: die Zahlen sind Kontext, nicht der Inhalt der Seite.
-  $('sm-zahlen').innerHTML = `<b>${z.karten || 0}</b> ${t('sm_karten')} · <b>${z.verschiedene || 0}</b> ${t('sm_verschieden')}`
-    + ` · <b class="gruen">${eur(z.wert)}</b> ${t('sm_wert')}`
-    + (z.gezahlt ? ` · <b>${eur(z.gezahlt)}</b> ${t('sm_gezahlt')}` : '')
-    + ((z.karten || 0) > 0 ? ` · <a onclick="ansicht('auswertung')">${t('an_t')} ›</a>` : '');
-}
-
-function zeichneSammlung() {
-  if (!SM.karten.length) {
-    const hinweise = { '': t('sm_leer'), doppelt: t('sm_leer_doppelt'),
-                       ohne_binder: t('sm_leer_ohne'), fehlt: t('wl_leer') };
-    // Eine graue Zeile war zu wenig: es gibt drei Wege, die Sammlung zu füllen, und
-    // keiner davon stand hier.
-    const wege = SM.filter ? '' : `<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px">
-        <button class="btn" onclick="sammlungSchliessen();fotoOeffnen()">${t('tpl_foto')}</button>
-        <button class="btn sekundaer" onclick="sammlungSchliessen();ansicht('suche')">${t('sm_weg_suche')}</button>
-        <button class="btn sekundaer" onclick="sammlungSchliessen();importOeffnen()">${t('tpl_import')}</button>
-      </div>`;
-    $('sm-gitter').innerHTML = `<div class="sm-leer">${hinweise[SM.filter] || t('sm_leer')}${wege}</div>`;
-    return;
-  }
-  $('sm-gitter').innerHTML = SM.karten.map((k) => `
-    <div class="sm-karte" onclick="detailOeffnenId('${esc(k.id)}')">
-      ${k.anzahl > 1 ? `<span class="sm-anz">${k.anzahl}×</span>` : ''}
-      ${k.fehlt
-        ? (k.wunsch_einzeln ? `<button class="sm-weg" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}');setTimeout(sammlungLaden,300)" title="${t('wl_weg')}">✕</button>` : '')
-        : `<button class="sm-weg" onclick="event.stopPropagation();sammlungWeg('${esc(k.id)}')" title="${t('sm_entfernen')}">✕</button>`}
-      <img loading="lazy" src="${imgUrl(k.id)}" alt="">
-      <div class="sm-txt">
-        <div class="sm-name">${esc(k.name || k.id)}</div>
-        <div class="sm-meta">${esc(k.set_name || '')} · ${esc(k.local_id || '')}</div>
-        ${(k.posten || []).length ? `<div class="sm-posten">${k.posten.map((p, pi) =>
-          `<button class="sm-pchip" onclick="event.stopPropagation();smPostenAus('${esc(k.id)}',${pi})"
-                   title="${t('sm_posten_aendern')}">${p.anzahl}× ${smPostenLabel(p)}${k.posten.length > 1 && p.stueckwert != null
-                     ? ` <b>${p.stueckwert.toFixed(2).replace('.', ',')} €</b>` : ''}</button>`).join('')}
-          <button class="sm-pchip neu" onclick="event.stopPropagation();smPostenOeffnen('${esc(k.id)}')"
-                  title="${t('sm_posten_neu')}">＋</button></div>` : ''}
-        ${k.eur != null ? `<div class="sm-wert">${(k.wert != null ? k.wert : k.eur).toFixed(2).replace('.', ',')} €${
-          k.preis_quelle ? `<span class="sm-quelle" title="${esc(t('pr_q_' + k.preis_quelle))}">≈</span>` : ''}</div>` : ''}
-      </div>
-    </div>`).join('');
-}
-
-/* ---------- Sammlung ----------
-   Zustand und Sprache gehören zum einzelnen Exemplar, nicht zur Karte: dieselbe Karte
-   einmal auf Deutsch in NM und einmal auf Englisch in GD sind zwei Posten. Genauso lösen
-   es Collectr, die TCGplayer-Sammlung und der Dragon-Shield-Manager. */
-
-const SM_ZUSTAENDE = ['', 'M', 'NM', 'EX', 'GD', 'LP', 'PL', 'PO'];
-const SM_SPRACHEN = ['', 'de', 'en', 'fr', 'it', 'es', 'pt', 'jp', 'kr', 'cn', 'ru'];
-
-/** Karte aus der Suche aufnehmen — ohne Umweg über einen Binder. */
-async function sammlungAufnehmen(id, opt) {
-  if (!S.user) return loginOeffnen(t('sm_login'));
-  opt = opt || {};
-  try {
-    const d = await api('api/sammlung/aufnehmen', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_id: id, variante: opt.variante || 'normal',
-                             zustand: opt.zustand || '', sprache: opt.sprache || '',
-                             anzahl: opt.anzahl || 1 }),
-    });
-    S.besitz[id] = d.anzahl;
-    restkostenNeu();
-    zeichneErgebnisse(); zeichneBinder();
-    // Steht der Kartendialog offen, gehört die neue Zahl auch auf seinen Knopf.
-    const hab = $('detail-hab');
-    if (hab && detailKarte && detailKarte.id === id) {
-      hab.innerHTML = '✓ ' + d.anzahl + '× <span class="txt">' + t('tk_besitz') + '</span>';
-    }
-    toast(t('sm_aufgenommen').replace('{n}', d.anzahl));
-  } catch (e) { toast(e.message); }
-}
-
-/** Der Dialog für einen einzelnen Posten. `posten` leer heißt: neu anlegen. */
-function smPostenOeffnen(cardId, posten) {
-  if (!S.user) return loginOeffnen(t('sm_login'));
-  SM.posten = { card_id: cardId, ...(posten || {}) };
-  SM.postenAlt = { zustand: (posten || {}).zustand || '', sprache: (posten || {}).sprache || '' };
-  const p = SM.posten;
-  $('smp-titel').textContent = posten ? t('sm_posten_aendern') : t('sm_posten_neu');
-  $('smp-variante').value = p.variante || 'normal';
-  $('smp-zustand').value = p.zustand || '';
-  $('smp-sprache').value = p.sprache || '';
-  $('smp-anzahl').value = p.anzahl || 1;
-  $('smp-kaufpreis').value = p.kaufpreis != null ? p.kaufpreis : '';
-  $('smp-gekauft').value = isoZuDatum(p.gekauft_am);
-  $('smp-notiz').value = p.notiz || '';
-  $('smp-loeschen').classList.toggle('hidden', !posten);
-  smPostenWert();
-  modalOeffnen('modal-sm-posten');
-}
-
-/** Was dieses Exemplar mit dem gewählten Zustand wert ist — sofort beim Umstellen.
- *  Dieselben Faktoren wie im Backend; sie stehen dort als ZUSTAND_FAKTOR. */
-const ZUSTAND_FAKTOR = { M: 1.10, NM: 1.00, EX: 0.85, GD: 0.70, LP: 0.55, PL: 0.42, PO: 0.30 };
-function smPostenWert() {
-  const el = $('smp-wert'); if (!el) return;
-  const k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
-  const basis = k && k.eur;
-  if (!basis) { el.textContent = ''; return; }
-  const z = $('smp-zustand').value;
-  const f = ZUSTAND_FAKTOR[z] || 1;
-  const anz = Math.max(1, parseInt($('smp-anzahl').value, 10) || 1);
-  const stueck = basis * f;
-  el.innerHTML = `${t('sm_wert_posten')}: <strong>${(stueck * anz).toFixed(2).replace('.', ',')} €</strong>`
-    + (anz > 1 ? ` <span style="opacity:.7">(${stueck.toFixed(2).replace('.', ',')} € ${t('sm_je_stueck')})</span>` : '')
-    + (z ? '' : ` <span style="opacity:.7">– ${t('sm_ohne_zustand')}</span>`);
-}
-
-async function smPostenSpeichern(loeschen) {
-  const p = SM.posten;
-  const daten = {
-    card_id: p.card_id,
-    variante: $('smp-variante').value,
-    zustand: $('smp-zustand').value,
-    sprache: $('smp-sprache').value,
-    alt_zustand: SM.postenAlt.zustand,
-    alt_sprache: SM.postenAlt.sprache,
-    anzahl: loeschen ? 0 : Math.max(1, parseInt($('smp-anzahl').value, 10) || 1),
-    kaufpreis: $('smp-kaufpreis').value.trim().replace(',', '.') || null,
-    gekauft_am: gebIso($('smp-gekauft').value) || null,
-    notiz: $('smp-notiz').value.trim(),
-  };
-  try {
-    await api('api/sammlung/eintrag', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(daten),
-    });
-    modalSchliessen();
-    await besitzLaden();
-    restkostenNeu();
-    sammlungLaden(); zeichneBinder(); zeichneErgebnisse();
-  } catch (e) { toast(e.message); }
-}
-
-/** Kurzform eines Postens: „NM · DE" — leere Angaben werden weggelassen. */
-function smPostenLabel(p) {
-  const teile = [];
-  if (p.variante && p.variante !== 'normal') teile.push(t('v_' + p.variante) || p.variante);
-  if (p.zustand) teile.push(p.zustand);
-  if (p.sprache) teile.push(p.sprache.toUpperCase());
-  return teile.length ? esc(teile.join(' · ')) : t('sm_ohne_angabe');
-}
-/** Den Posten aus der geladenen Liste holen und den Dialog damit öffnen. */
-function smPostenAus(cardId, index) {
-  const k = (SM.karten || []).find((x) => x.id === cardId);
-  smPostenOeffnen(cardId, k && k.posten ? k.posten[index] : null);
-}
-
-/* ---------- Restkosten ----------
-   „Dir fehlen 12 Karten, zusammen etwa 87 €" — die Frage, die jeder mit einem halb
-   vollen Binder hat. Die Zahlen lagen längst vor, sie wurden nur nie zusammengerechnet. */
-
-const REST = { binder: null, daten: null, laeuft: false };
-
-async function restkostenZeigen() {
-  const box = $('wb-rest'); if (!box) return;
-  // Nur für Binder, die ausdrücklich auf der Wunschliste stehen. Sonst stand über jedem
-  // Plan eine Kaufsumme, die niemand ausgeben wollte.
-  if (!S.user || S.nurAnsicht || !S.binder || !S.binder.id
-      || !(S.binder.options && S.binder.options.wants === true)) {
-    box.classList.add('hidden'); return;
-  }
-  if (REST.binder === S.binder.id && REST.daten) return restkostenMalen();
-  if (REST.laeuft) return;
-  REST.laeuft = true;
-  try {
-    const d = await api('api/sammlung/restkosten?binder=' + encodeURIComponent(S.binder.id));
-    REST.binder = S.binder.id;
-    REST.daten = (d.binder || [])[0] || { fehlt: 0, summe: 0, ohne_preis: 0 };
-  } catch (e) { REST.daten = null; }
-  REST.laeuft = false;
-  restkostenMalen();
-}
-function restkostenMalen() {
-  const box = $('wb-rest'), d = REST.daten;
-  if (!d || !d.fehlt) { box.classList.add('hidden'); return; }
-  const eur = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
-    { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
-  box.classList.remove('hidden');
-  box.innerHTML = `<div class="wr-zeile"><span>${t('rk_fehlen').replace('{n}', d.fehlt)}</span>
-      <strong>${d.summe ? '≈ ' + eur(d.summe) : '–'}</strong></div>`
-    + (d.ohne_preis ? `<div class="wr-hin">${t('rk_ohne').replace('{n}', d.ohne_preis)}</div>` : '')
-    + `<button class="wr-link" onclick="kaufliste()">${t('ex_kauf')}</button>`;
-}
-/** Nach jeder Änderung an der Sammlung neu rechnen. */
-function restkostenNeu() { REST.binder = null; REST.daten = null; restkostenZeigen(); }
-
-/* ---------- Wunschliste ----------
-   Was gekauft werden soll, sagt man ausdrücklich: einzelne Karten hier, ganze Binder im
-   Sammlungsbereich. Vorher galt alles als Wunsch, was irgendwo geplant und nicht im Regal
-   war — bei einem Pokédex-Binder waren das tausend Karten. */
-function wunschHat(id) { return !!(S.wunsch && S.wunsch.has(id)); }
-
-async function wunschToggle(id, imDetail) {
-  if (!S.user) return loginOeffnen(t('gate_login'));
-  const an = !wunschHat(id);
-  S.wunsch = S.wunsch || new Set();
-  an ? S.wunsch.add(id) : S.wunsch.delete(id);
-  if (imDetail) {
-    const b = $('detail-wunsch');
-    if (b) b.innerHTML = an ? '★ ' + t('wl_drauf') : '☆ ' + t('wl_titel');
-  } else zeichneErgebnisse();
-  try {
-    await api('api/wants', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                             body: JSON.stringify({ card_id: id, an }) });
-    toast(an ? t('wl_dazu') : t('wl_weg'));
-  } catch (e) {
-    an ? S.wunsch.delete(id) : S.wunsch.add(id);
-    toast(e.message);
-  }
-}
-
-async function sammlungWeg(id) {
-  try {
-    await api('api/sammlung/eintrag', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ card_id: id, anzahl: 0 }),
-    });
-    delete S.besitz[id];
-    sammlungLaden(); zeichneBinder();
-  } catch (e) { toast(e.message); }
-}
+// Bestand, Sets, Wunschliste, Ziele, Posten und Auswertung liegen in assets/sammlung.js
+// (per defer nach diesem Skript geladen). Hier bleibt nur, was der Detail-Dialog braucht.
 
 function detailOeffnenId(id) {
   const i = (S.ergebnisse || []).findIndex((k) => k.id === id);
@@ -7948,7 +7746,6 @@ function reiterNachAnsicht() {
   if (offen('startseite')) return reiterSetzen('seg-start');
   if (offen('profilseite')) return reiterSetzen('');
   if (offen('marktseite')) return reiterSetzen('seg-markt');
-  if (offen('auswertungseite')) return reiterSetzen('seg-sammlung');
   if (offen('vitrine')) return reiterSetzen('seg-vitrine');
   if (offen('sammlung')) return reiterSetzen('seg-sammlung');
   reiterSetzen('seg-suche');   // der Planer gehört zu diesem Reiter, er ist kein eigener
@@ -8225,7 +8022,7 @@ function ansicht(w) {
   if (w === 'start') { startOeffnen(); return; }
   if (typeof startSchliessen === 'function' && !$('startseite').classList.contains('hidden')) startSchliessen();
   if (w !== 'vitrine') vitrineSchliessen();
-  if (w !== 'sammlung') sammlungSchliessen();
+  if (w !== 'sammlung' && w !== 'auswertung') sammlungSchliessen();
   if (w !== 'markt') marktSchliessen();
   if (w !== 'auswertung') auswertungSchliessen();
   if (w === 'sammlung') { ansichtSammlung(); return; }
@@ -8422,125 +8219,7 @@ function anSperre(punkte, titel, stufe, probe) {
 }
 
 /* -------------------------------------------------- Auswertung der Sammlung */
-
-function auswertungOeffnen() {
-  if (!S.user) return loginOeffnen(t('sm_login'));
-  hashSetzen('auswertung');
-  planerSchliessen(); vitrineSchliessen(); marktSchliessen(); profilseiteSchliessen();
-  $('auswertungseite').classList.remove('hidden');
-  ebeneOeffnen(auswertungSchliessen);
-  reiterSetzen('seg-sammlung');
-  mnavMarkieren('mnav-mehr');
-  auswertungLaden();
-}
-function auswertungSchliessen() {
-  if (!$('auswertungseite') || $('auswertungseite').classList.contains('hidden')) return;
-  ebeneAufraeumen(auswertungSchliessen);
-  $('auswertungseite').classList.add('hidden');
-  routeZurueck();
-  if ($('startseite').classList.contains('hidden')) reiterSetzen('seg-suche');
-}
-
-async function auswertungLaden() {
-  const r = $('an-rumpf');
-  r.innerHTML = `<div style="padding:40px;text-align:center">${lader('gross', t('laedt'))}</div>`;
-  try {
-    AN.daten = await api('api/analytics/sammlung?tage=' + $('an-zeit').value);
-  } catch (e) {
-    r.innerHTML = anDuenn(t('an_fehler')); return;
-  }
-  zeichneAuswertung();
-}
-
-function zeichneAuswertung() {
-  const d = AN.daten, r = $('an-rumpf');
-  $('an-zeit').classList.toggle('hidden', !d.pro);
-  if (!d.pro) {
-    r.innerHTML = anSperre([t('an_pro_1'), t('an_pro_2'), t('an_pro_3'), t('an_pro_4')], null, 'Plus');
-    return;
-  }
-  if (d.leer) {
-    r.innerHTML = `<h1>${t('an_t')}</h1><div class="unter">${t('an_u')}</div>`
-      + anDuenn(t('an_leer'))
-      + `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-          <button class="btn" onclick="ansicht('suche')">${t('an_leer_suchen')}</button>
-          <button class="btn sekundaer" onclick="fotoOeffnen()">${t('foto_menu')}</button>
-         </div>`;
-    return;
-  }
-  const gewinn = d.gewinn;
-  let band = anKachel(t('an_wert'), anEur(d.wert),
-    `${anZahl(d.karten)} ${t('an_stk')} · ${anZahl(d.verschiedene)} ${t('sm_verschieden')}`);
-  if (d.einsatz != null) {
-    band += anKachel(t('an_einsatz'), anEur(d.einsatz),
-      `${anZahl(d.mit_kaufpreis)} ${t('an_mit_preis')}`);
-    const proz = d.einsatz > 0 ? (gewinn / d.einsatz * 100) : 0;
-    band += anKachel(t('an_gewinn'), (gewinn > 0 ? '+' : '') + anEur(gewinn),
-      d.einsatz > 0 ? anProz(proz) + ' ' + t('an_auf_einsatz') : '', gewinn > 0 ? 'plus' : gewinn < 0 ? 'minus' : '');
-  } else {
-    band += anKachel(t('an_einsatz'), '—', t('an_kein_kaufpreis'));
-  }
-  if (d.ohne_preis) band += anKachel(t('an_ohne_preis'), anZahl(d.ohne_preis), t('an_ohne_preis_u'));
-
-  // Solange die Historie jung ist, tragen nur wenige Karten die Kurve. Ihre Euro-Summe
-  // wäre dann ein Bruchteil des Sammlungswerts direkt darüber — als Zahl unter einem
-  // Diagramm namens „Wertverlauf" schlicht irreführend. Deshalb erst ab 60 % Deckung
-  // Euro, darunter eine Indexkurve, die nur die Bewegung zeigt.
-  const v = d.verlauf || {};
-  const deckung = v.anteil == null ? 0 : v.anteil;
-  const inEuro = deckung >= 60;
-  let kurve;
-  if (v.punkte && v.punkte.length >= 2) {
-    const start = v.punkte[0].eur || 1;
-    kurve = anLinie([{ name: inEuro ? t('an_wert') : t('an_bewegung_kurz'), farbe: 'var(--d1)',
-                       punkte: v.punkte.map((p) => ({ datum: p.datum, wert: inEuro ? p.eur : p.eur / start * 100 })) }],
-                    { titel: t('an_verlauf'), index: !inEuro, fmt: inEuro ? null : (x) => x.toFixed(0) })
-      + `<div class="unter" style="margin:10px 0 0;font-size:11.5px">${
-          (inEuro ? t('an_basis') : t('an_basis_index'))
-            .replace('{n}', anZahl(v.von || v.basis)).replace('{g}', anZahl(v.gesamt || 0))
-            .replace('{p}', deckung.toLocaleString(LANG === 'en' ? 'en' : 'de'))}</div>`;
-  } else {
-    kurve = anDuenn(t('an_reihe_kurz_s').replace('{n}', anZahl(v.tage || 0)));
-  }
-
-  const gruppen = [
-    ['nach_seltenheit', t('an_g_seltenheit')], ['nach_set', t('an_g_set')],
-    ['nach_pokemon', t('an_g_pokemon')], ['nach_typ', t('an_g_typ')],
-    ['nach_art', t('an_g_art')], ['nach_jahrzehnt', t('an_g_jahrzehnt')],
-    ['nach_zustand', t('an_g_zustand')],
-  ].filter(([k]) => (d[k] || []).length);
-  if (!gruppen.some(([k]) => k === AN.gruppe)) AN.gruppe = gruppen.length ? gruppen[0][0] : '';
-
-  r.innerHTML = `<h1>${t('an_t')}</h1>
-    <div class="unter">${t('an_u')}</div>
-    <div class="an-band">${band}</div>
-
-    <div class="an-tafel">
-      <h3>${t('an_verlauf')}</h3>
-      <div class="unter">${t('an_verlauf_u')}</div>
-      ${kurve}
-    </div>
-
-    <div class="an-tafel">
-      <h3>${t('an_aufteilung')}</h3>
-      <div class="unter">${t('an_aufteilung_u')}</div>
-      <div class="an-chips" id="an-gruppen">${gruppen.map(([k, l]) =>
-        `<button class="chip ${AN.gruppe === k ? 'on' : ''}" onclick="anGruppe('${k}')">${esc(l)}</button>`).join('')}</div>
-      <div id="an-gruppe-inhalt">${anBalken(d[AN.gruppe])}</div>
-    </div>
-
-    <div class="an-tafel">
-      <h3>${t('an_posten')}</h3>
-      <div class="unter">${t('an_posten_u')}</div>
-      <div id="an-posten">${anPostenTabelle(d.karten_liste)}</div>
-    </div>`;
-}
-
-function anGruppe(k) {
-  AN.gruppe = k;
-  document.querySelectorAll('#an-gruppen .chip').forEach((b) => b.classList.toggle('on', b.getAttribute('onclick').includes(`'${k}'`)));
-  $('an-gruppe-inhalt').innerHTML = anBalken(AN.daten[k]);
-}
+// Seit September 2026 ein Reiter der Sammlung: siehe assets/sammlung.js.
 
 /** Lange Listen werden gekürzt gezeigt. Vollständig war die Marktseite am Handy über
  *  8.000 Punkte hoch — niemand scrollt so weit, und der Rest steht einen Klick entfernt. */
@@ -8555,23 +8234,6 @@ function anKuerzen(liste, n) {
 function anMehrKnopf(id, rest) {
   return rest ? `<button class="btn sekundaer" id="${id}-mehr" style="font-size:12.5px;padding:7px 14px;margin-top:12px"
     onclick="anMehr('${id}')">${t('an_mehr').replace('{n}', anZahl(rest))}</button>` : '';
-}
-
-function anPostenTabelle(liste) {
-  if (!liste || !liste.length) return anDuenn(t('an_keine_daten'));
-  return `<div class="an-tab-rahmen"><table class="an-tab">
-    <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('an_anzahl')}</th>
-      <th class="r">${t('an_stueckpreis')}</th><th class="r">${t('an_wert')}</th>
-      <th class="r">${t('an_gekauft')}</th><th class="r">${t('an_rendite')}</th></tr></thead>
-    <tbody>${liste.map((k, i) => `<tr class="${i >= 15 ? 'an-rest' : ''}">
-      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
-      <td><div class="nm">${esc(k.name)}</div><div class="set">${esc(k.set || '')}${k.nr ? ' · ' + esc(k.nr) : ''}${k.variante && k.variante !== 'normal' ? ' · ' + esc(k.variante) : ''}</div></td>
-      <td class="r">${anZahl(k.anzahl)}</td>
-      <td class="r">${k.preis != null ? anEur(k.preis) : '—'}</td>
-      <td class="r"><strong>${anEur(k.wert)}</strong><div class="set">${k.anteil} %</div></td>
-      <td class="r">${k.kaufpreis != null ? anEur(k.kaufpreis) : '—'}</td>
-      <td class="r">${k.rendite != null ? `<span class="${k.rendite >= 0 ? 'an-plus' : 'an-minus'}">${anProz(k.rendite)}</span>` : '—'}</td>
-    </tr>`).join('')}</tbody></table></div>${anMehrKnopf('an-posten', Math.max(0, liste.length - 15))}`;
 }
 
 /* ------------------------------------------------------------------ Markt */
@@ -9584,7 +9246,13 @@ async function detailOeffnen(idOrIdx) {
     <div class="d-grid">
       <div>${k.img ? `<img class="d-bild" src="${imgUrl(k.id)}" alt="" data-high="${imgUrl(k.id, '&variante=high')}" onload="if(this.dataset.high){const h=this.dataset.high;this.dataset.high='';const im=new Image();im.onload=()=>{this.src=h};im.src=h}" onerror="this.outerHTML='<div class=d-kein-bild>${esc(nm(k))}<small>${t('kein_scan')}</small></div>'">`
         : `<div class="d-kein-bild">${esc(nm(k))}<small>${t('kein_scan')}</small></div>`}
-        ${k.img && k.img_lang && k.img_lang !== 'de' && KLANG === 'de' && k.region !== 'jp' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}</div>
+        ${k.img && k.img_lang && k.img_lang !== 'de' && KLANG === 'de' && k.region !== 'jp' ? `<div style="font-size:11px;color:var(--mut);margin-top:6px">${t('bild_en')}</div>` : ''}
+        <!-- Ausprägung und Kartensprache gehören zum Bild, nicht zwischen Preise und Knöpfe:
+             so ist die linke Spalte gefüllt und rechts stehen Preise, Verlauf und Aktionen ohne Lücke. -->
+        <div class="f-lbl" style="margin-top:10px">${t('variante')}</div>
+        <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
+        <div class="f-lbl">${t('kartensprache')}</div>
+        <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSpracheSetzen('${sp}')">${sp.toUpperCase()}</button>`).join('')}</div></div>
       <div>
         <h2>${esc(nm(k))}</h2>
         <div class="d-meta">${k.name_ja && k.name_ja !== nm(k) ? `<span title="${t('d_name_ja')}">${esc(k.name_ja)}</span> · ` : ''}${esc(setNm(k))} · ${esc(k.local_id || '')}${k.set && k.set.official ? '/' + k.set.official : ''}${k.rarity ? ' · ' + esc(k.rarity) : ''}${(k.types || []).length ? ' · ' + k.types.map((x) => T[LANG].typen[x] || x).join(', ') : ''}${k.hp ? ' · ' + k.hp + ' HP' : ''}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}${k.region === 'jp' ? ' · JP' : ''}${k.regmark ? ` · ${t('d_regmark')} ${esc(k.regmark)}` : ''}</div>
@@ -9598,10 +9266,6 @@ async function detailOeffnen(idOrIdx) {
           <div id="detail-zustaende" class="zst"></div>
         </div>
         ${spark}
-        <div class="f-lbl">${t('variante')}</div>
-        <div class="var-chips" id="detail-chips">${VARIANTEN.map(varChip).join('')}</div>
-        <div class="f-lbl">${t('kartensprache')}</div>
-        <div class="var-chips" id="detail-sprache">${(k.region === 'jp' ? ['jp'] : ['de', 'en', 'jp']).map((sp) => `<button class="chip ${detailSprache === sp ? 'on' : ''}" onclick="detailSpracheSetzen('${sp}')">${sp.toUpperCase()}</button>`).join('')}</div>
         <div class="d-zustand"><input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size:12.5px" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()"></div>
         <div class="d-aktion" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn" onclick="detailHinzufuegen()">＋ ${t('in_binder')}</button>
@@ -10361,5 +10025,7 @@ boot();
 </script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
 <script defer src="assets/markt.js?v=20260909"></script>
+<!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
+<script defer src="assets/sammlung.js?v=20260909a"></script>
 </body>
 </html>

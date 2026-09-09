@@ -48,9 +48,12 @@ def _spr(v):
 
 
 def register(app, *, get_db, current_user, require_user, env, card_query, card_select, card_brief,
-             preis_fuer_posten=None):
+             preis_fuer_posten=None, ist_bezahlt=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
                 card_query=card_query, card_select=card_select, card_brief=card_brief)
+    # Export und Ziele gehören zum Sammeln, nicht zum Händlerwerkzeug: Plus reicht. Ohne
+    # Schranke (ältere Einbindung) darf jeder — besser offen als kaputt.
+    ist_bezahlt = ist_bezahlt or (lambda user: True)
 
     con = get_db()
     con.executescript("""
@@ -148,11 +151,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
             marken = ",".join("?" * len(teil))
             for r in con.execute("SELECT card_id, COALESCE(eur, eur_geschaetzt) eur,"
-                                 " eur_holo, eur_low, status FROM card_prices"
+                                 " eur_holo, eur_low, status, eur_avg7, eur_avg30 FROM card_prices"
                                  f" WHERE card_id IN ({marken})", teil):
                 if r["eur"]:
                     aus[r["card_id"]] = {"eur": r["eur"], "eur_holo": r["eur_holo"],
-                                         "eur_low": r["eur_low"], "quelle": r["status"]}
+                                         "eur_low": r["eur_low"], "quelle": r["status"],
+                                         "eur_avg7": r["eur_avg7"], "eur_avg30": r["eur_avg30"]}
         con.close()
         return aus
 
@@ -232,6 +236,10 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                 summe += (w or 0) * (pkt["anzahl"] or 0)
             kurz["wert"] = round(summe, 2)
             kurz["geplant"] = geplant.get(r["id"], 0)
+            # Bewegung gegen den Cardmarket-Schnitt: dieselbe Regel wie im Markt (markt.py),
+            # damit eine Karte hier nicht anders steigt als dort.
+            kurz["bew7"] = _bewegung(pr, "eur_avg7") if pr else None
+            kurz["bew30"] = _bewegung(pr, "eur_avg30") if pr else None
             karten.append(kurz)
 
         if sortierung == "wert":
@@ -585,6 +593,466 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                                                 (user["id"],))]
         con.close()
         return {"besitz": _besitz(user["id"]), "wants": wl}
+
+    # --- Sammlung als Werkzeug ----------------------------------------------
+    #
+    # Sammler denken in Sets („Base Set 34 von 102"), nicht in Einzelkarten. Und sie kommen
+    # wieder, wenn sich etwas bewegt hat. Beides fehlte: die Sammlung war eine Kartenliste
+    # mit einer Zahl darüber. Die Bewegung kommt — wie im Markt — aus den 7- und 30-Tage-
+    # Schnitten von Cardmarket, weil die eigene Preishistorie noch zu jung ist.
+
+    AUS_UNTEN, AUS_OBEN = 1 / 3, 3.0
+
+    def _bewegung(pr, feld):
+        """Prozent gegen den Schnitt; Ausreißer (Zuordnungsfehler der Quelle) bleiben leer."""
+        if not pr or not pr.get("eur") or not pr.get(feld) or pr[feld] <= 0:
+            return None
+        q = pr["eur"] / pr[feld]
+        if q > AUS_OBEN or q < AUS_UNTEN or pr["eur"] < 1 or pr[feld] < 1:
+            return None
+        return round((q - 1) * 100, 1)
+
+    def _heute():
+        return time.strftime("%Y-%m-%d")
+
+    def _ziele_tabelle():
+        con = get_db()
+        con.execute("""CREATE TABLE IF NOT EXISTS sammlung_ziele (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, set_id TEXT,
+            ziel_datum TEXT, created_at TEXT, UNIQUE (user_id, set_id))""")
+        con.commit()
+        con.close()
+
+    _ziele_tabelle()
+
+    def _posten_alle(user_id):
+        con = get_db()
+        aus = [dict(r) for r in con.execute(
+            "SELECT card_id, variante, zustand, sprache, anzahl, kaufpreis FROM sammlung"
+            " WHERE user_id = ? AND anzahl > 0", (user_id,))]
+        con.close()
+        return aus
+
+    def _markt_sets(con):
+        """Bewegung je Set aus dem Tagesstand des Markts (markt_tag), falls vorhanden."""
+        try:
+            tag = con.execute("SELECT MAX(datum) d FROM markt_tag").fetchone()["d"]
+            if not tag:
+                return {}
+            return {r["schluessel"]: r["bew30"] for r in con.execute(
+                "SELECT schluessel, bew30 FROM markt_tag WHERE ebene='set' AND datum=?", (tag,))}
+        except Exception:
+            return {}
+
+    def _set_stand(user_id, nur_sets=None):
+        """Fortschritt, Rest und Wert je Set, in dem mindestens eine Karte liegt.
+
+        „Rest zum Set" ist die Summe der Trendpreise aller Karten des Sets, die nicht in der
+        Sammlung liegen — zu heutigen Preisen, denn morgen sind es andere. Karten ohne Preis
+        zählen als 0 und werden gezählt, damit die Zahl ehrlich bleibt."""
+        posten = _posten_alle(user_id)
+        if not posten:
+            return []
+        besitz = {}
+        for p in posten:
+            besitz[p["card_id"]] = besitz.get(p["card_id"], 0) + (p["anzahl"] or 0)
+        con = get_db()
+        set_von = {}
+        ids = list(besitz)
+        for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
+            marken = ",".join("?" * len(teil))
+            for r in con.execute(f"SELECT id, set_id FROM cards WHERE id IN ({marken})", teil):
+                set_von[r["id"]] = r["set_id"]
+        sets = sorted({s for s in set_von.values() if s})
+        if nur_sets is not None:
+            sets = [s for s in sets if s in nur_sets]
+        if not sets:
+            con.close()
+            return []
+        marken = ",".join("?" * len(sets))
+        stamm = {r["id"]: dict(r) for r in con.execute(
+            f"SELECT id, name, name_en, serie_name, release_date, total, official FROM sets"
+            f" WHERE id IN ({marken})", sets)}
+        # Alle Karten der Sets mit Preis — daraus Gesamtzahl und Rest.
+        karten = {}
+        for r in con.execute(
+                f"SELECT c.id, c.set_id, COALESCE(p.eur, p.eur_geschaetzt) eur FROM cards c"
+                f" LEFT JOIN card_prices p ON p.card_id = c.id WHERE c.set_id IN ({marken})", sets):
+            karten.setdefault(r["set_id"], []).append((r["id"], r["eur"]))
+        bewegung = _markt_sets(con)
+        ziele = {r["set_id"]: r["ziel_datum"] for r in con.execute(
+            "SELECT set_id, ziel_datum FROM sammlung_ziele WHERE user_id = ?", (user_id,))}
+        con.close()
+
+        preise = _preise(ids)
+        wert_je_set, einsatz_je_set, wert_gekauft_je_set = {}, {}, {}
+        for p in posten:
+            sid = set_von.get(p["card_id"])
+            if not sid:
+                continue
+            w = (_posten_wert(preise.get(p["card_id"]), p) or 0) * (p["anzahl"] or 0)
+            wert_je_set[sid] = wert_je_set.get(sid, 0) + w
+            if p["kaufpreis"] is not None:
+                einsatz_je_set[sid] = einsatz_je_set.get(sid, 0) + p["kaufpreis"] * (p["anzahl"] or 0)
+                wert_gekauft_je_set[sid] = wert_gekauft_je_set.get(sid, 0) + w
+        aus = []
+        for sid in sets:
+            st = stamm.get(sid) or {}
+            alle = karten.get(sid, [])
+            gesamt = len(alle) or st.get("total") or 0
+            besessen = sum(1 for cid, _e in alle if cid in besitz)
+            fehlend = [(cid, e) for cid, e in alle if cid not in besitz]
+            rest = sum(e or 0 for _c, e in fehlend)
+            einsatz = einsatz_je_set.get(sid)
+            rendite = None
+            if einsatz:
+                rendite = round((wert_gekauft_je_set.get(sid, 0) - einsatz) / einsatz * 100, 1)
+            aus.append({
+                "set_id": sid, "name": st.get("name") or st.get("name_en") or sid,
+                "serie_name": st.get("serie_name"), "jahr": (st.get("release_date") or "")[:4],
+                "gesamt": gesamt, "besessen": besessen,
+                "prozent": round(besessen / gesamt * 100) if gesamt else 0,
+                "fehlt": len(fehlend), "rest": round(rest, 2),
+                "rest_ohne_preis": sum(1 for _c, e in fehlend if not e),
+                "wert": round(wert_je_set.get(sid, 0), 2),
+                "einsatz": round(einsatz, 2) if einsatz else None, "rendite": rendite,
+                "bew30": bewegung.get(sid), "ziel": ziele.get(sid),
+            })
+        return aus
+
+    @app.get("/api/sammlung/kopf")
+    def kopf(request: Request):
+        """Die vier Zahlen über der Sammlung: Wert und Bewegung, Einsatz und Gewinn,
+        Sets, Rest zu den Zielen."""
+        user = require_user(request)
+        posten = _posten_alle(user["id"])
+        if not posten:
+            return {"leer": True}
+        preise = _preise({p["card_id"] for p in posten})
+        wert = basis7 = diff7 = basis30 = diff30 = 0.0
+        einsatz = wert_gekauft = 0.0
+        for p in posten:
+            pr = preise.get(p["card_id"])
+            w = (_posten_wert(pr, p) or 0)
+            n = p["anzahl"] or 0
+            wert += w * n
+            if p["kaufpreis"] is not None:
+                einsatz += p["kaufpreis"] * n
+                wert_gekauft += w * n
+            if pr and pr.get("eur"):
+                # Die Bewegung rechnet mit dem Grundpreis der Karte — Zustand und Ausprägung
+                # skalieren beide Seiten gleich, der Prozentwert bleibt derselbe.
+                for feld, (b, d) in (("eur_avg7", ("basis7", "diff7")), ("eur_avg30", ("basis30", "diff30"))):
+                    if _bewegung(pr, feld) is None:
+                        continue
+                    faktor = w / pr["eur"] if pr["eur"] else 1
+                    if feld == "eur_avg7":
+                        basis7 += pr[feld] * faktor * n; diff7 += (pr["eur"] - pr[feld]) * faktor * n
+                    else:
+                        basis30 += pr[feld] * faktor * n; diff30 += (pr["eur"] - pr[feld]) * faktor * n
+        sets = _set_stand(user["id"])
+        ziele = [s for s in sets if s.get("ziel")]
+        return {
+            "wert": round(wert, 2), "karten": sum(p["anzahl"] or 0 for p in posten),
+            "bew7_eur": round(diff7, 2), "bew7": round(diff7 / basis7 * 100, 1) if basis7 else None,
+            "bew30_eur": round(diff30, 2), "bew30": round(diff30 / basis30 * 100, 1) if basis30 else None,
+            "einsatz": round(einsatz, 2) if einsatz else None,
+            "gewinn": round(wert_gekauft - einsatz, 2) if einsatz else None,
+            "gewinn_proz": round((wert_gekauft - einsatz) / einsatz * 100, 1) if einsatz else None,
+            "sets": len(sets), "sets_fast": sum(1 for s in sets if 90 <= s["prozent"] < 100),
+            "sets_komplett": sum(1 for s in sets if s["prozent"] >= 100),
+            "ziele": len(ziele), "ziel_rest": round(sum(s["rest"] for s in ziele), 2),
+            "ziel_fehlt": sum(s["fehlt"] for s in ziele),
+        }
+
+    @app.get("/api/sammlung/sets")
+    def sets_liste(request: Request, sortier: str = "fortschritt"):
+        """Der Set-Reiter: Fortschritt nach besessenen Karten, Rest zu heutigen Preisen."""
+        user = require_user(request)
+        sets = _set_stand(user["id"])
+        schluessel = {
+            "fortschritt": lambda s: (-s["prozent"], -s["besessen"]),
+            "rest": lambda s: (-s["rest"],),
+            "wert": lambda s: (-s["wert"],),
+            "bewegung": lambda s: (s["bew30"] is None, -(s["bew30"] or 0)),
+            "name": lambda s: ((s["name"] or "").lower(),),
+            "jahr": lambda s: (s["jahr"] or "",),
+        }.get(sortier) or (lambda s: (-s["prozent"], -s["besessen"]))
+        sets.sort(key=schluessel)
+        return {"sets": sets, "sortier": sortier}
+
+    @app.get("/api/sammlung/set/{set_id}")
+    def set_seite(request: Request, set_id: str):
+        """Häkchenraster eines Sets: jede Karte mit Preis, besessen oder nicht."""
+        user = require_user(request)
+        con = get_db()
+        stamm = con.execute("SELECT id, name, name_en, serie_name, release_date, total, official"
+                            " FROM sets WHERE id = ?", (set_id,)).fetchone()
+        if not stamm:
+            con.close()
+            raise HTTPException(404, "Set nicht gefunden")
+        reihen = con.execute(
+            f"{card_select} WHERE cards.set_id = ? ORDER BY cards.local_num, cards.local_id", (set_id,)).fetchall()
+        ziel = con.execute("SELECT id, ziel_datum FROM sammlung_ziele WHERE user_id = ? AND set_id = ?",
+                           (user["id"], set_id)).fetchone()
+        con.close()
+        besitz = _besitz(user["id"])
+        preise = _preise([r["id"] for r in reihen])
+        karten = []
+        for r in reihen:
+            k = card_brief(r)
+            pr = preise.get(r["id"])
+            k["eur"] = pr["eur"] if pr else None
+            k["bew30"] = _bewegung(pr, "eur_avg30") if pr else None
+            k["anzahl"] = besitz.get(r["id"], 0)
+            karten.append(k)
+        fehlend = [k for k in karten if not k["anzahl"]]
+        stand = (_set_stand(user["id"], {set_id}) or [None])[0]
+        return {
+            "set": dict(stamm), "karten": karten,
+            "gesamt": len(karten), "besessen": len(karten) - len(fehlend),
+            "rest": round(sum(k["eur"] or 0 for k in fehlend), 2),
+            "rest_ohne_preis": sum(1 for k in fehlend if not k["eur"]),
+            "teuerste_fehlend": sorted([k for k in fehlend if k["eur"]], key=lambda k: -k["eur"])[:6],
+            "stand": stand,
+            "ziel": {"id": ziel["id"], "datum": ziel["ziel_datum"]} if ziel else None,
+        }
+
+    @app.get("/api/sammlung/guenstig")
+    def guenstig(request: Request, limit: int = 30):
+        """Wunschlisten-Karten unter ihrem 30-Tage-Schnitt — der Kaufmoment."""
+        user = require_user(request)
+        besitz = _besitz(user["id"])
+        offen = [c for c in _wants(user["id"]) if c not in besitz]
+        if not offen:
+            return {"karten": [], "gesamt": 0}
+        preise = _preise(offen)
+        treffer = []
+        for cid in offen:
+            pr = preise.get(cid)
+            b = _bewegung(pr, "eur_avg30") if pr else None
+            if b is None or b > -3:
+                continue
+            treffer.append((cid, pr, b))
+        treffer.sort(key=lambda x: x[2])
+        treffer = treffer[:max(1, min(100, limit))]
+        if not treffer:
+            return {"karten": [], "gesamt": 0}
+        con = get_db()
+        marken = ",".join("?" * len(treffer))
+        kurz = {r["id"]: card_brief(r) for r in con.execute(
+            f"{card_select} WHERE cards.id IN ({marken})", [x[0] for x in treffer])}
+        con.close()
+        aus = []
+        for cid, pr, b in treffer:
+            k = kurz.get(cid)
+            if not k:
+                continue
+            k.update({"eur": pr["eur"], "avg30": round(pr["eur_avg30"], 2), "prozent": b})
+            aus.append(k)
+        return {"karten": aus, "gesamt": len(aus)}
+
+    @app.post("/api/sammlung/kaufpreis")
+    async def kaufpreis_setzen(request: Request):
+        """Kaufpreis nachtragen, direkt nach „Hab ich" — ohne den Weg über den Dialog."""
+        user = require_user(request)
+        data = await request.json()
+        card_id = str(data.get("card_id") or "").strip()
+        try:
+            preis = float(str(data.get("kaufpreis") or "").replace(",", "."))
+        except Exception:
+            raise HTTPException(400, "Kein Preis")
+        if not card_id or preis < 0 or preis > 1_000_000:
+            raise HTTPException(400, "Kein Preis")
+        variante, zustand, sprache = _var(data.get("variante")), _zus(data.get("zustand")), _spr(data.get("sprache"))
+        con = get_db()
+        n = con.execute(
+            "UPDATE sammlung SET kaufpreis = ?, gekauft_am = COALESCE(gekauft_am, ?), updated_at = ?"
+            " WHERE user_id = ? AND card_id = ? AND variante = ? AND zustand = ? AND sprache = ?",
+            (round(preis, 2), _heute(), _now(), user["id"], card_id, variante, zustand, sprache)).rowcount
+        con.commit()
+        con.close()
+        return {"ok": bool(n)}
+
+    # --- Ziele ----------------------------------------------------------------
+    #
+    # „Base Set komplett bis Dezember." Ein Ziel ist ein Set mit Datum; der Fortschritt
+    # steht auf der Startseite. Das ist der Grund, jede Woche wiederzukommen.
+
+    @app.get("/api/sammlung/ziele")
+    def ziele_liste(request: Request):
+        user = require_user(request)
+        con = get_db()
+        ziele = [dict(r) for r in con.execute(
+            "SELECT id, set_id, ziel_datum FROM sammlung_ziele WHERE user_id = ? ORDER BY ziel_datum, id",
+            (user["id"],))]
+        con.close()
+        if not ziele:
+            return {"ziele": []}
+        stand = {s["set_id"]: s for s in _set_stand(user["id"], {z["set_id"] for z in ziele})}
+        # Ein Ziel-Set ohne einzige Karte hat noch keinen Stand — dann aus dem Stamm.
+        con = get_db()
+        heute = _heute()
+        for z in ziele:
+            s = stand.get(z["set_id"])
+            if not s:
+                st = con.execute("SELECT name, name_en, total FROM sets WHERE id = ?", (z["set_id"],)).fetchone()
+                gesamt = con.execute("SELECT COUNT(*) c FROM cards WHERE set_id = ?", (z["set_id"],)).fetchone()["c"]
+                rest = con.execute("SELECT SUM(COALESCE(p.eur, p.eur_geschaetzt)) s FROM cards c"
+                                   " LEFT JOIN card_prices p ON p.card_id = c.id WHERE c.set_id = ?",
+                                   (z["set_id"],)).fetchone()["s"] or 0
+                s = {"name": (st["name"] or st["name_en"]) if st else z["set_id"], "gesamt": gesamt,
+                     "besessen": 0, "prozent": 0, "fehlt": gesamt, "rest": round(rest, 2), "bew30": None}
+            z.update({k: s.get(k) for k in ("name", "gesamt", "besessen", "prozent", "fehlt", "rest", "bew30")})
+            if z["ziel_datum"]:
+                try:
+                    import datetime as _dt
+                    z["tage"] = (_dt.date.fromisoformat(z["ziel_datum"]) - _dt.date.fromisoformat(heute)).days
+                except Exception:
+                    z["tage"] = None
+        con.close()
+        return {"ziele": ziele}
+
+    @app.post("/api/sammlung/ziele")
+    async def ziel_setzen(request: Request):
+        user = require_user(request)
+        data = await request.json()
+        set_id = str(data.get("set_id") or "").strip()
+        if data.get("loeschen"):
+            con = get_db()
+            con.execute("DELETE FROM sammlung_ziele WHERE user_id = ? AND set_id = ?", (user["id"], set_id))
+            con.commit()
+            con.close()
+            return {"ok": True}
+        if not ist_bezahlt(user):
+            raise HTTPException(402, detail={"code": "limit_pro"})
+        datum = str(data.get("ziel_datum") or "").strip()[:10] or None
+        if datum and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", datum):
+            raise HTTPException(400, "Datum als JJJJ-MM-TT")
+        con = get_db()
+        if not con.execute("SELECT 1 FROM sets WHERE id = ?", (set_id,)).fetchone():
+            con.close()
+            raise HTTPException(404, "Set nicht gefunden")
+        n = con.execute("SELECT COUNT(*) c FROM sammlung_ziele WHERE user_id = ?", (user["id"],)).fetchone()["c"]
+        schon = con.execute("SELECT 1 FROM sammlung_ziele WHERE user_id = ? AND set_id = ?",
+                            (user["id"], set_id)).fetchone()
+        if n >= 6 and not schon:
+            con.close()
+            raise HTTPException(400, "Höchstens sechs Ziele — sonst ist keins mehr eins.")
+        con.execute("INSERT INTO sammlung_ziele (user_id, set_id, ziel_datum, created_at) VALUES (?,?,?,?)"
+                    " ON CONFLICT(user_id, set_id) DO UPDATE SET ziel_datum = excluded.ziel_datum",
+                    (user["id"], set_id, datum, _now()))
+        con.commit()
+        con.close()
+        return {"ok": True}
+
+    # --- Export ------------------------------------------------------------------
+    #
+    # Eine Tabelle mit Wert je Karte — für Versicherung, Verkauf oder den Wechsel in ein
+    # anderes Werkzeug. CSV für Tabellen, PDF für den Ordner.
+
+    def _export_zeilen(user_id):
+        con = get_db()
+        reihen = [dict(r) for r in con.execute(
+            "SELECT s.card_id, s.variante, s.zustand, s.sprache, s.anzahl, s.kaufpreis, s.gekauft_am,"
+            " s.notiz, c.name_de, c.name_en, c.local_id, c.rarity, c.set_id,"
+            " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
+            " FROM sammlung s JOIN cards c ON c.id = s.card_id WHERE s.user_id = ? AND s.anzahl > 0"
+            " ORDER BY set_name, c.local_num, c.local_id, s.variante", (user_id,))]
+        con.close()
+        preise = _preise({r["card_id"] for r in reihen})
+        for r in reihen:
+            r["name"] = r["name_de"] or r["name_en"] or r["card_id"]
+            r["stueck"] = _posten_wert(preise.get(r["card_id"]), r)
+            r["wert"] = round((r["stueck"] or 0) * (r["anzahl"] or 0), 2)
+        return reihen
+
+    def _d(n, stellen=2):
+        return "" if n is None else f"{n:.{stellen}f}".replace(".", ",")
+
+    @app.get("/api/sammlung/export")
+    def sammlung_export(request: Request, format: str = "csv"):
+        user = require_user(request)
+        if not ist_bezahlt(user):
+            raise HTTPException(402, detail={"code": "limit_pro"})
+        zeilen = _export_zeilen(user["id"])
+        summe = sum(z["wert"] for z in zeilen)
+        stueck = sum(z["anzahl"] or 0 for z in zeilen)
+        from fastapi import Response
+        datum = _heute()
+        if format == "pdf":
+            return Response(_export_pdf(zeilen, summe, stueck, datum), media_type="application/pdf",
+                            headers={"Content-Disposition": f'attachment; filename="sammlung-{datum}.pdf"'})
+        out = ["Name;Set;Nummer;Seltenheit;Variante;Zustand;Sprache;Anzahl;Stückwert EUR;Wert EUR;Kaufpreis EUR;Gekauft am;Notiz;Karten-ID"]
+        for z in zeilen:
+            notiz = (z["notiz"] or "").replace(";", ",").replace("\n", " ")
+            out.append(";".join([z["name"], z["set_name"] or z["set_id"], z["local_id"] or "", z["rarity"] or "",
+                                 z["variante"] or "normal", z["zustand"] or "", (z["sprache"] or "").upper(),
+                                 str(z["anzahl"] or 0), _d(z["stueck"]), _d(z["wert"]), _d(z["kaufpreis"]),
+                                 z["gekauft_am"] or "", notiz, z["card_id"]]))
+        out.append(f"Summe;;;;;;;{stueck};;{_d(summe)};;;;")
+        return Response("\n".join(out).encode("utf-8-sig"), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="sammlung-{datum}.csv"'})
+
+    def _export_pdf(zeilen, summe, stueck, datum):
+        """Sammlungsübersicht als Tabelle: eine Zeile je Posten, Summen am Ende."""
+        import io
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import mm
+        from reportlab.pdfgen import canvas as pdfcanvas
+        buf = io.BytesIO()
+        c = pdfcanvas.Canvas(buf, pagesize=A4)
+        breite, hoehe = A4
+        links, oben = 15 * mm, hoehe - 18 * mm
+        spalten = [("Karte", 0), ("Set · Nr.", 62 * mm), ("Posten", 118 * mm), ("Anz.", 143 * mm),
+                   ("Stück €", 156 * mm), ("Wert €", 172 * mm)]
+
+        def kopf(seite):
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(links, oben, "Sammlungsübersicht")
+            c.setFont("Helvetica", 9)
+            c.drawRightString(breite - links, oben, f"Stand {datum} · Seite {seite}")
+            c.drawString(links, oben - 5 * mm,
+                         f"{stueck} Karten · Wert nach Cardmarket-Trend, Zustand eingerechnet: {summe:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+            y = oben - 13 * mm
+            c.setFont("Helvetica-Bold", 8)
+            for name, x in spalten:
+                if name in ("Anz.", "Stück €", "Wert €"):
+                    c.drawRightString(links + x + 12 * mm, y, name)
+                else:
+                    c.drawString(links + x, y, name)
+            c.line(links, y - 1.5 * mm, breite - links, y - 1.5 * mm)
+            return y - 6 * mm
+
+        seite = 1
+        y = kopf(seite)
+        c.setFont("Helvetica", 8)
+        for z in zeilen:
+            if y < 18 * mm:
+                c.showPage()
+                seite += 1
+                y = kopf(seite)
+                c.setFont("Helvetica", 8)
+            posten = " · ".join(x for x in (z["variante"] if z["variante"] != "normal" else "",
+                                            z["zustand"] or "", (z["sprache"] or "").upper()) if x) or "–"
+            c.drawString(links, y, (z["name"] or "")[:34])
+            c.drawString(links + spalten[1][1], y, f"{(z['set_name'] or z['set_id'])[:26]} · {z['local_id'] or ''}")
+            c.drawString(links + spalten[2][1], y, posten[:18])
+            c.drawRightString(links + spalten[3][1] + 12 * mm, y, str(z["anzahl"] or 0))
+            c.drawRightString(links + spalten[4][1] + 12 * mm, y, _d(z["stueck"]) or "–")
+            c.drawRightString(links + spalten[5][1] + 12 * mm, y, _d(z["wert"]))
+            y -= 4.6 * mm
+        y -= 2 * mm
+        c.line(links, y + 3 * mm, breite - links, y + 3 * mm)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawString(links, y - 1 * mm, "Summe")
+        c.drawRightString(links + spalten[3][1] + 12 * mm, y - 1 * mm, str(stueck))
+        c.drawRightString(links + spalten[5][1] + 12 * mm, y - 1 * mm, _d(summe))
+        c.setFont("Helvetica", 7)
+        c.drawString(links, 10 * mm, "Erstellt mit binderplan.app · Preise: Cardmarket-Trend je Karte, Zustandsabschläge wie in der App.")
+        c.showPage()
+        c.save()
+        return buf.getvalue()
 
     def kennzahlen():
         con = get_db()
