@@ -6936,7 +6936,7 @@ function fotoKarteWaehlen(si, ki) {
   const r = event.currentTarget.getBoundingClientRect();
   m.style.minWidth = '250px';
   m.style.left = Math.max(8, Math.min(window.innerWidth - 258, r.left)) + 'px';
-  m.style.top = Math.min(window.innerHeight - 260, r.bottom + 6) + 'px';
+  menuEinpassen(m, r);
   event.stopPropagation();
 }
 function fotoTauschen(si, ki, ai) {
@@ -9363,6 +9363,32 @@ function freiesFach(idx) {
   S.auswahl.add(idx);
   speichern(); zeichneBinder();
 }
+/**
+ * Ein aufgeklapptes Menü so legen, dass es ganz im Sichtfeld bleibt.
+ *
+ * Vorher rechneten beide Aufrufer mit einer geratenen Höhe (220 bzw. 260 px)
+ * und schoben das Menü nur nach oben, wenn diese Zahl nicht mehr passte. Ein
+ * Fach mit Karte öffnet aber zehn Einträge und damit 300 px: in der untersten
+ * Reihe ragte das Menü gemessene 80 px aus dem Fenster, „Entfernen" und
+ * „Herausnehmen" lagen außerhalb des Sichtfelds. Die Höhe wird deshalb
+ * gemessen, nicht geraten — und passt sie unten nicht, klappt das Menü nach
+ * oben auf. Passt sie auf keiner Seite, bekommt es die größere Seite und darin
+ * eine eigene Bildlaufleiste.
+ *
+ * `m` muss dafür bereits sichtbar sein, sonst ist `offsetHeight` null.
+ */
+function menuEinpassen(m, r, rand = 8) {
+  m.style.maxHeight = ''; m.style.overflowY = '';
+  const h = m.offsetHeight;
+  const unten = window.innerHeight - r.bottom - 6 - rand;
+  const oben = r.top - 6 - rand;
+  if (h <= unten) { m.style.top = (r.bottom + 6) + 'px'; return; }
+  if (h <= oben) { m.style.top = (r.top - 6 - h) + 'px'; return; }
+  const platz = Math.max(unten, oben, 140);
+  m.style.maxHeight = platz + 'px';
+  m.style.overflowY = 'auto';
+  m.style.top = (unten >= oben ? r.bottom + 6 : Math.max(rand, r.top - 6 - platz)) + 'px';
+}
 function slotMenue(ev, idx) {
   const item = S.binder.items[idx]; if (!item) return;
   const m = $('menu-slot');
@@ -9380,7 +9406,7 @@ function slotMenue(ev, idx) {
   m.classList.remove('hidden');
   const w = 260; m.style.width = w + 'px';
   m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left - w / 2 + r.width / 2)) + 'px';
-  m.style.top = Math.min(window.innerHeight - 220, r.bottom + 6) + 'px';
+  menuEinpassen(m, r);
   ev.stopPropagation();
 }
 function slotMenueZu() { $('menu-slot').classList.add('hidden'); }
