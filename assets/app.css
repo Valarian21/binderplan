@@ -2048,3 +2048,100 @@
     .suche-lade .ergebnisse { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .tk-hab .hinzu { font-size: var(--t-s); }
   }
+
+
+/* ==========================================================================
+   10.09.2026 — Historie, Ziehmodus, Ablage, Seitentitel, Etiketten,
+   Variantenmenü, Teilen-Dialog, Hilfe-Center, Gast-Einstieg
+   ========================================================================== */
+
+/* Rückgängig / Wiederholen: zwei schmale Knöpfe, die zusammengehören */
+.wb-historie { display: inline-flex; gap: 2px; }
+.wb-historie .btn { font-size: var(--t-m); padding: 5px 9px; line-height: 1; }
+.wb-historie .btn[disabled] { opacity: .35; cursor: default; }
+
+/* Ziehmodus: der aktive Zustand steht auf dem Knopf, nicht in einem Tooltip */
+.zieh-btn.an { background: var(--akzent-flaeche); border-color: var(--akzent); color: var(--akzent-text); }
+
+/* Seitentitel neben der Seitenzahl */
+.seiten-titel { background: none; border: 0; color: var(--ink); font: inherit; font-weight: 600;
+  cursor: pointer; padding: 2px 6px; border-radius: 6px; max-width: 180px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.seiten-titel:hover { background: var(--panel2); }
+.seiten-titel.leer { color: var(--mut); font-weight: 400; font-size: var(--t-s); }
+.ps-nur-titel { grid-column: 1 / -1; font-weight: 700; margin: 10px 0 -4px; }
+
+/* Ablage: die Karten, die auf ihren Platz warten */
+.wb-ablage { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-top: 10px; padding: 8px 12px; border: 1px dashed var(--line);
+  border-radius: var(--r-3); background: var(--panel2); }
+.wb-ablage .ab-kopf { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.wb-ablage .ab-bilder { display: inline-flex; gap: 3px; align-items: center; }
+.wb-ablage .ab-bilder img { width: 22px; height: 31px; object-fit: cover; border-radius: 2px; }
+.wb-ablage .ab-mehr, .wb-ablage .ab-leer { font-size: var(--t-s); color: var(--mut); }
+.wb-ablage .ab-akt { display: flex; gap: 6px; }
+.wb-ablage .btn { font-size: var(--t-s); padding: 5px 10px; }
+.tk-hab .ab-knopf { background: none; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--mut); cursor: pointer; padding: 2px 7px; font-size: var(--t-s); }
+.tk-hab .ab-knopf:hover { color: var(--ink); border-color: var(--akzent); }
+
+/* Variante als Knopf am Fach */
+.slot .vbtn { border: 0; cursor: pointer; font: inherit; }
+.slot .vbtn.still { opacity: 0; transition: opacity .12s; }
+.slot:hover .vbtn.still, .slot:focus-within .vbtn.still { opacity: .75; }
+
+/* Etiketten am Fach: höchstens drei, sie dürfen die Karte nicht zudecken */
+.slot .etiketten { position: absolute; left: 3px; bottom: 3px; display: flex; gap: 2px;
+  max-width: calc(100% - 6px); flex-wrap: wrap; pointer-events: none; }
+.slot .etikett { font-size: var(--t-xs); font-weight: 700; line-height: 1.5; color: #14161c;
+  padding: 0 4px; border-radius: 3px; max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+
+/* Kleines Menü am Fach (Variante + Etikett) */
+.vmenu { position: fixed; z-index: 90; background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r-3); box-shadow: var(--d3); padding: 4px; min-width: 150px; }
+.vmenu button { display: block; width: 100%; text-align: left; background: none; border: 0;
+  color: var(--ink); font: inherit; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.vmenu button:hover { background: var(--panel2); }
+.vmenu button.an { background: var(--akzent-flaeche); color: var(--akzent-text); font-weight: 600; }
+.vmenu .trenn { height: 1px; background: var(--line); margin: 4px 0; }
+
+/* Teilen-Dialog */
+.tl-link { display: flex; gap: 6px; margin: 12px 0; }
+.tl-link .feld { flex: 1; min-width: 0; }
+.tl-frist { margin-bottom: 12px; }
+.tl-qr { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  padding: 12px; border: 1px solid var(--line); border-radius: var(--r-3); }
+.tl-qr img { border-radius: 6px; background: #fff; padding: 6px; flex: 0 0 auto; }
+.tl-qr-txt { font-size: var(--t-s); color: var(--mut); margin-bottom: 8px; max-width: 34ch; }
+.tl-hinweis { font-size: var(--t-s); color: var(--mut); margin-top: 12px; }
+.schalter.gross { font-size: var(--t-m); font-weight: 600; }
+
+/* Hilfe-Center */
+.hz-liste { display: grid; gap: 6px; margin-top: 12px; max-height: 52vh; overflow-y: auto; }
+.hz-eintrag { display: block; width: 100%; text-align: left; background: var(--panel2);
+  border: 1px solid var(--line); border-radius: var(--r-3); padding: 10px 12px; cursor: pointer;
+  color: var(--ink); font: inherit; }
+.hz-eintrag:hover { border-color: var(--akzent); }
+.hz-eintrag strong { display: block; }
+.hz-eintrag span { font-size: var(--t-s); color: var(--mut); }
+.hz-artikel { margin-top: 12px; max-height: 60vh; overflow-y: auto; }
+.hz-artikel h3 { margin: 12px 0 4px; }
+.hz-schritte { margin: 10px 0 0; padding-left: 22px; display: grid; gap: 6px; }
+
+/* Gast-Einstieg über einem geteilten Binder */
+/* Markengelb mit dunkler Schrift — derselbe Kontrast wie im Logo. Signalrot war
+   hier falsch: der Streifen ist eine Einladung, keine Warnung, und die zweite Zeile
+   war auf Rot nicht mehr lesbar. */
+.gast-einstieg { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  flex-wrap: wrap; margin: 10px auto; max-width: 1180px; padding: 12px 16px; border-radius: var(--r-3);
+  border: 2px solid var(--kontur); background: var(--gelb); color: #14161C; }
+.gast-einstieg strong { display: block; font-size: var(--t-m); }
+.gast-einstieg span { font-size: var(--t-s); color: #3a3d45; }
+.gast-einstieg .btn { background: var(--kontur); color: #fff; border-color: var(--kontur); white-space: nowrap; }
+.gast-einstieg .ge-akt { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 700px) {
+  .gast-einstieg, .wb-ablage { flex-direction: column; align-items: stretch; }
+  .gast-einstieg .ge-akt .btn, .wb-ablage .ab-akt .btn { flex: 1; }
+  .seiten-titel { max-width: 110px; }
+}

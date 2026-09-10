@@ -554,6 +554,7 @@ function zeichneErgebnisse() {
         <button class="wunsch ${wunschHat(k.id) ? 'an' : ''}" onclick="event.stopPropagation();wunschToggle('${esc(k.id)}')"
                 title="${t('wl_titel')}" aria-label="${t('wl_titel')}">${wunschHat(k.id) ? '★' : '☆'}</button>
         ${k.reverse ? `<button class="rev" onclick="event.stopPropagation();kartAdd(${i},'reverse')" title="${t('v_reverse')}">+ REV</button>` : ''}
+        <button class="ab-knopf" onclick="event.stopPropagation();ablageDazu(${i})" title="${t('ab_dazu')}" aria-label="${t('ab_dazu')}">⊕</button>
       </div>
     </div>`;
   }).join('');
@@ -749,7 +750,20 @@ function slotExtras(item, idx) {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
   if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">${ic('palette', 11)}</span>`;
-  if (item && VMARK[item.variant]) html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
+  // Die Variante ist ab dem 10.09.2026 ein Knopf, kein Aufkleber: ein Klick öffnet die
+  // Auswahl der Drucke, die es zu genau dieser Karte gibt. Vorher musste man dafür in
+  // den Inspektor — bei einem Reverse-Holo-Set einmal je Karte.
+  if (item && item.type === 'card') {
+    const v = item.variant || 'normal';
+    html += `<button class="vmark vbtn ${v === 'normal' ? 'still' : ''}" title="${t('v_' + v)} – ${t('variante')}"
+      onclick="event.stopPropagation();variantenMenue(event,${idx})">${VMARK[v] || t('v_normal_kurz')}</button>`;
+  } else if (item && VMARK[item.variant]) {
+    html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;
+  }
+  if (item && item.etiketten && item.etiketten.length) {
+    html += `<span class="etiketten">${item.etiketten.slice(0, 3).map((e) =>
+      `<span class="etikett" style="background:${esc(e.farbe || '#f5c518')}" title="${esc(e.text)}">${esc(e.text)}</span>`).join('')}</span>`;
+  }
   if (item && item.sprache && item.sprache !== 'de') html += `<span class="vmark spmark" title="${t('kartensprache')}">${item.sprache.toUpperCase()}</span>`;
   if (S.preiseAn && item && item.type === 'card') {
     const p = preisFuer(item);
@@ -806,10 +820,12 @@ function fachHtml(idx) {
 function seiteHtml(sp, seiten, werkzeuge) {
   let faecher = '';
   for (let i = 0; i < sp.laenge; i++) faecher += fachHtml(sp.start + i);
-  const kopf = werkzeuge ? `<div class="ps-titel"><span>${t('seite')} ${sp.nr + 1}</span>
+  const titel = seitenTitel(sp.nr);
+  const kopf = werkzeuge ? `<div class="ps-titel"><span>${t('seite')} ${sp.nr + 1}${titel ? ' · ' + esc(titel) : ''}</span>
       <span class="ps-akt">
         <button onclick="artworkOeffnen(${sp.nr})" title="${t('aw_t')}">${ic('palette', 16)}</button>
         <button onclick="seiteWaehlen(${sp.nr})" title="${t('s_seite_wahl')}">${ic('hakenKasten', 16)}</button>
+        <button onclick="seitenTitelFragen(${sp.nr})" title="${t('st_titel_leer')}">${titel ? '✎' : 'T'}</button>
         <button onclick="seiteVerschieben(${sp.nr},-1)" title="${t('s_seite_hoch')}" ${sp.nr === 0 ? 'disabled' : ''}>↑</button>
         <button onclick="seiteVerschieben(${sp.nr},1)" title="${t('s_seite_runter')}" ${sp.nr === seiten - 1 ? 'disabled' : ''}>↓</button>
         <button onclick="seiteLeeresFach(${sp.nr})" title="${t('s_seite_fach')}">＋</button>
@@ -831,7 +847,9 @@ function zeichneAlleSeiten() {
     auswahlAktionen();
     return;
   }
-  box.innerHTML = plan.map((sp) => seiteHtml(sp, plan.length, !S.nurAnsicht)).join('');
+  box.innerHTML = plan.map((sp) => S.nurAnsicht && seitenTitel(sp.nr)
+    ? `<div class="ps-nur-titel">${esc(seitenTitel(sp.nr))}</div>` + seiteHtml(sp, plan.length, false)
+    : seiteHtml(sp, plan.length, !S.nurAnsicht)).join('');
   auswahlAktionen();
 }
 
@@ -870,6 +888,13 @@ function zeichneBinder() {
   $('wb-onb').classList.toggle('hidden', !leer);
   $('wb-slots').classList.toggle('hidden', !!(leer || S.alleSeiten));
   zeichneStreifen();
+  // Die neuen Bedienelemente hängen am Binderzustand, nicht am Ereignis, das sie
+  // geändert hat — deshalb hier, an der einen Stelle, die immer läuft.
+  if (typeof historieKnoepfe === 'function') historieKnoepfe();
+  if (typeof ziehModusZeigen === 'function') ziehModusZeigen();
+  if (typeof ablageZeigen === 'function') ablageZeigen();
+  if (typeof seitenTitelZeigen === 'function') seitenTitelZeigen();
+  if (typeof gastEinstiegZeigen === 'function') gastEinstiegZeigen();
   $('wb-alle').classList.toggle('hidden', !!(leer || !S.alleSeiten));
   $('wb-nav').classList.toggle('hidden', !!leer);
   if (S.alleSeiten && !leer) zeichneAlleSeiten();

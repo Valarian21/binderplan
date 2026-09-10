@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609100140">
-<link rel="stylesheet" href="assets/app.css?v=202609100140">
+<link rel="stylesheet" href="assets/tokens.css?v=202609101937">
+<link rel="stylesheet" href="assets/app.css?v=202609101937">
 </head>
 <body>
 <div id="app">
@@ -260,6 +260,13 @@
     </div>
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
+          <!-- Rückgängig/Wiederholen sind Werkzeuge, keine Menüpunkte: wer 400 Karten
+               sortiert, greift oft danach. Der Titel nennt den Schritt, der zurückgeht. -->
+          <div class="wb-historie nur-edit">
+            <button class="btn sekundaer" id="wb-undo" onclick="rueckgaengig()" disabled aria-label="Rückgängig" data-i18n-aria="undo">↶</button>
+            <button class="btn sekundaer" id="wb-redo" onclick="wiederholen()" disabled aria-label="Wiederholen" data-i18n-aria="redo">↷</button>
+          </div>
+          <button class="btn sekundaer nur-edit zieh-btn" id="wb-ziehmodus" style="font-size: var(--t-s);padding:5px 10px" onclick="ziehModusUmschalten()">Tauschen</button>
           <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
           <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 10px" onclick="sucheLadeToggle()" id="btn-suche-lade">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
@@ -293,7 +300,7 @@
                 <div class="f-chips" id="wb-seitenfarbe" style="margin:2px 12px 8px"></div>
               </div>
               <div class="trenn"></div>
-              <button onclick="teilen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
+              <button onclick="teilenOeffnen()" data-i18n="ex_teilen">Binder-Link teilen (nur Ansicht)</button>
               <button onclick="veroeffentlichenUmschalten()" id="wb-vitrine-knopf" data-i18n="vt_zeigen">In der Vitrine zeigen …</button>
               <div class="trenn"></div>
               <button class="gefahr" onclick="binderLeeren()" data-i18n="leeren">Binder leeren</button>
@@ -328,6 +335,9 @@
       <div class="seiten-nav" id="wb-nav">
         <button onclick="seiteWechsel(-1)" style="font-size: var(--t-l)" aria-label="Vorherige Seite" data-i18n-aria="s_vorherige">‹</button>
         <span><span data-i18n="seite">Seite</span> <strong id="wb-seite">1</strong> / <strong id="wb-seiten">1</strong></span>
+        <!-- Seitentitel: ein Klick, ein Feld. Er steht auch im Platzhalter-PDF und auf
+             der geteilten Seite — deshalb ist er kein reiner Merkzettel. -->
+        <button class="seiten-titel nur-edit" id="wb-seitentitel" onclick="seitenTitelFragen()"></button>
         <button onclick="seiteWechsel(1)" style="font-size: var(--t-l)" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="seiteMenueOeffnen()" class="seite-btn" data-i18n="seite_menue">Seite …</button>
@@ -347,10 +357,33 @@
           </div>
         </div>
       </div>
+      <!-- Der Einstieg für Gäste, die über einen geteilten Binder hereinkommen. Bis zum
+           10.09.2026 endete dieser Besuch ohne jeden Hinweis, dass man dasselbe selbst
+           tun kann — die Seite warb für alles außer sich selbst. -->
+      <div id="gast-einstieg" class="gast-einstieg hidden">
+        <div>
+          <strong id="gast-einstieg-titel"></strong>
+          <span data-i18n="ge_u">Plane deinen eigenen — Fach für Fach, mit Cardmarket-Preisen in Euro. Kostenlos und ohne Konto.</span>
+        </div>
+        <div class="ge-akt">
+          <button class="btn" onclick="gastEigenerBinder()" data-i18n="ge_knopf">Eigenen Binder planen</button>
+        </div>
+      </div>
       <div class="seitenstreifen" id="wb-streifen"></div>
       <div id="wb-sammel" class="hidden">
         <div style="display:flex;justify-content:space-between;font-size: var(--t-s);color:var(--mut);margin-bottom:4px"><span data-i18n="gesammelt">Gesammelt</span><strong id="wb-sammel-zahl" style="color:var(--gruen-text)"></strong></div>
         <div style="height:8px;border-radius:99px;background:var(--panel2);overflow:hidden"><div id="wb-sammel-balken" style="height:100%;background:var(--gruen);width:0"></div></div>
+      </div>
+      <!-- Ablage: Karten, die auf ihren Platz warten (aus der Suche gesammelt oder
+           mit Strg+C kopiert). Sie steht unter dem Binder, weil sie zum Binder gehört
+           und nicht zur Suche — sie überlebt den Binderwechsel. -->
+      <div id="wb-ablage" class="wb-ablage hidden">
+        <div class="ab-kopf"><strong id="wb-ablage-zahl"></strong>
+          <span class="ab-bilder" id="wb-ablage-bilder"></span></div>
+        <div class="ab-akt">
+          <button class="btn" onclick="ablageEinfuegen()" data-i18n="ab_einfuegen">Einfügen</button>
+          <button class="btn sekundaer" onclick="ablageLeeren()" data-i18n="ab_leeren">Leeren</button>
+        </div>
       </div>
       <div id="wb-rest" class="hidden wb-rest"></div>
       <div id="wb-preise" class="hidden preisbox"></div>
@@ -815,7 +848,9 @@
       <li data-i18n="pl_h_3">Ziehen verschiebt ein Fach direkt; auf dem Handy gedrückt halten und ziehen.</li>
       <li data-i18n="pl_h_4">Der Haken im Fach sagt „hab ich" und wandert in deine Sammlung.</li>
       <li data-i18n="pl_h_5">Tastatur: Strg+A wählt alles, Pfeile verschieben, Entf leert, Esc hebt auf.</li>
+      <li data-i18n="pl_h_6">Strg+Z nimmt zurück, Strg+Y wiederholt. Strg+C legt Gewähltes in die Ablage, Strg+V setzt es ein — auch in einem anderen Binder.</li>
     </ul>
+    <div style="margin-top:10px"><button class="btn sekundaer" onclick="modalSchliessen();hilfeOeffnen()" data-i18n="hz_alle">Alle Anleitungen ansehen</button></div>
     <div style="display:flex;justify-content:flex-end;margin-top:16px">
       <button class="btn" onclick="modalSchliessen()" data-i18n="verstanden">Verstanden</button>
     </div>
@@ -1309,22 +1344,71 @@
   <div class="seite-rumpf st-rumpf" id="mk-rumpf"></div>
 </div>
 
+
+<!-- Binder teilen: Schalter, Adresse, QR-Code, Frist. Ein Ort statt „Link kopiert"-Toast,
+     weil Teilen mehrere Entscheidungen hat und eine davon (die Frist) Folgen. -->
+<div class="overlay hidden" id="modal-teilen">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="tl_t">Binder teilen</h2>
+    <p class="modal-u" data-i18n="tl_u">Wer den Link hat, darf den Binder ansehen — ohne Konto, ohne etwas ändern zu können.</p>
+    <label class="schalter gross"><input type="checkbox" id="tl-an" onchange="teilenSetzen(this.checked)"><span data-i18n="tl_an">Link freigeben</span></label>
+    <div id="tl-details" class="hidden">
+      <div class="tl-link"><input class="feld" id="tl-url" readonly onclick="this.select()">
+        <button class="btn" onclick="teilenKopieren()" data-i18n="kopieren">Kopieren</button></div>
+      <div class="tl-frist">
+        <label class="menu-lbl" for="tl-frist" data-i18n="tl_frist">Läuft ab</label>
+        <select class="feld" id="tl-frist" onchange="teilenSetzen(true, this.value)">
+          <option value="" data-i18n="tl_f_nie">nie – bis ich ihn abschalte</option>
+          <option value="1h" data-i18n="tl_f_1h">nach 1 Stunde</option>
+          <option value="1t" data-i18n="tl_f_1t">nach 1 Tag</option>
+          <option value="7t" data-i18n="tl_f_7t">nach 7 Tagen</option>
+          <option value="30t" data-i18n="tl_f_30t">nach 30 Tagen</option>
+        </select>
+      </div>
+      <div class="tl-qr">
+        <img id="tl-qr-bild" alt="QR-Code" width="150" height="150">
+        <div>
+          <div class="tl-qr-txt" data-i18n="tl_qr_u">Zum Scannen am Tauschtisch. Das Bild lässt sich speichern und ausdrucken.</div>
+          <a class="btn sekundaer" id="tl-qr-dl" download="binderplan-qr.png" data-i18n="tl_qr_dl">QR-Code speichern</a>
+        </div>
+      </div>
+      <p class="tl-hinweis" id="tl-status"></p>
+    </div>
+    <p class="tl-hinweis" data-i18n="tl_pause">Ausschalten macht den Link sofort ungültig, behält aber die Adresse: schaltest du ihn später wieder an, funktioniert derselbe Link.</p>
+  </div>
+</div>
+
+<!-- Hilfe-Center: alle Anleitungen an einem Ort, aus der App heraus erreichbar (Strg+/). -->
+<div class="overlay hidden" id="modal-hilfe">
+  <div class="modal" style="max-width:640px">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="hz_t">Anleitungen</h2>
+    <p class="modal-u" data-i18n="hz_u">Kurz erklärt, was Binderplan kann. Strg + / öffnet diese Liste von überall.</p>
+    <input class="feld" id="hz-suche" placeholder="Suchen …" data-i18n-ph="hz_ph" oninput="hilfeZeichnen(this.value)">
+    <div id="hz-liste" class="hz-liste"></div>
+    <div id="hz-artikel" class="hz-artikel hidden"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><span id="toast-text"></span><button id="toast-undo" class="hidden" onclick="rueckgaengig()"></button></div>
 <!-- Nach „Hab ich": der Kaufpreis wird gefragt, solange man ihn noch weiß. -->
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609100140"></script>
-<script defer src="assets/konto.js?v=202609100140"></script>
-<script defer src="assets/werkbank.js?v=202609100140"></script>
-<script defer src="assets/vitrine.js?v=202609100140"></script>
-<script defer src="assets/preise.js?v=202609100140"></script>
-<script defer src="assets/planer.js?v=202609100140"></script>
-<script defer src="assets/detail.js?v=202609100140"></script>
-<script defer src="assets/artwork.js?v=202609100140"></script>
+<script defer src="assets/kern.js?v=202609101937"></script>
+<script defer src="assets/konto.js?v=202609101937"></script>
+<script defer src="assets/werkbank.js?v=202609101937"></script>
+<script defer src="assets/vitrine.js?v=202609101937"></script>
+<script defer src="assets/preise.js?v=202609101937"></script>
+<script defer src="assets/planer.js?v=202609101937"></script>
+<script defer src="assets/teilen.js?v=202609101937"></script>
+<script defer src="assets/hilfe.js?v=202609101937"></script>
+<script defer src="assets/detail.js?v=202609101937"></script>
+<script defer src="assets/artwork.js?v=202609101937"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609100140"></script>
+<script defer src="assets/markt.js?v=202609101937"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609100140"></script>
+<script defer src="assets/sammlung.js?v=202609101937"></script>
 </body>
 </html>

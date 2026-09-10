@@ -335,12 +335,41 @@ function dragDrop(ev) {
     while (S.binder.items.length <= ziel) S.binder.items.push({ type: 'empty' });
     S.binder.items[ziel] = S.binder.items[dragIdx];
     S.binder.items[dragIdx] = { type: 'empty' };
+  } else if (S.ziehModus === 'tausch') {
+    // Tauschen: nur diese beiden Fächer ändern sich. Alle anderen Karten bleiben,
+    // wo sie sind — und damit bleibt auch die Seitenaufteilung, was der ganze
+    // Grund für diesen Modus ist. Wer eine Seite hübsch hat und zwei Karten
+    // vertauschen will, verschiebt sonst 400 Karten um eins.
+    const a = S.binder.items[dragIdx];
+    S.binder.items[dragIdx] = zielItem;
+    S.binder.items[ziel] = a;
   } else {
+    // Einschieben: die Karte wird herausgenommen und am Ziel wieder eingesetzt,
+    // alles dazwischen rückt auf. Richtig beim Einsortieren einer Karte in eine
+    // laufende Reihenfolge.
     const [item] = S.binder.items.splice(dragIdx, 1);
     S.binder.items.splice(ziel, 0, item);
   }
   dragIdx = null; S.auswahl.clear();
   speichern(); zeichneBinder();
+}
+
+/** Zwischen Tauschen und Einschieben umschalten. */
+function ziehModusUmschalten() {
+  S.ziehModus = S.ziehModus === 'tausch' ? 'schieben' : 'tausch';
+  localStorage.setItem('bp_zieh', S.ziehModus);
+  ziehModusZeigen();
+  toast(t(S.ziehModus === 'tausch' ? 'zm_tausch_an' : 'zm_schieben_an'));
+}
+
+/** Knopfbeschriftung und Titel — die Bedeutung steht auf dem Knopf, nicht in der Hilfe. */
+function ziehModusZeigen() {
+  const b = $('wb-ziehmodus');
+  if (!b) return;
+  const tausch = S.ziehModus === 'tausch';
+  b.textContent = t(tausch ? 'zm_tausch' : 'zm_schieben');
+  b.title = t(tausch ? 'zm_tausch_t' : 'zm_schieben_t');
+  b.classList.toggle('an', !tausch);
 }
 
 // ---------- Preise ----------
@@ -359,6 +388,7 @@ async function preiseLaden() {
   try {
     const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
     Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
+    S.preisStand = d.stand || null;
     if (d.gedrosselt) toast(t('preise_morgen'));
     else if (d.offen > 0) toast(t('preise_offen'));
     wertverlaufLaden();
@@ -395,16 +425,26 @@ async function wertverlaufLaden() {
   } catch (e) { box.classList.add('hidden'); }
 }
 
+/** Summe, Abdeckung und Messtag.
+ *
+ *  Bis zum 10.09.2026 stand hier „Gesamt: 312,40 € (+9?)" — die Klammer war die Zahl der
+ *  Karten ohne Preis, und niemand konnte das wissen. Eine Wertangabe ohne Abdeckung und
+ *  ohne Datum ist außerdem nicht prüfbar: dieselbe Sammlung hatte in der Prüfung vom
+ *  09.09. fünf verschiedene Werte, und der Unterschied war jedes Mal, welche Karten
+ *  mitgezählt wurden. Jetzt sagt die Zeile es selbst. */
 function zeichnePreisSumme() {
   if (!S.preiseAn) return;
-  let summe = 0; let fehlen = 0;
+  let summe = 0; let fehlen = 0; let mit = 0;
   for (const i of S.binder.items) {
     if (i.type !== 'card') continue;
     const p = preisFuer(i);
-    if (p == null) fehlen++; else summe += p;
+    if (p == null) fehlen++; else { summe += p; mit++; }
   }
   const fmt = summe.toFixed(2).replace('.', LANG === 'de' ? ',' : '.');
-  $('wb-preise').textContent = `${t('gesamt')}: ${fmt} €` + (fehlen ? ` (+${fehlen}?)` : '');
+  const teile = [`${t('gesamt')}: ${fmt} €`];
+  if (fehlen) teile.push(t('wert_abdeckung').replace('{n}', mit).replace('{g}', mit + fehlen));
+  if (S.preisStand) teile.push(t('wert_stand').replace('{d}', anTag(S.preisStand)));
+  $('wb-preise').textContent = teile.join(' · ');
   $('wb-preise').title = fehlen ? t('s_ohne_preis').replace('{n}', fehlen) : '';
 }
 

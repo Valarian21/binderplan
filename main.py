@@ -3885,8 +3885,17 @@ async def preise(request: Request):
             con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('gast_preise', ?)", (f"{_heute()}:{neu}",))
         con.commit()
     con.close()
+    # Der Messtag der Preise. Ohne ihn stand im Binder eine Zahl ohne Alter — und die
+    # Nachfrage „warum stimmt der Wert nicht" lässt sich nur mit dem Datum beantworten.
+    stand = None
+    if result:
+        con2 = get_db()
+        zeile = con2.execute("SELECT MAX(updated_at) s FROM card_prices WHERE card_id IN (%s)"
+                             % ",".join("?" * len(list(result)[:500])), list(result)[:500]).fetchone()
+        con2.close()
+        stand = (zeile["s"] or "")[:10] or None
     return {"preise": result, "holo": holo, "offen": max(0, len(fehlt) - len(nachgeladen)),
-            "gedrosselt": frei_gedrosselt}
+            "gedrosselt": frei_gedrosselt, "stand": stand}
 
 
 def _preise_holen(ids):
@@ -3919,6 +3928,10 @@ _abschnitt("binder")
 
 # --- PDF-Export: Platzhalter, Checkliste, Kaufliste → pdf.py -----------------------------------
 _abschnitt("pdf")
+
+
+# --- Binder per Link teilen: Schalter, Pause, Ablauf, QR-Code → teilen.py ---------------
+_abschnitt("teilen")
 
 
 # --- KI-Artwork-Seiten (eigenes Modul artwork.py, eingehängt wie eine Integration) ----
@@ -4397,7 +4410,10 @@ def binder_teilen_seite(binder_id: str, request: Request):
     karten = sum(1 for i in binder["items"] if i.get("type") == "card")
     seiten = max(1, -(-len(binder["items"]) // LAYOUTS.get(binder["layout"], 9)))
     beschreibung = html.escape(f"{karten} Karten auf {seiten} Seiten – geplant mit Binderplan.")
-    ziel = f"{basis}/app#ansicht/{html.escape(binder_id)}"
+    # ?ref=b markiert den Weg „über einen geteilten Binder gekommen". Die App liest das
+    # aus und zeigt Gästen den Einstieg; ohne die Markierung ließe sich nicht messen, ob
+    # geteilte Binder überhaupt neue Nutzer bringen.
+    ziel = f"{basis}/app?ref=b#ansicht/{html.escape(binder_id)}"
     return HTMLResponse(f"""<!doctype html>
 <html lang="de"><head><meta charset="utf-8">
 <title>{name} · Binderplan</title>

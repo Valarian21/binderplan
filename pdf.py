@@ -288,12 +288,22 @@ def _seiten_auswahl(text, seiten_gesamt):
 
 
 def _binder_lesen_erlaubt(binder_id: str, user):
-    """Drucken darf man den eigenen Binder, einen anonymen (die IDs sind unratbar und werden
-    als Link geteilt) und jeden, der in der Vitrine steht. Fremde private Binder nicht —
-    ein Export lädt bis zu mehrere tausend hochauflösende Bilder nach."""
+    """Wer darf zusehen: der Besitzer, jeder bei einem anonymen Binder (die IDs sind
+    unratbar und werden als Link geteilt), jeder bei einem Binder in der Vitrine — und
+    seit dem 10.09.2026 jeder, für den der Besitzer den Link ausdrücklich freigegeben
+    hat (`geteilt`, siehe teilen.py).
+
+    Der Freigabe-Schalter schließt eine Lücke, die niemandem auffiel, weil der Besitzer
+    selbst immer lesen darf: „Binder-Link teilen" erzeugte für einen angemeldeten Nutzer
+    mit privatem Binder einen Link, der beim Empfänger auf 403 lief.
+
+    Fremde private Binder bleiben gesperrt — ein Export lädt bis zu mehrere tausend
+    hochauflösende Bilder nach."""
     con = get_db()
-    row = con.execute("SELECT user_id, COALESCE(sichtbar,0) sichtbar FROM binders WHERE id = ?",
-                      (binder_id,)).fetchone()
+    spalten = {r[1] for r in con.execute("PRAGMA table_info(binders)")}
+    extra = ", COALESCE(geteilt,0) geteilt, geteilt_bis" if "geteilt" in spalten else ""
+    row = con.execute(f"SELECT user_id, COALESCE(sichtbar,0) sichtbar{extra}"
+                      f" FROM binders WHERE id = ?", (binder_id,)).fetchone()
     con.close()
     if not row:
         return
@@ -302,6 +312,11 @@ def _binder_lesen_erlaubt(binder_id: str, user):
     if user and row["user_id"] == user["id"]:
         return
     if row["sichtbar"]:
+        return
+    # `teilen_offen` steht in teilen.py, das nach pdf.py ausgeführt wird — zur Laufzeit
+    # ist es da, beim Import dieser Zeilen noch nicht. Deshalb der Blick in globals().
+    offen = globals().get("teilen_offen")
+    if offen and offen(row):
         return
     raise HTTPException(403, "Dieser Binder gehört jemand anderem.")
 

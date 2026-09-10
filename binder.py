@@ -237,7 +237,18 @@ def _load_binder(binder_id):
 
 
 @app.get("/api/binders/{binder_id}")
-def binder_get(binder_id: str):
+def binder_get(binder_id: str, request: Request):
+    """Einen Binder laden — mit derselben Rechteprüfung wie Druck und Vorschaubild.
+
+    Bis zum 10.09.2026 stand hier `return _load_binder(binder_id)` ohne jede Prüfung: die
+    Binder-IDs sind unratbar (`secrets.token_urlsafe(8)`), und das galt als Schutz genug.
+    Mit dem Freigabe-Schalter stimmt das nicht mehr — „Link abschalten" hätte nur die
+    Seite `/b/<id>` gesperrt, während `/api/binders/<id>` weiter geantwortet hätte. Der
+    Schalter wäre eine Beschriftung ohne Wirkung gewesen.
+
+    Erlaubt bleibt alles, was vorher erlaubt war: eigener Binder, anonymer Binder (kein
+    Konto dran), Binder in der Vitrine — und neu der ausdrücklich freigegebene."""
+    _binder_lesen_erlaubt(binder_id, _current_user(request))
     return _load_binder(binder_id)
 
 

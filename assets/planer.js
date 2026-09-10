@@ -399,11 +399,75 @@ document.addEventListener('keydown', (ev) => {
     auswahlZeigen();
     return;
   }
+  // Strg+Z / Strg+Y (und Strg+Umschalt+Z, wie im Mac üblich)
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); rueckgaengig(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && (ev.key.toLowerCase() === 'y' || (ev.key.toLowerCase() === 'z' && ev.shiftKey))) { ev.preventDefault(); wiederholen(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'c' && S.auswahl.size) { ev.preventDefault(); auswahlKopieren(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'x' && S.auswahl.size) { ev.preventDefault(); auswahlKopieren(true); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'v') { ev.preventDefault(); ablageEinfuegen(); return; }
   if (!S.auswahl.size) return;
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); auswahlEntfernen(); return; }
   if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') { ev.preventDefault(); auswahlVerschieben(-1); return; }
   if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') { ev.preventDefault(); auswahlVerschieben(1); return; }
 });
+
+/* ==========================================================================
+   Zwischenablage („Ablage")
+
+   Zwei Aufgaben in einem Behälter, weil es für den Nutzer eine Sache ist:
+   Karten aus dem Binder kopieren (Strg+C) und Karten aus der Suche sammeln,
+   bevor sie platziert werden. Beides endet in `S.ablage`, beides wird mit
+   demselben Knopf ausgeleert.
+
+   Die Ablage liegt bewusst **nicht** in der System-Zwischenablage: dort ließe
+   sich ein Kartenobjekt nur als Text ablegen, und beim Einfügen müsste man
+   raten, ob der Text von uns stammt. Innerhalb der App ist ein Array die
+   ehrlichere Lösung — sie überlebt auch den Binderwechsel, was der eigentliche
+   Zweck ist („diese neun Karten in den anderen Binder").
+   ========================================================================== */
+
+/** Auswahl in die Ablage legen; `ausschneiden` entfernt sie danach aus dem Binder. */
+function auswahlKopieren(ausschneiden) {
+  if (!S.auswahl.size) return toast(t('erst_waehlen'));
+  const idx = [...S.auswahl].sort((a, b) => a - b);
+  S.ablage = idx.map((i) => S.binder.items[i]).filter(Boolean).map((it) => JSON.parse(JSON.stringify(it)));
+  if (ausschneiden) auswahlHerausnehmen();
+  else toast(t('ab_kopiert').replace('{n}', S.ablage.length));
+  ablageZeigen();
+}
+
+/** Alles aus der Ablage in den Binder legen — ab dem ersten gewählten Fach, sonst ans Ende. */
+function ablageEinfuegen() {
+  if (!S.ablage || !S.ablage.length) return toast(t('ab_leer'));
+  if (S.nurAnsicht) return;
+  merken('ablage');
+  const kopien = S.ablage.map((it) => JSON.parse(JSON.stringify(it)));
+  const ziel = S.auswahl.size ? Math.min(...S.auswahl) : S.binder.items.length;
+  S.binder.items.splice(ziel, 0, ...kopien);
+  S.auswahl.clear();
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  toastUndo(t('ab_eingefuegt').replace('{n}', kopien.length));
+}
+
+/** Ablage leeren. */
+function ablageLeeren() { S.ablage = []; ablageZeigen(); }
+
+/** Die Leiste unten: wie viele Karten warten, und was man mit ihnen tun kann. */
+function ablageZeigen() {
+  const box = $('wb-ablage');
+  if (!box) return;
+  const n = (S.ablage || []).length;
+  box.classList.toggle('hidden', !n || !!S.nurAnsicht);
+  if (!n) return;
+  $('wb-ablage-zahl').textContent = t('ab_wartet').replace('{n}', n);
+  const bilder = $('wb-ablage-bilder');
+  if (bilder) {
+    bilder.innerHTML = S.ablage.slice(0, 8).map((it) => {
+      const b = it && it.type === 'card' && it.id ? imgUrl(it.id) : '';
+      return b ? `<img src="${b}" alt="" loading="lazy">` : '<span class="ab-leer">◻</span>';
+    }).join('') + (n > 8 ? `<span class="ab-mehr">+${n - 8}</span>` : '');
+  }
+}
 
 function seiteWaehlen(seite) {
   const sp = seiteInfo(seite);
@@ -876,10 +940,61 @@ $('wb-name').addEventListener('input', () => { if (S.binder) { S.binder.name = $
 // ============================================================================
 
 // ---------- Rückgängig ----------
-let undo = null;   // { label, items, seite }
+/* ==========================================================================
+   Rückgängig / Wiederholen
+
+   Bis zum 10.09.2026 merkte sich der Planer **einen** Stand: `merken()` überschrieb
+   den vorigen, und wer zweimal etwas tat, kam nur einen Schritt zurück. Beim
+   Umsortieren von 400 Karten ist das der Unterschied zwischen „ärgerlich" und
+   „von vorn anfangen".
+
+   Jetzt ein Stapel. Gespeichert wird der ganze `items`-Array je Schritt — bei 500
+   Fächern sind das ein paar hundert Kilobyte im Speicher, und das ist die
+   billigere Lösung als ein Diff-Format, das bei jeder neuen Aktion mitgepflegt
+   werden müsste. Der Stapel hängt an der Binder-ID: wer den Binder wechselt,
+   fängt mit leerer Historie an, damit ein Rückgängig nie in den falschen Binder
+   schreibt.
+   ========================================================================== */
+
+const HISTORIE_MAX = 40;
+const H = { zurueck: [], vor: [], binderId: null };
+
+/** Stapel leeren — beim Binderwechsel und nach dem Laden. */
+function historieLeeren() { H.zurueck = []; H.vor = []; H.binderId = S.binder ? S.binder.id : null; historieKnoepfe(); }
+
+/** Zustand der beiden Knöpfe in der Werkzeugleiste. */
+function historieKnoepfe() {
+  const z = $('wb-undo'), v = $('wb-redo');
+  if (z) { z.disabled = !H.zurueck.length; z.title = H.zurueck.length ? t('undo') + ': ' + H.zurueck[H.zurueck.length - 1].label : t('undo'); }
+  if (v) { v.disabled = !H.vor.length; v.title = H.vor.length ? t('redo') + ': ' + H.vor[H.vor.length - 1].label : t('redo'); }
+}
+
+let undo = null;   // letzter Schritt, nur noch für den Knopf im Toast
 function merken(label) {
   if (!S.binder) return;
-  undo = { label, items: JSON.parse(JSON.stringify(S.binder.items)), binderId: S.binder.id };
+  const stand = { label: t('h_' + label) || label, items: JSON.parse(JSON.stringify(S.binder.items)), binderId: S.binder.id };
+  if (H.binderId !== S.binder.id) historieLeeren();
+  H.zurueck.push(stand);
+  if (H.zurueck.length > HISTORIE_MAX) H.zurueck.shift();
+  // Ein neuer Schritt macht die Vorwärts-Kette ungültig — sonst spränge „Wiederholen"
+  // in einen Zustand, der zu den jetzigen Karten nicht mehr passt.
+  H.vor = [];
+  undo = stand;
+  historieKnoepfe();
+}
+
+/** Den aktuellen Stand für die Gegenrichtung sichern. */
+function historieStand(label) {
+  return { label, items: JSON.parse(JSON.stringify(S.binder.items)), binderId: S.binder.id };
+}
+
+function historieAnwenden(stand, richtung) {
+  richtung.push(historieStand(stand.label));
+  S.binder.items = stand.items;
+  S.auswahl.clear();
+  speichern(); zeichneBinder(); zeichneErgebnisse();
+  historieKnoepfe();
+  toast(t(richtung === H.vor ? 'h_zurueck' : 'h_vor').replace('{was}', stand.label));
 }
 function toastUndo(text) {
   const el = $('toast'); $('toast-text').textContent = text;
@@ -888,11 +1003,160 @@ function toastUndo(text) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('zeig'); b.classList.add('hidden'); }, 7000);
 }
 function rueckgaengig() {
-  if (!undo || !S.binder || undo.binderId !== S.binder.id) return;
-  S.binder.items = undo.items; undo = null;
+  if (!S.binder) return;
   $('toast').classList.remove('zeig'); $('toast-undo').classList.add('hidden');
-  speichern(); zeichneBinder(); zeichneErgebnisse();
-  toast(t('undo_ok'));
+  const stand = H.zurueck.pop();
+  if (!stand || stand.binderId !== S.binder.id) { historieLeeren(); return; }
+  undo = null;
+  historieAnwenden(stand, H.vor);
+  return;
+}
+
+/** Einen zurückgenommenen Schritt wieder ausführen. */
+function wiederholen() {
+  if (!S.binder) return;
+  const stand = H.vor.pop();
+  if (!stand || stand.binderId !== S.binder.id) { H.vor = []; historieKnoepfe(); return; }
+  historieAnwenden(stand, H.zurueck);
+}
+
+/* ==========================================================================
+   Seitentitel, Etiketten, Variantenwechsel am Fach
+
+   Drei kleine Dinge mit demselben Muster: sie hängen am Fach oder an der Seite,
+   nicht am Binder, und sie sind nach dem Vorbild dessen gebaut, was Sammler in
+   echten Bindern tun — Trennblatt beschriften, Post-it aufkleben, sich merken,
+   welchen Druck man besitzt.
+   ========================================================================== */
+
+/** Titel einer Seite, oder '' — die Titel liegen in `options.seitenTitel`. */
+function seitenTitel(nr) {
+  const o = (S.binder && S.binder.options) || {};
+  return (o.seitenTitel && (o.seitenTitel[String(nr)] || o.seitenTitel[nr])) || '';
+}
+
+/** Titel setzen oder löschen. Ein leerer Text entfernt den Eintrag ganz — sonst
+ *  sammelten sich leere Zeichenketten in den Optionen und die Seite zeigte ein
+ *  einsames „ · ". */
+function seitenTitelSetzen(nr, text) {
+  if (!S.binder || S.nurAnsicht) return;
+  const o = S.binder.options = S.binder.options || {};
+  o.seitenTitel = o.seitenTitel || {};
+  const sauber = String(text || '').trim().slice(0, 40);
+  if (sauber) o.seitenTitel[String(nr)] = sauber; else delete o.seitenTitel[String(nr)];
+  speichern(); zeichneBinder();
+}
+
+function seitenTitelFragen(nr) {
+  if (S.nurAnsicht) return;
+  const seite = nr == null ? S.seite : nr;
+  const jetzt = seitenTitel(seite);
+  const neu = prompt(t('st_titel_frage'), jetzt);
+  if (neu === null) return;
+  seitenTitelSetzen(seite, neu);
+}
+
+/** Der Knopf neben der Seitenzahl: zeigt den Titel, oder lädt ein, einen zu setzen. */
+function seitenTitelZeigen() {
+  const b = $('wb-seitentitel');
+  if (!b) return;
+  const titel = seitenTitel(S.seite);
+  b.textContent = titel || t('st_titel_leer');
+  b.classList.toggle('leer', !titel);
+  b.classList.toggle('hidden', !!S.nurAnsicht);
+}
+
+/** Einen Treffer aus der Suche in die Ablage legen, statt ihn sofort zu platzieren.
+ *
+ *  Der Unterschied ist der Arbeitsablauf: „alle Glurak dieser Ära" sucht man einmal,
+ *  will sie aber zusammen an eine bestimmte Stelle legen. Ohne Ablage klickt man
+ *  zwischen Suche und Binder hin und her und sortiert danach von Hand nach. */
+function ablageDazu(i) {
+  const k = (S.ergebnisse || [])[i];
+  if (!k) return;
+  S.ablage = S.ablage || [];
+  S.ablage.push({ type: 'card', id: k.id });
+  ablageZeigen();
+  toast(t('ab_dazu_ok').replace('{n}', S.ablage.length));
+}
+
+/* --- Etiketten ---------------------------------------------------------- */
+
+const ETIKETT_FARBEN = ['#f5c518', '#4ea3f5', '#5fc48a', '#ef7b73', '#b79cf0', '#8c9097'];
+
+/** Etiketten eines Fachs bearbeiten: Text eingeben, Farbe rotiert durch. */
+function etikettFragen(idx) {
+  if (S.nurAnsicht || !S.binder) return;
+  const item = S.binder.items[idx];
+  if (!item || item.type === 'empty') return;
+  const vorhanden = item.etiketten || [];
+  if (vorhanden.length >= 3) return toast(t('et_voll'));
+  const text = prompt(t('et_frage'), '');
+  if (text === null) return;
+  merken('etikett');
+  const sauber = String(text).trim().slice(0, 18);
+  if (!sauber) {
+    // Leerer Text nimmt das zuletzt gesetzte Etikett wieder weg — der Weg zurück
+    // ohne einen zweiten Dialog.
+    if (vorhanden.length) { item.etiketten = vorhanden.slice(0, -1); toast(t('et_weg')); }
+  } else {
+    item.etiketten = vorhanden.concat([{ text: sauber, farbe: ETIKETT_FARBEN[vorhanden.length % ETIKETT_FARBEN.length] }]);
+    toast(t('et_dran'));
+  }
+  if (item.etiketten && !item.etiketten.length) delete item.etiketten;
+  speichern(); zeichneBinder();
+}
+
+/* --- Variante am Fach --------------------------------------------------- */
+
+/** Welche Drucke es zu dieser Karte gibt — aus den Kartendaten, nicht geraten.
+ *
+ *  Die Suche liefert `normal` und `reverse` je Treffer (katalog.py). Steht die Karte
+ *  gerade nicht in den Ergebnissen — etwa weil der Binder frisch geladen wurde —, gibt
+ *  es keine Auskunft, und dann ist die volle Liste die ehrlichere Antwort: lieber eine
+ *  Auswahl zu viel als eine fehlende. */
+function variantenFuer(item) {
+  const k = (S.ergebnisse || []).find((x) => x.id === item.id);
+  if (!k || k.reverse == null) return VARIANTEN;
+  const moeglich = ['normal'];
+  if (k.reverse) moeglich.push('reverse');
+  moeglich.push('holo');
+  return moeglich;
+}
+
+/** Kleines Menü am Fach: Druck wählen, Preis folgt. */
+function variantenMenue(ev, idx) {
+  if (S.nurAnsicht || !S.binder) return;
+  const item = S.binder.items[idx];
+  if (!item || item.type !== 'card') return;
+  const alt = document.getElementById('vmenu');
+  if (alt) alt.remove();
+  const liste = variantenFuer(item);
+  const box = document.createElement('div');
+  box.id = 'vmenu';
+  box.className = 'vmenu';
+  box.innerHTML = liste.map((v) => `<button class="${(item.variant || 'normal') === v ? 'an' : ''}"
+      onclick="varianteSetzen(${idx},'${v}')">${esc(t('v_' + v))}</button>`).join('')
+    + `<div class="trenn"></div><button onclick="etikettFragen(${idx});vmenuZu()">${esc(t('et_neu'))}</button>`;
+  document.body.appendChild(box);
+  const r = ev.currentTarget.getBoundingClientRect();
+  box.style.left = Math.min(window.innerWidth - box.offsetWidth - 8, r.left) + 'px';
+  box.style.top = (r.bottom + 4) + 'px';
+  setTimeout(() => document.addEventListener('click', vmenuZu, { once: true }), 0);
+}
+
+function vmenuZu() { const m = document.getElementById('vmenu'); if (m) m.remove(); }
+
+function varianteSetzen(idx, v) {
+  const item = S.binder.items[idx];
+  if (!item) return;
+  merken('variante');
+  if (v === 'normal') delete item.variant; else item.variant = v;
+  vmenuZu();
+  speichern(); zeichneBinder();
+  // Der Holo-Preis liegt in einer eigenen Tabelle; ohne Nachladen zeigte das Fach
+  // weiter den Grundpreis, obwohl das Etikett schon HOLO sagte.
+  if (S.preiseAn && typeof preiseLaden === 'function') preiseLaden();
 }
 
 // ---------- Gast-Binder: erst anlegen, wenn die erste Karte kommt ----------
