@@ -5,7 +5,10 @@
 // Bewusst ohne Kommentare und ohne Nachrichten: es gibt nur Herzen. Damit gibt es
 // keine Gespräche zu moderieren, und die drei Textfelder (Anzeigename, Satz zur
 // Person, Bindername) werden serverseitig beim Speichern geprüft.
-const VT = { sortierung: 'trend', binder: [], seq: 0, art: '', groesse: '',
+// 'trend' war bis zum 11.09.2026 die Voreinstellung, wird aber von keinem Reiter
+// angeboten (nur 'neu' und 'top') — im Reiter „Binder“ war deshalb *kein* Knopf
+// markiert und beide sahen aus wie Fließtext (Audit D6).
+const VT = { sortierung: 'neu', binder: [], seq: 0, art: '', groesse: '',
              doppelseite: localStorage.getItem('bp_vt_dop') === '1', meldung: null,
              fenster: localStorage.getItem('bp_vt_fenster') || '',
              // Kunstseiten stehen vorn: es gibt dreieinhalbmal so viele wie Binder, sie tragen

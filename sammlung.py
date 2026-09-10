@@ -185,6 +185,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
                     aus[r["card_id"]] = {"eur": r["eur"], "eur_holo": r["eur_holo"],
                                          "eur_low": r["eur_low"], "quelle": r["status"],
                                          "eur_avg7": r["eur_avg7"], "eur_avg30": r["eur_avg30"]}
+        # Die 7-Tage-Bewegung vergleicht ab dem 11.09.2026 gegen den eigenen Preis von vor
+        # sieben Tagen, nicht gegen Cardmarkets Verkaufsschnitt — siehe wert.historie_basis.
+        # Ohne Eintrag bleibt das Feld leer und die Bewegung „–“, statt falsch zu rechnen.
+        basis7 = _wert.historie_basis(con, list(aus), 7)
+        for cid, d in aus.items():
+            d["eur_avg7"] = (basis7.get(cid) or (None,))[0]
         con.close()
         return aus
 
@@ -317,7 +323,12 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             d = _wert.bewegung_euro({**pr, **posten}, "eur_avg7", anzahl=n)
             if d is not None:
                 diff7 += d
-                basis7 += (pr.get("eur_avg7") or 0) * n
+                # Beide Seiten mit demselben Faktor: `bewegung_euro` skaliert die Differenz
+                # auf den Postenwert (Holo, Zustand), also muss der Nenner mitskalieren.
+                # Vorher stand hier der nackte Katalogpreis — dieselbe Sammlung meldete auf
+                # der Startseite 3,8 % und in der Sammlung 7,0 % (Audit B3).
+                faktor = (w / pr["eur"]) if (w and pr.get("eur")) else 1
+                basis7 += (pr.get("eur_avg7") or 0) * faktor * n
         gezahlt = con.execute("SELECT SUM(kaufpreis * anzahl) s FROM sammlung WHERE user_id = ?"
                               " AND kaufpreis IS NOT NULL", (user["id"],)).fetchone()["s"] or 0
         mit_preis = con.execute("SELECT COUNT(*) c FROM sammlung WHERE user_id = ? AND kaufpreis IS NOT NULL",

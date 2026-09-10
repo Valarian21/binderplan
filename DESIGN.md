@@ -114,3 +114,40 @@ Neue Hex-Werte gehören in `tokens.css`, nicht in Komponenten – dann stimmt au
    `services/browser_render`, `BP_TOKEN` für ein Konto) liefert je Ansicht Anfragen, Übertragung,
    Überlauf, Bedienelemente < 32 px, Text < 11 px, Konsolenfehler und Screenshots. `scripts/kontrast.js`
    prüft WCAG-Kontraste hell und dunkel.
+
+## Regeln aus dem Audit vom 11.09.2026
+
+Sieben Fehlerklassen, die sich still eingeschlichen hatten. `scripts/pruefen.py` prüft die
+ersten drei jetzt vor jedem Deploy — die anderen vier stehen hier, weil sie sich nicht
+maschinell fassen lassen.
+
+1. **Jedes Token, das benutzt wird, ist in `tokens.css` gesetzt.** `--hover` (14×),
+   `--slotrand` (5×), `--eingabe` (2×), `--panel` (4×) und `--text` waren nirgends definiert:
+   Hover-Flächen, Fachkanten, Eingabehintergründe und ein Kartenhintergrund fielen aus, ohne
+   dass irgendetwas gemeldet hätte. `var(--x, rückfall)` ist erlaubt und wird nicht gemeldet.
+2. **Nie `font: inherit`.** Die Kurzform setzt auch `font-size` und `font-weight` zurück. Am
+   Fach machte sie aus einer 11-px-Pille eine 16-px-Pille quer über der halben Karte.
+   `font-family: inherit; font-size: inherit;` schreibt, was gemeint ist.
+3. **`APP_ROUTEN` (main.py) enthält alles aus `ROUTEN` (assets/vitrine.js).** Fehlte eine
+   Route, schickte der Server sie per 307 auf `/app` und der Browser sah sie nie —
+   `/app/profil` öffnete die Startseite.
+4. **Eine Farbe für „ausgewählt": `--aktiv-bg`.** Chips und Segmente trugen zwei
+   (schwarz und blau), auf demselben Bildschirm nebeneinander. Blau bleibt Link- und
+   Markenfarbe.
+5. **Kein Bedienelement in `.spalte-binder` ohne `flex-shrink: 0`.** Die Spalte ist ein
+   Spalten-Flex; der Umschalter „Eine Seite | Alle Seiten" wurde auf `height: 0` gedrückt und
+   von `overflow-x: auto` abgeschnitten — am Handy gab es keinen Weg zurück, und die Wahl
+   stand in `localStorage`.
+6. **Der Binder bestimmt die Breite der Werkbank.** `--binder-w` kommt aus der freien Höhe
+   und dem Seitenverhältnis des Rasters (`binderHoeheAnpassen()`); Kopfzeile, Fächer,
+   Seitenzeile und Fortschritt hängen alle an diesem einen Maß. Vorher war die Kopfzeile
+   1100 px breit und die Fächer 560 px — beide zentriert, also 270 px Versatz.
+7. **Zahlen und Daten gehen durch die Helfer.** `anZahl(n[, stellen])`, `anEur`, `anProz`,
+   `anDatum(iso)`, `anZeit(iso)` — nie `toFixed()` oder `iso.slice(0, 10)` in der Ausgabe.
+   Sonst steht „20965" neben „314.089 €" und „2026-09-10" mitten im deutschen Satz.
+
+**Und eine Regel, die keine Design-Regel ist, aber hier hingehört:** eine Bewegung über die
+Zeit wird aus `price_history` gerechnet (`wert.historie_basis`), nie aus `trend ÷ avg7/avg30`.
+Cardmarkets `avg*` ist der Schnitt *verkaufter* Exemplare, `trend` der Preis der *aktuellen
+Angebote* — ihr Quotient ist keine Veränderung. Die 30-Tage-Anzeige heißt deshalb
+„gg. Schnitt", bis die Historie dreißig Tage weit zurückreicht.

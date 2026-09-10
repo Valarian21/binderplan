@@ -118,13 +118,24 @@ def tabelle_anlegen(con):
 
 
 def _karten_laden(con):
-    """Alle bepreisten westlichen Karten mit den Merkmalen, nach denen gruppiert wird."""
-    return [dict(r) for r in con.execute(
+    """Alle bepreisten westlichen Karten mit den Merkmalen, nach denen gruppiert wird.
+
+    `eur_avg7` wird nach dem Laden durch den eigenen Preis von vor sieben Tagen ersetzt:
+    Cardmarkets `avg7` ist der Schnitt *verkaufter* Exemplare, `eur` der Trend der aktuellen
+    Angebote — ihr Quotient ist keine Veränderung über die Zeit (Audit 11.09.2026, B1).
+    `eur_avg30` bleibt vorerst der Verkaufsschnitt und heißt in der Oberfläche seitdem auch
+    so („gg. Schnitt"); sobald price_history dreißig Tage weit zurückreicht, kommt auch dieses
+    Fenster aus `wert.historie_basis`."""
+    karten = [dict(r) for r in con.execute(
         "SELECT p.card_id, p.eur, p.eur_avg7, p.eur_avg30, p.usd,"
         " c.set_id, c.release_date, c.first_dex, c.illustrator,"
         " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name"
         " FROM card_prices p JOIN cards c ON c.id = p.card_id"
         " WHERE p.eur IS NOT NULL AND COALESCE(c.region,'intl') = 'intl'")]
+    basis7 = _wert.historie_basis(con, [k["card_id"] for k in karten], 7)
+    for k in karten:
+        k["eur_avg7"] = (basis7.get(k["card_id"]) or (None,))[0]
+    return karten
 
 
 def _geplant_zaehlen(con):

@@ -460,7 +460,7 @@ async function detailOeffnen(idOrIdx) {
         <div class="d-preise">
           <div class="d-preis"><div class="z" id="detail-preis-zahl">${fmt(detailPreis(k, detailVariante))}</div><div class="l" id="detail-preis-lbl">${t('preis_trend')}</div></div>
           ${preis.eur_holo && (k.normal !== false || k.reverse) ? `<div class="d-preis"><div class="z">${fmt(preis.eur_holo)}</div><div class="l">${t('preis_holo')}</div></div>` : ''}
-          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" id="detail-cm" target="_blank" rel="noopener noreferrer" style="font-size: var(--t-s)">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? preis.stand.slice(0, 10) : t('preis_laden')}</div>
+          <div class="d-preis" style="background:transparent;padding-left:0"><a href="${cm}" id="detail-cm" target="_blank" rel="noopener noreferrer" style="font-size: var(--t-s)">Cardmarket ↗</a><div class="l" id="detail-preis-stand">${preis.stand ? anDatum(preis.stand) : t('preis_laden')}</div>
           <div class="l" id="detail-spanne" style="margin-top:4px;line-height:1.5"></div></div>
           <div id="detail-zustaende" class="zst"></div>
         </div>

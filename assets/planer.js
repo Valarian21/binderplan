@@ -49,9 +49,30 @@ const AN = { daten: null, markt: null, gruppe: 'nach_seltenheit', kurven: {}, nr
 
 const anEur = (n, stellen) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
   { minimumFractionDigits: stellen == null ? 2 : stellen, maximumFractionDigits: stellen == null ? 2 : stellen }) + ' €';
-const anZahl = (n) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de');
+const anZahl = (n, stellen) => (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
+  stellen == null ? undefined : { minimumFractionDigits: stellen, maximumFractionDigits: stellen });
 const anProz = (n) => (n > 0 ? '+' : '') + (n || 0).toLocaleString(LANG === 'en' ? 'en' : 'de',
   { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+/** Datum in der Sprache der Oberfläche: „10.09.2026" bzw. „Sep 10, 2026".
+ *  Vorher stand an mehreren Stellen `iso.slice(0, 10)` — ein ISO-Datum mitten im deutschen
+ *  Text, das am Handy auch noch mitten im Datum umbrach (Audit 11.09.2026, E3). */
+function anDatum(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');
+  if (isNaN(d)) return String(iso).slice(0, 10);
+  return d.toLocaleDateString(LANG === 'en' ? 'en' : 'de',
+    { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+}
+
+/** Datum mit Uhrzeit: „09.09.2026, 18:19". */
+function anZeit(iso) {
+  if (!iso) return '';
+  const d = new Date(String(iso).replace(' ', 'T') + (String(iso).length <= 19 ? 'Z' : ''));
+  if (isNaN(d)) return String(iso).slice(0, 16).replace('T', ' ');
+  return d.toLocaleString(LANG === 'en' ? 'en' : 'de',
+    { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 /** Datum kurz: „2. Sep." bzw. „Sep 2". */
 function anTag(iso) {
   const d = new Date(iso + 'T00:00:00Z');
@@ -279,7 +300,7 @@ function zeichneMarktRegionen(d) {
         <div><div class="unter" style="margin-bottom:8px;font-weight:700">${t('an_dort_guenstiger')}</div>${anVgTabelle(vg.guenstiger_us, 'mk-us')}</div>
        </div>
        <div class="unter" style="margin:12px 0 0;font-size: var(--t-s)">${t('an_kurs_hin')
-          .replace('{k}', vg.kurs.toFixed(3)).replace('{n}', anZahl(vg.geprueft || vg.paare))}
+          .replace('{k}', anZahl(vg.kurs, 3)).replace('{n}', anZahl(vg.geprueft || vg.paare))}
           ${vg.verworfen ? ' ' + t('an_verworfen').replace('{n}', anZahl(vg.verworfen)) : ''}</div>`
     : anDuenn(t('an_vg_kurz'));
   const jp = d.jp || {}, west = d.west || {};
@@ -291,7 +312,7 @@ function zeichneMarktRegionen(d) {
       <div class="an-band" style="margin-bottom:16px">
         ${anKachel(t('mk_jp_karten'), anZahl(jp.n || 0), t('mk_jp_schnitt').replace('{p}', anEur(jp.schnitt || 0)))}
         ${anKachel(t('mk_west_karten'), anZahl(west.n || 0), t('mk_jp_schnitt').replace('{p}', anEur(west.schnitt || 0)))}
-        ${anKachel(t('mk_faktor'), (west.schnitt && jp.schnitt ? (west.schnitt / jp.schnitt).toFixed(1) : '—') + '×', t('mk_faktor_u'))}
+        ${anKachel(t('mk_faktor'), (west.schnitt && jp.schnitt ? anZahl(west.schnitt / jp.schnitt, 1) : '—') + '×', t('mk_faktor_u'))}
       </div>
       <div class="unter" style="margin-bottom:8px;font-weight:700">${t('mk_jp_top')}</div>
       <div class="an-karten">${(d.jp_top || []).map((k) => `<button class="an-karte" onclick="detailOeffnen('${esc(k.id)}')">
@@ -700,6 +721,8 @@ function druckOeffnen() {
 
 function druckUmfangZeichnen() {
   const seite = (S.seite || 0) + 1;
+  const feld = $('dr-seiten');
+  if (feld) feld.disabled = DR.umfang !== 'frei';
   $('dr-umfang').innerHTML = [
     ['alle', t('dr_alle')],
     ['aktuell', t('dr_aktuell').replace('{n}', seite)],
@@ -710,6 +733,10 @@ function druckUmfang(k) {
   DR.umfang = k;
   if (k === 'aktuell') $('dr-seiten').value = String((S.seite || 0) + 1);
   if (k === 'alle') $('dr-seiten').value = '';
+  // Das Feld gehört zu „Bereich …“: bei „Ganzer Binder“ tat es nichts und stand trotzdem
+  // offen da (Audit F4). Ein Klick auf „Bereich …“ macht es scharf und setzt den Fokus.
+  $('dr-seiten').disabled = k !== 'frei';
+  if (k === 'frei') setTimeout(() => $('dr-seiten').focus(), 0);
   druckUmfangZeichnen(); druckVorschau();
 }
 /** Tippt jemand selbst etwas ein, ist das der freie Bereich. */

@@ -523,7 +523,7 @@ function anzahlImBinder(id) {
 
 function zeichneErgebnisse() {
   if (!S.meta) return;
-  $('erg-anzahl').innerHTML = `<strong>${S.gesamt}</strong> ${t('treffer')}`;
+  $('erg-anzahl').innerHTML = `<strong>${anZahl(S.gesamt)}</strong> ${t('treffer')}`;
   zeichneAktivChips();
   $('btn-mehr').classList.toggle('hidden', S.offset >= S.gesamt);
   $('btn-alle').disabled = S.gesamt === 0 || S.gesamt > 2000;

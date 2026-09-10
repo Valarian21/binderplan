@@ -22,6 +22,8 @@ Tage sähe sonst aus wie eine Aussage über den Markt.
 import json
 import time
 
+import wert as _wert
+
 # Eine Verlaufskurve wird erst gezeigt, wenn sie über so viele Tage reicht. Darunter ist
 # jede Steigung Rauschen aus dem Erfassungslauf und keine Marktbewegung.
 MIN_TAGE = 3
@@ -196,6 +198,10 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
         if not besitz:
             con.close()
             return {"pro": True, "leer": True}
+        # 7-Tage-Bewegung gegen den eigenen Preis von vor sieben Tagen (Audit B1).
+        _b7 = _wert.historie_basis(con, [z["card_id"] for z in besitz], 7)
+        for z in besitz:
+            z["eur_avg7"] = (_b7.get(z["card_id"]) or (None,))[0]
 
         # Jedes Exemplar mit seinem eigenen Zustand: eine Poor-Karte ist nicht so viel
         # wert wie eine Near-Mint-Karte. Ohne Zustandsangabe bleibt es beim Trend.
@@ -274,7 +280,7 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             })
         einzeln.sort(key=lambda x: -x["wert"])
 
-        # Bewegung in der Sammlung: heutiger Trend gegen den 7-Tage-Schnitt je Karte, in Euro
+        # Bewegung in der Sammlung: heutiger Trend gegen den eigenen Preis von vor sieben Tagen
         # mal Stückzahl. Ausreißer (mehr als 3× oder unter ⅓ des Schnitts) sind Zuordnungs-
         # fehler der Quelle, keine Marktbewegung — dieselbe Regel wie im Markt.
         bewegung = []

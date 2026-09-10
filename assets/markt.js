@@ -18,7 +18,10 @@ const MK_BEREICHE = ['heute', 'sets', 'aeren', 'pokemon', 'regionen'];
 
 /* ---------------------------------------------------------------- Bausteine */
 
-/** Kleine Kurve ohne Achsen: zeigt die Form, nicht den Wert. */
+/** Kleine Kurve ohne Achsen: zeigt die Form, nicht den Wert.
+ *  `opt.farbe` setzt der Aufrufer aus derselben Zahl, die daneben steht — sonst konnte eine
+ *  rote fallende Kurve neben „+15,9 %“ stehen (Audit 11.09.2026, B2): die Kurve las die
+ *  eigene Reihe, die Zahl kam aus einer anderen Quelle. */
 function anSparkline(punkte, opt) {
   opt = opt || {};
   const w = opt.breite || 104, hh = opt.hoehe || 28;
@@ -36,6 +39,12 @@ function anSparkline(punkte, opt) {
   return `<svg class="spk" viewBox="0 0 ${w} ${hh}" width="${w}" height="${hh}" aria-hidden="true"
     ><path d="${d}" fill="none" stroke="${farbe}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/
     ><circle cx="${x(le).toFixed(1)}" cy="${y(p[le].wert).toFixed(1)}" r="2.8" fill="${farbe}"/></svg>`;
+}
+
+/** Die Farbe einer Bewegung — eine Quelle für Kurve, Zahl und Balken. */
+function mkFarbe(wert) {
+  if (wert == null) return 'var(--mut)';
+  return wert > 0.05 ? 'var(--gruen-text)' : wert < -0.05 ? 'var(--akzent-text)' : 'var(--mut)';
 }
 
 /** Bewegung als Zahl mit Vorzeichen und Farbe. */
@@ -87,11 +96,12 @@ function mkKachel(o) {
 function mkZeile(z, i, opt) {
   opt = opt || {};
   const feld = MKT.fenster === 7 ? 'bew7' : 'bew30';
+  const farbe = mkFarbe(z[feld]);
   const basis = MKT.fenster === 7 ? z.bew7_n : z.bew30_n;
   return `<div class="mk-zeile"${opt.klick ? ` onclick="${opt.klick.replace('{id}', esc(z.schluessel))}" role="button" tabindex="0"` : ''}>
     <span class="rg">${i + 1}</span>
     <span class="nm"><b>${esc(z.name || z.schluessel)}</b><small>${esc(opt.meta ? opt.meta(z) : '')}</small></span>
-    ${anSparkline(z.verlauf)}
+    ${anSparkline(z.verlauf, { farbe })}
     ${mkDelta(z[feld])}
     <span class="n">${anZahl(basis || z.n)}</span></div>`;
 }
@@ -167,7 +177,7 @@ async function marktIllustratoren() {
         <td><div class="nm">${esc(z.name || z.schluessel)}</div></td>
         <td class="r">${anZahl(z.n)}</td>
         <td class="r">${anEur(z.summe, 0)}</td>
-        <td>${anSparkline(z.verlauf)}</td>
+        <td>${anSparkline(z.verlauf, { farbe: mkFarbe(z[feld]) })}</td>
         <td class="r">${mkDelta(z[feld])}</td></tr>`).join('')}</tbody></table></div>`;
   $('mk-rumpf').appendChild(kasten);
 }
@@ -285,7 +295,7 @@ function zeichneMarktRangliste(d) {
             <td class="r">${z.geplant ? anZahl(z.geplant) : '—'}</td>` : ''}
           <td class="r">${anEur(z.summe, 0)}</td>
           <td class="r">${anEur(z.hoechst, 0)}</td>
-          <td>${anSparkline(z.verlauf)}</td>
+          <td>${anSparkline(z.verlauf, { farbe: mkFarbe(z[feld]) })}</td>
           <td class="r">${mkDelta(z[feld])}</td></tr>`).join('')}</tbody></table></div>
       <div class="mk-fuss">${t('mk_tab_fuss').replace('{n}', ebene === 'set' ? 25 : 20)} ${t('mk_ausreisser_hin')}</div>
     </div>`;

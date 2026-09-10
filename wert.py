@@ -86,6 +86,72 @@ AUS_UNTEN, AUS_OBEN = 1 / 3, 3.0
 MIN_PREIS = 1.0
 
 
+# --- Bewegung: woher der Vergleichswert kommt -------------------------------------------
+#
+# Bis zum 11.09.2026 verglich jede Bewegung `trend` gegen `avg7`/`avg30` aus dem
+# Cardmarket-Preisverzeichnis. Das sind zwei verschiedene Preisarten: `trend` ist der
+# Trendpreis der *aktuellen Angebote*, `avg7/avg30` der Durchschnitt *tatsächlich verkaufter*
+# Exemplare — inklusive stark gespielter Karten. Ihr Quotient ist keine Veränderung über die
+# Zeit. Gemessen über 2.480 Karten mit mindestens fünf eigenen Messpunkten in acht Tagen:
+# das Vorzeichen widersprach der eigenen Historie bei 23 %, die Abweichung lag bei 37 % über
+# zehn Prozentpunkten (Grundset-Glurak meldete „+76,5 % in 7 Tagen“ bei tatsächlich −3 %).
+#
+# Seitdem kommt der Vergleichswert aus `price_history` — derselben Reihe, aus der auch die
+# Kurven gezeichnet werden. Die Tabelle speichert nur Bewegungen; der letzte Eintrag am oder
+# vor dem Stichtag ist deshalb exakt der Preis dieses Tages, keine Näherung.
+
+def historie_basis(con, card_ids, tage):
+    """Preis je Karte am Stichtag heute − `tage`, aus `price_history`.
+
+    Rückgabe: ``{card_id: (preis, tage_tatsächlich)}``. Reicht die Historie nicht so weit
+    zurück (sie beginnt am 21.08.2026), kommt der älteste vorhandene Eintrag — dann sagt
+    ``tage_tatsächlich``, über wie viele Tage die Bewegung wirklich läuft, damit die
+    Oberfläche keine Zahl unter eine falsche Überschrift stellt. Karten ganz ohne Eintrag
+    fehlen im Ergebnis; ihre Bewegung bleibt „–“ statt gegen einen fremden Maßstab gerechnet.
+    """
+    ids = [i for i in dict.fromkeys(card_ids) if i]
+    if not ids:
+        return {}
+    aus = {}
+    stichtag = "date('now','-%d day')" % int(tage)
+    for i in range(0, len(ids), 800):
+        teil = ids[i:i + 800]
+        marken = ",".join("?" * len(teil))
+        # 1. der jüngste Eintrag am oder vor dem Stichtag — der Preis dieses Tages
+        # Das Fenster ist `tage`, auch wenn der Eintrag älter ist: die Historie speichert nur
+        # Bewegungen, ein älterer Eintrag heißt also „der Preis stand am Stichtag genau so“.
+        for r in con.execute(
+                f"SELECT h.card_id, h.eur FROM price_history h"
+                f" WHERE h.card_id IN ({marken}) AND h.eur IS NOT NULL"
+                f"   AND h.datum = (SELECT MAX(x.datum) FROM price_history x"
+                f"                  WHERE x.card_id = h.card_id AND x.datum <= {stichtag}"
+                f"                    AND x.eur IS NOT NULL)", teil):
+            aus[r[0]] = (r[1], int(tage))
+        # 2. wo die Historie nicht so weit reicht: der älteste Eintrag, mit seinem echten Alter
+        rest = [c for c in teil if c not in aus]
+        if not rest:
+            continue
+        marken = ",".join("?" * len(rest))
+        for r in con.execute(
+                f"SELECT h.card_id, h.eur, julianday('now') - julianday(h.datum) d"
+                f" FROM price_history h WHERE h.card_id IN ({marken}) AND h.eur IS NOT NULL"
+                f"   AND h.datum = (SELECT MIN(x.datum) FROM price_history x"
+                f"                  WHERE x.card_id = h.card_id AND x.eur IS NOT NULL)", rest):
+            alter = int(round(r[2]))
+            if alter >= 2:          # unter zwei Tagen ist es keine Bewegung, sondern Rauschen
+                aus[r[0]] = (r[1], alter)
+    return aus
+
+
+def basis_fenster(basis):
+    """Über wie viele Tage die Bewegungen einer `historie_basis` im Median laufen.
+
+    Solange die Historie kürzer ist als das gewünschte Fenster, steht hier die echte Zahl —
+    die Oberfläche schreibt dann „21 Tage“ und nicht „30 Tage“."""
+    tage = sorted(t for _, t in basis.values())
+    return tage[len(tage) // 2] if tage else None
+
+
 def bewegung_prozent(eur, schnitt):
     """Prozent gegen den 7- oder 30-Tage-Schnitt; None, wenn die Zahl nichts aussagt."""
     if not eur or not schnitt or schnitt <= 0 or eur < MIN_PREIS or schnitt < MIN_PREIS:

@@ -3,11 +3,14 @@
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Archivo', 'Trebuchet MS', sans-serif; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
   a { color: var(--link); }
-  input, select { font-family: inherit; font-size: var(--t-mp); color: var(--ink); }
+  input, select, textarea { font-family: inherit; font-size: var(--t-mp); color: var(--ink); }
   .hidden { display: none !important; }
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
           border: 1.5px solid var(--line); background: var(--card); font-size: var(--t-s); font-weight: 600; color: var(--mut); }
-  .chip.on { border-color: var(--akzent-text); background: var(--akzent-flaeche); color: var(--akzent-fg); }
+  /* Die frühere rote Fassung stand hier und wurde 1580 Zeilen später von einer blauen
+     überschrieben; im Ergebnis trugen Chips und Segmente auf demselben Bildschirm zwei
+     verschiedene Aktiv-Farben (Audit 11.09.2026, D1). Es gibt jetzt eine: --aktiv-bg. */
+  .chip.on { border-color: var(--aktiv-bg); background: var(--aktiv-bg); color: var(--aktiv-fg); }
   .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 999px;
          background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-mp); font-weight: 700; }
   .btn:hover { background: var(--akzent-flaeche-hover); }
@@ -162,7 +165,7 @@
   /* ---------- Themenseiten: Vorschlag der Bildsuche ---------- */
   .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; margin-top: 12px; }
   .th-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); position: relative; }
-  .th-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .th-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel2); }
   .th-karte .th-text { padding: 6px 7px 8px; }
   .th-karte .th-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
   .th-karte .th-set { font-size: var(--t-xs); color: var(--mut); margin-top: 1px; }
@@ -198,7 +201,7 @@
   .fi-karte { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2); cursor: pointer; }
   .fi-karte.unsicher { border-color: var(--gelb); border-width: 2px; }
   .fi-karte .fi-paar { display: flex; gap: 2px; }
-  .fi-karte .fi-paar img { width: 50%; aspect-ratio: 63/88; object-fit: contain; background: var(--panel); display: block; }
+  .fi-karte .fi-paar img { width: 50%; aspect-ratio: 63/88; object-fit: contain; background: var(--panel2); display: block; }
   .fi-karte .fi-txt { padding: 5px 6px 6px; }
   .fi-karte .fi-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
   .fi-karte .fi-set { font-size: var(--t-xs); color: var(--mut); }
@@ -557,8 +560,12 @@
               background: var(--bfach); border: 1px solid var(--bkante); }
   .gal-fach.leer { background: transparent; border-style: dashed; }
   .gal-fach img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .gal-fach .hat-mark { top: 3px; left: 3px; }
-  .gal-umschalter { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .gal-fach .hat-mark { top: 3px; right: 3px; left: auto; }
+  /* flex-shrink: 0 ist Pflicht: in der Spalten-Flex der Werkbank drueckte „Alle Seiten“ den
+     Umschalter sonst auf height:0, und overflow-x:auto schnitt ihn weg – der Weg zurueck
+     war damit unerreichbar (Audit A2). */
+  .gal-umschalter { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap;
+                    flex-shrink: 0; }
   .gal-umschalter .pl-hilfe .chip { min-width: 30px; text-align: center; font-weight: 800; }
   @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
   .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-m); font-weight: 800;
@@ -599,7 +606,8 @@
     .schalter input { width: 22px; height: 22px; }
     .schalter { min-height: 40px; }
     .tk .plus { min-height: 40px; }
-    .slot .mehr, .slot .raus, .slot .hat-btn { width: 26px; height: 26px; opacity: .85; }
+    .slot .raus, .slot .hat-btn { width: 26px; height: 26px; opacity: .85; }
+    .slot .mehr { width: 26px; height: 22px; opacity: .7; }
     .ps-titel .ps-akt button { min-width: 36px; min-height: 36px; }
     .bv-fuss button { width: 54px; height: 54px; }
     .fi-foto .fi-akt button { min-width: 34px; min-height: 34px; }
@@ -647,7 +655,7 @@
   .sm-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
   .sm-karte { position: relative; border: 1px solid var(--line); border-radius: 9px; overflow: hidden;
               background: var(--panel2); }
-  .sm-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .sm-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel2); }
   .sm-karte .sm-txt { padding: 6px 7px 7px; }
   .sm-karte .sm-name { font-size: var(--t-s); font-weight: 700; line-height: 1.2; }
   .sm-karte .sm-meta { font-size: var(--t-xs); color: var(--mut); margin-top: 1px; }
@@ -897,7 +905,7 @@
   .zst-auf { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent;
     border: 1.5px solid var(--line); border-radius: 9px; padding: 7px 11px; cursor: pointer;
     font-size: var(--t-s); color: var(--mut); }
-  .zst-auf strong { margin-left: auto; color: var(--text); font-size: var(--t-m); }
+  .zst-auf strong { margin-left: auto; color: var(--ink); font-size: var(--t-m); }
   .zst-auf i { font-style: normal; }
   /* Die Aktionszeile stand am Handy unter Preis, Verlauf und Zustandsraster — also unter
      dem Falz. Jetzt klebt sie am unteren Rand des Dialogs. */
@@ -946,7 +954,9 @@
   .slot .dexzelle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; height: 100%; padding: 3px; }
   .slot .dexzelle img { width: 52%; height: auto; }
   .slot .dexzelle span { font-size: var(--t-xs); font-weight: 700; color: var(--bnamen); text-align: center; line-height: 1.15; }
-  .slot .raus { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
+  /* Oben links steht auf jeder Karte der Name – dort liegt kein Bedienelement mehr.
+     Haekchen in die HP-Ecke, ✕ links daneben (Audit C1). */
+  .slot .raus { position: absolute; top: 2px; right: 23px; width: 17px; height: 17px; border-radius: 50%; background: rgba(58,50,39,.75);
                 color: #fff; font-size: var(--t-xs); line-height: 17px; text-align: center; opacity: 0; z-index: 3; }
   .slot:hover .raus { opacity: 1; }
   .slot .rmark { position: absolute; bottom: 2px; left: 2px; background: var(--akzent-flaeche); color: var(--akzent-fg); font-size: var(--t-xs);
@@ -1049,8 +1059,8 @@
   body.dunkle-seiten .planer-seite .ps-titel { color: #8a919d; }
   .planer-seite .ps-titel { font-size: var(--t-s); font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
   .planer-seite .slots { padding: 8px; }
-  .slot .hat-btn { position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
-                   background: rgba(255,255,255,.9); border: 1.5px solid var(--slotrand); color: var(--mut);
+  .slot .hat-btn { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%;
+                   background: rgba(255,255,255,.9); border: 1.5px solid var(--slotrand); color: var(--kontur);
                    font-size: var(--t-xs); line-height: 14px; text-align: center; opacity: 0; z-index: 3; padding: 0; }
   .slot:hover .hat-btn { opacity: 1; }
   .slot.hat img { opacity: .4; }
@@ -1225,7 +1235,13 @@
     /* Binder als eigene Vollbild-Ansicht (Umschalter unten) */
     .spalte-binder { display: none; width: 100%; border-left: none; }
     .binder-groesse { display: none; }
-    body.binder-an .spalte-binder { display: flex; }
+    /* Vorher lief die Spalte ueber den Rumpf hinaus (905 px in 790 px), scrollte nicht und
+       schob die Seitenzeile hinter die Navigationsleiste: „naechste Seite“ war auf 390x844
+       und 360x640 nicht antippbar (Audit A1). Jetzt passt die Spalte und scrollt selbst. */
+    body.binder-an .spalte-binder { display: flex; flex: 1 1 auto; min-height: 0; padding-bottom: 0; }
+    .spalte-binder > .seiten-nav { position: sticky; bottom: 0; z-index: 2;
+      margin: 8px -14px 0; padding: 8px 14px; background: var(--card);
+      border-top: 1.5px solid var(--line); }
     body.binder-an .spalte-mitte { display: none; }
     .slots { max-width: 430px; margin: 0 auto; width: 100%; }
 
@@ -1306,7 +1322,11 @@
   .slot:hover .mehr { opacity: 1; }
   .slot .preis { bottom: 21px; }
   .slot.leer-item .mehr { opacity: .6; }
-  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: var(--t-m); line-height: 23px; } .slot .mehr { opacity: .85; width: 30px; height: 30px; line-height: 20px; } .slot .preis { bottom: 26px; } }
+  @media (hover: none) { .slot .raus, .slot .hat-btn { width: 26px; height: 26px; font-size: var(--t-m); line-height: 23px; }
+    .slot .raus { right: 31px; }
+    /* 30 px halbdurchsichtiges Dunkelgrau mitten auf dem Bild — auf einer 110 px breiten
+       Karte ein Viertel der Breite (Audit F16). Kleiner, ruhiger, an der Kante. */
+    .slot .mehr { opacity: .7; width: 24px; height: 20px; line-height: 17px; } .slot .preis { bottom: 24px; } }
   /* Geteilte Ansicht: dort gibt es keine Knoepfe am Fach, die das Preisschild
      nach oben draengen. Es gehoert an die untere Kante der Karte und darf dort
      groesser sein — auf dem Handy stand es sonst mitten im Bild und war zu klein. */
@@ -1367,7 +1387,7 @@
   .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
   .d-kein-bild small { font-weight: 500; color: var(--mut); font-size: var(--t-s); }
   .slot .spmark { left: auto; right: 2px; bottom: 21px; background: var(--ink); }
-  .slot .hat-mark { position: absolute; top: 3px; left: 3px; width: 17px; height: 17px; border-radius: 50%;
+  .slot .hat-mark { position: absolute; top: 3px; right: 3px; width: 17px; height: 17px; border-radius: 50%;
                     border: 1.5px solid rgba(255,255,255,.5); background: rgba(20,22,28,.5); color: #fff;
                     font-size: var(--t-xs); line-height: 14px; text-align: center; font-weight: 700; }
   .slot .hat-mark.ja { background: var(--gruen-flaeche); border-color: var(--gruen-flaeche); }
@@ -1587,7 +1607,7 @@
   .btn:disabled { box-shadow:none; transform:none; }
 
   .chip { border-radius:8px; border-width:2px; font-weight:700; }
-  .chip.on { background:var(--blau-flaeche); border-color:var(--blau-flaeche); color:var(--blau-fg); }
+  .chip.on { background:var(--aktiv-bg); border-color:var(--aktiv-bg); color:var(--aktiv-fg); }
   .feld { border-radius:8px; border-width:2px; }
   .feld:focus { border-color:var(--blau); }
 
@@ -1699,7 +1719,9 @@
     .kopf .logo-text { display: none; }
     .segment button { padding: 7px 10px; font-size: var(--t-s); }
     #btn-konto .konto-name { display: none; }
-    .spalte-binder { --binder-w: 360px; }
+    /* Der feste Wert überschrieb die aus der Fensterhöhe gerechnete Breite und ließ den
+       Binder auf 1024 und 1100 px bei 360 px stehen, während zwei Drittel der Fläche
+       leer blieben (Audit C4). binderHoeheAnpassen() deckelt selbst auf den Platz. */
     .f-rail { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 56px; flex: 0 0 56px;
       padding: 14px 4px; background: var(--card); border-right: 1.5px solid var(--line); color: var(--mut);
       font-size: var(--t-xs); font-weight: 700; cursor: pointer; position: relative; }
@@ -1860,7 +1882,7 @@
   .hk-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
   .hk-karte { position: relative; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel2);
               text-align: left; padding: 0; opacity: .5; transition: opacity .15s, border-color .15s; }
-  .hk-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel); }
+  .hk-karte img { width: 100%; aspect-ratio: 63/88; object-fit: contain; display: block; background: var(--panel2); }
   .hk-karte.hab { opacity: 1; border-color: var(--gruen-flaeche); }
   .hk-karte:hover { opacity: 1; }
   .hk-karte .hk-nr { position: absolute; top: 3px; left: 3px; background: rgba(0,0,0,.62); color: #fff; font-size: var(--t-xs); font-weight: 800; padding: 1px 5px; border-radius: 999px; }
@@ -1914,7 +1936,13 @@
     .spalte-filter.offen .f-kopf { display: flex; align-items: center; justify-content: space-between; font-size: var(--t-l); font-weight: 800; }
     .m-backdrop.offen { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: calc(var(--z-menue) - 1); }
     .spalte-binder { flex: 1 1 auto; width: auto; border-left: none; }
-    .spalte-binder .bp-kopf { max-width: 1100px; width: 100%; margin: 0 auto; }
+    /* Kopfzeile 1100 px, Fächer 560 px, beide zentriert: die linke Kante der Knöpfe lag
+       270 px links vom Binder, der ⋯-Knopf 500 px rechts davon (Audit 11.09.2026, C3).
+       Eine Breite für alles; nur „Alle Seiten“ läuft bewusst über die volle Fläche. */
+    .spalte-binder .bp-kopf { max-width: var(--binder-w, 560px); width: 100%; margin: 0 auto; }
+    body.alle-seiten .spalte-binder .bp-kopf, body.alle-seiten .gal-umschalter,
+    body.alle-seiten .seiten-nav, body.alle-seiten #wb-sammel,
+    body.alle-seiten .bp-hilfe, body.alle-seiten .seitenstreifen { max-width: none; }
     #wb-slots, #wb-onb, .gal-umschalter, .seiten-nav, .seitenstreifen, #wb-sammel, #wb-rest, #wb-preise, #wb-verlauf, .bp-hilfe { max-width: var(--binder-w, 560px); width: 100%; margin-left: auto; margin-right: auto; }
     .wb-alle { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
     .wb-alle .planer-seite { width: auto; }
@@ -1945,7 +1973,6 @@
     .suche-lade .ergebnisse { grid-template-columns: repeat(3, 1fr); }
     body.binder-an .spalte-mitte { display: flex; }
     .spalte-binder { display: flex; width: 100%; border-left: none; }
-    .m-seitenleiste { display: none !important; }
     .inspektor { display: none !important; }
     .mnav #mnav-binder { display: flex; }
     body.suche-offen .toast { bottom: 80px; }
@@ -2064,11 +2091,15 @@
 .zieh-btn.an { background: var(--akzent-flaeche); border-color: var(--akzent); color: var(--akzent-text); }
 
 /* Seitentitel neben der Seitenzahl */
-.seiten-titel { background: none; border: 0; color: var(--ink); font: inherit; font-weight: 600;
+.seiten-titel { background: none; border: 0; color: var(--ink); font-family: inherit; font-size: inherit; font-weight: 600;
   cursor: pointer; padding: 2px 6px; border-radius: 6px; max-width: 180px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 .seiten-titel:hover { background: var(--panel2); }
-.seiten-titel.leer { color: var(--mut); font-weight: 400; font-size: var(--t-s); }
+/* Grauer Text ohne Rahmen zwischen zwei Pfeilen liest sich wie deaktiviert, nicht wie
+   anklickbar (Audit F14). Gestrichelter Rahmen: noch leer, aber anfassbar. */
+.seiten-titel.leer { color: var(--mut); font-weight: 600; font-size: var(--t-s);
+    border: 1.5px dashed var(--line); border-radius: 999px; padding: 3px 10px; }
+.seiten-titel.leer:hover { border-color: var(--mut); color: var(--ink); background: var(--hover); }
 .ps-nur-titel { grid-column: 1 / -1; font-weight: 700; margin: 10px 0 -4px; }
 
 /* Ablage: die Karten, die auf ihren Platz warten */
@@ -2086,7 +2117,9 @@
 .tk-hab .ab-knopf:hover { color: var(--ink); border-color: var(--akzent); }
 
 /* Variante als Knopf am Fach */
-.slot .vbtn { border: 0; cursor: pointer; font: inherit; }
+/* `font: inherit` (Kurzform!) setzte auch font-size und font-weight aus .slot .vmark
+   zurueck – die Pille rendert dann in 16 px/400 statt 11 px/700 (Audit C2). */
+.slot .vbtn { border: 0; cursor: pointer; font-family: inherit; }
 .slot .vbtn.still { opacity: 0; transition: opacity .12s; }
 .slot:hover .vbtn.still, .slot:focus-within .vbtn.still { opacity: .75; }
 
@@ -2101,7 +2134,7 @@
 .vmenu { position: fixed; z-index: 90; background: var(--card); border: 1px solid var(--line);
   border-radius: var(--r-3); box-shadow: var(--d3); padding: 4px; min-width: 150px; }
 .vmenu button { display: block; width: 100%; text-align: left; background: none; border: 0;
-  color: var(--ink); font: inherit; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+  color: var(--ink); font-family: inherit; font-size: inherit; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 .vmenu button:hover { background: var(--panel2); }
 .vmenu button.an { background: var(--akzent-flaeche); color: var(--akzent-text); font-weight: 600; }
 .vmenu .trenn { height: 1px; background: var(--line); margin: 4px 0; }
@@ -2121,7 +2154,7 @@
 .hz-liste { display: grid; gap: 6px; margin-top: 12px; max-height: 52vh; overflow-y: auto; }
 .hz-eintrag { display: block; width: 100%; text-align: left; background: var(--panel2);
   border: 1px solid var(--line); border-radius: var(--r-3); padding: 10px 12px; cursor: pointer;
-  color: var(--ink); font: inherit; }
+  color: var(--ink); font-family: inherit; font-size: inherit; }
 .hz-eintrag:hover { border-color: var(--akzent); }
 .hz-eintrag strong { display: block; }
 .hz-eintrag span { font-size: var(--t-s); color: var(--mut); }

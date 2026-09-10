@@ -866,6 +866,18 @@ def _card_kind(category, stage, suffix, name_en):
     return "pokemon"
 
 
+# Tippfehler, die aus der Quelle kommen und jeden Katalog-Sync überleben würden. `sets.name`
+# wird beim Sync aus TCGdex überschrieben, eine reine Datenkorrektur wäre also beim nächsten
+# Lauf wieder weg. Diese Handvoll Namen wird nach jedem Sync geradegezogen.
+SETNAME_KORREKTUR = {"bw5": "Erforscher der Finsternis"}
+
+
+def _setnamen_korrigieren(con):
+    """Bekannte Schreibfehler in Setnamen nach dem Sync korrigieren."""
+    for sid, name in SETNAME_KORREKTUR.items():
+        con.execute("UPDATE sets SET name = ? WHERE id = ? AND name <> ?", (name, sid, name))
+
+
 def _local_num(local_id):
     m = re.search(r"\d+", str(local_id or ""))
     return int(m.group()) if m else 100000
@@ -916,6 +928,7 @@ def _sync_sets(client, con):
                  detail.get("symbol"), en_names.get(detail["id"]),
                  en_series.get(serie.get("id"))),
             )
+    _setnamen_korrigieren(con)
     con.commit()
 
 
@@ -4126,7 +4139,11 @@ def landing_en(request: Request):
 # Alle liefern dieselbe Datei aus, die Aufteilung macht das Frontend. Vorher hing der
 # Zustand am Hash und wurde nur für zwei Fälle gesetzt — wer die Seite in der Vitrine
 # neu lud, landete wieder in der Suche.
-APP_ROUTEN = {"", "start", "suche", "planer", "sammlung", "vitrine", "markt", "auswertung"}
+# Diese Liste muss zu ROUTEN in assets/vitrine.js passen. „profil" fehlte hier: der Server
+# schickte /app/profil per 307 auf /app, der Browser sah die Route nie und landete auf der
+# Startseite — ein geteilter oder gemerkter Profil-Link führte ins Leere (Audit D7).
+APP_ROUTEN = {"", "start", "suche", "planer", "sammlung", "vitrine", "markt", "auswertung",
+              "profil"}
 
 
 @app.get("/app")

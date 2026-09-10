@@ -29,9 +29,13 @@ async function boot() {
     authTab('reset');
   }
 
+  // /b/<id> leitet hierher, wenn der Binder nicht (mehr) freigegeben ist. Ein Toast nach
+  // 400 ms war die ganze Antwort — wer ihn verpasste, stand vor einer leeren Werkbank und
+  // hielt sie für seinen eigenen, noch ungefüllten Binder (Audit 11.09.2026, E2).
+  let linkTot = false;
   if (q0.get('hinweis') === 'privat') {
     history.replaceState(null, '', location.pathname + location.hash);
-    setTimeout(() => toast(t('binder_privat')), 400);
+    linkTot = true;
   }
   // Rückkehr von Stripe?
   const q = new URLSearchParams(location.search);
@@ -57,7 +61,11 @@ async function boot() {
       S.nurAnsicht = true;
       ansichtAktivieren();
       return;
-    } catch (e) { S.binder = null; }
+    } catch (e) {
+      S.binder = null;
+      linkTotZeigen();
+      return;
+    }
   }
   if (hash.startsWith('binder/')) {
     try {
@@ -99,12 +107,31 @@ async function boot() {
   }
   // Die Ansicht wiederherstellen, in der zuletzt gearbeitet wurde. „suche" ist der
   // Grundzustand und braucht kein eigenes Öffnen.
+  if (linkTot) { linkTotZeigen(); return; }
   if (ROUTEN.includes(hash) && hash !== 'suche' && !(hash === 'start' && zeigeStart)) ansicht(hash);
   bestaetigungAnzeigen();
   // Werkbank-Grundzustand: am Handy ist der Binder immer da (die Suche ein Sheet); am Desktop
   // öffnet sich die Schublade nur, wenn der Binder noch leer ist.
   if (window.innerWidth < 901) document.body.classList.add('binder-an');
   else if (!zeigeStart && S.binder && !S.binder.items.length && !S.nurAnsicht) sucheLadeOeffnen(false);
+}
+
+/** Ein geteilter Link, den es nicht (mehr) gibt: sagen, was los ist, statt eine leere
+ *  Werkbank zu zeigen, die aussieht wie ein eigener, noch ungefüllter Binder. */
+function linkTotZeigen() {
+  document.body.classList.add('binder-an');
+  ['wb-onb', 'gal-umschalter', 'wb-slots', 'wb-alle', 'wb-nav', 'wb-streifen', 'wb-sammel']
+    .forEach((id) => { const e = $(id); if (e) e.classList.add('hidden'); });
+  document.querySelectorAll('.spalte-binder .bp-kopf, .spalte-binder .bp-hilfe')
+    .forEach((e) => e.classList.add('hidden'));
+  $('link-tot').classList.remove('hidden');
+  hashSetzen('');
+}
+
+/** „Eigenen Binder planen" aus der Meldung: die Werkbank ganz normal aufmachen. */
+function linkTotZu() {
+  $('link-tot').classList.add('hidden');
+  location.href = APP_BASIS;
 }
 
 function ansichtAktivieren() {
@@ -165,6 +192,34 @@ function breiteAnpassen() {
   sp.style.flex = breit ? '1 1 auto' : '';
   if (mitte) mitte.classList.toggle('hidden', breit);
   document.body.classList.toggle('alle-seiten', breit);
+  if (!breit) binderHoeheAnpassen();
+}
+
+/** Wie breit eine Binderseite sein darf, damit sie ganz ins Bild passt.
+ *
+ *  Bis zum 11.09.2026 waren es feste 560 px (901–1180 px sogar 360), egal wie groß das
+ *  Fenster war: auf 1920 blieben 71 % der Breite leer, und trotzdem passte die Seite nicht
+ *  in die Höhe — man scrollte, um die untere Kartenreihe zu sehen (Audit C4). Jetzt zählt
+ *  die freie Höhe: aus ihr und dem Seitenverhältnis des Rasters (63 x 88 mm je Fach plus
+ *  Fugen) ergibt sich die Breite. Ein selbst gesetzter Wert (Regler unter „Aussehen") hat
+ *  Vorrang — die Wahl gehört dem Nutzer.
+ */
+window.addEventListener('resize', () => { if (!S.alleSeiten) binderHoeheAnpassen(); });
+
+function binderHoeheAnpassen() {
+  const sp = document.querySelector('.spalte-binder');
+  if (!sp || S.nurAnsicht || window.innerWidth < 901) return;
+  try { if (localStorage.getItem('bp_binder_w')) return; } catch (e) { /* kein Speicher */ }
+  const [cols, rows] = (S.binder && LAYOUTS[S.binder.layout]) || [3, 3];
+  const kopf = sp.querySelector('.bp-kopf');
+  const oben = sp.getBoundingClientRect().top + (kopf ? kopf.getBoundingClientRect().height : 0);
+  const frei = window.innerHeight - oben - 150;          // Umschalter, Seitenzeile, Luft
+  const verhaeltnis = (cols * 63 + (cols - 1) * 7 + 20) / (rows * 88 + (rows - 1) * 7 + 20);
+  const platz = sp.getBoundingClientRect().width - 28;
+  // Untergrenze 320: darunter wird eine Karte unleserlich, dann ist Scrollen das kleinere
+  // Übel. Auf 1024 x 768 ergibt die Rechnung rund 395 px — die Seite passt.
+  const breite = Math.round(Math.max(320, Math.min(platz, frei * verhaeltnis)));
+  document.documentElement.style.setProperty('--binder-w', breite + 'px');
 }
 
 /** Klick auf eine Seitenüberschrift in der Übersicht: diese Seite groß. */
@@ -566,7 +621,7 @@ async function startLaden() {
     $('st-weiter').innerHTML = `
       <div class="vor">${bilder || ''}</div>
       <div class="txt"><strong>${esc(zuletzt.name)}</strong>
-        <div>${zuletzt.karten != null ? zuletzt.karten : zuletzt.anzahl} ${t('karten_wort')} · ${zuletzt.seiten} ${t('seiten_wort')} · ${t('st_zuletzt')} ${(zuletzt.updated_at || '').slice(0, 10)}</div></div>
+        <div>${zuletzt.karten != null ? zuletzt.karten : zuletzt.anzahl} ${t('karten_wort')} · ${zuletzt.seiten} ${t('seiten_wort')} · ${t('st_zuletzt')} ${anDatum(zuletzt.updated_at)}</div></div>
       <button class="btn" style="font-size: var(--t-m)" onclick="startBinderOeffnen('${zuletzt.id}')">${t('st_weiterplanen')}</button>`;
   }
 
@@ -604,7 +659,7 @@ function zeichneStartBinder(liste) {
       <span class="badge">${modeLbl[b.mode] || t('mode_custom')}</span>
       <div class="bname"><span>${esc(b.name)}</span>
         <span onclick="event.stopPropagation();startBinderLoeschen('${b.id}')" title="${t('bestaetigen_loeschen')}" style="color:var(--mut)">${ic('muell', 16)}</span></div>
-      <div class="bmeta">${b.karten != null ? b.karten : b.anzahl} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + b.updated_at.slice(0, 10) : ''}${
+      <div class="bmeta">${b.karten != null ? b.karten : b.anzahl} ${t('karten_wort')} · ${b.seiten} ${t('seiten_wort')}${b.gemischt ? ' ' + t('gemischt') : ''}${b.updated_at ? ' · ' + t('st_zuletzt') + ' ' + anDatum(b.updated_at) : ''}${
         b.anzahl ? ` · <span class="${b.gesammelt ? 'an-plus' : ''}">${b.gesammelt || 0} / ${b.anzahl} ✓</span>` : ''}</div>
       ${b.wert ? `<div class="bmeta bwert">${t('st_komplett_heute')} ≈ <strong>${anEur(b.wert, 0)}</strong>${b.bew30 != null ? ` · <span class="${b.bew30 > 0.05 ? 'an-plus' : b.bew30 < -0.05 ? 'an-minus' : ''}">${anProz(b.bew30)}</span>` : ''}</div>` : ''}
       ${b.anzahl ? `<div class="bfort"><div style="width:${proz}%"></div></div>` : ''}
@@ -793,7 +848,7 @@ async function journalLaden() {
     const d = await api('api/credits');
     S.user = { ...S.user, ...d.konto };
     box.innerHTML = d.buchungen.length ? d.buchungen.map((b) => `<div>
-        <span>${(T[LANG] && T[LANG]['j_' + b.grund]) || b.grund}<br><span style="color:var(--mut);font-size: var(--t-xs)">${b.titel ? esc(b.titel) + ' · ' : ''}${(b.created_at || '').slice(0, 16).replace('T', ' ')}</span></span>
+        <span>${(T[LANG] && T[LANG]['j_' + b.grund]) || b.grund}<br><span style="color:var(--mut);font-size: var(--t-xs)">${b.titel ? esc(b.titel) + ' · ' : ''}${anZeit(b.created_at)}</span></span>
         <span class="${b.delta > 0 ? 'plus' : 'minus'}">${b.delta > 0 ? '+' : ''}${b.delta}</span></div>`).join('')
       : `<div style="color:var(--mut)">–</div>`;
   } catch (e) { box.innerHTML = ''; }

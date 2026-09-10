@@ -110,7 +110,7 @@ font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:var(--blau)}
 .kopf{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1.5px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
 .kopf .logo{font-family:Bungee,Archivo,sans-serif;font-weight:800;letter-spacing:.04em;text-decoration:none;color:var(--ink);font-size:17px;display:flex;align-items:center;gap:8px}
-.kopf .logo i{width:22px;height:22px;border-radius:6px;background:var(--gelb);display:inline-block}
+.kopf .logo svg{width:22px;height:22px;display:block;flex:none}
 .kopf nav{margin-left:auto;display:flex;gap:14px;font-size:13.5px;font-weight:600}
 .kopf nav a{text-decoration:none;color:var(--mut)}.kopf nav a.cta{color:var(--blau-fg);background:var(--blau);padding:7px 14px;border-radius:999px}
 .rumpf{max-width:1080px;margin:0 auto;padding:26px 18px 60px}
@@ -184,7 +184,7 @@ def _seite(titel, beschreibung, pfad, inhalt, bild=None, ld=None, noindex=False)
 <style>{CSS}</style>
 {('<script type="application/ld+json">' + json.dumps(ld, ensure_ascii=False) + '</script>') if ld else ''}
 </head><body>
-<header class="kopf"><a class="logo" href="/"><i></i>BINDERPLAN</a>
+<header class="kopf"><a class="logo" href="/"><svg width="22" height="22" viewBox="0 0 44 44" aria-hidden="true"><rect x="2" y="2" width="40" height="40" rx="9" fill="#F5C518" stroke="#14161C" stroke-width="3"/><rect x="9.5" y="9.5" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><rect x="27" y="9.5" width="7.5" height="7.5" rx="1" fill="#E4322B"/><rect x="18.2" y="18.2" width="7.5" height="7.5" rx="1" fill="#2A4B9B"/><g stroke="#14161C" stroke-width="2" fill="none"><path d="M9 9h26v26H9z"/><path d="M17.7 9v26M26.3 9v26M9 17.7h26M9 26.3h26"/></g></svg>BINDERPLAN</a>
 <nav><a href="/sets">Sets</a><a href="/app#vitrine">Vitrine</a><a class="cta" href="/app">App öffnen</a></nav></header>
 <main class="rumpf">"""
     fuss = f"""</main>
@@ -322,7 +322,7 @@ def register(app, *, get_db, app_url=None):
     def sets_uebersicht():
         con = get_db()
         sets = [dict(r) for r in con.execute(
-            "SELECT s.id, s.name, s.name_en, s.serie_name, s.release_date, s.total, s.symbol,"
+            "SELECT s.id, s.name, s.name_en, s.serie_id, s.serie_name, s.release_date, s.total, s.symbol,"
             " (SELECT COUNT(*) FROM cards c WHERE c.set_id = s.id) n"
             " FROM sets s WHERE COALESCE(s.region,'intl')='intl' ORDER BY s.release_date DESC")]
         markt = {}
@@ -333,9 +333,20 @@ def register(app, *, get_db, app_url=None):
         except Exception:
             pass
         con.close()
-        serien = {}
+        # Gruppiert wird nach serie_id, nicht nach dem Textfeld serie_name: dasselbe Ären-Kürzel
+        # trägt je nach Set mal den deutschen, mal den englischen Namen (swsh: 25× „Schwert &
+        # Schild", 1× „Sword & Shield"). Nach Text gruppiert erschienen sechs Ären doppelt und
+        # ihre Sets waren auf zwei Abschnitte verteilt (Audit 11.09.2026, E1). Die Überschrift
+        # ist der häufigste Name je Kürzel.
+        serien, namen = {}, {}
         for s in sets:
-            serien.setdefault(s["serie_name"] or "Weitere", []).append(s)
+            sid = s.get("serie_id") or (s["serie_name"] or "weitere")
+            serien.setdefault(sid, []).append(s)
+            if s.get("serie_name"):
+                namen.setdefault(sid, {})
+                namen[sid][s["serie_name"]] = namen[sid].get(s["serie_name"], 0) + 1
+        serien = {max(namen.get(sid, {"Weitere": 1}).items(), key=lambda x: x[1])[0]: liste
+                  for sid, liste in serien.items()}
         # Ein Suchfeld über 203 Sets: die Seite war 14.478 px lang, und wer das Grundset
         # suchte, scrollte an 190 Sets vorbei. Gefiltert wird im Browser über die Daten, die
         # ohnehin schon auf der Seite stehen — kein zweiter Abruf, und ohne JavaScript
@@ -352,10 +363,10 @@ def register(app, *, get_db, app_url=None):
                 for s in liste)
             teile.append(f'<section class="serie" id="s-{i}"><h2>{esc(serie)}</h2>'
                          f'<div class="tabr"><table><thead><tr><th>Set</th><th class="r">Jahr</th><th class="r">Karten</th>'
-                         f'<th class="r">Wert aller Karten</th><th class="r">30 Tage</th></tr></thead><tbody>{zeilen}</tbody></table></div></section>')
+                         f'<th class="r">Wert aller Karten</th><th class="r" title="Heutiger Trendpreis gegenüber dem Cardmarket-Schnitt der letzten 30 Verkäufe">gg. Schnitt</th></tr></thead><tbody>{zeilen}</tbody></table></div></section>')
         inhalt = (_brot(("Sets", None)) + "<h1>Alle Pokémon-Sets mit Preisen</h1>"
                   '<p class="unter">Jedes westliche Set von 1999 bis heute: Kartenzahl, Wert aller Karten nach Cardmarket-Trend '
-                  'und die Bewegung der letzten 30 Tage. Ein Klick öffnet das Set mit allen Karten und Preisen.</p>'
+                  'und den Abstand zum Cardmarket-Verkaufsschnitt. Ein Klick öffnet das Set mit allen Karten und Preisen.</p>'
                   f'<div class="setsuche"><input type="search" id="q" placeholder="Set suchen, z. B. Grundset oder base1"'
                   f' aria-label="Set suchen" autocomplete="off"><span id="qn"></span></div>'
                   f'<nav class="anker">{anker}</nav>'
@@ -400,7 +411,7 @@ def register(app, *, get_db, app_url=None):
             for k in karten)
         titel = f"{name} ({jahr}) – alle Karten mit Preisen | Binderplan" if jahr else f"{name} – alle Karten mit Preisen | Binderplan"
         beschreibung = (f"{name}: {len(karten)} Karten, Gesamtwert {eur(summe, 0)} nach Cardmarket-Trend"
-                        + (f", {proz(bew)} in 30 Tagen" if bew is not None else "")
+                        + (f", {proz(bew)} gegenüber dem Verkaufsschnitt" if bew is not None else "")
                         + f". Teuerste Karte: {teuerste[0]['name_de'] or teuerste[0]['name_en']} ({eur(teuerste[0]['eur'], 0)})." if teuerste else ".")
         ld = {"@context": "https://schema.org", "@type": "CollectionPage", "name": name, "url": f"{APP_URL}/set/{set_id}",
               "description": beschreibung, "inLanguage": "de",
@@ -413,7 +424,7 @@ def register(app, *, get_db, app_url=None):
                   + (f' · englisch: {esc(s["name_en"])}' if s.get("name_en") and s["name_en"] != name else "") + "</p>"
                   + '<div class="kacheln">'
                   + _kachel("Wert aller Karten", eur(summe, 0), f"{len(mit_preis)} von {len(karten)} Karten mit Preis")
-                  + _kachel("Bewegung 30 Tage", proz(bew) if bew is not None else "–", f"Median über {m['bew30_n']} Karten" if m and m.get("bew30_n") else "noch keine Messung", kl(bew))
+                  + _kachel("Trend gg. Verkaufsschnitt", proz(bew) if bew is not None else "–", f"Median über {m['bew30_n']} Karten" if m and m.get("bew30_n") else "noch keine Messung", kl(bew))
                   + _kachel("Teuerste Karte", eur(teuerste[0]["eur"], 0) if teuerste else "–", esc(teuerste[0]["name_de"] or teuerste[0]["name_en"]) if teuerste else "")
                   + _kachel("Mittlere Karte", eur(median), "Median-Preis im Set")
                   + "</div>"
@@ -421,7 +432,7 @@ def register(app, *, get_db, app_url=None):
                   + '<a class="cta zweit" href="/app">Sammlung anlegen &amp; Fortschritt sehen</a>'
                   + "<h2>Teuerste Karten</h2>" + (_kartenraster(teuerste) if teuerste else '<p class="hin">Noch keine Preise.</p>')
                   + f"<h2>Alle {len(karten)} Karten</h2><p class='unter'>Preis = Cardmarket-Trend je Karte, Bewegung gegen den 30-Tage-Schnitt.</p>"
-                  + f'<div class="tabr"><table><thead><tr><th></th><th>Karte</th><th class="r">Nr.</th><th>Seltenheit</th><th class="r">Preis</th><th class="r">30 Tage</th></tr></thead><tbody>{zeilen}</tbody></table></div>')
+                  + f'<div class="tabr"><table><thead><tr><th></th><th>Karte</th><th class="r">Nr.</th><th>Seltenheit</th><th class="r">Preis</th><th class="r" title="Heutiger Trendpreis gegenüber dem Cardmarket-Schnitt der letzten 30 Verkäufe">gg. Schnitt</th></tr></thead><tbody>{zeilen}</tbody></table></div>')
         return _seite(titel, beschreibung, f"/set/{set_id}", inhalt,
                       bild=f"{APP_URL}/api/img/card/{teuerste[0]['id']}" if teuerste else None, ld=ld, noindex=jp)
 
@@ -477,7 +488,7 @@ def register(app, *, get_db, app_url=None):
                   + f'<p class="unter">Pokédex-Nummer {dex}{(" · englisch: " + esc(p["name_en"])) if p.get("name_en") and p["name_en"] != name else ""} · {len(karten)} westliche Karten</p>'
                   + '<div class="kacheln">'
                   + _kachel("Alle Karten zusammen", eur(summe, 0), f"{len(mit_preis)} Karten mit Preis")
-                  + _kachel("Bewegung 30 Tage", proz(m.get("bew30")) if m and m.get("bew30") is not None else "–",
+                  + _kachel("Trend gg. Verkaufsschnitt", proz(m.get("bew30")) if m and m.get("bew30") is not None else "–",
                             f"Median über {m['bew30_n']} Karten" if m and m.get("bew30_n") else "", kl(m.get("bew30") if m else None))
                   + _kachel("Teuerste Karte", eur(karten[0]["eur"], 0) if mit_preis else "–", esc(karten[0]["set_name"] or "") if mit_preis else "")
                   + _kachel("Jahrgänge", f"{min(jahre)}–{max(jahre)}" if jahre else "–", f"{len(jahre)} Jahre mit Karten")
@@ -513,10 +524,21 @@ def register(app, *, get_db, app_url=None):
         name = k["name_de"] or k["name_en"] or card_id
         set_name = k["set_name"] or k["set_id"]
         nummer = f"{k['local_id']}/{k['official']}" if k.get("official") and k.get("local_id") else (k.get("local_id") or "")
-        bew7, bew30 = _bewegung(k["eur"], k["eur_avg7"]), _bewegung(k["eur"], k["eur_avg30"])
+        # „7 Tage“ verglich bis zum 11.09.2026 den Trendpreis gegen Cardmarkets
+        # Verkaufsschnitt — zwei verschiedene Preisarten. Diese Karte meldete damit
+        # „+76,5 %“, während ihr eigener Verlauf in derselben Woche fiel. Jetzt kommt der
+        # Vergleichswert aus price_history, derselben Reihe wie die Kurve darunter.
+        # Der Verlauf steht schon oben — daraus kommt der Vergleichswert, damit Kachel und
+        # Kurve nie auseinanderlaufen können. Die Historie speichert nur Bewegungen: der
+        # letzte Eintrag am oder vor dem Stichtag ist genau der Preis dieses Tages.
+        stichtag = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+        frueher = [w for d, w in verlauf if d <= stichtag]
+        vor7 = frueher[-1] if frueher else None
+        bew7 = _bewegung(k["eur"], vor7)
+        bew30 = _bewegung(k["eur"], k["eur_avg30"])
         titel = f"{name} {set_name} {nummer} – Preis & Wert | Binderplan"
         beschreibung = (f"{name} aus {set_name} (Nr. {nummer}, {k['rarity'] or 'ohne Seltenheitsangabe'}): "
-                        f"Cardmarket-Trend {eur(k['eur'])}" + (f", 30-Tage-Schnitt {eur(k['eur_avg30'])}" if k.get("eur_avg30") else "")
+                        f"Cardmarket-Trend {eur(k['eur'])}" + (f", Verkaufsschnitt 30 T. {eur(k['eur_avg30'])}" if k.get("eur_avg30") else "")
                         + (f", Tiefstpreis {eur(k['eur_low'])}" if k.get("eur_low") else "") + ". Preisverlauf, andere Drucke und Set.")
         ld = {"@context": "https://schema.org", "@type": "Product", "name": f"{name} – {set_name} {nummer}",
               "image": f"{APP_URL}/api/img/card/{card_id}", "url": f"{APP_URL}/karte/{card_id}", "description": beschreibung}
@@ -534,8 +556,8 @@ def register(app, *, get_db, app_url=None):
             f"Illustration: {esc(k['illustrator'])}" if k.get("illustrator") else "") if x)
         preise = ('<div class="kacheln">'
                   + _kachel("Cardmarket-Trend", eur(k["eur"]), f"Stand {(k.get('preis_stand') or '')[:10]}" if k.get("preis_stand") else "kein Preis")
-                  + _kachel("7 Tage", proz(bew7) if bew7 is not None else "–", f"Schnitt {eur(k['eur_avg7'])}" if k.get("eur_avg7") else "", kl(bew7))
-                  + _kachel("30 Tage", proz(bew30) if bew30 is not None else "–", f"Schnitt {eur(k['eur_avg30'])}" if k.get("eur_avg30") else "", kl(bew30))
+                  + _kachel("7 Tage", proz(bew7) if bew7 is not None else "–", f"vor 7 Tagen {eur(vor7)}" if vor7 else "noch keine Historie", kl(bew7))
+                  + _kachel("Gg. Verkaufsschnitt", proz(bew30) if bew30 is not None else "–", f"Schnitt 30 T. {eur(k['eur_avg30'])}" if k.get("eur_avg30") else "", kl(bew30))
                   + _kachel("Tiefstpreis", eur(k.get("eur_low")), "günstigstes Angebot")
                   + (_kachel("Holo / Reverse", eur(k.get("eur_holo")), "Trend der Holo-Ausprägung") if k.get("eur_holo") else "")
                   + (_kachel("USA", f"{k['usd']:.2f} $".replace(".", ","), "TCGplayer-Marktpreis") if k.get("usd") else "")

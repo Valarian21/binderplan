@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609101937">
-<link rel="stylesheet" href="assets/app.css?v=202609101937">
+<link rel="stylesheet" href="assets/tokens.css?v=202609110159">
+<link rel="stylesheet" href="assets/app.css?v=202609110159">
 </head>
 <body>
 <div id="app">
@@ -324,6 +324,17 @@
           <button onclick="importOeffnen()"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
         </div>
       </div>
+      <!-- Ein zurückgezogener oder abgelaufener Freigabelink landete kommentarlos in einer
+           leeren Werkbank („Mein Binder – Der Binder ist noch leer"). Für ein Produkt, das
+           über geteilte Links wächst, ist das die teuerste Stelle (Audit 11.09.2026, E2). -->
+      <div id="link-tot" class="leer hidden">
+        <strong data-i18n="lt_t">Dieser Binder ist nicht mehr freigegeben</strong>
+        <span data-i18n="lt_u">Der Link wurde zurückgezogen oder ist abgelaufen. In der Vitrine stehen Binder, die öffentlich zu sehen sind.</span>
+        <div class="ge-akt">
+          <button class="btn" onclick="ansicht('vitrine')" data-i18n="lt_vitrine">Zur Vitrine</button>
+          <button class="btn sekundaer" onclick="linkTotZu()" data-i18n="lt_eigener">Eigenen Binder planen</button>
+        </div>
+      </div>
       <div class="gal-umschalter hidden" id="gal-umschalter"></div>
       <div class="wb-alle hidden" id="wb-alle" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
       <div class="slots" id="wb-slots" ondragover="flaecheOver(event)" ondragleave="flaecheLeave()" ondrop="flaecheDrop(event)"></div>
@@ -458,7 +469,7 @@
     <div class="f-lbl" data-i18n="dr_welche">Welche Seiten</div>
     <div class="f-chips" id="dr-umfang" style="margin-bottom:10px"></div>
     <input class="feld" id="dr-seiten" placeholder="z. B. 1-3, 7, 10-" data-i18n-ph="dr_ph"
-           oninput="druckUmfangFrei()" style="margin-bottom:4px">
+           oninput="druckUmfangFrei()" style="margin-bottom:4px" disabled>
     <div class="unter" style="margin:0 0 14px;font-size: var(--t-s)" data-i18n="dr_seiten_hin">Binderseiten, nicht Druckblätter. Leer lassen heißt: alle.</div>
 
     <div class="f-lbl" data-i18n="dr_was">Was drucken</div>
@@ -1396,19 +1407,19 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609101937"></script>
-<script defer src="assets/konto.js?v=202609101937"></script>
-<script defer src="assets/werkbank.js?v=202609101937"></script>
-<script defer src="assets/vitrine.js?v=202609101937"></script>
-<script defer src="assets/preise.js?v=202609101937"></script>
-<script defer src="assets/planer.js?v=202609101937"></script>
-<script defer src="assets/teilen.js?v=202609101937"></script>
-<script defer src="assets/hilfe.js?v=202609101937"></script>
-<script defer src="assets/detail.js?v=202609101937"></script>
-<script defer src="assets/artwork.js?v=202609101937"></script>
+<script defer src="assets/kern.js?v=202609110159"></script>
+<script defer src="assets/konto.js?v=202609110159"></script>
+<script defer src="assets/werkbank.js?v=202609110159"></script>
+<script defer src="assets/vitrine.js?v=202609110159"></script>
+<script defer src="assets/preise.js?v=202609110159"></script>
+<script defer src="assets/planer.js?v=202609110159"></script>
+<script defer src="assets/teilen.js?v=202609110159"></script>
+<script defer src="assets/hilfe.js?v=202609110159"></script>
+<script defer src="assets/detail.js?v=202609110159"></script>
+<script defer src="assets/artwork.js?v=202609110159"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609101937"></script>
+<script defer src="assets/markt.js?v=202609110159"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609101937"></script>
+<script defer src="assets/sammlung.js?v=202609110159"></script>
 </body>
 </html>

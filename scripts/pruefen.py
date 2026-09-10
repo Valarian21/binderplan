@@ -110,6 +110,45 @@ for interp in (venv_py, '/home/developer/ai_empire/venv/bin/python', sys.executa
     except (FileNotFoundError, subprocess.TimeoutExpired):
         continue
 
+# 6. Jedes benutzte Farb-Token ist auch definiert. `--hover` (14x), `--slotrand` (5x) und
+#    `--eingabe` (2x) standen in app.css, aber in keiner :root-Regel: Hover-Flaechen und
+#    Fachkanten fielen still aus, ohne Fehlermeldung (Audit 11.09.2026, D8).
+tokens_datei = os.path.join(assets_dir, 'tokens.css')
+if os.path.exists(tokens_datei):
+    tok_quelle = open(tokens_datei, encoding='utf-8').read()
+    definiert = set(re.findall(r'(--[a-z0-9-]+)\s*:', tok_quelle))
+    for name in re.findall(r"setProperty\(\s*'(--[a-z0-9-]+)'", "\n".join(js_dateien.values())):
+        definiert.add(name)           # aus dem Browser gesetzt (z. B. --binder-w)
+    for datei, quelle in css_dateien.items():
+        definiert |= set(re.findall(r'(--[a-z0-9-]+)\s*:', quelle))
+        # Nur Verwendungen OHNE Rückfallwert sind ein Befund: `var(--x, 300px)` ist Absicht.
+        for name in sorted(set(re.findall(r'var\((--[a-z0-9-]+)\s*\)', quelle))):
+            if name not in definiert:
+                befunde.append(f'Token {name} ohne Rückfall benutzt in {datei}, aber nirgends gesetzt')
+
+# 7. `font: inherit` ist die Kurzform und setzt Groesse und Gewicht mit zurueck. Auf einem
+#    Element, dem eine andere Regel eine Schriftgroesse gibt, ist das fast immer ein Fehler:
+#    die Varianten-Pille am Fach rutschte damit von 11 px/700 auf 16 px/400 (Audit C2).
+for datei, quelle in css_dateien.items():
+    for m in re.finditer(r'^([^\n{]*)\{[^}]*\bfont:\s*inherit', quelle, re.M):
+        befunde.append(f'`font: inherit` in {datei} bei `{m.group(1).strip()}` – '
+                       f'font-family/-size einzeln setzen (die Kurzform überschreibt beides)')
+
+# 8. Die Routenliste des Servers muss die des Browsers enthalten. `profil` fehlte in
+#    APP_ROUTEN: der Server schickte /app/profil per 307 auf /app, der Browser sah die
+#    Route nie und zeigte die Startseite (Audit D7).
+try:
+    haupt = open(os.path.join(wurzel, 'main.py'), encoding='utf-8').read()
+    m_srv = re.search(r'APP_ROUTEN\s*=\s*\{(.*?)\}', haupt, re.S)
+    m_cli = re.search(r'const ROUTEN\s*=\s*\[(.*?)\]', js_dateien.get('assets/vitrine.js', ''), re.S)
+    if m_srv and m_cli:
+        srv = set(re.findall(r'"([a-z]*)"', m_srv.group(1)))
+        cli = set(re.findall(r"'([a-z]+)'", m_cli.group(1)))
+        for r_ in sorted(cli - srv):
+            befunde.append(f'Route "{r_}" steht in ROUTEN (vitrine.js), fehlt aber in APP_ROUTEN (main.py)')
+except OSError:
+    pass
+
 if befunde:
     print('BAUPRÜFUNG FEHLGESCHLAGEN – %d Befund(e):' % len(befunde))
     for b in befunde:

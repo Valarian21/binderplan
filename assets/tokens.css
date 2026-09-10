@@ -9,6 +9,9 @@
           --blau-flaeche:#2A4B9B; --blau-fg:#FFFFFF;
           --akzent-flaeche:#DC2C25; --akzent-flaeche-hover:#B8211B; --akzent-fg:#FFFFFF;
           --link:#2A4B9B; --gruen-text:#24704A;
+          /* Diese drei wurden 21-mal benutzt und nie gesetzt: Hover-Flaechen und
+             Fachkanten fielen still aus (Audit 11.09.2026, D8). */
+          --hover:#F1F2F5; --eingabe:#FFFFFF; --slotrand:#DCDEE4;
           --gruen-flaeche:#2A8051; --gruen-fg:#FFFFFF; --akzent-text:#CF2A23; }
   /* Dunkel: automatisch nach System, überstimmbar per Schalter (data-theme) */
   @media (prefers-color-scheme: dark) {
@@ -18,6 +21,7 @@
                                           --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
                                           --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
                                           --link:#7C9BF0; --gruen-text:#5CC48F;
+                                          --hover:#232833; --eingabe:#12141A; --slotrand:#333844;
                                           --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }
   }
   :root[data-theme="dark"] { --bg:#12141A; --ink:#ECEEF2; --mut:#99A0AD; --line:#2A2E37; --card:#191C23; --akzent:#FF5A4F; --akzent-dunkel:#FF7A70; --gruen:#4FBE86; --panel2:#1F232B; --kontur:#000000; --blau:#7C9BF0; --gelb:#F5C518;
@@ -26,4 +30,5 @@
                               --blau-flaeche:#4A6FD8; --blau-fg:#FFFFFF;
                               --akzent-flaeche:#D9342B; --akzent-flaeche-hover:#C42A22; --akzent-fg:#FFFFFF;
                               --link:#7C9BF0; --gruen-text:#5CC48F;
+                                          --hover:#232833; --eingabe:#12141A; --slotrand:#333844;
                               --gruen-flaeche:#4FBE86; --gruen-fg:#14161C; --akzent-text:#FF5A4F; }
