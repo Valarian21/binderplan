@@ -71,6 +71,32 @@ SELTENHEIT = {
     "pikarare": "Pikachu Rare",
     "promo": "Promo",
 }
+# Für die Geheimkarten (ab 129) taugen die Serebii-Symbole nicht: 129–146 tragen dort
+# „goldonestar" (= Secret Rare), sind aber die Illustration Rares des Sets; 147–156
+# erscheinen gemischt als „silvertwostar", „twostar" und „promo", obwohl es durchweg die
+# Special Illustration Rares sind. Einzelne Karten haben gar kein Symbol und landeten als
+# „Common" (144 Meowth). Die Blockgrenzen sind sicher, weil die japanische Fassung (M6a)
+# genau so aufgebaut ist — AR 20, SAR 10, FUR 2 — und das Pikachu-ex-Paar „Tag/Nacht"
+# dort auf SAR 126/127 liegt, hier auf 149/150 (Versatz 23 über den ganzen Block).
+# Belegt über pokecottage.com und cardrake.com (englische Liste) sowie die offizielle
+# japanische Setliste vom 09.09.2026 (PokéBeach).
+GEHEIM_SELTENHEIT = (
+    (129, 146, "Illustration rare"),
+    (147, 156, "Special illustration rare"),
+    (157, 158, "Futuristic Rare"),
+)
+
+
+def _seltenheit(local_id, aus_symbol, klassik):
+    """Seltenheit einer Karte — im Geheimbereich nach Nummernblock statt nach Symbol."""
+    if klassik:
+        return "Classic Collection"
+    if local_id.isdigit():
+        n = int(local_id)
+        for von, bis, name in GEHEIM_SELTENHEIT:
+            if von <= n <= bis:
+                return name
+    return aus_symbol
 TYPEN = {
     "grass": "Grass", "fire": "Fire", "water": "Water", "electric": "Lightning",
     "lightning": "Lightning", "psychic": "Psychic", "fighting": "Fighting",
@@ -123,8 +149,9 @@ def karten_lesen():
             "aufdruck": (aufdruck.group(1).strip() if aufdruck else ""),
             "hp": int(hp.group(1)) if hp else None,
             "typen": typen[:1],          # das erste Symbol ist der Kartentyp
-            "rarity": ("Classic Collection" if klassik
-                       else SELTENHEIT.get(symbol.group(1) if symbol else "", None)),
+            "rarity": _seltenheit(nummer.group(1),
+                                  SELTENHEIT.get(symbol.group(1) if symbol else "", None),
+                                  klassik),
             "klassik": klassik,
         })
     return karten
@@ -235,7 +262,10 @@ def schreiben(karten, trocken=False):
         " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         " ON CONFLICT(id) DO UPDATE SET name_de=COALESCE(cards.name_de, excluded.name_de),"
         " name_en=COALESCE(cards.name_en, excluded.name_en), image_alt=excluded.image_alt,"
-        " rarity=COALESCE(cards.rarity, excluded.rarity), hp=COALESCE(cards.hp, excluded.hp),"
+        # Die Seltenheit wird überschrieben, nicht bewahrt: bis 11.09. standen die
+        # Geheimkarten mit den falschen Serebii-Symbolen drin, ein zweiter Lauf muss das
+        # heilen können. Alles andere an diesem Set schreibt ohnehin nur dieses Skript.
+        " rarity=excluded.rarity, hp=COALESCE(cards.hp, excluded.hp),"
         " dex_ids=COALESCE(cards.dex_ids, excluded.dex_ids),"
         " first_dex=COALESCE(cards.first_dex, excluded.first_dex),"
         " kinds=excluded.kinds, kind=excluded.kind,"
