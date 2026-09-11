@@ -18,6 +18,16 @@ const MK_BEREICHE = ['heute', 'sets', 'aeren', 'pokemon', 'regionen'];
 
 /* ---------------------------------------------------------------- Bausteine */
 
+/** Ein fehlender Kartenscan bekommt eine erkennbare Flaeche statt eines leeren Lochs.
+ *  Fuer 8.899 japanische Karten fuehrt TCGdex kein Bild (Audit 11.09.2026, E7). */
+function scanFehlt(img) {
+  const platz = document.createElement('span');
+  platz.className = 'kein-scan';
+  platz.textContent = t('kein_scan');
+  platz.title = t('kein_scan_t');
+  img.replaceWith(platz);
+}
+
 /** Kleine Kurve ohne Achsen: zeigt die Form, nicht den Wert.
  *  `opt.farbe` setzt der Aufrufer aus derselben Zahl, die daneben steht — sonst konnte eine
  *  rote fallende Kurve neben „+15,9 %“ stehen (Audit 11.09.2026, B2): die Kurve las die
@@ -249,7 +259,7 @@ function mkKartenTabelle(liste, id) {
   return `<div id="${id}"><div class="an-tab-rahmen"><table class="an-tab" style="min-width:0">
     <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('mk_schnitt_jetzt')}</th><th class="r">${t('an_aenderung')}</th></tr></thead>
     <tbody>${liste.map((k, i) => `<tr class="${i >= grenze ? 'an-rest' : ''}" onclick="detailOeffnen('${esc(k.id)}')">
-      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
+      <td><img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="scanFehlt(this)"></td>
       <td><div class="nm">${esc(k.name || '')}</div><div class="set">${esc(k.set || '')}${k.nr ? ' · ' + esc(k.nr) : ''}</div></td>
       <td class="r">${anEur(k.alt)} → <strong>${anEur(k.neu)}</strong></td>
       <td class="r">${mkDelta(k.prozent)}</td></tr>`).join('')}</tbody></table></div>${
@@ -324,6 +334,8 @@ function zeichneMarktSeite() {
   if (MKT.seite.art === 'set') zeichneMarktSetSeite(d); else zeichneMarktPokemonSeite(d);
 }
 
+/** Der Titel der Marktseite steht schon in der Kopfleiste; als H1 darunter stand er ein
+ *  zweites Mal (Audit F17). Die Ueberschrift nennt jetzt den Bereich, nicht den Ort. */
 function mkZurueck(text) {
   return `<button class="btn sekundaer mk-zurueck" onclick="marktSeiteZu()">‹ ${esc(text)}</button>`;
 }
@@ -356,7 +368,7 @@ function zeichneMarktSetSeite(d) {
     <div class="an-tafel"><h3>${t('an_teuerste')}</h3>
       <div class="unter">${t('mk_teuerste_set_u')}</div>
       <div class="an-karten">${(d.teuerste || []).map((c) => `<button class="an-karte" onclick="detailOeffnen('${esc(c.id)}')">
-        <img loading="lazy" src="${imgUrl(c.id)}" alt="" onerror="this.style.visibility='hidden'">
+        <img loading="lazy" src="${imgUrl(c.id)}" alt="" onerror="scanFehlt(this)">
         <div class="p">${anEur(c.eur, 0)}</div><div class="n" title="${esc(c.name)}">${esc(c.name)}</div></button>`).join('')}</div></div>`;
 }
 
@@ -383,7 +395,7 @@ function zeichneMarktPokemonSeite(d) {
       <div class="an-tab-rahmen"><table class="an-tab">
         <thead><tr><th></th><th>${t('an_karte')}</th><th class="r">${t('preis')}</th><th class="r">${t('mk_30t')}</th></tr></thead>
         <tbody>${(d.karten || []).slice(0, 20).map((c) => `<tr onclick="detailOeffnen('${esc(c.id)}')">
-          <td><img loading="lazy" src="${imgUrl(c.id)}" alt="" onerror="this.style.visibility='hidden'"></td>
+          <td><img loading="lazy" src="${imgUrl(c.id)}" alt="" onerror="scanFehlt(this)"></td>
           <td><div class="nm">${esc(c.name)}</div><div class="set">${esc(c.set_name || '')}${c.local_id ? ' · ' + esc(c.local_id) : ''}</div></td>
           <td class="r"><strong>${anEur(c.eur)}</strong></td>
           <td class="r">${mkDelta(c.bewegung)}</td></tr>`).join('')}</tbody></table></div></div>`;

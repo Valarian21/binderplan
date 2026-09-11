@@ -115,6 +115,15 @@ function artworkKontingentText() {
   const kosten = artworkPreis();
   if (!k) { el.textContent = ''; return; }
   const reicht = k.credits >= kosten;
+  // Stehen alle Faecher auf „Karte bleibt", gibt es nichts zu malen — der Knopf nannte
+  // trotzdem einen Preis und liess sich druecken (Audit 11.09.2026, F9).
+  const pp = seiteInfo(AW.seite).laenge;
+  const nichts = AW.anker.size >= pp;
+  if (nichts) {
+    el.innerHTML = `<span style="color:var(--mut)">${t('aw_kein_platz')}</span>`;
+    $('aw-start').disabled = true;
+    return;
+  }
   el.innerHTML = `<span class="credit-chip">${ic('funke', 13)} ${kosten} ${t('credits')}</span> `
     + `<span style="color:${reicht ? 'var(--mut)' : 'var(--akzent)'}">${t('aw_kosten_hin')
         .replace('{s}', k.credits)}</span>`

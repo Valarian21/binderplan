@@ -17,7 +17,15 @@
   .btn.sekundaer { background: var(--card); color: var(--ink); border: 1.5px solid var(--line); }
   .btn.sekundaer:hover { background: var(--panel2); }
   .btn:disabled { opacity: 1; background: var(--panel2); color: var(--mut); border-color: var(--line); cursor: default; }
+  /* Ein natives select trug eigene Hoehe, eigenen Radius und einen anderen Pfeil als die
+     Knoepfe daneben — drei Feldtypen in einem Filterpanel (Audit D3). Ein Aussehen fuer alle. */
   .feld { width: 100%; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--eingabe); outline: none; }
+  select.feld { -webkit-appearance: none; appearance: none; padding-right: 30px; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--mut) 50%),
+                      linear-gradient(135deg, var(--mut) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  select.feld::-ms-expand { display: none; }
 
 
   /* ---------- Durchblättern: der Binder, wie er auf dem Tisch liegt ----------
@@ -54,7 +62,19 @@
               align-content: start; box-shadow: 0 18px 50px rgba(0,0,0,.45); }
   .bv-seite.links { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
   .bv-seite.rechts { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
-  .bv-seite.leer { background: transparent; box-shadow: none; }
+  /* Vor der ersten und hinter der letzten Seite liegt im Album kein Loch, sondern der
+     Deckel. Vorher war diese Hälfte durchsichtig: man sah die abgedunkelte App dahinter,
+     das Buch wirkte halb so breit wie es ist, und die Fußzeile stand mittig unter dem
+     Nichts statt unter der Seite (Audit 11.09.2026, C6). */
+  .bv-seite.deckel { display: flex; align-items: center; justify-content: center; padding: 18px;
+                     background: linear-gradient(150deg, #2c3241, #171a22 58%, #0f1117);
+                     box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.07); }
+  /* Der hintere Deckel bekommt das Licht von der anderen Seite — wie ein Album, das
+     aufgeschlagen auf dem Tisch liegt. */
+  .bv-seite.deckel.rechts { background: linear-gradient(210deg, #2c3241, #171a22 58%, #0f1117); }
+  .bv-seite.deckel .bv-deckel-name { font-size: var(--t-l); font-weight: 800; letter-spacing: .08em;
+                     text-transform: uppercase; text-align: center; max-width: 84%; overflow-wrap: anywhere;
+                     color: rgba(255,255,255,.32); text-shadow: 0 1px 0 rgba(255,255,255,.09), 0 -1px 0 rgba(0,0,0,.55); }
   /* Der Rücken: schmaler Streifen mit drei Ringen */
   .bv-ruecken { width: 26px; flex: 0 0 26px; background: linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,.12) 40%, rgba(0,0,0,.35));
                 display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; padding: 12% 0; }
@@ -157,7 +177,7 @@
     .bv-buch { max-width: 100vw; }
   }
   body.dunkle-seiten #blaettern { background: rgba(26,28,33,.985); }
-  body.dunkle-seiten .bv-seite:not(.leer) { box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.09); }
+  body.dunkle-seiten .bv-seite:not(.deckel) { box-shadow: 0 18px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.09); }
   body.dunkle-seiten .bv-ruecken { background: linear-gradient(90deg, rgba(0,0,0,.6), rgba(0,0,0,.25) 40%, rgba(0,0,0,.6)); }
   @media (prefers-reduced-motion: reduce) { .bv-blatt { transition: none; } }
 
@@ -439,6 +459,15 @@
                  padding-bottom: 4px; margin-bottom: 12px; }
     .vt-zeile2::-webkit-scrollbar { display: none; }
     .vt-zeile2 > * { flex-shrink: 0; }
+    /* Eine Zeile, die seitlich scrollt, ohne dass man es sieht, ist eine versteckte Zeile:
+       der Jahrgangsfilter stand ausserhalb des Bildes und niemand wusste davon (Audit F13).
+       Der weiche Rand rechts sagt, dass es weitergeht. */
+    .vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
+    .vt-zeile2.am-ende, #sammlung .an-chips.am-ende, #sm-filter.am-ende,
+    .gal-umschalter.am-ende, #mk-reiter.am-ende, .bp-tools.am-ende { -webkit-mask-image: none; mask-image: none; }
+    .vt-zeile2 { padding-right: 26px; }
     .vt-zeile2 .vt-filter { overflow: visible; padding-bottom: 0; margin-bottom: 0; }
     .vt-tabs { flex-shrink: 0; }
     /* Sammlung am Handy: Chips, Suche und Sortierung in einer wischbaren Zeile statt
@@ -566,7 +595,9 @@
      war damit unerreichbar (Audit A2). */
   .gal-umschalter { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; flex-wrap: wrap;
                     flex-shrink: 0; }
-  .gal-umschalter .pl-hilfe .chip { min-width: 30px; text-align: center; font-weight: 800; }
+  /* Ein runder Knopf mit „?" neben zwei Pillen gehoert keiner Komponente an (Audit F15).
+     Gleiche Hoehe, gleiche Form wie „Durchblaettern" daneben. */
+  .gal-umschalter .pl-hilfe .chip { text-align: center; font-weight: 700; }
   @media (max-width: 700px) { .gal { grid-template-columns: 1fr; } }
   .vt-herz { display: inline-flex; align-items: center; gap: 5px; font-size: var(--t-m); font-weight: 800;
              padding: 5px 11px; border-radius: 999px; border: 2px solid var(--line); color: var(--mut); }
@@ -1057,7 +1088,10 @@
                   width: var(--planer-w, 300px); }
   body.dunkle-seiten .planer-seite { background: #101216; border-color: rgba(255,255,255,.1); }
   body.dunkle-seiten .planer-seite .ps-titel { color: #8a919d; }
-  .planer-seite .ps-titel { font-size: var(--t-s); font-weight: 700; color: var(--mut); margin-bottom: 7px; display: flex; justify-content: space-between; }
+  .planer-seite .ps-titel { font-size: var(--t-s); font-weight: 700; color: var(--mut); margin-bottom: 7px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  /* „Seite 1" brach neben den Symbolen auf zwei Zeilen um. */
+  .planer-seite .ps-titel > span:first-child { white-space: nowrap; }
   .planer-seite .slots { padding: 8px; }
   .slot .hat-btn { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; border-radius: 50%;
                    background: rgba(255,255,255,.9); border: 1.5px solid var(--slotrand); color: var(--kontur);
@@ -1133,12 +1167,22 @@
   .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   /* Tabellen: Zahlen rechts, Ziffern in gleicher Breite, waagerecht scrollbar am Handy */
   .an-tab-rahmen { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; padding: 0 4px; }
-  .an-tab { width: 100%; border-collapse: collapse; font-size: var(--t-s); min-width: 420px; }
+  /* Vier Spalten auf 1400 px hiessen 700 px Leere zwischen Name und Zahl (Audit F3).
+     Die Bildspalte bekommt ihre Breite, die Tabelle eine Obergrenze. */
+  .an-tab { width: 100%; max-width: 1040px; border-collapse: collapse; font-size: var(--t-s); min-width: 420px; }
+  .an-tab td:has(> img), .an-tab th:empty { width: 46px; }
   .an-tab th { text-align: left; font-size: var(--t-xs); color: var(--mut); font-weight: 700; padding: 0 8px 7px 0;
                border-bottom: 1.5px solid var(--line); white-space: nowrap; }
   .an-tab td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
   .an-tab tr:last-child td { border-bottom: none; }
   .an-tab .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Fehlt ein Scan (fuer 8.899 japanische Karten fuehrt TCGdex keinen), stand dort ein
+     leerer Kasten mit dem Namen darin (Audit E7). Jetzt eine erkennbare Kartenruecken-
+     Flaeche statt eines Lochs. */
+  .kein-scan { display: flex; align-items: center; justify-content: center; aspect-ratio: 63/88;
+    border-radius: 6px; background: repeating-linear-gradient(135deg, var(--panel2) 0 6px, var(--card) 6px 12px);
+    border: 1.5px dashed var(--line); color: var(--mut); font-size: var(--t-xs); font-weight: 700;
+    text-align: center; padding: 4px; overflow: hidden; }
   .an-tab .nm { font-weight: 600; }
   .an-tab .set { font-size: var(--t-xs); color: var(--mut); }
   .an-tab img { width: 30px; border-radius: 3px; display: block; background: var(--panel2); }
@@ -1335,7 +1379,14 @@
   #planer { position: fixed; left: 0; right: 0; bottom: 0; top: 54px; background: var(--bg); z-index: 40; display: flex; flex-direction: column; }
   .planer-kopf { justify-content: flex-start; }
   .ps-titel .ps-akt { display: inline-flex; gap: 2px; }
-  .ps-titel .ps-akt button { font-size: var(--t-s); color: var(--mut); padding: 1px 5px; border-radius: 6px; }
+  /* Sieben Symbole in Grau auf schwarzer Seite, ganz rechts das Loeschen — ohne
+     Beschriftung und ohne Kontrast (Audit C9). Hellere Farbe, groessere Flaeche,
+     das Loeschen abgesetzt und rot bei Beruehrung. */
+  .ps-titel .ps-akt button { font-size: var(--t-m); color: var(--ink); opacity: .75;
+    padding: 3px 6px; border-radius: 6px; }
+  body.dunkle-seiten .ps-titel .ps-akt button { color: #d7dae0; }
+  .ps-titel .ps-akt button:last-child { margin-left: 6px; }
+  .ps-titel .ps-akt button:last-child:hover { color: var(--akzent-text); opacity: 1; }
   .ps-titel .ps-akt button:hover { background: var(--panel2); color: var(--ink); }
   .planer-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--pl-bar-unten, 18px); background: var(--card); border: 1.5px solid var(--line); border-radius: 999px; box-shadow: 0 14px 40px rgba(58,50,39,.18); padding: 8px 14px; display: flex; gap: 8px; align-items: center; font-size: var(--t-m); z-index: calc(var(--z-leiste) - 5); max-width: 96vw; flex-wrap: wrap; justify-content: center; }
   .planer-bar .btn { font-size: var(--t-s); padding: 6px 12px; }
@@ -1486,7 +1537,23 @@
       left: 8px; right: 8px; transform: none; max-width: none; gap: 5px; padding: 7px 9px; }
     .planer-bar .btn { padding: 6px 9px; font-size: var(--t-s); }
     .planer-bar .pl-wort, .planer-bar .pl-strich { display: none; }
-    .bp-tools { flex-wrap: wrap; }
+    /* Zwei Werkzeugzeilen plus Titel, Kennzahlen und Umschalter: 216 px, bevor der Binder
+       anfing — ein Drittel des Bildschirms (Audit 11.09.2026, C5). Titel und Kennzahlen
+       teilen sich jetzt eine Zeile, die Werkzeuge stehen in einer wischbaren. */
+    .bp-kopf { gap: 6px; }
+    .bp-kopf .menuwrap.bw { align-self: stretch; }
+    .bp-titel { font-size: var(--t-l); }
+    .bp-stats { font-size: var(--t-xs); margin-top: -4px; white-space: nowrap; overflow: hidden;
+                text-overflow: ellipsis; }
+    .bp-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 8px;
+      padding-right: 26px;
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
+    .bp-tools.am-ende { -webkit-mask-image: none; mask-image: none; }
+    .bp-tools::-webkit-scrollbar { display: none; }
+    .bp-tools > * { flex-shrink: 0; }
+    .bp-tools .menuwrap { margin-left: 0; position: sticky; right: 0; background: var(--card);
+                          box-shadow: -10px 0 10px -6px var(--card); }
     /* Am Handy trägt die Zeile nur die Navigation plus „Seite …“ — sieben nackte Symbole
        nebeneinander waren nicht zuzuordnen. */
     .seiten-nav #wb-seite-vor, .seiten-nav #wb-seite-zurueck { display: none; }
@@ -1540,7 +1607,10 @@
   .aw-galerie .aw-mini img { width: 100%; border-radius: 6px; border: 2px solid transparent; display: block; margin-bottom: 2px; }
   .aw-galerie .aw-mini.on img { border-color: var(--akzent-text); }
   .aw-galerie-lbl { font-size: var(--t-s); font-weight: 700; margin-top: 18px; }
-  .btn.aw-cta { background: linear-gradient(120deg, var(--blau), #c04a9a); border: 0; }
+  /* Violett nach Magenta kam in keinem Token vor und in keiner anderen Flaeche (Audit D4).
+     Der Knopf ist der Hauptweg des Dialogs — also die Hauptfarbe des Produkts. */
+  .btn.aw-cta { background: var(--akzent-flaeche); border: 0; }
+  .btn.aw-cta:hover { background: var(--akzent-flaeche-hover); }
   .btn.aw-cta:hover { filter: brightness(1.08); }
   /* Der Verlauf blieb auch ohne Credits farbig – als einziger Knopf der App. */
   .btn.aw-cta:disabled { background: var(--panel2); color: var(--mut); border: 1.5px solid var(--line); filter: none; }
@@ -1574,7 +1644,12 @@
   .bestell-zeile.gesamt { font-weight: 800; font-size: var(--t-l); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
   .zustimmung { display: flex; gap: 8px; align-items: flex-start; font-size: var(--t-s); margin-top: 12px; line-height: 1.45; }
   .zustimmung input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--akzent-text); flex-shrink: 0; }
-  .buchungen { max-height: 220px; overflow-y: auto; font-size: var(--t-s); }
+  /* 220 px schnitten die siebte Zeile in der Mitte durch und sahen aus wie ein Fehler
+     (Audit F7). Ein Vielfaches der Zeilenhoehe plus weicher Rand als Scroll-Hinweis. */
+  .buchungen { max-height: 231px; overflow-y: auto; font-size: var(--t-s);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
+  .buchungen.am-ende { -webkit-mask-image: none; mask-image: none; }
   .buchungen div { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
   .buchungen .plus { color: var(--gruen-text); font-weight: 700; }
   .buchungen .minus { color: var(--mut); font-weight: 700; }
@@ -1636,6 +1711,10 @@
   #menu-konto .konto-mail { overflow-wrap: anywhere; word-break: normal; }
   /* Start: Anrede und Namensfrage */
   .st-gruss h1 { overflow-wrap: anywhere; min-width: 0; }
+    /* Der Knopf stand rechtsbuendig auf einer eigenen Zeile zwischen Gruss und Unterzeile
+       und riss die beiden auseinander (Audit F6). Am Handy gehoert er neben den Gruss. */
+    .st-gruss { align-items: center; gap: 8px; }
+    .st-gruss #st-profil-btn { order: -1; margin-left: auto; }
   .st-namefrage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--t-mp); color: var(--mut);
     margin: 6px 0 12px; }
   .st-namefrage .feld { width: 190px; padding: 6px 10px; font-size: var(--t-m); }
@@ -1740,7 +1819,10 @@
 
   /* ================= Markt (Welle B, 09.09.2026) ================= */
   /* Eine Kachel trägt drei Dinge: die Zahl, ihre Bewegung und die Form der letzten Tage. */
-  .mk-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 18px; }
+  /* auto-fit zog zwei Kacheln auf je 700 px auseinander: „391 €" in einem halbleeren
+     Kasten ueber die halbe Fensterbreite (Audit F2). Gedeckelt und links gepackt. */
+  .mk-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 300px));
+             justify-content: start; gap: 10px; margin: 14px 0 18px; }
   .mk-kachel { border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 15px; background: var(--card);
     display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .mk-kachel.klickbar { cursor: pointer; }
@@ -1999,12 +2081,29 @@
   .sm-bew { padding: 1px 6px; border-radius: 999px; background: var(--panel2); }
   .sm-bew.plus { background: var(--gruen-weich, rgba(47,143,91,.12)); }
   .sm-bew.minus { background: rgba(228,50,43,.1); }
+  /* Ein Balken, der als einziger 100 % fuellt, traegt keine Auskunft (Audit F8). */
+  .stat-zeile:only-of-type .stat-bar { visibility: hidden; }
+  .stat-rest { font-size: var(--t-xs); color: var(--mut); margin: 4px 0 2px; }
   .stat-zeile.klickbar { cursor: pointer; border-radius: 6px; }
   .stat-zeile.klickbar:hover { background: var(--hover); }
+  /* Markttabellen am Handy: sieben Spalten auf 390 px, und ausgerechnet die Spalte, nach
+     der sortiert wird, lag ausserhalb (Audit E8). „erfasst" und „Teuerste" sind Angaben fuer
+     den grossen Schirm; die Bewegung rueckt neben den Namen. */
+  @media (max-width: 700px) {
+    #marktseite .mk-tab th:nth-child(3), #marktseite .mk-tab td:nth-child(3),
+    #marktseite .mk-tab th:nth-child(6), #marktseite .mk-tab td:nth-child(6),
+    #marktseite .mk-tab th:nth-child(7), #marktseite .mk-tab td:nth-child(7) { display: none; }
+    #marktseite .mk-tab { min-width: 0; }
+    #marktseite .mk-tab .spk { display: none; }
+  }
+
   @media (max-width: 700px) {
     #sm-band { display: none; }
     .sm-zeile { display: flex; }
-    #sammlung .an-chips, #sm-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    /* Ohne Innenabstand am Ende klebte „Auswertung" am Rand der Pille und sah
+       abgeschnitten aus; der Verlauf zeigt, dass die Zeile weitergeht (Audit F12). */
+    #sammlung .an-chips, #sm-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      padding-bottom: 2px; padding-right: 14px; scroll-padding-right: 14px; }
     #sammlung .an-chips::-webkit-scrollbar, #sm-filter::-webkit-scrollbar { display: none; }
     #sammlung .an-chips .chip, #sm-filter .chip { flex-shrink: 0; }
     /* Markt: Zurück und „Meine Sammlung" hat die Leiste; Reiter in einer Zeile zum Wischen */

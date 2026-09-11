@@ -368,9 +368,11 @@ async function statistikOeffnen() {
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
   const jahre = zaehl((k) => (k.datum || '').slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0]));
-  const setz = zaehl((k) => setNm(k)).slice(0, 8);
-  const selten = zaehl((k) => k.rarity).slice(0, 8);
-  const illus = zaehl((k) => k.illustrator).slice(0, 5);
+  const setzAlle = zaehl((k) => setNm(k)), seltenAlle = zaehl((k) => k.rarity), illusAlle = zaehl((k) => k.illustrator);
+  const setz = setzAlle.slice(0, 8), selten = seltenAlle.slice(0, 8), illus = illusAlle.slice(0, 5);
+  // „21 Sets" oben und acht in der Liste: die uebrigen dreizehn blieben unerwaehnt (Audit F8).
+  const rest = (alle, gezeigt) => alle.length > gezeigt.length
+    ? `<div class="stat-rest">${t('st_weitere').replace('{n}', alle.length - gezeigt.length)}</div>` : '';
 
   // Ein Balken ist ein Filter: der Illustrator-Balken öffnet die Suche mit genau diesem Künstler.
   const balken = (liste, gesamt, klick) => liste.map(([name, n]) => `
@@ -388,9 +390,9 @@ async function statistikOeffnen() {
       <div class="po-zahl"><b>${jahre.length ? jahre[0][0] + '–' + jahre[jahre.length - 1][0] : '–'}</b><span>${t('st_jahre')}</span></div>
     </div>
     ${jahre.length > 1 ? `<h3 class="stat-h">${t('st_jahrgang')}</h3>${balken(jahre, groesste)}` : ''}
-    ${setz.length ? `<h3 class="stat-h">${t('st_topsets')}</h3>${balken(setz, setz[0][1])}` : ''}
-    ${selten.length ? `<h3 class="stat-h">${t('st_selten')}</h3>${balken(selten, selten[0][1])}` : ''}
-    ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1], (n) => `modalSchliessen();illuSetzen(${JSON.stringify(n).replace(/"/g, '&quot;')});sucheLadeOeffnen()`)}` : ''}`;
+    ${setz.length ? `<h3 class="stat-h">${t('st_topsets')}</h3>${balken(setz, setz[0][1])}${rest(setzAlle, setz)}` : ''}
+    ${selten.length ? `<h3 class="stat-h">${t('st_selten')}</h3>${balken(selten, selten[0][1])}${rest(seltenAlle, selten)}` : ''}
+    ${illus.length ? `<h3 class="stat-h">${t('st_illu')}</h3>${balken(illus, illus[0][1], (n) => `modalSchliessen();illuSetzen(${JSON.stringify(n).replace(/"/g, '&quot;')});sucheLadeOeffnen()`)}${rest(illusAlle, illus)}` : ''}`;
 }
 
 function planerKlick(ev, idx) { fachKlick(ev, idx); }
@@ -1262,7 +1264,17 @@ function slotMenue(ev, idx) {
   const item = S.binder.items[idx]; if (!item) return;
   const m = $('menu-slot');
   const r = ev.currentTarget.getBoundingClientRect();
+  // „Hab ich", Wunschliste und Preis-Alarm gab es nur im Inspektor — also nur am Desktop,
+  // obwohl man sie am Telefon vor dem Regal am ehesten braucht (Audit 11.09.2026, C8).
+  const info = (typeof LADE !== 'undefined' && LADE.info && LADE.info[item.id]) || {};
+  const name = item.type !== 'card' ? ''
+    : ((LANG === 'en' ? (info.name_en || info.name) : (info.name || info.name_en)) || item.id);
+  const sn = item.type === 'card' && typeof besitzt === 'function' && besitzt(item);
   m.innerHTML = `
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();hatToggle(${idx})">${sn ? '✓ ' + t('ik_hat') : t('ik_hat_nicht')}</button>
+      <button onclick="slotMenueZu();wunschToggle('${esc(item.id)}')">${typeof wunschHat === 'function' && wunschHat(item.id) ? '★ ' : '☆ '}${t('wl_titel')}</button>
+      <button onclick="slotMenueZu();alarmOeffnen('karte','${esc(item.id)}',${JSON.stringify(name).replace(/"/g, '&quot;')},${(typeof preisFuer === 'function' && preisFuer(item)) || 0})">${t('al_t')}</button>
+      <div class="trenn"></div>` : ''}
     ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
     ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('s_artwork')}</button>
       <button onclick="slotMenueZu();kunstFreigeben('${esc(item.artwork)}')">${t('aw_seite_frei')}</button><div class="trenn"></div>` : ''}

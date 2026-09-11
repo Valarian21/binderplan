@@ -430,7 +430,11 @@ async function tarifeLaden() {
 function upgradeOeffnen(grund) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.user) return loginOeffnen(grund || t('up_login'));
-  $('up-grund').textContent = grund ? grund + ' ' + t('up_u') : t('up_u');
+  // Lifetime kann kein Abo waehlen — der Monats/Jahres-Schalter und der Satz darueber
+  // waren an dieses Konto gerichtet, ohne dass es etwas damit anfangen konnte (Audit E6).
+  const life = ((S.user || {}).plan || 'free') === 'lifetime';
+  $('up-grund').textContent = life ? t('up_u_life') : (grund ? grund + ' ' + t('up_u') : t('up_u'));
+  document.querySelector('#modal-upgrade .tarif-schalter').closest('div').classList.toggle('hidden', life);
   $('modal-upgrade').classList.remove('hidden');
   tarifeLaden().then(zeichneTarife).catch(() => toast(t('aw_fehler')));
 }
@@ -574,7 +578,11 @@ async function startLaden() {
   $('st-plan').textContent = (S.user && S.user.plan_name) || t('tarif_frei');
   $('st-plan').classList.toggle('bezahlt', !!bezahlt);
   $('st-plan').classList.toggle('hidden', !S.user);
-  $('st-profil-btn').textContent = S.user ? t('profil') : t('anmelden');
+  // Gaeste sahen „Anmelden" zweimal binnen 220 px: in der Kopfzeile und direkt unter der
+  // Ueberschrift, beide als gleicher Umrissknopf (Audit F5). Der zweite faellt weg — der
+  // Kasten darunter fuehrt ohnehin zu Registrieren und Anmelden.
+  $('st-profil-btn').textContent = t('profil');
+  $('st-profil-btn').hidden = !S.user;
   $('st-unter').textContent = !S.user ? t('st_gast_u') : liste.length ? t('st_unter_voll') : t('st_unter_leer');
   // Gäste: dieselbe Seite, ein Kasten mit dem Angebot statt der Konto-Blöcke
   $('st-gast').hidden = !!S.user;

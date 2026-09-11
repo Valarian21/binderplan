@@ -944,10 +944,14 @@ function bvSpreads() { return 1 + Math.ceil(Math.max(0, bvSeitenZahl() - 1) / 2)
 function bvLinks(s) { return s === 0 ? -1 : s * 2 - 1; }
 function bvRechts(s) { return s === 0 ? 0 : s * 2; }
 
-/** Eine Binderseite als HTML. `seite` ist zwölfnullbasiert; außerhalb = leeres Blatt. */
+/** Eine Binderseite als HTML. `seite` ist nullbasiert; außerhalb liegt der Deckel. */
 function bvSeiteHtml(seite, klasse) {
   const [cols] = LAYOUTS[S.binder.layout] || [3, 3];
-  if (seite < 0 || seite >= bvSeitenZahl()) return `<div class="bv-seite leer ${klasse}"></div>`;
+  // Vor Seite 1 und hinter der letzten Seite ist im Album kein Loch, sondern der Deckel
+  // mit dem Namen des Binders. Durchsichtig war die Hälfte zwar „leer“, sah aber aus wie
+  // ein halb gezeichnetes Buch über der abgedunkelten App (Audit 11.09.2026, C6).
+  if (seite < 0 || seite >= bvSeitenZahl())
+    return `<div class="bv-seite deckel ${klasse}"><span class="bv-deckel-name"></span></div>`;
   const sp = seiteInfo(seite), pp = sp.laenge;
   const raster = `grid-template-columns:repeat(${cols},minmax(0,1fr))`;
   const faecher = S.binder.items.slice(seite * pp, seite * pp + pp);
@@ -1003,7 +1007,7 @@ function bvVorladen(spread) {
 const bvSeiten = new Map();
 
 function bvSeiteEl(seite, klasse) {
-  const schluessel = (seite < 0 || seite >= bvSeitenZahl()) ? 'leer:' + klasse : seite;
+  const schluessel = (seite < 0 || seite >= bvSeitenZahl()) ? 'deckel:' + klasse : seite;
   let el = bvSeiten.get(schluessel);
   if (!el) {
     const huelle = document.createElement('div');
@@ -1015,7 +1019,11 @@ function bvSeiteEl(seite, klasse) {
   // Die Seite behält, was sie ist (Karten- oder Artwork-Seite), und bekommt neu
   // gesagt, wo sie gerade liegt — links, rechts oder als Rückseite des Blattes.
   const bleibt = ['bv-seite', el.classList.contains('ganzseite') && 'ganzseite'].filter(Boolean);
-  el.className = [...bleibt, klasse, typeof schluessel === 'string' ? 'leer' : ''].join(' ').trim();
+  el.className = [...bleibt, klasse, typeof schluessel === 'string' ? 'deckel' : ''].join(' ').trim();
+  if (typeof schluessel === 'string') {
+    const name = el.querySelector('.bv-deckel-name');
+    if (name) name.textContent = (S.binder && S.binder.name) || '';
+  }
   return el;
 }
 

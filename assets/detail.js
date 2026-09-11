@@ -92,7 +92,7 @@ async function inspektorZeichnen() {
     ${preis != null ? `<div class="ik-preis">${preis.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</div>` : ''}
     <div class="ik-lbl">${t('f_variante')}</div><div class="ik-zeile">${chips(VARIANTEN, item.variant || 'normal', 'ikVariante', (v) => v === 'normal' ? t('v_normal_kurz') : (VMARK[v] || v))}</div>
     <div class="ik-lbl">${t('kartensprache')}</div><div class="ik-zeile">${chips(['de', 'en', 'jp'], item.sprache || 'de', 'ikSprache')}</div>
-    <div class="ik-lbl">${t('s_zustand')}</div><div class="ik-zeile">${chips(['', ...Object.keys(zustandFaktoren())], (item.zustand || '').toUpperCase(), 'ikZustand', (v) => v || '–')}</div>
+    <div class="ik-lbl">${t('s_zustand')}</div><div class="ik-zeile">${chips(['', ...Object.keys(zustandFaktoren())], (item.zustand || '').toUpperCase(), 'ikZustand', (v) => v || t('zst_ohne'))}</div>
     <div class="ik-lbl">${t('ik_aktionen')}</div>
     <div class="ik-akt">
       <button onclick="hatToggle(${idx});setTimeout(inspektorZeichnen,50)">${sn ? '✓ ' + t('ik_hat') : t('ik_hat_nicht')}</button>
@@ -465,7 +465,10 @@ async function detailOeffnen(idOrIdx) {
           <div id="detail-zustaende" class="zst"></div>
         </div>
         ${spark}
-        <div class="d-zustand"><input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size: var(--t-s)" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()"></div>
+        <!-- Ein Feld ohne Beschriftung unten links, neben einem Waehler, der dasselbe Wort
+             traegt: niemand konnte wissen, wofuer es da ist (Audit F10). -->
+        <div class="d-zustand"><label class="f-lbl" for="detail-zustand">${t('zst_cm_lbl')}</label>
+          <input class="feld" id="detail-zustand" style="width:190px;padding:6px 10px;font-size: var(--t-s)" placeholder="${t('zustand_ph')}" maxlength="16" oninput="cardmarketLinkAuffrischen()"></div>
         </div>
         <div class="d-tab hidden" data-tab="drucke">
         ${andere ? `<div class="f-lbl" style="margin-top:6px">${t('andere_drucke')} (${k.andere_gesamt || k.andere.length})</div><div class="d-andere">${andere}</div>` : ''}
@@ -871,7 +874,11 @@ function auswahlAktionen() {
   const n = S.auswahl.size;
   const bar = $('planer-bar');
   if (!bar) return;
-  bar.classList.toggle('hidden', n === 0 || S.nurAnsicht);
+  // Bei genau einem gewaehlten Fach steht rechts der Inspektor mit denselben Aktionen —
+  // „Entfernen" lag dann zweimal auf dem Schirm, einmal ueber dem Binder (Audit C7).
+  // Die Leiste ist fuer die Mehrfachauswahl da; am Handy gibt es keinen Inspektor.
+  const inspektorDa = window.innerWidth >= 901 && n === 1;
+  bar.classList.toggle('hidden', n === 0 || S.nurAnsicht || inspektorDa);
   const zahl = $('planer-anzahl');
   if (zahl) zahl.textContent = n;
   const tipp = $('pl-shift-tipp');
