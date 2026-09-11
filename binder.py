@@ -249,7 +249,35 @@ def binder_get(binder_id: str, request: Request):
     Erlaubt bleibt alles, was vorher erlaubt war: eigener Binder, anonymer Binder (kein
     Konto dran), Binder in der Vitrine — und neu der ausdrücklich freigegebene."""
     _binder_lesen_erlaubt(binder_id, _current_user(request))
-    return _load_binder(binder_id)
+    binder = _load_binder(binder_id)
+    binder["drucke"] = _drucke_fuer(binder.get("items") or [])
+    return binder
+
+
+def _drucke_fuer(items):
+    """Welche Ausprägungen es zu den Karten dieses Binders überhaupt gibt.
+
+    Das Abzeichen am Fach soll unterscheiden: „REV" heißt „dieses Exemplar ist das Reverse,
+    nicht das Normale". Bei einer Karte, die es nur als Holo gibt — Illustration Rare,
+    Special Illustration Rare, Secret Rare, Full Art — unterscheidet „HOLO" nichts und legt
+    sich nur in Rot über das Bild. Das betrifft 6.360 von 21.149 westlichen Karten (30 %),
+    und ausgerechnet die, bei denen das Bild der Grund für die Karte ist."""
+    ids = sorted({i.get("id") for i in items
+                  if isinstance(i, dict) and i.get("type") == "card" and i.get("id")})
+    if not ids:
+        return {}
+    aus, con = {}, get_db()
+    for start in range(0, len(ids), 800):
+        teil = ids[start:start + 800]
+        for r in con.execute(
+                "SELECT id, has_normal, has_reverse, has_holo, has_first FROM cards"
+                " WHERE id IN (%s)" % ",".join("?" * len(teil)), teil):
+            aus[r["id"]] = [name for name, an in (("normal", r["has_normal"]),
+                                                  ("reverse", r["has_reverse"]),
+                                                  ("holo", r["has_holo"]),
+                                                  ("first", r["has_first"])) if an]
+    con.close()
+    return aus
 
 
 @app.delete("/api/binders/{binder_id}")

@@ -729,6 +729,13 @@ function bildFehlt(img) {
   img.replaceWith(span);
 }
 
+/** Gibt es zu dieser Karte mehr als einen Druck? Ohne Auskunft (alter Binder, fremde
+ *  Ansicht) lieber ja — ein Abzeichen zu viel ist harmloser als ein fehlendes. */
+function mehrAlsEinDruck(item) {
+  const d = S.binder && S.binder.drucke && S.binder.drucke[item.id];
+  return !d || d.length > 1;
+}
+
 function slotExtras(item, idx) {
   if (S.nurAnsicht) {
     let html = '';
@@ -737,7 +744,7 @@ function slotExtras(item, idx) {
     if (S.user && item && item.type === 'card') {
       html += `<span class="hat-mark ${besitzt(item) ? 'ja' : ''}">${besitzt(item) ? '✓' : ''}</span>`;
     }
-    if (item && VMARK[item.variant]) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
+    if (item && VMARK[item.variant] && mehrAlsEinDruck(item)) html += `<span class="vmark">${VMARK[item.variant]}</span>`;
     if (S.preiseAn && item && item.type === 'card') {   // der Preis-Schalter gilt auch in der Nur-Ansicht
       const p = preisFuer(item);
       if (p != null) html += `<span class="preis">${p.toFixed(2).replace('.', LANG === 'de' ? ',' : '.')} €</span>`;
@@ -749,13 +756,19 @@ function slotExtras(item, idx) {
   if (item && item.type === 'card') {
     html += `<button class="hat-btn" title="${t('hat_hilfe')}" onclick="event.stopPropagation();hatToggle(${idx})">✓</button>`;
   }
-  if (item && item.type === 'art') html += `<span class="vmark" title="Artwork">${ic('palette', 11)}</span>`;
+  // Auf einer Kunstseite sind alle acht Fächer Kunst — ein rotes Abzeichen auf jedem sagt
+  // nichts und liegt auf dem Bild, für das die Seite gemacht wurde. Es bleibt als Auskunft
+  // beim Überfahren (dieselbe Regel wie bei den Ausprägungen, Audit 11.09.2026).
+  if (item && item.type === 'art') html += `<span class="vmark still" title="Artwork">${ic('palette', 11)}</span>`;
   // Die Variante ist ab dem 10.09.2026 ein Knopf, kein Aufkleber: ein Klick öffnet die
   // Auswahl der Drucke, die es zu genau dieser Karte gibt. Vorher musste man dafür in
   // den Inspektor — bei einem Reverse-Holo-Set einmal je Karte.
   if (item && item.type === 'card') {
     const v = item.variant || 'normal';
-    html += `<button class="vmark vbtn ${v === 'normal' ? 'still' : ''}" title="${t('v_' + v)} – ${t('variante')}"
+    // Still (also erst beim Überfahren sichtbar) ist es beim Normaldruck — und bei jeder
+    // Karte, die es sowieso nur in einer Ausprägung gibt: dort sagt „HOLO" nichts.
+    const still = v === 'normal' || !mehrAlsEinDruck(item);
+    html += `<button class="vmark vbtn ${still ? 'still' : ''}" title="${t('v_' + v)} – ${t('variante')}"
       onclick="event.stopPropagation();variantenMenue(event,${idx})">${VMARK[v] || t('v_normal_kurz')}</button>`;
   } else if (item && VMARK[item.variant]) {
     html += `<span class="vmark" title="${t('v_' + item.variant)}">${VMARK[item.variant]}</span>`;

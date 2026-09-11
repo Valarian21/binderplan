@@ -2120,8 +2120,9 @@
 /* `font: inherit` (Kurzform!) setzte auch font-size und font-weight aus .slot .vmark
    zurueck – die Pille rendert dann in 16 px/400 statt 11 px/700 (Audit C2). */
 .slot .vbtn { border: 0; cursor: pointer; font-family: inherit; }
-.slot .vbtn.still { opacity: 0; transition: opacity .12s; }
-.slot:hover .vbtn.still, .slot:focus-within .vbtn.still { opacity: .75; }
+.slot .vbtn.still, .slot .vmark.still { opacity: 0; transition: opacity .12s; }
+.slot:hover .vbtn.still, .slot:focus-within .vbtn.still,
+.slot:hover .vmark.still, .slot:focus-within .vmark.still { opacity: .75; }
 
 /* Etiketten am Fach: höchstens drei, sie dürfen die Karte nicht zudecken */
 .slot .etiketten { position: absolute; left: 3px; bottom: 3px; display: flex; gap: 2px;

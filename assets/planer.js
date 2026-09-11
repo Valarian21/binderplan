@@ -1143,6 +1143,10 @@ function etikettFragen(idx) {
  *  es keine Auskunft, und dann ist die volle Liste die ehrlichere Antwort: lieber eine
  *  Auswahl zu viel als eine fehlende. */
 function variantenFuer(item) {
+  // Seit dem 11.09.2026 liefert /api/binders/<id> die Drucke je Karte mit; das ist die
+  // verlässlichere Auskunft als die gerade offene Trefferliste.
+  const d = S.binder && S.binder.drucke && S.binder.drucke[item.id];
+  if (d && d.length) return d.filter((v) => v !== 'first').concat(d.includes('first') ? ['first'] : []);
   const k = (S.ergebnisse || []).find((x) => x.id === item.id);
   if (!k || k.reverse == null) return VARIANTEN;
   const moeglich = ['normal'];
