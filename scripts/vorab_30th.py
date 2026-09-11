@@ -297,9 +297,16 @@ ANGEKUENDIGT = {
 
 
 def angekuendigte_ergaenzen(con):
-    """Die bekannten, aber noch nicht gezeigten Geheimkarten als bildlose Einträge anlegen."""
+    """Die bekannten, aber noch nicht gezeigten Geheimkarten als bildlose Einträge anlegen.
+
+    Sobald eine davon einen Scan hat, ist sie richtig enthüllt und wird nicht mehr angefasst:
+    der angenommene Name aus `ANGEKUENDIGT` darf den echten nicht überschreiben."""
     neu = 0
     for local_id, name_en in ANGEKUENDIGT.items():
+        da = con.execute("SELECT image_alt FROM cards WHERE id = ?",
+                         (f"{SET_ID}-{local_id}",)).fetchone()
+        if da and da["image_alt"]:
+            continue
         vorlage = con.execute(
             "SELECT name_de, name_en, category, rarity, types, hp, dex_ids, first_dex, stage, suffix,"
             " kinds, kind FROM cards WHERE set_id = ? AND name_en = ? AND local_id <> ?"
