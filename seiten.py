@@ -52,6 +52,12 @@ TYPEN_DE = {"Fire": "Feuer", "Water": "Wasser", "Grass": "Pflanze", "Lightning":
             "Colorless": "Farblos"}
 
 
+# Fehlt der Scan, tritt eine beschriftete Fläche an die Stelle des Bildes statt des kaputten
+# Bildsymbols des Browsers. Inline, weil diese Seiten bewusst ohne eigenes Skript auskommen.
+LEER = ('onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement(\'span\'),'
+        '{className:\'kein-scan\',textContent:this.dataset.leer||\'\'}))"')
+
+
 def _symbol(set_id, symbol, gross=False):
     """Set-Symbol, oder ein Platzhalter derselben Größe.
 
@@ -139,6 +145,13 @@ td img{width:30px;border-radius:3px;display:block;background:var(--panel)}
 .detail{display:grid;grid-template-columns:280px minmax(0,1fr);gap:26px;align-items:start}
 .detail img.gross{width:100%;border-radius:12px;background:var(--panel)}
 @media(max-width:700px){.detail{grid-template-columns:1fr}.detail img.gross{max-width:260px;margin:0 auto;display:block}}
+/* Karten, von denen es noch keinen Scan gibt (angekündigte Geheimkarten, japanische Karten
+   ohne TCGdex-Bild), zeigten hier das kaputte Bildsymbol des Browsers. Die App hat dafür
+   längst eine Fläche (.kein-scan, Audit E7) — die öffentlichen Seiten bekommen dieselbe. */
+.kein-scan{display:flex;align-items:center;justify-content:center;aspect-ratio:63/88;border-radius:8px;
+  background:var(--panel);border:1.5px dashed var(--line);color:var(--mut);font-size:12px;text-align:center;padding:8px}
+.detail .kein-scan{width:100%;border-radius:12px;font-size:13.5px}
+td .kein-scan{width:30px;aspect-ratio:63/88;border-radius:3px;font-size:0;border-width:1px}
 .spark{width:100%;height:70px;display:block}
 .fuss{border-top:1.5px solid var(--line);margin-top:40px;padding:18px;font-size:12.5px;color:var(--mut);text-align:center}
 .fuss a{color:var(--mut)}.hin{font-size:12px;color:var(--mut);line-height:1.5}
@@ -210,7 +223,7 @@ def _kartenraster(karten, mit_set=False):
     for k in karten:
         name = k.get("name_de") or k.get("name_en") or k["id"]
         unter = f"{k.get('set_name') or ''} · " if mit_set else ""
-        aus.append(f'<a class="karte" href="/karte/{esc(k["id"])}"><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="{esc(name)}" width="128" height="179">'
+        aus.append(f'<a class="karte" href="/karte/{esc(k["id"])}"><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="{esc(name)}" width="128" height="179" data-leer="{esc(name)} – kein Scan" {LEER}>'
                    f'<div class="p">{eur(k.get("eur"), 0 if (k.get("eur") or 0) >= 100 else 2)}</div>'
                    f'<div class="n" title="{esc(name)}">{esc(unter)}{esc(k.get("local_id") or "")} · {esc(name)}</div></a>')
     return '<div class="karten">' + "".join(aus) + "</div>"
@@ -402,7 +415,7 @@ def register(app, *, get_db, app_url=None):
         bew = m.get("bew30") if m else None
         median = sorted(k["eur"] for k in mit_preis)[len(mit_preis) // 2] if mit_preis else None
         zeilen = "".join(
-            f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42"></td>'
+            f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42" {LEER}></td>'
             f'<td><a href="/karte/{esc(k["id"])}">{esc(k["name_de"] or k["name_en"])}</a>'
             f'{(" <span class=hin>" + esc(k["name_en"]) + "</span>") if k["name_en"] and k["name_de"] and k["name_en"] != k["name_de"] else ""}</td>'
             f'<td class="r">{esc(k["local_id"] or "")}</td><td>{esc(k["rarity"] or "")}</td>'
@@ -472,7 +485,7 @@ def register(app, *, get_db, app_url=None):
             zeilen += (f'<tr class="gruppe"><td colspan="6"><strong>{esc(jz)}</strong> · {len(teil)} Karten'
                        f' · {eur(wert, 0)}</td></tr>')
             zeilen += "".join(
-                f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42"></td>'
+                f'<tr><td><img loading="lazy" src="/api/img/card/{esc(k["id"])}" alt="" width="30" height="42" {LEER}></td>'
                 f'<td><a href="/karte/{esc(k["id"])}">{esc(k["name_de"] or k["name_en"])}</a></td>'
                 f'<td><a href="/set/{esc(k["set_id"])}">{esc(k["set_name"] or k["set_id"])}</a> · {esc(k["local_id"] or "")}</td>'
                 f'<td class="r">{(k.get("release_date") or "")[:4]}</td><td>{esc(k["rarity"] or "")}</td><td class="r">{eur(k["eur"])}</td></tr>'
@@ -564,7 +577,7 @@ def register(app, *, get_db, app_url=None):
                   + "</div>")
         inhalt = (_brot(("Sets", "/sets"), (set_name, f"/set/{k['set_id']}"), (name, None))
                   + '<div class="detail">'
-                  + f'<div><img class="gross" src="/api/img/card/{esc(card_id)}?variante=high" alt="{esc(name)} {esc(set_name)} {esc(nummer)}" width="280" height="391"></div>'
+                  + f'<div><img class="gross" src="/api/img/card/{esc(card_id)}?variante=high" alt="{esc(name)} {esc(set_name)} {esc(nummer)}" width="280" height="391" data-leer="Von dieser Karte gibt es noch keinen Scan" {LEER}></div>'
                   + f"<div><h1>{esc(name)}</h1>"
                   + (f'<p class="unter">englisch: {esc(k["name_en"])}</p>' if k.get("name_en") and k["name_en"] != name else "")
                   + f'<p class="unter">{meta}</p>' + preise

@@ -274,7 +274,55 @@ def schreiben(karten, trocken=False):
         zeilen)
     con.commit()
     print(f"{len(zeilen)} Karten in {SET_ID} geschrieben.")
+    print(angekuendigte_ergaenzen(con))
     con.close()
+
+
+# Karten, die auf der offiziellen Liste stehen, von denen aber noch niemand ein Bild
+# gezeigt hat (Stand 11.09.2026). Die Namen sind über zwei unabhängige Wege belegt:
+# tcgscreener nennt sie ausdrücklich, und die japanische Liste bestätigt sie über die
+# Blockzuordnung (JP AR 119 → EN 143, JP SAR 128/129/131 → EN 151/152/154; der Versatz ist
+# an sieben Karten des SAR-Blocks nachgerechnet — Fuecoco ex JP 124 → EN 147, Greninja ex
+# 125→148, Pikachu ex Tag/Nacht 126/127→149/150, Sylveon ex 130→153, Jirachi ex 132→155,
+# Salamence ex 133→156). Sie kommen ohne Scan in den Katalog, damit die Fächer schon stehen;
+# `_ersetzen` ordnet sie am 16.09. über die aufgedruckte Nummer den echten Karten zu.
+# HP, Typ und Pokédex-Nummer werden von der Hauptset-Fassung derselben Karte übernommen —
+# eine Illustration Rare ist dieselbe Karte mit anderem Bild.
+ANGEKUENDIGT = {
+    "143": "Kommo-o",
+    "151": "Mewtwo ex",
+    "152": "Mew ex",
+    "154": "Gengar ex",
+}
+
+
+def angekuendigte_ergaenzen(con):
+    """Die bekannten, aber noch nicht gezeigten Geheimkarten als bildlose Einträge anlegen."""
+    neu = 0
+    for local_id, name_en in ANGEKUENDIGT.items():
+        vorlage = con.execute(
+            "SELECT name_de, name_en, category, rarity, types, hp, dex_ids, first_dex, stage, suffix,"
+            " kinds, kind FROM cards WHERE set_id = ? AND name_en = ? AND local_id <> ?"
+            " ORDER BY local_num LIMIT 1", (SET_ID, name_en, local_id)).fetchone()
+        if not vorlage:
+            print(f"  {local_id} {name_en}: keine Hauptset-Fassung gefunden, übersprungen")
+            continue
+        rarity = _seltenheit(local_id, vorlage["rarity"], False)
+        con.execute(
+            "INSERT INTO cards (id,set_id,local_id,local_num,name_de,name_en,image_alt,"
+            " category,rarity,types,hp,has_normal,has_reverse,has_holo,release_date,kinds,kind,"
+            " dex_ids,first_dex,stage,suffix)"
+            " VALUES (?,?,?,?,?,?,NULL,?,?,?,?,0,0,1,?,?,?,?,?,?,?)"
+            " ON CONFLICT(id) DO UPDATE SET name_de=excluded.name_de, name_en=excluded.name_en,"
+            " rarity=excluded.rarity, hp=COALESCE(cards.hp, excluded.hp)",
+            (f"{SET_ID}-{local_id}", SET_ID, local_id, _local_num(local_id),
+             vorlage["name_de"], name_en, vorlage["category"], rarity, vorlage["types"],
+             vorlage["hp"], "2026-09-16", vorlage["kinds"], vorlage["kind"],
+             vorlage["dex_ids"], vorlage["first_dex"], vorlage["stage"], vorlage["suffix"]))
+        neu += 1
+    con.commit()
+    return (f"{neu} angekündigte Karten ohne Scan ergänzt ({', '.join(ANGEKUENDIGT)})."
+            if neu else "Keine angekündigten Karten zu ergänzen.")
 
 
 def bilder_vorladen(karten):
