@@ -640,7 +640,12 @@
     .tk .plus { min-height: 40px; }
     .slot .raus, .slot .hat-btn { width: 26px; height: 26px; opacity: .85; }
     .slot .mehr { width: 26px; height: 22px; opacity: .7; }
+    /* Sieben Symbole plus „Seite 1" brauchen 342 px — auf 360 px stand das ✕
+       (Seite entfernen) halb außerhalb des Bildes. Die Zeile darf deshalb
+       umbrechen, und die Fläche bleibt mit 36 px trotzdem gut zu treffen. */
     .ps-titel .ps-akt button { min-width: 36px; min-height: 36px; }
+    .planer-seite .ps-titel { flex-wrap: wrap; }
+    .ps-titel .ps-akt { flex-wrap: wrap; justify-content: flex-end; }
     .bv-fuss button { width: 54px; height: 54px; }
     .fi-foto .fi-akt button { min-width: 34px; min-height: 34px; }
     /* Umschalter über der Suche: Region, Kartensprache, Sortierrichtung */
