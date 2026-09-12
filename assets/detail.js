@@ -669,7 +669,11 @@ function zielFach() {
 }
 function zielText() {
   const z = zielFach();
-  return z === null ? t('tk_anhaengen') : t('tk_in_fach').replace('{n}', z + 1);
+  // Am Handy stehen drei Knöpfe in einer 94 px breiten Kachel: „＋ In Fach 1" wurde zu
+  // „＋ In …" abgeschnitten. Wofür das Fach steht, sagt ohnehin der Kopf des Sheets.
+  const kurz = window.innerWidth < 901;
+  return z === null ? t('tk_anhaengen')
+    : (kurz ? t('tk_in_fach_kurz') : t('tk_in_fach')).replace('{n}', z + 1);
 }
 
 async function kartAddId(id, variant, zustand, sprache) {

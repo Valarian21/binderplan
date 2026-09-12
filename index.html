@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609111628">
-<link rel="stylesheet" href="assets/app.css?v=202609111628">
+<link rel="stylesheet" href="assets/tokens.css?v=202609121911">
+<link rel="stylesheet" href="assets/app.css?v=202609121911">
 </head>
 <body>
 <div id="app">
@@ -260,6 +260,10 @@
     </div>
         <div class="bp-stats" id="wb-fortschritt"></div>
         <div class="bp-tools">
+          <!-- Am Handy wischt man die Werkzeuge seitlich; der ⋯-Knopf steht daneben fest.
+               Vorher klebte er per `position: sticky` in derselben Zeile und lag damit auf
+               „Karten suchen“ — ein Tipp darauf öffnete das Binder-Menü (gemeldet 12.09.). -->
+          <div class="bp-tools-scroll">
           <!-- Rückgängig/Wiederholen sind Werkzeuge, keine Menüpunkte: wer 400 Karten
                sortiert, greift oft danach. Der Titel nennt den Schritt, der zurückgeht. -->
           <div class="wb-historie nur-edit">
@@ -274,6 +278,7 @@
           <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 10px" onclick="druckOeffnen()" title="Platzhalter, Checkliste, Kaufliste" data-i18n-title="dr_t">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
             <span data-i18n="drucken">Drucken</span></button>
+          </div>
           <div class="menuwrap">
             <button class="btn sekundaer" style="font-size: var(--t-m);padding:5px 10px" onclick="menuToggle('menu-binder')" title="Raster, Größe, Auffüllen, Leeren" aria-label="Binder-Optionen" data-i18n-title="binder_opt_t">⋯</button>
             <div class="menu hidden" id="menu-binder" style="min-width:260px">
@@ -281,6 +286,8 @@
                    eine Farbwahl, fünf Aktionen und ganz unten das nicht umkehrbare „Binder
                    leeren“. Jetzt: Aktionen oben, Aussehen hinter einem Aufklapper, Leeren
                    ganz unten hinter einer Rückfrage. -->
+              <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
+              <div class="trenn"></div>
               <button onclick="lueckenSchliessen()" data-i18n="luecken">Lücken schließen</button>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
@@ -1408,19 +1415,19 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609111628"></script>
-<script defer src="assets/konto.js?v=202609111628"></script>
-<script defer src="assets/werkbank.js?v=202609111628"></script>
-<script defer src="assets/vitrine.js?v=202609111628"></script>
-<script defer src="assets/preise.js?v=202609111628"></script>
-<script defer src="assets/planer.js?v=202609111628"></script>
-<script defer src="assets/teilen.js?v=202609111628"></script>
-<script defer src="assets/hilfe.js?v=202609111628"></script>
-<script defer src="assets/detail.js?v=202609111628"></script>
-<script defer src="assets/artwork.js?v=202609111628"></script>
+<script defer src="assets/kern.js?v=202609121911"></script>
+<script defer src="assets/konto.js?v=202609121911"></script>
+<script defer src="assets/werkbank.js?v=202609121911"></script>
+<script defer src="assets/vitrine.js?v=202609121911"></script>
+<script defer src="assets/preise.js?v=202609121911"></script>
+<script defer src="assets/planer.js?v=202609121911"></script>
+<script defer src="assets/teilen.js?v=202609121911"></script>
+<script defer src="assets/hilfe.js?v=202609121911"></script>
+<script defer src="assets/detail.js?v=202609121911"></script>
+<script defer src="assets/artwork.js?v=202609121911"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609111628"></script>
+<script defer src="assets/markt.js?v=202609121911"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609111628"></script>
+<script defer src="assets/sammlung.js?v=202609121911"></script>
 </body>
 </html>

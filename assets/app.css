@@ -462,11 +462,12 @@
     /* Eine Zeile, die seitlich scrollt, ohne dass man es sieht, ist eine versteckte Zeile:
        der Jahrgangsfilter stand ausserhalb des Bildes und niemand wusste davon (Audit F13).
        Der weiche Rand rechts sagt, dass es weitergeht. */
-    .vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools {
+    .vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools-scroll, .suche-lade .kopfzeile {
       -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
       mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
     .vt-zeile2.am-ende, #sammlung .an-chips.am-ende, #sm-filter.am-ende,
-    .gal-umschalter.am-ende, #mk-reiter.am-ende, .bp-tools.am-ende { -webkit-mask-image: none; mask-image: none; }
+    .gal-umschalter.am-ende, #mk-reiter.am-ende, .bp-tools-scroll.am-ende,
+    .suche-lade .kopfzeile.am-ende { -webkit-mask-image: none; mask-image: none; }
     .vt-zeile2 { padding-right: 26px; }
     .vt-zeile2 .vt-filter { overflow: visible; padding-bottom: 0; margin-bottom: 0; }
     .vt-tabs { flex-shrink: 0; }
@@ -1041,6 +1042,10 @@
   .wb-alle { display: flex; flex-wrap: wrap; gap: 18px; align-content: start; padding: 2px 0 8px; }
   .wb-alle .planer-seite { width: var(--planer-w, 300px); }
   body.alle-seiten .spalte-binder { max-width: none; }
+  /* Wo alle Seiten untereinander stehen, gibt es nichts zu blättern: die Leiste „‹ Seite 1 / 13 ›“
+     kostete am Handy ein Achtel des Bildschirms und zeigte eine Seitenzahl, die keine Rolle
+     spielt. Was sie sonst noch trug, steht im ⋯-Menü und im Kopf jeder Seite. */
+  body.alle-seiten #wb-nav { display: none; }
   .pl-shift { font-size: var(--t-s); color: var(--mut); }
   /* Seitenleiste am Handy: die Zielseite als Miniatur, direkt über der Navigation. */
   .m-seitenleiste { display: none; }
@@ -1358,6 +1363,7 @@
   .st-gast[hidden] { display: none; }
   .bp-stats { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
   .bp-tools { display: flex; align-items: center; gap: 12px; }
+  .bp-tools-scroll { display: contents; }
   .bp-tools .menuwrap { margin-left: auto; }
   .bp-hilfe { font-size: var(--t-xs); color: var(--mut); line-height: 1.5; margin-top: auto; }
   .slot.frei { cursor: pointer; }
@@ -1533,6 +1539,10 @@
     #planer { top: 54px; padding-bottom: 62px; }
     /* Am Handy als Leiste über die volle Breite statt als Pille in der Mitte: sechs
        Bedienelemente in einer Pille brachen in vier Zeilen um. */
+    /* Die 54 px sind der Platz der Blätterleiste. In „Alle Seiten“ gibt es die seit dem
+       12.09.2026 nicht mehr — dort schwebte die Auswahlleiste sonst mit einer Lücke,
+       durch die der Binder scrollte. */
+    body.alle-seiten .planer-bar { bottom: calc(var(--pl-bar-unten, 18px) + 6px); }
     .planer-bar { bottom: calc(var(--pl-bar-unten, 18px) + 54px); border-radius: 14px;
       left: 8px; right: 8px; transform: none; max-width: none; gap: 5px; padding: 7px 9px; }
     .planer-bar .btn { padding: 6px 9px; font-size: var(--t-s); }
@@ -1545,15 +1555,25 @@
     .bp-titel { font-size: var(--t-l); }
     .bp-stats { font-size: var(--t-xs); margin-top: -4px; white-space: nowrap; overflow: hidden;
                 text-overflow: ellipsis; }
-    .bp-tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 8px;
-      padding-right: 26px;
+    /* Die Werkzeuge wischen seitlich, der ⋯-Knopf steht daneben und fest. Bis zum
+       12.09.2026 klebte er per `position: sticky` in derselben Zeile: er lag auf der Mitte
+       von „Karten suchen“ („Kar⋯che“), und wer die Suche antippte, bekam das Binder-Menü. */
+    .bp-tools { flex-wrap: nowrap; gap: 8px; overflow: visible; }
+    .bp-tools-scroll { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0;
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-right: 26px;
       -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
       mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
-    .bp-tools.am-ende { -webkit-mask-image: none; mask-image: none; }
-    .bp-tools::-webkit-scrollbar { display: none; }
-    .bp-tools > * { flex-shrink: 0; }
-    .bp-tools .menuwrap { margin-left: 0; position: sticky; right: 0; background: var(--card);
-                          box-shadow: -10px 0 10px -6px var(--card); }
+    .bp-tools-scroll.am-ende { -webkit-mask-image: none; mask-image: none; }
+    /* Am Handy ist „Karten suchen“ das meistgebrauchte Werkzeug — es stand an fünfter
+       Stelle und war auf 360 px halb weggewischt. Reihenfolge nach Häufigkeit statt nach
+       Markup; am Schreibtisch bleibt sie unverändert. */
+    #btn-suche-lade { order: 1; }
+    .bp-tools-scroll .schalter { order: 2; }
+    .bp-tools-scroll .zieh-btn { order: 3; }
+    .bp-tools-scroll .wb-historie { order: 4; }
+    .bp-tools-scroll::-webkit-scrollbar { display: none; }
+    .bp-tools-scroll > *, .bp-tools > .menuwrap { flex-shrink: 0; }
+    .bp-tools .menuwrap { margin-left: 0; }
     /* Am Handy trägt die Zeile nur die Navigation plus „Seite …“ — sieben nackte Symbole
        nebeneinander waren nicht zuzuordnen. */
     .seiten-nav #wb-seite-vor, .seiten-nav #wb-seite-zurueck { display: none; }
@@ -1713,8 +1733,13 @@
   .st-gruss h1 { overflow-wrap: anywhere; min-width: 0; }
     /* Der Knopf stand rechtsbuendig auf einer eigenen Zeile zwischen Gruss und Unterzeile
        und riss die beiden auseinander (Audit F6). Am Handy gehoert er neben den Gruss. */
+    /* Zweite Nachbesserung (12.09.2026): `order: -1` schob den Knopf vor die Anrede —
+       auf dem Handy stand „[Profil & Konto] Hallo, Marcel!", die Begrüßung also rechts
+       vom Knopf. Jetzt bekommt die Anrede die erste Zeile für sich, der Knopf steht in
+       der zweiten rechts neben dem Plan-Abzeichen. */
     .st-gruss { align-items: center; gap: 8px; }
-    .st-gruss #st-profil-btn { order: -1; margin-left: auto; }
+    .st-gruss h1 { flex: 1 1 100%; }
+    .st-gruss #st-profil-btn { margin-left: auto; }
   .st-namefrage { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--t-mp); color: var(--mut);
     margin: 6px 0 12px; }
   .st-namefrage .feld { width: 190px; padding: 6px 10px; font-size: var(--t-m); }

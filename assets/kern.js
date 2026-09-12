@@ -26,7 +26,7 @@ const T = {
     geb_ungueltig: 'Bitte ein gültiges Geburtsdatum eingeben (TT.MM.JJJJ).',
     tarif_life_hinweis: 'Du hast Lifetime – alle Funktionen sind frei. Hier kannst du Credits für Kunstseiten nachkaufen.',
     tk_anhaengen: 'Anhängen',
-    tk_in_fach: 'In Fach {n}',
+    tk_in_fach: 'In Fach {n}', tk_in_fach_kurz: 'Fach {n}',
     tk_gesetzt: 'In Fach {n} gelegt',
     binder_nav: 'Binder',
     pl_shift: 'Shift wählt einen Bereich',
@@ -741,7 +741,7 @@ const T = {
     geb_ungueltig: 'Please enter a valid date of birth (DD.MM.YYYY).',
     tarif_life_hinweis: 'You have Lifetime – everything is unlocked. Buy credits for artwork pages here.',
     tk_anhaengen: 'Append',
-    tk_in_fach: 'Into slot {n}',
+    tk_in_fach: 'Into slot {n}', tk_in_fach_kurz: 'Slot {n}',
     tk_gesetzt: 'Placed in slot {n}',
     binder_nav: 'Binder',
     pl_shift: 'Shift selects a range',
@@ -1591,7 +1591,7 @@ function zeichneSeitenleiste() {
    dass es weitergeht. Am Ende der Zeile ist er falsch und wird abgeschaltet. Ohne diesen
    Hinweis stand der Jahrgangsfilter der Vitrine ausserhalb des Bildes und niemand fand ihn
    (Audit 11.09.2026, F12/F13). */
-const WISCHZEILEN = '.vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools';
+const WISCHZEILEN = '.vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools-scroll, .suche-lade .kopfzeile';
 
 function wischRandPruefen(el) {
   if (!el) return;

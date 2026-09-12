@@ -190,7 +190,10 @@ function breiteAnpassen() {
   const breit = !!S.alleSeiten;
   sp.style.width = breit ? 'auto' : '';
   sp.style.flex = breit ? '1 1 auto' : '';
-  if (mitte) mitte.classList.toggle('hidden', breit);
+  // Am Schreibtisch nimmt „Alle Seiten“ die Fläche der Suchschublade ein. Am Handy ist die
+  // Suche ein Sheet über dem Binder — wird die Mitte dort versteckt, öffnet sich beim Tipp
+  // auf ein leeres Fach ein leeres schwarzes Fenster ohne Suchfeld (gemeldet 12.09.2026).
+  if (mitte) mitte.classList.toggle('hidden', breit && window.innerWidth >= 901);
   document.body.classList.toggle('alle-seiten', breit);
   if (!breit) binderHoeheAnpassen();
 }
@@ -204,7 +207,9 @@ function breiteAnpassen() {
  *  Fugen) ergibt sich die Breite. Ein selbst gesetzter Wert (Regler unter „Aussehen") hat
  *  Vorrang — die Wahl gehört dem Nutzer.
  */
-window.addEventListener('resize', () => { if (!S.alleSeiten) binderHoeheAnpassen(); });
+// Beim Drehen des Geräts wechselt auch die Zuständigkeit für die Suchspalte (Sheet am
+// Handy, Schublade am Schreibtisch) — deshalb die ganze Breitenrechnung, nicht nur die Höhe.
+window.addEventListener('resize', () => { if (S.binder && !S.nurAnsicht) breiteAnpassen(); else if (!S.alleSeiten) binderHoeheAnpassen(); });
 
 function binderHoeheAnpassen() {
   const sp = document.querySelector('.spalte-binder');
