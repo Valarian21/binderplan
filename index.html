@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609121911">
-<link rel="stylesheet" href="assets/app.css?v=202609121911">
+<link rel="stylesheet" href="assets/tokens.css?v=202609121914">
+<link rel="stylesheet" href="assets/app.css?v=202609121914">
 </head>
 <body>
 <div id="app">
@@ -59,6 +59,8 @@
           <div><div class="menu-lbl" data-i18n="pf_design">Design</div>
             <div class="lang-toggle theme-wahl" style="margin:2px 12px 6px"><button data-theme-opt="auto" onclick="themeSetzen('auto')">Auto</button><button data-theme-opt="hell" onclick="themeSetzen('hell')">Hell</button><button data-theme-opt="dunkel" onclick="themeSetzen('dunkel')">Dunkel</button></div></div>
         </div>
+        <div class="menu-lbl" data-i18n="soz_t">Binderplan folgen</div>
+        <div id="mm-social" style="padding:0 12px 8px"></div>
         <button onclick="window.open('recht','_blank')" class="recht-link">Impressum · AGB · Datenschutz</button>
         <!-- Der Kündigungsweg bleibt im Menü: § 312k verlangt, dass er leicht auffindbar ist. -->
         <button onclick="window.open('/kuendigen','_blank')" data-i18n="kuend_link">Verträge hier kündigen</button>
@@ -940,6 +942,14 @@
         <span class="mehr" onclick="startSchliessen();ansicht('vitrine')" data-i18n="st_alle_zeigen">Alle ansehen</span></div>
       <div class="st-vitrine" id="st-vitrine"></div>
     </div>
+
+    <!-- Zuletzt, weil es die Arbeit nicht unterbricht: wo Binderplan selbst postet.
+         Die Kacheln zeichnet `sozialHtml()` aus der einen Liste in kern.js. -->
+    <div class="st-abschnitt" id="st-social-block">
+      <div class="st-titel"><h2 data-i18n="soz_t">Binderplan folgen</h2></div>
+      <p class="st-social-u" data-i18n="soz_u">Neue Kunstseiten, Binder-Touren und kurze Kniffe — auf Instagram, YouTube, TikTok, Threads und Facebook.</p>
+      <div id="st-social"></div>
+    </div>
   </div>
 </div>
 
@@ -1415,19 +1425,19 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609121911"></script>
-<script defer src="assets/konto.js?v=202609121911"></script>
-<script defer src="assets/werkbank.js?v=202609121911"></script>
-<script defer src="assets/vitrine.js?v=202609121911"></script>
-<script defer src="assets/preise.js?v=202609121911"></script>
-<script defer src="assets/planer.js?v=202609121911"></script>
-<script defer src="assets/teilen.js?v=202609121911"></script>
-<script defer src="assets/hilfe.js?v=202609121911"></script>
-<script defer src="assets/detail.js?v=202609121911"></script>
-<script defer src="assets/artwork.js?v=202609121911"></script>
+<script defer src="assets/kern.js?v=202609121914"></script>
+<script defer src="assets/konto.js?v=202609121914"></script>
+<script defer src="assets/werkbank.js?v=202609121914"></script>
+<script defer src="assets/vitrine.js?v=202609121914"></script>
+<script defer src="assets/preise.js?v=202609121914"></script>
+<script defer src="assets/planer.js?v=202609121914"></script>
+<script defer src="assets/teilen.js?v=202609121914"></script>
+<script defer src="assets/hilfe.js?v=202609121914"></script>
+<script defer src="assets/detail.js?v=202609121914"></script>
+<script defer src="assets/artwork.js?v=202609121914"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609121911"></script>
+<script defer src="assets/markt.js?v=202609121914"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609121911"></script>
+<script defer src="assets/sammlung.js?v=202609121914"></script>
 </body>
 </html>

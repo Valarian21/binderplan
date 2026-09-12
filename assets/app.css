@@ -1731,6 +1731,20 @@
   #menu-konto .konto-mail { overflow-wrap: anywhere; word-break: normal; }
   /* Start: Anrede und Namensfrage */
   .st-gruss h1 { overflow-wrap: anywhere; min-width: 0; }
+  /* ---------- Wo Binderplan selbst postet (12.09.2026) ----------
+     Als Kacheln auf der Übersichtsseite, als bloße Symbolreihe in den Menüs. */
+  .st-social-u { color: var(--mut); font-size: var(--t-mp); margin: -4px 0 10px; max-width: 60ch; }
+  .soz { display: flex; gap: 8px; flex-wrap: wrap; }
+  .soz-k { display: flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none;
+    border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); }
+  .soz-k:hover { border-color: var(--blau); color: var(--blau); background: var(--hover); }
+  .soz-kacheln .soz-k { padding: 9px 13px 9px 11px; flex: 1 1 150px; }
+  .soz-kacheln .soz-k span { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .soz-kacheln .soz-k strong { font-size: var(--t-m); font-weight: 700; }
+  .soz-kacheln .soz-k small { font-size: var(--t-s); color: var(--mut); }
+  .soz-kacheln .soz-k:hover small { color: inherit; }
+  .soz-reihe { gap: 6px; }
+  .soz-reihe .soz-k { width: 40px; height: 40px; justify-content: center; border-radius: 10px; }
     /* Der Knopf stand rechtsbuendig auf einer eigenen Zeile zwischen Gruss und Unterzeile
        und riss die beiden auseinander (Audit F6). Am Handy gehoert er neben den Gruss. */
     /* Zweite Nachbesserung (12.09.2026): `order: -1` schob den Knopf vor die Anrede —

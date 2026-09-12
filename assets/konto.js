@@ -586,6 +586,9 @@ async function startLaden() {
   // Gaeste sahen „Anmelden" zweimal binnen 220 px: in der Kopfzeile und direkt unter der
   // Ueberschrift, beide als gleicher Umrissknopf (Audit F5). Der zweite faellt weg — der
   // Kasten darunter fuehrt ohnehin zu Registrieren und Anmelden.
+  // Die Kanalreihen hängen an der Sprache, deshalb hier bei jedem Neuzeichnen.
+  if ($('st-social')) $('st-social').innerHTML = sozialHtml('kacheln');
+  if ($('mm-social')) $('mm-social').innerHTML = sozialHtml('reihe');
   $('st-profil-btn').textContent = t('profil');
   $('st-profil-btn').hidden = !S.user;
   $('st-unter').textContent = !S.user ? t('st_gast_u') : liste.length ? t('st_unter_voll') : t('st_unter_leer');

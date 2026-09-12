@@ -27,6 +27,8 @@ const T = {
     tarif_life_hinweis: 'Du hast Lifetime – alle Funktionen sind frei. Hier kannst du Credits für Kunstseiten nachkaufen.',
     tk_anhaengen: 'Anhängen',
     tk_in_fach: 'In Fach {n}', tk_in_fach_kurz: 'Fach {n}',
+    soz_t: 'Binderplan folgen', soz_folgen: 'Folgen',
+    soz_u: 'Neue Kunstseiten, Binder-Touren und kurze Kniffe — auf Instagram, YouTube, TikTok, Threads und Facebook.',
     tk_gesetzt: 'In Fach {n} gelegt',
     binder_nav: 'Binder',
     pl_shift: 'Shift wählt einen Bereich',
@@ -742,6 +744,8 @@ const T = {
     tarif_life_hinweis: 'You have Lifetime – everything is unlocked. Buy credits for artwork pages here.',
     tk_anhaengen: 'Append',
     tk_in_fach: 'Into slot {n}', tk_in_fach_kurz: 'Slot {n}',
+    soz_t: 'Follow Binderplan', soz_folgen: 'Follow',
+    soz_u: 'New artwork pages, binder tours and short tips — on Instagram, YouTube, TikTok, Threads and Facebook.',
     tk_gesetzt: 'Placed in slot {n}',
     binder_nav: 'Binder',
     pl_shift: 'Shift selects a range',
@@ -1446,7 +1450,38 @@ const ICONS = {
   teilen:   '<path d="M10 2.8v9M6.9 5.7 10 2.6l3.1 3.1"/><path d="M4.2 12v3.6A1.6 1.6 0 0 0 5.8 17h8.4a1.6 1.6 0 0 0 1.6-1.6V12"/>',
   info:     '<circle cx="10" cy="10" r="6.8"/><path d="M10 9.2v4.2M10 6.6h.01"/>',
   schloss:  '<rect x="4.4" y="8.6" width="11.2" height="7.8" rx="1.6"/><path d="M7 8.6V6.8a3 3 0 0 1 6 0v1.8"/>',
+  // Die fünf Netzwerke, auf denen Binderplan selbst unterwegs ist. Bewusst als Strich-
+  // zeichnung im selben 20er-Raster wie alles andere statt als bunte Markenlogos —
+  // sie stehen in Menüs neben „Mein Profil", nicht auf einer Werbefläche.
+  instagram: '<rect x="3.3" y="3.3" width="13.4" height="13.4" rx="4.2"/><circle cx="10" cy="10" r="3.4"/><circle cx="14.1" cy="5.9" r=".95" fill="currentColor" stroke="none"/>',
+  youtube:  '<rect x="2.4" y="5" width="15.2" height="10" rx="3.2"/><path d="M8.5 7.7 13 10l-4.5 2.3z"/>',
+  tiktok:   '<path d="M12.3 3.1v9.1a3.15 3.15 0 1 1-2.55-3.09"/><path d="M12.3 3.1c.35 2.05 1.8 3.35 3.9 3.5"/>',
+  facebook: '<path d="M11.6 17.4V10.9h2.15l.35-2.6H11.6V6.7c0-.75.25-1.25 1.35-1.25h1.25V3.1A15 15 0 0 0 12.4 3c-1.95 0-3.2 1.15-3.2 3.35v1.95H7v2.6h2.2v6.5"/>',
+  threads:  '<path d="M10.1 17c-3.9 0-6.3-2.7-6.3-7s2.4-7 6.3-7c3.3 0 5.4 1.8 6 4.2"/><path d="M13.1 9.6c-.7-.5-1.7-.8-2.7-.75-1.65.08-2.6.9-2.6 2 0 1.05.9 1.75 2.1 1.75 1.75 0 2.8-1.15 2.8-3.6 0-2.2-1.1-3.4-2.6-3.6"/>',
 };
+
+/* ---------- Wo Binderplan selbst zu finden ist ----------
+   Eine Liste, drei Orte: die Übersichtsseite, das Handy-Menü „⋯" und das Konto-Menü am
+   Schreibtisch. Die Adressen sind am 12.09.2026 einzeln geprüft — TikTok heißt
+   `binderplan.app` (nicht `binderplan`), YouTube `@binderplanapp`, und die Facebook-Seite
+   hat keinen Kurznamen, deshalb steht dort die Seiten-Nummer. */
+const SOZIAL = [
+  { id: 'instagram', name: 'Instagram', konto: '@binderplan',     url: 'https://www.instagram.com/binderplan/' },
+  { id: 'youtube',   name: 'YouTube',   konto: '@binderplanapp',  url: 'https://www.youtube.com/@binderplanapp' },
+  { id: 'tiktok',    name: 'TikTok',    konto: '@binderplan.app', url: 'https://www.tiktok.com/@binderplan.app' },
+  { id: 'threads',   name: 'Threads',   konto: '@binderplan',     url: 'https://www.threads.com/@binderplan' },
+  { id: 'facebook',  name: 'Facebook',  konto: 'BinderPlan',      url: 'https://www.facebook.com/1244868732050589' },
+];
+
+/** Die Kanalreihe. `art`: 'kacheln' (Übersichtsseite) oder 'reihe' (Menüs, nur Symbole). */
+function sozialHtml(art) {
+  const kachel = art === 'kacheln';
+  return `<div class="soz ${kachel ? 'soz-kacheln' : 'soz-reihe'}">` + SOZIAL.map((k) =>
+    `<a href="${k.url}" target="_blank" rel="noopener" class="soz-k" title="${k.name} ${k.konto}"
+        aria-label="${k.name} ${k.konto}">${ic(k.id, kachel ? 22 : 19)}`
+    + (kachel ? `<span><strong>${k.name}</strong><small>${k.konto}</small></span>` : '')
+    + '</a>').join('') + '</div>';
+}
 
 /** Icon als HTML. `ic('kamera')` oder `ic('herz', 22, 'voll')` (voll = gefüllt). */
 function ic(name, groesse, art) {
