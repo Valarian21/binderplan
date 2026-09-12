@@ -28,7 +28,9 @@ import io
 import json
 import re
 import secrets
+import shutil
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -89,6 +91,34 @@ STILE = {
     "minimal": "Minimalist flat-vector rendering: few colors, clean geometric shapes, calm negative space.",
     "dunkel": "Dark-fantasy rendering: moody dramatic shadows, mystical atmosphere, deep saturated colors, epic scale.",
 }
+
+# --- Vorführmodus (ein einziges Konto) ---------------------------------------
+#
+# Für das Anleitungsvideo wird der ganze Ablauf mit einem frischen Konto vorgeführt.
+# Dieselben drei Seiten ein zweites Mal malen zu lassen kostet Geld und liefert ein
+# anderes Bild als das, was längst in der Vitrine steht. Deshalb läuft hier alles echt —
+# Job, Wartezeit, Credit-Abbuchung, Polling, Ergebnisansicht —, nur der Modellaufruf wird
+# durch das bereits vorhandene Bild ersetzt.
+#
+# Zwei Bedingungen müssen zugleich gelten: ARTWORK_DEMO_MAIL steht in der .env UND die
+# E-Mail des Kontos steht darin (mehrere durch Komma getrennt, für Probeläufe). Ohne
+# die Zeile in der .env ist der Zweig tot.
+# Zugeordnet wird über die Ankerkarten der Seite — nur diese drei Kombinationen, sonst
+# läuft der normale Weg. Die Wartezeit ist die, die der echte Lauf damals gebraucht hat.
+DEMO_QUELLEN = {
+    "cel30-153": ("LKaRP0k2qY_S", 65),                        # Feelinara ex, Fach 4
+    "cel30-139,cel30-141,cel30-144": ("oGTiqnIKyVjU", 36),    # drei Mauzi, Fächer 2/4/6
+    "cel30-130,cel30-132,cel30-133": ("fSq9nqKj0Q-5", 38),    # drei Vögel, Fächer 3/4/5
+}
+
+
+def _demo_quelle(user, anker):
+    """(Quell-Artwork, Sekunden) für dieses Konto und diese Ankerkarten – sonst None."""
+    erlaubt = [m.strip().lower() for m in (_dep["env"]().get("ARTWORK_DEMO_MAIL") or "").split(",") if m.strip()]
+    if not erlaubt or ((user or {}).get("email") or "").strip().lower() not in erlaubt:
+        return None
+    return DEMO_QUELLEN.get(",".join(sorted(set(anker.values()))))
+
 
 # Wird von register() befüllt (Helfer aus main.py)
 _dep = {}
@@ -1247,6 +1277,47 @@ def _job(artwork_id):
             _dep["abo"].gutschrift(row["user_id"], row["credits"], "erstattung_fehler", artwork_id)
 
 
+def _job_demo(artwork_id, quelle_id, sekunden):
+    """Vorführlauf: wartet so lange wie der echte Lauf damals und legt danach das fertige
+    Bild der Quelle unter der neuen ID ab. Kein Modellaufruf, keine Modellkosten."""
+    get_db = _dep["get_db"]
+    row = None
+    try:
+        con = get_db()
+        row = dict(con.execute("SELECT * FROM artworks WHERE id = ?", (artwork_id,)).fetchone())
+        con.close()
+        time.sleep(max(1, int(sekunden)))
+        d = _artwork_dir()
+        quelle = d / f"{quelle_id}.png"
+        if not quelle.exists():
+            raise RuntimeError(f"Vorführbild fehlt: {quelle_id}")
+        with Image.open(quelle) as bild:
+            breite, hoehe = bild.size
+        shutil.copyfile(quelle, d / f"{artwork_id}.png")
+        vorschau_quelle = d / f"{quelle_id}.vorschau.webp"
+        if vorschau_quelle.exists():
+            shutil.copyfile(vorschau_quelle, d / f"{artwork_id}.vorschau.webp")
+        else:
+            with Image.open(quelle) as bild:
+                v = bild.convert("RGB")
+                v.thumbnail((900, 900), Image.LANCZOS)
+                v.save(d / f"{artwork_id}.vorschau.webp", "WEBP", quality=82)
+        con = get_db()
+        con.execute("UPDATE artworks SET status='fertig', kosten_usd=0, breite=?, hoehe=?, fertig_at=?,"
+                    " schritte=? WHERE id=?",
+                    (breite, hoehe, _now(), json.dumps([{"vorfuehrung": quelle_id}]), artwork_id))
+        con.commit()
+        con.close()
+    except Exception as e:
+        con = get_db()
+        con.execute("UPDATE artworks SET status='fehler', fehler=? WHERE id=?", (str(e)[:280], artwork_id))
+        con.commit()
+        con.close()
+        # Nichts gemalt, nichts bezahlt: die Credits gehen zurück wie beim echten Fehlschlag.
+        if row and row.get("credits"):
+            _dep["abo"].gutschrift(row["user_id"], row["credits"], "erstattung_fehler", artwork_id)
+
+
 # --- PDF ------------------------------------------------------------------------
 
 def _pdf(artwork, mit_karten, lang):
@@ -1472,7 +1543,11 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             )
             con.commit()
             con.close()
-        threading.Thread(target=_job, args=(artwork_id,), daemon=True).start()
+        demo = _demo_quelle(user, anker)
+        if demo:
+            threading.Thread(target=_job_demo, args=(artwork_id, demo[0], demo[1]), daemon=True).start()
+        else:
+            threading.Thread(target=_job, args=(artwork_id,), daemon=True).start()
         return {"id": artwork_id, "status": "laeuft", "pokemon": pokemon, "credits": kosten_credits}
 
     @app.get("/api/artwork")
