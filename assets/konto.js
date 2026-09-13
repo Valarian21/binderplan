@@ -13,6 +13,12 @@ async function boot() {
   }
   if (S.token) { try { S.user = (await api('api/auth/me')).user; } catch (e) {} }
   if (!S.user && S.token) setToken('');
+  // Den Cookie bei jedem Start neu stempeln, nicht nur beim Anmelden. Bilder, die der Browser
+  // per <img> holt (Kachelbild, Kunstseite), tragen keinen Bearer-Kopf; dort zählt allein der
+  // Cookie. Der Token im localStorage hält ein Jahr, der per JavaScript gesetzte Cookie auf
+  // Safari/iOS aber nur sieben Tage — danach blieben die Kacheln leer (403), während die App
+  // weiterlief. 36-mal in 48 Stunden gemessen (13.09.2026).
+  else if (S.user) setToken(S.token);
   syncBanner();
   baueFilterLeiste();
   baueDexNamen();

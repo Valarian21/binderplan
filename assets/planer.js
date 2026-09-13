@@ -655,26 +655,77 @@ function speichern() {
   clearTimeout(S.speicherTimer);
   // Den Binder hier festhalten, nicht erst beim Ausführen: wer innerhalb der 700 ms den Binder
   // wechselt, schrieb sonst die Daten des alten in den neuen — und der alte blieb ungespeichert.
+  // Der Inhalt wird dagegen bewusst erst beim Senden eingefroren. Wurde er schon hier
+  // eingefroren, trug er den updated_at von vor einer noch laufenden Speicherung; der Server
+  // antwortete mit 409 und die Änderung wurde verworfen — 28-mal in 48 Stunden gemessen
+  // (13.09.2026), bei echten Nutzern, die einfach nur zügig weitergearbeitet haben.
   const binder = S.binder;
-  const inhalt = JSON.stringify(binder);
-  S.speicherTimer = setTimeout(() => sichereJetzt(binder, inhalt), 700);
+  S.speicherTimer = setTimeout(() => sichereJetzt(binder), 700);
 }
 
-async function sichereJetzt(binder, inhalt) {
+/* Speicherzustand je Binder-Kennung, absichtlich neben dem Binder-Objekt: was am Objekt
+   hängt, landet in JSON.stringify() und damit im Rumpf des PUT. */
+const SPEICHER = new Map();
+
+function _speicherStand(binder) {
+  let s = SPEICHER.get(binder.id);
+  if (!s) { s = { lauf: null, nochmal: false, staende: new Set() }; SPEICHER.set(binder.id, s); }
+  return s;
+}
+
+/** Ein PUT mit dem Stand von jetzt — und die Unterscheidung, gegen wen der Konflikt geht.
+ *  Der Server schickt beim 409 den Stand mit, den er hält. Stammt dieser Stand aus einer
+ *  Speicherung dieser Sitzung, war es ein Konflikt gegen die eigene, eben abgeschlossene
+ *  Schreibung — dann wird er übernommen und derselbe Inhalt einmal erneut geschickt, statt
+ *  die Arbeit des Nutzers wegzuwerfen. Nur ein fremder Stand ist ein echter Konflikt. */
+async function _puttBinder(binder) {
+  const s = _speicherStand(binder);
+  for (let versuch = 0; versuch < 2; versuch++) {
+    try {
+      const d = await api('api/binders/' + binder.id,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(binder) });
+      if (d && d.updated_at) {
+        binder.updated_at = d.updated_at;
+        s.staende.add(d.updated_at);
+        if (s.staende.size > 50) s.staende.delete(s.staende.values().next().value);
+      }
+      return;
+    } catch (e) {
+      const eigen = e && e.status === 409 && e.detail && s.staende.has(e.detail.updated_at);
+      if (!eigen || versuch) throw e;
+      binder.updated_at = e.detail.updated_at;
+    }
+  }
+}
+
+/** Je Binder läuft immer nur eine Speicherung. Fällt währenddessen eine weitere an, wird sie
+ *  vorgemerkt und direkt danach mit dem dann aktuellen Stand ausgeführt. Zwei gleichzeitige
+ *  PUTs auf denselben Binder erzeugten sonst einen Konflikt gegen sich selbst. Wirft weiter. */
+function _speicherLauf(binder) {
+  const s = _speicherStand(binder);
+  if (s.lauf) { s.nochmal = true; return s.lauf; }
+  s.lauf = (async () => {
+    try {
+      do { s.nochmal = false; await _puttBinder(binder); } while (s.nochmal);
+    } finally { s.lauf = null; }
+  })();
+  return s.lauf;
+}
+
+async function sichereJetzt(binder) {
   clearTimeout(S.speicherTimer);
   try {
-    const d = await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: inhalt });
-    if (d && d.updated_at) binder.updated_at = d.updated_at;
+    await _speicherLauf(binder);
     if (S.binder === binder) $('wb-status').textContent = t('gespeichert');
   } catch (e) {
-    if (e.status === 409) return konfliktBehandeln(binder);
+    if (e && e.status === 409) return konfliktBehandeln(binder);
     if (S.binder === binder) $('wb-status').textContent = t('fehler_speichern');
   }
 }
 
-/** 409 beim Speichern: ein anderes Gerät hat diesen Binder inzwischen geändert. Der Stand von
- *  dort wird geladen und gezeigt – die eigene, nicht gespeicherte Änderung geht verloren, aber
- *  bewusst und mit Ansage statt stumm die fremde. */
+/** 409 beim Speichern, und der fremde Stand stammt nicht von uns: ein anderes Gerät hat diesen
+ *  Binder inzwischen geändert. Der Stand von dort wird geladen und gezeigt – die eigene, nicht
+ *  gespeicherte Änderung geht verloren, aber bewusst und mit Ansage statt stumm die fremde. */
 async function konfliktBehandeln(binder) {
   try {
     const neu = await api('api/binders/' + binder.id);
@@ -690,10 +741,11 @@ async function _binderSichern() {
   S.binder.options = { ...(S.binder.options || {}), sprache: KLANG };
   const binder = S.binder;
   try {
-    const d = await api('api/binders/' + binder.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(binder) });
-    if (d && d.updated_at) binder.updated_at = d.updated_at;
+    // Über dieselbe Warteschlange wie das verzögerte Speichern — sonst laufen der Zeitgeber
+    // und dieser Weg gegeneinander.
+    await _speicherLauf(binder);
   } catch (e) {
-    if (e.status === 409) { await konfliktBehandeln(binder); throw e; }
+    if (e && e.status === 409) await konfliktBehandeln(binder);
     throw e;
   }
 }

@@ -6,6 +6,7 @@ cache/
 __pycache__/
 backups/
 wacht.log
+wacht_30th.log
 backup.log
 cardmarket/
 
