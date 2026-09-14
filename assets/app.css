@@ -1448,6 +1448,41 @@
   .f-jahr input { flex: 1; min-width: 0; width: 100%; padding: 8px 10px; font-size: var(--t-mp); -moz-appearance: textfield; }
   .f-jahr span { color: var(--mut); }
   .spalte-filter select.feld { text-overflow: ellipsis; }
+  /* ---------- „Passende Karten": Leiste über den Treffern ----------
+     Sie erklärt, warum die Liste so sortiert ist — ohne sie wäre eine plötzlich anders
+     geordnete Trefferliste nur verwirrend. Deshalb: woran gemessen wird (die Bilder der
+     Ankerkarten), wonach (Farbe/Beides/Motiv) und was man damit tun kann. */
+  .passend-leiste { border: 1.5px solid var(--aktiv-bg); border-radius: 12px; background: var(--panel2);
+                    padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .passend-leiste .pa-kopf { display: flex; align-items: center; gap: 9px; }
+  .passend-leiste .pa-bilder { display: flex; flex-shrink: 0; }
+  .passend-leiste .pa-bilder img { width: 26px; height: 36px; object-fit: cover; border-radius: 4px;
+                                   border: 1.5px solid var(--card); margin-left: -8px; background: var(--card); }
+  .passend-leiste .pa-bilder img:first-child { margin-left: 0; }
+  .passend-leiste .pa-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+  .passend-leiste .pa-text strong { font-size: var(--t-m); }
+  .passend-leiste .pa-text span { font-size: var(--t-xs); color: var(--mut);
+                                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .passend-leiste .pa-zu { margin-left: auto; flex-shrink: 0; color: var(--mut); font-size: var(--t-m);
+                           padding: 4px 8px; border-radius: 8px; }
+  .passend-leiste .pa-zu:hover { background: var(--hover); color: var(--ink); }
+  .passend-leiste .pa-zeile { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .passend-leiste .pa-modus button { padding: 5px 12px; font-size: var(--t-s); }
+  .passend-leiste .pa-fuellen { margin-left: auto; font-size: var(--t-s); padding: 5px 11px; white-space: nowrap; }
+  /* Der Wert auf der Kachel. Oben rechts ist schon die Anzahl im Binder, oben links die
+     Sprachmarke — die Passung sitzt deshalb unten links über dem Bild. */
+  .tk .pa-wert { position: absolute; left: 5px; top: 26px; z-index: 2; min-width: 22px; text-align: center;
+                 font-size: var(--t-xs); font-weight: 800; padding: 1px 5px; border-radius: 999px;
+                 color: #fff; background: rgba(20,22,28,.72); }
+  .tk .pa-wert.hoch { background: var(--gruen-flaeche); color: var(--gruen-fg); }
+  .tk .pa-wert.mittel { background: rgba(20,22,28,.72); }
+  .tk .pa-wert.tief { background: rgba(20,22,28,.45); color: rgba(255,255,255,.75); }
+  .seiten-nav .pa-knopf { display: inline-flex; align-items: center; gap: 6px; }
+  .seiten-nav .pa-knopf:hover { border-color: var(--blau); color: var(--blau); }
+  @media (max-width: 700px) {
+    .passend-leiste .pa-fuellen { margin-left: 0; width: 100%; justify-content: center; }
+    .seiten-nav .pa-knopf span { display: none; }
+  }
   .chip.klein { font-size: var(--t-xs); padding: 3px 8px; }
   .d-illu { color: var(--akzent-text); cursor: pointer; font-weight: 700; }
   .d-kein-bild { aspect-ratio: 63/88; border-radius: 12px; background: var(--panel2); border: 1.5px dashed var(--slotrand); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 16px; text-align: center; font-weight: 700; color: var(--ink); }
@@ -1472,7 +1507,12 @@
   .seiten-nav .seite-btn:hover { border-color: var(--blau); color: var(--blau); }
   /* Der Artwork-Einstieg in „Eine Seite": Symbol und Wort in einer Zeile, am Handy nur das
      Symbol — die Leiste trägt dort schon Blättern, Seitenzahl, Titel und das Menü. */
-  .seiten-nav .aw-knopf { display: inline-flex; align-items: center; gap: 6px; color: var(--akzent-text); }
+  /* Seit dem 14.09. stehen zwei Einstiege in dieser Leiste — Artwork (die KI malt die leeren
+     Fächer) und Passend (die Suche links ordnet sich nach der Seite). Beide zusammen sprengten
+     die 453 px der Binderspalte; deshalb hier engere Abstände als bei den übrigen Knöpfen. */
+  .seiten-nav { gap: 5px; }
+  .seiten-nav .aw-knopf, .seiten-nav .pa-knopf { padding: 5px 7px; gap: 5px; }
+  .seiten-nav .aw-knopf { display: inline-flex; align-items: center; gap: 5px; color: var(--akzent-text); }
   .seiten-nav .aw-knopf:hover { border-color: var(--akzent-text); color: var(--akzent-text); }
   @media (max-width: 560px) { .seiten-nav .aw-knopf span { display: none; } }
   .namefeld { display: flex; align-items: center; gap: 4px; border-radius: 8px; padding: 2px 6px; }

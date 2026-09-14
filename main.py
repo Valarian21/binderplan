@@ -3652,6 +3652,11 @@ def admin_ok(key: str, request: Request = None) -> bool:
     return _hmac.compare_digest(kandidat, echt)
 
 
+# --- Passende Karten nach Farbe und Motiv → passend.py ----------------------------------------
+# Steht vor katalog.py, weil die Kartensuche dort `passend_rangliste()` aufruft.
+_abschnitt("passend")
+
+
 # --- Meta, Admin-Kennzahlen, Kartensuche, Seltenheiten, Import → katalog.py --------------------
 _abschnitt("katalog")
 

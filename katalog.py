@@ -467,8 +467,16 @@ def _art_frag(art_ort, art_zeit, art_wasser, art_merkmal, art_text):
 
 def _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity="", dex=0, region="intl",
                 illustrator="", rgroup="", trainer_type="", regmark="", first=0, jahr_von=0, jahr_bis=0,
-                preset="", familie=0, art_ort="", art_zeit="", art_wasser=0, art_merkmal="", art_text=""):
+                preset="", familie=0, art_ort="", art_zeit="", art_wasser=0, art_merkmal="", art_text="",
+                nur_ids=None):
     where, params = [], []
+    # „Passende Karten": die Rangfolge steht schon fest (passend.py), hier wird nur noch auf
+    # diese Karten eingegrenzt — alle übrigen Filter der Suche gelten unverändert weiter.
+    if nur_ids is not None:
+        if not nur_ids:
+            return " WHERE 0", [], "id"
+        where.append("id IN (%s)" % ",".join("?" * len(nur_ids)))
+        params += list(nur_ids)
     aw, ap = _art_frag(art_ort, art_zeit, art_wasser, art_merkmal, art_text)
     where += aw; params += ap
     if illustrator:
@@ -621,12 +629,28 @@ def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
           limit: int = 60, offset: int = 0, region: str = "intl",
           illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
           jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0,
-          art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = ""):
+          art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = "",
+          passend_zu: str = "", passend_modus: str = "beides"):
     limit = max(1, min(limit, 300))
+    rang = _passend_rang(passend_zu, passend_modus)
     sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
                                            illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis,
-                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text)
+                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text,
+                                           nur_ids=None if rang is None else list(rang))
     con = get_db()
+    if rang is not None:
+        # Die Rangfolge steckt in Python, nicht in SQL. Die Kandidatenliste ist auf
+        # PASSEND_MAX begrenzt, also kostet „alles holen und sortieren" nichts — dafür
+        # stimmt die Gesamtzahl auch dann, wenn zusätzlich gefiltert wird.
+        alle = con.execute(f"{_CARD_SELECT}{sql_where}", params).fetchall()
+        con.close()
+        alle.sort(key=lambda r: -rang.get(r["id"], (0, ""))[0])
+        aus = []
+        for r in alle[offset:offset + limit]:
+            k = _card_brief(r)
+            k["passung"], k["passung_grund"] = rang.get(r["id"], (0, ""))
+            aus.append(k)
+        return {"total": len(alle), "karten": aus}
     total = con.execute(f"SELECT COUNT(*) c FROM cards{sql_where}", params).fetchone()["c"]
     rows = con.execute(
         f"{_CARD_SELECT}{sql_where} ORDER BY {order} LIMIT ? OFFSET ?",
@@ -636,6 +660,14 @@ def cards(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
     return {"total": total, "karten": [_card_brief(r) for r in rows]}
 
 
+def _passend_rang(passend_zu, modus):
+    """→ {card_id: (punkte, grund)} oder None, wenn nicht im Passend-Modus gesucht wird."""
+    anker = [x for x in (passend_zu or "").split(",") if x][:12]
+    if not anker:
+        return None
+    return {c: (p, g) for c, p, g in passend_rangliste(anker, modus)}
+
+
 @app.get("/api/cards/ids")
 def card_ids(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
              kind: str = "", rarity: str = "", dex: int = 0,
@@ -643,12 +675,20 @@ def card_ids(q: str = "", set_id: str = "", serie: str = "", typ: str = "",
              limit: int = 1000, region: str = "intl",
              illustrator: str = "", rgroup: str = "", trainer_type: str = "", regmark: str = "", first: int = 0,
              jahr_von: int = 0, jahr_bis: int = 0, preset: str = "", familie: int = 0,
-             art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = ""):
+             art_ort: str = "", art_zeit: str = "", art_wasser: int = 0, art_merkmal: str = "", art_text: str = "",
+             passend_zu: str = "", passend_modus: str = "beides"):
     limit = max(1, min(limit, 2000))
+    rang = _passend_rang(passend_zu, passend_modus)
     sql_where, params, order = _card_query(q, set_id, serie, typ, kind, sort, richtung, rarity, dex, region,
                                            illustrator, rgroup, trainer_type, regmark, first, jahr_von, jahr_bis,
-                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text)
+                                           preset, familie, art_ort, art_zeit, art_wasser, art_merkmal, art_text,
+                                           nur_ids=None if rang is None else list(rang))
     con = get_db()
+    if rang is not None:
+        ids = [r["id"] for r in con.execute(f"SELECT id FROM cards{sql_where}", params)]
+        con.close()
+        ids.sort(key=lambda i: -rang.get(i, (0, ""))[0])
+        return {"ids": ids[:limit]}
     rows = con.execute(
         f"SELECT id FROM cards{sql_where} ORDER BY {order} LIMIT ?",
         params + [limit],

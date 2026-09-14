@@ -1334,10 +1334,10 @@ function slotMenue(ev, idx) {
       <button onclick="slotMenueZu();wunschToggle('${esc(item.id)}')">${typeof wunschHat === 'function' && wunschHat(item.id) ? '★ ' : '☆ '}${t('wl_titel')}</button>
       <button onclick="slotMenueZu();alarmOeffnen('karte','${esc(item.id)}',${JSON.stringify(name).replace(/"/g, '&quot;')},${(typeof preisFuer === 'function' && preisFuer(item)) || 0})">${t('al_t')}</button>
       <div class="trenn"></div>` : ''}
-    ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();passendOeffnen(null,'${item.id}')">${t('pa_menu')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
     ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('s_artwork')}</button>
       <button onclick="slotMenueZu();kunstFreigeben('${esc(item.artwork)}')">${t('aw_seite_frei')}</button><div class="trenn"></div>` : ''}
-    ${item.type === 'empty' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'empty' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><button onclick="slotMenueZu();passendOeffnen(${seiteBei(idx)})">${t('pa_menu')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
     ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ${ic('wechsel', 15)}</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}

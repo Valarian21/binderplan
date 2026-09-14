@@ -64,7 +64,7 @@ async function inspektorZeichnen() {
   if (item.type === 'empty') {
     box.innerHTML = `${zu}<div class="ik-name">${t('ik_leer_t').replace('{n}', idx + 1)}</div><div class="ik-meta">${lage}<br>${t('ik_leer_u')}</div>
       <div class="ik-akt" style="margin-top:10px"><button class="btn" style="text-align:center" onclick="sucheLadeOeffnen()">${t('suche_knopf')}</button>
-        <button onclick="artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><div class="trenn"></div>${gefahr}</div>`;
+        <button onclick="artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><button onclick="passendOeffnen(${seiteBei(idx)})">${t('pa_menu')}</button><div class="trenn"></div>${gefahr}</div>`;
     return;
   }
   if (item.type === 'art') {
@@ -100,6 +100,7 @@ async function inspektorZeichnen() {
       <button onclick="wunschToggle('${esc(item.id)}');setTimeout(inspektorZeichnen,300)">${wunschHat(item.id) ? '★ ' : '☆ '}${t('wl_titel')}</button>
       <button onclick="alarmOeffnen('karte','${esc(item.id)}',${JSON.stringify(name).replace(/"/g, '&quot;')},${preis || 0})">${t('al_t')}</button>
       <button onclick="detailOeffnen('${esc(item.id)}')">${t('s_details')}</button>
+      <button onclick="passendOeffnen(null,'${esc(item.id)}')">${t('pa_menu')}</button>
       <button onclick="themaOeffnen('${esc(item.id)}')">${t('s_passend')}</button>
       <div class="trenn"></div>
       <button onclick="fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
@@ -666,15 +667,22 @@ function zielFach() {
   if (S.nurAnsicht || S.auswahl.size !== 1) return null;
   const idx = [...S.auswahl][0];
   const item = S.binder && S.binder.items[idx];
-  return item && item.type === 'empty' ? idx : null;
+  if (item && item.type === 'empty') return idx;
+  // Beim Suchen nach passenden Karten geht es darum, eine Karte gegen eine bessere zu
+  // tauschen. Ein gewähltes belegtes Fach ist deshalb nur in diesem Modus ein gültiges
+  // Ziel — sonst würde ein Klick in der normalen Suche stillschweigend etwas überschreiben.
+  if (S.passend && item && item.type === 'card') return idx;
+  return null;
 }
 function zielText() {
   const z = zielFach();
   // Am Handy stehen drei Knöpfe in einer 94 px breiten Kachel: „＋ In Fach 1" wurde zu
   // „＋ In …" abgeschnitten. Wofür das Fach steht, sagt ohnehin der Kopf des Sheets.
   const kurz = window.innerWidth < 901;
-  return z === null ? t('tk_anhaengen')
-    : (kurz ? t('tk_in_fach_kurz') : t('tk_in_fach')).replace('{n}', z + 1);
+  if (z === null) return t('tk_anhaengen');
+  const it = S.binder && S.binder.items[z];
+  if (it && it.type === 'card') return t('pa_ersetzen').replace('{n}', z + 1);
+  return (kurz ? t('tk_in_fach_kurz') : t('tk_in_fach')).replace('{n}', z + 1);
 }
 
 async function kartAddId(id, variant, zustand, sprache) {

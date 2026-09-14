@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609141215">
-<link rel="stylesheet" href="assets/app.css?v=202609141215">
+<link rel="stylesheet" href="assets/tokens.css?v=202609141309">
+<link rel="stylesheet" href="assets/app.css?v=202609141309">
 </head>
 <body>
 <div id="app">
@@ -239,6 +239,9 @@
           </div>
         </div>
       </div>
+      <!-- „Passende Karten": sagt, woran gemessen wird, und lässt zwischen Farbe, Motiv
+           und beidem wechseln. Steht über den Treffern, weil sie deren Reihenfolge erklärt. -->
+      <div class="passend-leiste hidden" id="passend-leiste"></div>
       <div class="ergebnisse" id="ergebnisse"></div>
       <button class="btn sekundaer hidden" id="btn-mehr" style="align-self:center;font-size: var(--t-m)" onclick="sucheLaden()" data-i18n="mehr">Mehr laden</button>
     </div>
@@ -362,6 +365,11 @@
         <!-- In „Alle Seiten" trägt jede Seite ihr Paletten-Symbol in der Kopfzeile; in „Eine
              Seite" lag der Einstieg nur im Menü „Seite …" und war damit unauffindbar
              (gemeldet 14.09.2026). Derselbe Knopf steht jetzt an derselben Stelle wie dort. -->
+        <!-- Zwei Wege, eine Seite zu füllen: die KI malt die leeren Fächer aus (Artwork),
+             oder die Suche links ordnet sich nach dem, was schon im Fach liegt (Passend). -->
+        <button class="seite-btn pa-knopf nur-edit" id="wb-passend-btn" onclick="passendOeffnen()" title="Passende Karten suchen …" data-i18n-title="pa_menu">
+          <svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7.6" cy="7.6" r="3.6"/><circle cx="12.6" cy="12.2" r="3.6"/></svg>
+          <span data-i18n="pa_kurz">Passend</span></button>
         <button class="seite-btn aw-knopf nur-edit" id="wb-artwork-btn" onclick="artworkOeffnen()" title="Artwork-Seite gestalten" data-i18n-title="aw_t">
           <svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg>
           <span data-i18n="aw_kurz">Artwork</span></button>
@@ -1433,19 +1441,20 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609141215"></script>
-<script defer src="assets/konto.js?v=202609141215"></script>
-<script defer src="assets/werkbank.js?v=202609141215"></script>
-<script defer src="assets/vitrine.js?v=202609141215"></script>
-<script defer src="assets/preise.js?v=202609141215"></script>
-<script defer src="assets/planer.js?v=202609141215"></script>
-<script defer src="assets/teilen.js?v=202609141215"></script>
-<script defer src="assets/hilfe.js?v=202609141215"></script>
-<script defer src="assets/detail.js?v=202609141215"></script>
-<script defer src="assets/artwork.js?v=202609141215"></script>
+<script defer src="assets/kern.js?v=202609141309"></script>
+<script defer src="assets/konto.js?v=202609141309"></script>
+<script defer src="assets/werkbank.js?v=202609141309"></script>
+<script defer src="assets/vitrine.js?v=202609141309"></script>
+<script defer src="assets/preise.js?v=202609141309"></script>
+<script defer src="assets/planer.js?v=202609141309"></script>
+<script defer src="assets/teilen.js?v=202609141309"></script>
+<script defer src="assets/hilfe.js?v=202609141309"></script>
+<script defer src="assets/detail.js?v=202609141309"></script>
+<script defer src="assets/artwork.js?v=202609141309"></script>
+<script defer src="assets/passend.js?v=202609141309"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609141215"></script>
+<script defer src="assets/markt.js?v=202609141309"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609141215"></script>
+<script defer src="assets/sammlung.js?v=202609141309"></script>
 </body>
 </html>

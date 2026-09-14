@@ -493,26 +493,40 @@ function filterParams() {
   if (filter.artText.trim()) p.set('art_text', filter.artText.trim());
   p.set('region', filter.region);
   p.set('sort', filter.sort); p.set('richtung', filter.richtung);
+  // „Passende Karten“: kein eigener Endpunkt, nur zwei Parameter mehr an dieselbe Suche —
+  // dadurch gelten alle Filter oben weiter, und die Rangfolge ersetzt nur die Sortierung.
+  if (S.passend && S.passend.anker.length) {
+    p.set('passend_zu', S.passend.anker.join(','));
+    p.set('passend_modus', S.passend.modus);
+  }
   return p;
 }
 
 // ---------- Suche ----------
 let _sucheSeq = 0;   // gegen Race Conditions: nur die neueste Antwort zählt
-async function sucheNeu() {
+/**
+ * Neu suchen. `behalten` lässt die bisherigen Treffer stehen, bis die neuen da sind.
+ *
+ * Gedacht für das Umordnen bei „passende Karten": dort ändert sich die Reihenfolge, sobald
+ * eine Karte ins Fach kommt — und eine für eine halbe Sekunde leere Spalte sieht aus, als
+ * wäre nichts gefunden worden (gemessen 14.09.2026: 1,5 s leer nach „Seite füllen").
+ */
+async function sucheNeu(behalten) {
   if ($('f-suche-mobil') && $('f-suche-mobil').value !== $('f-suche').value) {
     $('f-suche-mobil').value = $('f-suche').value;
-  } S.offset = 0; S.ergebnisse = []; await sucheLaden(); }
-async function sucheLaden() {
+  } S.offset = 0; if (!behalten) S.ergebnisse = []; await sucheLaden(behalten); }
+async function sucheLaden(ersetzen) {
   const meineSeq = ++_sucheSeq;
-  const p = filterParams(); p.set('limit', '60'); p.set('offset', String(S.offset));
+  const von = S.offset;
+  const p = filterParams(); p.set('limit', '60'); p.set('offset', String(von));
   try {
     const d = await api('api/cards?' + p);
     // Eine schnellere spätere Anfrage hat uns überholt → dieses (veraltete)
     // Ergebnis verwerfen, sonst überschreibt es die aktuelle Filterauswahl.
     if (meineSeq !== _sucheSeq) return;
     S.gesamt = d.total;
-    S.ergebnisse = S.ergebnisse.concat(d.karten);
-    S.offset += d.karten.length;
+    S.ergebnisse = (ersetzen && von === 0) ? d.karten : S.ergebnisse.concat(d.karten);
+    S.offset = von + d.karten.length;
     zeichneErgebnisse();
   } catch (e) { if (meineSeq === _sucheSeq) toast(t('fehler_suche')); }
 }
@@ -524,6 +538,7 @@ function anzahlImBinder(id) {
 function zeichneErgebnisse() {
   if (!S.meta) return;
   $('erg-anzahl').innerHTML = `<strong>${anZahl(S.gesamt)}</strong> ${t('treffer')}`;
+  if (typeof passendLeiste === 'function') passendLeiste();
   zeichneAktivChips();
   $('btn-mehr').classList.toggle('hidden', S.offset >= S.gesamt);
   $('btn-alle').disabled = S.gesamt === 0 || S.gesamt > 2000;
@@ -543,7 +558,7 @@ function zeichneErgebnisse() {
     // dazu weiterhin das Ziehen ins Fach.
     return `<div class="tk" draggable="true" ondragstart="ergDragStart(event,${i})" ondragend="ergDragEnde()" onclick="tkKlick(event,${i})" ontouchstart="tkDruck(${i})" ontouchend="tkLos()" ontouchmove="tkLos()" ontouchcancel="tkLos()" title="${esc(nm(k))} – ${t('tk_info')}">
       <div class="bildbox">${k.img ? `<img loading="lazy" src="${imgUrl(k.id)}" alt="" onerror="this.outerHTML='<div class=kein-bild>'+this.dataset.n+'</div>'" data-n="${esc(nm(k))}">` : `<div class="kein-bild">${nm(k)}</div>`}${preisBadge(k.id)}</div>
-      ${enb}${jpb}
+      ${enb}${jpb}${passendAbzeichen(k)}
       ${n ? `<span class="anz" title="${t('im_binder')}">${n}</span>` : ''}
       <div class="tk-name"><span class="tkn">${nm(k)}</span></div>
       <div class="tk-meta">${setNm(k)} · ${k.local_id}${k.datum ? ' · ' + k.datum.slice(0, 4) : ''}</div>
@@ -928,6 +943,7 @@ function zeichneBinder() {
   zeichnePreisSumme();
   zeichneBinderUmschalter();
   zeichneSeitenleiste();
+  if (typeof passendPruefen === 'function') passendPruefen();
   if (S.binder.items.some((i) => i.type === 'dex') && !S.pokedex) ladePokedex().then(zeichneBinder);
 }
 
