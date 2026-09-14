@@ -612,6 +612,30 @@ REGIE_PROMPT = (
 )
 
 
+def _technik_satz(stil: str, karte_text: str):
+    """Der Halbsatz über die Maltechnik im Auftrag — abhängig davon, ob ein Stil gewählt ist.
+
+    Bis 14.09.2026 stand in jedem Auftrag „same painting technique continue outward", gleich
+    dreimal und ganz vorn, während die Stilanweisung eine einzelne Zeile ganz am Ende war.
+    Das Ergebnis war messbar: von sechs „Aquarell"-Seiten sah keine nach Aquarell aus, von
+    drei „Foto"-Seiten keine nach Fotografie, und „Öl" und „Anime" lieferten dasselbe Bild wie
+    „Wie die Karte". Nur „Dunkel", „Neon" und „Retro" schlugen durch — die drei, die statt der
+    Technik die Stimmung ändern und deshalb mit keiner Regel kollidierten.
+
+    Für den Stil „karte" bleibt der Auftrag Wort für Wort wie vorher; nur bei einem gewählten
+    Stil wird der Widerspruch aufgelöst.
+
+    `karte_text` ist genau die Formulierung, die vorher an dieser Stelle stand — bei „karte"
+    kommt sie unverändert zurück, der Auftrag ist dann Zeichen für Zeichen der alte.
+
+    Rückgabe: (Einschub im Satz, zusätzlicher Satz danach)."""
+    if not stil or stil == "karte":
+        return karte_text, ""
+    return "", (" The one thing that does NOT continue is the painting technique: the new areas are painted in a "
+                "different technique, stated at the end of this brief. That instruction overrides every sentence "
+                "here about keeping the source's technique, brushwork or rendering.")
+
+
 def _wunsch_regel(wunsch: str) -> str:
     """Der Wunschtext aus dem Feld „Wünsche (optional)", als Anweisung für die Planungsschritte.
 
@@ -715,11 +739,13 @@ def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie=""
     schnitt = {k: v for k, v in (a.get("subject_cut") or {}).items()
                if v and str(v).strip().lower() not in ("none", "nothing", "no", "null", "-")}
     ms = a.get("massstab") or {}
+    tk_ein, tk_satz = _technik_satz(stil, ", same painting technique")
     text = (
         "IMAGE 1 is a large painting of which only one rectangular part is finished; everything flat gray is "
         "still unpainted. Paint all gray areas so that the finished part continues outward in every direction "
-        "as ONE picture: the same place, seen from the same spot, same horizon height, same light, same colours, "
-        f"same painting technique.\nWhat leaves the edges of the finished part: {kanten or 'see the picture'}.\n"
+        "as ONE picture: the same place, seen from the same spot, same horizon height, same light, same colours"
+        + tk_ein + "." + tk_satz
+        + f"\nWhat leaves the edges of the finished part: {kanten or 'see the picture'}.\n"
     )
     if ms.get("breite_m"):
         text += (f"Scale: the finished part shows roughly {ms.get('breite_m')} metres of the world"
@@ -740,7 +766,9 @@ def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie=""
     text += ("Everything else the finished part shows exists once, inside it. Do not change the finished part. "
              "No text, no frames, no borders, no lines, not a single gray pixel left.")
     if stil and stil != "karte":
-        text += f"\nTechnique for the new areas: {STILE.get(stil, STILE['karte'])}"
+        text += ("\nTECHNIQUE FOR THE NEW AREAS – this is how the painted part must look, and it takes precedence "
+                 f"over any instruction above about matching the source's rendering: {STILE.get(stil, STILE['karte'])}"
+                 " What is painted stays the continuation of the source scene; only how it is painted changes.")
     if wunsch:
         # Bis 14.09.2026 stand hier „The collector wishes: …" als letzter Halbsatz nach zwei
         # Absätzen Verboten — das Modell hat ihn regelmäßig überhört. Jetzt als Anweisung mit
@@ -767,17 +795,22 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
     if not mehrere and not pokemon and not feedback and (_dep["env"]().get("ARTWORK_EINZEL_KURZ", "1") != "0"):
         return _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie)
     kreaturen = [namen[c] for c in dict.fromkeys(anker.values()) if namen.get(c)]
+    # Die beiden Zweige formulierten den Halbsatz schon immer verschieden — beide bleiben bei
+    # „karte" Zeichen für Zeichen erhalten.
+    mk_ein, tk_satz = _technik_satz(stil, " and painting technique")        # mehrere Karten
+    ek_ein, _ = _technik_satz(stil, " and the same painting technique")     # eine Karte
     intro = (
         "OUTPAINTING TASK. IMAGE 1 is a large painting of which only "
         + ("some rectangular parts are" if mehrere else "one rectangular part is")
         + " finished (the source illustration" + ("s" if mehrere else "") + "); every gray pixel is still unpainted. "
         + ("Paint all gray areas so that EACH finished part extends seamlessly into its own surroundings: around "
-           "each source, that source's own scene, perspective, light, colours and painting technique continue "
+           "each source, that source's own scene, perspective, light, colours" + mk_ein + " continue "
            "outward without any visible transition – as if each source were a crop from this bigger painting. The "
-           "whole page shows ONE habitat, but every source keeps its own part of it.\n" if mehrere else
+           "whole page shows ONE habitat, but every source keeps its own part of it." + tk_satz + "\n" if mehrere else
            "Paint all gray areas so that the finished part extends seamlessly in every direction: the same scene, "
-           "same perspective and horizon height, same light, same colors and the same painting technique continue "
-           "outward without any visible transition – as if the source were a crop from this bigger painting.\n")
+           "same perspective and horizon height, same light, same colors" + ek_ein + " continue "
+           "outward without any visible transition – as if the source were a crop from this bigger painting."
+           + tk_satz + "\n")
     )
     teile = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     n = 2
@@ -857,8 +890,11 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
 
         "Not a single gray pixel may remain.\n"
         "- Do not change the finished part" + ("s" if mehrere else "") + ".\n"
-        f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; what "
-        "is painted stays the continuation of the source scene.\n"
+        + (f"- Technique for the new areas: {STILE.get(stil, STILE['karte'])} This only changes how it is painted; "
+           "what is painted stays the continuation of the source scene.\n" if not stil or stil == "karte" else
+           "- TECHNIQUE FOR THE NEW AREAS – this is how the painted part must look, and it takes precedence over "
+           f"every instruction above about matching the source's rendering: {STILE.get(stil, STILE['karte'])} This only changes how it "
+           "is painted; what is painted stays the continuation of the source scene.\n")
     )
     if pokemon:
         regionen = _regionen(cols, rows, anker, len(pokemon))
