@@ -18,6 +18,21 @@
 
 const PASSEND_MODI = ['farbe', 'beides', 'motiv'];
 
+/* Schnellfilter über den Treffern. Sie setzen die ganz normalen Filter der Suche
+   (`filter.rgroup`, `filter.illustrator`, `filter.set`, `filter.serie`) — kein zweiter
+   Zustand, keine zweite Wahrheit. Wer einen davon wieder loswerden will, kann das auch
+   über die Filter-Chips darunter, und die Filterspalte zeigt ihn ebenfalls an. */
+
+// „Nur Full Arts": die Seltenheitsgruppen, deren Illustration die ganze Karte füllt.
+//
+// Marcel hatte den Filter am 14.09.2026 als „ohne Common, Uncommon, Rare, Rare Holo und
+// Double Rare (ex)" beschrieben. So gebaut bewirkte er fast nichts: die Farbdaten gibt es
+// ohnehin nur für die Seltenheiten oberhalb davon, und in den ersten zwölf Treffern blieben
+// zwölf gleich. Der Filter meint deshalb jetzt, was sein Name sagt — Karten ohne
+// Bildfenster. Das ist strenger als seine Liste und schließt alles ein, was er nennt:
+// 5.062 von 10.014 gemessenen Karten, und 7 von 12 Spitzentreffern ändern sich.
+const PASSEND_VOLLBILD = ['ultra', 'illustration', 'secret', 'shiny', 'special'];
+
 /** Die Karten einer Seite als Ankerliste — leere Fächer und Kunstseiten zählen nicht mit. */
 function passendAnkerDerSeite(nr) {
   if (!S.binder) return [];
@@ -44,6 +59,17 @@ function passendOeffnen(nr, nurKarte) {
 }
 
 function passendAus() {
+  // Die Schnellfilter gehören zu diesem Modus: bleiben sie stehen, sucht die normale Suche
+  // danach still weiter, ohne dass noch etwas davon erzählt.
+  if (S.passend) {
+    passendFullartGruppen().forEach((g) => filter.rgroup.delete(g));
+    if (S.passend.kuenstler && filter.illustrator === S.passend.kuenstler) filter.illustrator = '';
+    if (S.passend.typ && filter.typ === S.passend.typ) filter.typ = '';
+    if (S.passend.set && filter.set === S.passend.set) filter.set = '';
+    if (S.passend.aera && filter.serie === S.passend.aera) { filter.serie = ''; if (typeof baueSetSelect === 'function') baueSetSelect(); }
+    if (typeof baueFilterLeiste === 'function') baueFilterLeiste();
+    if (typeof mehrFilterZahl === 'function') mehrFilterZahl();
+  }
   S.passend = null;
   passendLeiste();
   sucheNeu();
@@ -95,7 +121,99 @@ function passendLeiste() {
     <div class="pa-zeile">
       <div class="segment pa-modus" role="tablist">${seg}</div>
       ${frei ? `<button class="btn sekundaer pa-fuellen" onclick="passendFuellen()">${t('pa_fuellen').replace('{n}', frei)}</button>` : ''}
-    </div>`;
+    </div>
+    <div class="pa-chips">${passendChips()}</div>`;
+  passendInfoLaden();
+}
+
+/** Die Gruppen, die „Nur Full Arts" anschaltet — nur die, die es im Katalog auch gibt. */
+function passendFullartGruppen() {
+  const da = ((S.meta && S.meta.rarity_groups) || []).map((g) => g.id);
+  return PASSEND_VOLLBILD.filter((id) => da.includes(id));
+}
+
+/** Künstler, Set und Ära der Ankerkarten — einmal geholt, solange die Anker gleich bleiben. */
+async function passendInfoLaden() {
+  if (!S.passend) return;
+  const kennung = S.passend.anker.join(',');
+  if (S.passend.infoFuer === kennung) return;
+  S.passend.infoFuer = kennung;
+  try {
+    const d = await api('api/cards/nach_ids', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ ids: S.passend.anker }) });
+    const karten = Object.values(d.karten || {});
+    const haeufigste = (feld) => {
+      const z = {};
+      karten.forEach((k) => { if (k[feld]) z[k[feld]] = (z[k[feld]] || 0) + 1; });
+      const beste = Object.keys(z).sort((x, y) => z[y] - z[x])[0];
+      return beste || '';
+    };
+    S.passend.kuenstler = haeufigste('illustrator');
+    S.passend.set = haeufigste('set_id');
+    // Farbe und Energietyp hängen eng zusammen (Feuer ist rot, Wasser blau) — und
+    // Typ-Seiten sind eine der häufigsten Binder-Ordnungen überhaupt.
+    const typen = {};
+    karten.forEach((k) => (k.types || []).forEach((x) => { typen[x] = (typen[x] || 0) + 1; }));
+    S.passend.typ = Object.keys(typen).sort((x, y) => typen[y] - typen[x])[0] || '';
+    const st = (S.meta.sets || []).find((x) => x.id === S.passend.set);
+    S.passend.aera = st ? (st.aera || '') : '';
+    S.passend.setName = st ? (LANG === 'en' ? (st.name_en || st.name) : (st.name || st.name_en)) : '';
+    passendLeiste();
+  } catch (e) { /* still: dann fehlen nur die drei Chips */ }
+}
+
+/** Einen Schnellfilter an- oder ausschalten. */
+function passendSchnell(art) {
+  if (!S.passend) return;
+  if (art === 'fullart') {
+    const gruppen = passendFullartGruppen();
+    const an = gruppen.length && gruppen.every((g) => filter.rgroup.has(g));
+    filter.rgroup.clear();
+    if (!an) gruppen.forEach((g) => filter.rgroup.add(g));
+  } else if (art === 'kuenstler') {
+    filter.illustrator = filter.illustrator === S.passend.kuenstler ? '' : (S.passend.kuenstler || '');
+    if ($('f-illu')) $('f-illu').value = filter.illustrator;
+  } else if (art === 'set') {
+    filter.set = filter.set === S.passend.set ? '' : (S.passend.set || '');
+    if (typeof zeichneSetWahlKnopf === 'function') zeichneSetWahlKnopf();
+  } else if (art === 'typ') {
+    filter.typ = filter.typ === S.passend.typ ? '' : (S.passend.typ || '');
+    document.querySelectorAll('[data-typ]').forEach((el) => el.classList.toggle('on', el.dataset.typ === filter.typ));
+  } else if (art === 'aera') {
+    filter.serie = filter.serie === S.passend.aera ? '' : (S.passend.aera || '');
+    filter.set = '';
+    if (typeof baueSetSelect === 'function') baueSetSelect();
+  }
+  if (typeof baueFilterLeiste === 'function') baueFilterLeiste();
+  if (typeof mehrFilterZahl === 'function') mehrFilterZahl();
+  passendLeiste();
+  sucheNeu(true);
+}
+
+/** Die Chip-Zeile: was gerade an ist, steht als `on` da. */
+function passendChips() {
+  const gruppen = passendFullartGruppen();
+  const chip = (art, an, text, titel) =>
+    `<button class="chip klein ${an ? 'on' : ''}" onclick="passendSchnell('${art}')" title="${esc(titel || '')}">${esc(text)}</button>`;
+  let html = chip('fullart', gruppen.length && gruppen.every((g) => filter.rgroup.has(g)),
+                  t('pa_f_fullart'), t('pa_f_fullart_t'));
+  if (S.passend.kuenstler) {
+    html += chip('kuenstler', filter.illustrator === S.passend.kuenstler,
+                 t('pa_f_kuenstler').replace('{n}', S.passend.kuenstler), t('pa_f_kuenstler_t'));
+  }
+  if (S.passend.typ) {
+    html += chip('typ', filter.typ === S.passend.typ,
+                 t('pa_f_typ').replace('{n}', (T[LANG].typen || {})[S.passend.typ] || S.passend.typ),
+                 t('pa_f_typ_t'));
+  }
+  if (S.passend.set) {
+    html += chip('set', filter.set === S.passend.set,
+                 t('pa_f_set').replace('{n}', S.passend.setName || S.passend.set), t('pa_f_set_t'));
+  }
+  if (S.passend.aera && S.passend.aera !== S.passend.set) {
+    html += chip('aera', filter.serie === S.passend.aera, t('pa_f_aera'), t('pa_f_aera_t'));
+  }
+  return html;
 }
 
 /** Die noch freien Fächer der Seite, in Leserichtung. */

@@ -1469,6 +1469,8 @@
   .passend-leiste .pa-zeile { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .passend-leiste .pa-modus button { padding: 5px 12px; font-size: var(--t-s); }
   .passend-leiste .pa-fuellen { margin-left: auto; font-size: var(--t-s); padding: 5px 11px; white-space: nowrap; }
+  .passend-leiste .pa-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .passend-leiste .pa-chips:empty { display: none; }
   /* Der Wert auf der Kachel. Oben rechts ist schon die Anzahl im Binder, oben links die
      Sprachmarke — die Passung sitzt deshalb unten links über dem Bild. */
   .tk .pa-wert { position: absolute; left: 5px; top: 26px; z-index: 2; min-width: 22px; text-align: center;

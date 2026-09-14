@@ -350,7 +350,13 @@ function dragDrop(ev) {
     const [item] = S.binder.items.splice(dragIdx, 1);
     S.binder.items.splice(ziel, 0, item);
   }
-  dragIdx = null; S.auswahl.clear();
+  // Das Fach, in dem die Karte gelandet ist, bleibt gewählt. Vorher wurde die Auswahl
+  // geleert — am Desktop schloss sich damit der Inspektor, die Binderspalte wurde 300 px
+  // breiter und die ganze Seite sprang 150 px nach rechts (gemeldet 14.09.2026, gemessen
+  // x 604 → 754). Nebenbei ist es das richtige Fach: man hat es gerade angefasst.
+  dragIdx = null;
+  S.auswahl.clear();
+  if (!Number.isNaN(ziel)) S.auswahl.add(ziel);
   speichern(); zeichneBinder();
 }
 

@@ -310,8 +310,13 @@ def _pas_motivpunkte(profil, karte):
     return min(100.0, 100.0 * p / profil["max"]), " · ".join(grund[:3])
 
 
-def passend_rangliste(anker, modus="beides", ohne=(), grenze=PASSEND_MAX):
+def passend_rangliste(anker, modus="beides", ohne=(), grenze=PASSEND_MAX, nur=None):
     """→ [(card_id, punkte 0-100, grund)] absteigend, höchstens `grenze` Einträge.
+
+    `nur` schränkt auf eine Kartenmenge ein — die Treffer der übrigen Filter der Suche.
+    Das muss VOR der Rangfolge geschehen, nicht danach: sortiert man erst den ganzen Katalog
+    und filtert dann die besten 600, bleiben von „nur dieser Künstler" zwei Karten übrig,
+    obwohl es hunderte gibt (gemessen 14.09.2026).
 
     Fehlt den Ankerkarten die Farbe, bleibt das Motiv; fehlt beides, kommt nichts zurück —
     dann zeigt die Oberfläche einen Hinweis statt einer stillen leeren Liste."""
@@ -337,7 +342,8 @@ def passend_rangliste(anker, modus="beides", ohne=(), grenze=PASSEND_MAX):
 
     raus = set(anker) | set(ohne or ())
     kandidaten = [(cid, k) for cid, k in karten.items()
-                  if cid not in raus and k["kategorie"] not in PASSEND_OHNE_KATEGORIE
+                  if cid not in raus and (nur is None or cid in nur)
+                  and k["kategorie"] not in PASSEND_OHNE_KATEGORIE
                   and not (k["kategorie"] in PASSEND_TRAINER_OHNE and k["selten"] == "None")]
     if gewicht > 0 and len(kandidaten) > PASSEND_VORAUSWAHL:
         kandidaten = heapq.nsmallest(PASSEND_VORAUSWAHL, kandidaten,
