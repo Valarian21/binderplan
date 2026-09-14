@@ -110,13 +110,31 @@ function passendFreieFaecher() {
   return aus;
 }
 
+/** Namensstamm wie im Backend: „Glurak-ex", „Glurak V" und „Glurak" sind dasselbe Motiv. */
+function passendStamm(name) { return String(name || '').trim().split(/[ -]/)[0].toLowerCase(); }
+
 /** Alle freien Fächer der Seite mit den besten Treffern belegen — ein Schritt, ein Rückgängig.
- *  Was nicht gefällt, wird danach einzeln aus der Liste ersetzt; dafür bleibt sie offen. */
+ *  Was nicht gefällt, wird danach einzeln aus der Liste ersetzt; dafür bleibt sie offen.
+ *
+ *  Je Pokémon nur eine Karte: die Rangliste darf zwei führen (man will die Wahl haben),
+ *  aber automatisch nebeneinandergelegt sahen zwei Drucke desselben Motivs wie ein Versehen
+ *  aus — auf drei von vier Probeseiten stand ein solches Paar (gemessen 14.09.2026). */
 async function passendFuellen() {
   const frei = passendFreieFaecher();
   if (!frei.length || !S.binder) return;
   const drin = new Set(S.binder.items.filter((i) => i.type === 'card').map((i) => i.id));
-  const treffer = S.ergebnisse.filter((k) => !drin.has(k.id)).slice(0, frei.length);
+  // Nur die neu gesetzten Karten werden gegeneinander geprüft: die Namen der Karten, die
+  // schon im Fach liegen, stehen im Browser nicht — dort steht nur ihre Kennung. Ein zweiter
+  // Druck derselben Ankerkarte ist ohnehin meist gewollt (eine Glurak-Seite).
+  const staemme = new Set();
+  const treffer = [];
+  for (const k of S.ergebnisse) {
+    if (treffer.length >= frei.length) break;
+    const st = passendStamm(nm(k));
+    if (drin.has(k.id) || (st && staemme.has(st))) continue;
+    staemme.add(st);
+    treffer.push(k);
+  }
   if (!treffer.length) return toast(t('pa_nichts'));
   merken('passend');
   treffer.forEach((k, i) => { S.binder.items[frei[i]] = { type: 'card', id: k.id }; });
