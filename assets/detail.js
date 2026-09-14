@@ -63,7 +63,8 @@ async function inspektorZeichnen() {
   const gefahr = `<button class="gefahr" onclick="slotHerausnehmen(${idx})" title="${t('s_herausnehmen_t')}">${t('herausnehmen')}</button>`;
   if (item.type === 'empty') {
     box.innerHTML = `${zu}<div class="ik-name">${t('ik_leer_t').replace('{n}', idx + 1)}</div><div class="ik-meta">${lage}<br>${t('ik_leer_u')}</div>
-      <div class="ik-akt" style="margin-top:10px"><button class="btn" style="text-align:center" onclick="sucheLadeOeffnen()">${t('suche_knopf')}</button><div class="trenn"></div>${gefahr}</div>`;
+      <div class="ik-akt" style="margin-top:10px"><button class="btn" style="text-align:center" onclick="sucheLadeOeffnen()">${t('suche_knopf')}</button>
+        <button onclick="artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><div class="trenn"></div>${gefahr}</div>`;
     return;
   }
   if (item.type === 'art') {

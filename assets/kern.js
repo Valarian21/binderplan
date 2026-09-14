@@ -258,7 +258,7 @@ const T = {
     cr_seiten: 'Seiten', cr_vitrine: 'in der Vitrine', cr_uebernahmen: 'Übernahmen', cr_verdient: 'Credits verdient',
     cr_herzen: 'Herzen', cr_privat: 'privat', cr_uebernommen: '{n}× übernommen', cr_in_vitrine: 'In der Vitrine',
     cr_freigeben: 'In die Vitrine', cr_hinweis: 'Jede Übernahme bringt dir {a} Credits. Wer nichts übernimmt, zahlt auch nichts — hier steht nur, was passiert ist.',
-    aw_t: 'Artwork-Seite gestalten', aw_menu: 'Artwork-Seite gestalten …',
+    aw_t: 'Artwork-Seite gestalten', aw_menu: 'Artwork-Seite gestalten …', aw_kurz: 'Artwork',
     aw_u: 'Eine oder mehrere echte Karten bleiben im Fach – die KI malt ihr Motiv über die übrigen Fächer weiter. Ausdrucken, in die leeren Hüllen stecken, fertig.',
     aw_leer_hint: 'Leere Fächer werden gemalt. Tipp auf eine Karte schaltet um, ob sie im Fach bleibt oder ebenfalls übermalt wird.',
     aw_pokemon: 'Pokémon im Bild (optional)', aw_pokemon_ph: 'Name eingeben, Enter fügt hinzu (max. 3)', aw_pokemon_unbekannt: 'Pokémon nicht gefunden.', aw_pokemon_max: 'Höchstens 3 Pokémon.',
@@ -287,6 +287,7 @@ const T = {
     abo_bis: 'Verlängert sich am',
     aw_karte_bleibt: 'Karte bleibt', aw_ki_fuellt: 'KI übermalt', aw_stil: 'Stil', aw_wunsch: 'Wünsche (optional)',
     aw_wunsch_ph: 'z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …', aw_start: 'Seite füllen',
+    aw_wunsch_u: 'Gilt für das, was um die Karte herum entsteht: Tageszeit, Wetter, Landschaft, Stimmung. Die Karte selbst bleibt unverändert.',
     aw_pdf: 'Druckbogen (PDF)', aw_pdf_mit: 'Kartenfächer als Proxy mitdrucken',
     aw_png: 'Ganze Seite als Bild', aw_nochmal: 'Nochmal – anderer Stil', aw_loeschen: 'Löschen', aw_galerie: 'Bisherige Artwork-Seiten dieses Binders',
    
@@ -308,7 +309,10 @@ const T = {
     redo: 'Wiederholen', h_zurueck: '„{was}" zurückgenommen', h_vor: '„{was}" wiederholt',
     h_drag: 'Verschieben', h_auswahl: 'Auswahl', h_luecken: 'Lücken schließen', h_ablage: 'Einfügen',
     h_sortieren: 'Sortieren', h_seite: 'Seite', h_karte: 'Karte', h_etikett: 'Etikett', h_variante: 'Variante',
-    zm_tausch: 'Tauschen', zm_schieben: 'Einschieben',
+    // Der Knopf ist kein Befehl, sondern sagt, was das Ziehen gerade tut. „Tauschen" allein
+    // las sich wie eine Aktion, die man anklickt, um zwei Karten zu tauschen — dafür zieht man
+    // aber einfach (gemeldet 14.09.2026). Jetzt steht das Ziehen im Wort.
+    zm_tausch: 'Ziehen tauscht', zm_schieben: 'Ziehen schiebt',
     zm_tausch_t: 'Ziehen vertauscht zwei Fächer — alle anderen Karten bleiben, wo sie sind.',
     zm_schieben_t: 'Ziehen setzt die Karte am Ziel ein — alles dahinter rückt auf.',
     zm_tausch_an: 'Ziehen vertauscht jetzt zwei Fächer.', zm_schieben_an: 'Ziehen schiebt jetzt ein.',
@@ -341,7 +345,7 @@ const T = {
     hz_suchen_3: 'Filter links: Ära, Set, Seltenheit, Typ, Illustrator, Turnier-Kennzeichen.',
     hz_suchen_4: 'Mehrere Karten auf einmal: „In die Ablage" sammelt sie, „Einfügen" setzt sie zusammen ein.',
     hz_ordnen_t: 'Fächer ordnen', hz_ordnen_u: 'Ziehen, tauschen, einschieben, auswählen – und alles zurücknehmen.',
-    hz_ordnen_1: 'Ein Fach ziehen verschiebt die Karte. Der Knopf „Tauschen/Einschieben" entscheidet, was mit den anderen passiert.',
+    hz_ordnen_1: 'Ein Fach ziehen verschiebt die Karte. Der Knopf „Ziehen tauscht / Ziehen schiebt" entscheidet, was mit den anderen passiert.',
     hz_ordnen_2: 'Tauschen wechselt zwei Fächer, alle anderen bleiben liegen. Einschieben rückt alles dahinter auf.',
     hz_ordnen_3: 'Klick wählt aus, Shift wählt einen Bereich, Strg+A alles. Die Leiste unten zeigt, was mit der Auswahl geht.',
     hz_ordnen_4: 'Strg+Z nimmt zurück, Strg+Y wiederholt – bis zu 40 Schritte weit.',
@@ -971,7 +975,7 @@ const T = {
     cr_seiten: 'pages', cr_vitrine: 'in the showcase', cr_uebernahmen: 'downloads', cr_verdient: 'credits earned',
     cr_herzen: 'hearts', cr_privat: 'private', cr_uebernommen: 'taken {n}×', cr_in_vitrine: 'In the showcase',
     cr_freigeben: 'Share', cr_hinweis: 'Every download earns you {a} credits. Only what actually happened is listed here.',
-    aw_t: 'Design an artwork page', aw_menu: 'Design an artwork page …',
+    aw_t: 'Design an artwork page', aw_menu: 'Design an artwork page …', aw_kurz: 'Artwork',
     aw_u: 'One or more real cards stay in their pockets – the AI extends their artwork across the remaining pockets. Print, slide into the empty sleeves, done.',
     aw_leer_hint: 'Empty pockets get painted. Tap a card to toggle whether it stays or gets painted over as well.',
     aw_pokemon: 'Pokémon in the picture (optional)', aw_pokemon_ph: 'Type a name, Enter adds it (max. 3)', aw_pokemon_unbekannt: 'Pokémon not found.', aw_pokemon_max: 'At most 3 Pokémon.',
@@ -1000,6 +1004,7 @@ const T = {
     abo_bis: 'Renews on',
     aw_karte_bleibt: 'Card stays', aw_ki_fuellt: 'AI paints over', aw_stil: 'Style', aw_wunsch: 'Wishes (optional)',
     aw_wunsch_ph: 'e.g. night scene with a full moon, more water, calm background …', aw_start: 'Fill the page',
+    aw_wunsch_u: 'Applies to what is painted around the card: time of day, weather, landscape, mood. The card itself stays as it is.',
     aw_pdf: 'Print sheet (PDF)', aw_pdf_mit: 'Also print the card pockets as proxies',
     aw_png: 'Whole page as image', aw_nochmal: 'Again – different style', aw_loeschen: 'Delete', aw_galerie: 'Previous artwork pages of this binder',
    
@@ -1021,7 +1026,7 @@ const T = {
     redo: 'Redo', h_zurueck: 'Undid „{was}"', h_vor: 'Redid „{was}"',
     h_drag: 'move', h_auswahl: 'selection', h_luecken: 'close gaps', h_ablage: 'paste',
     h_sortieren: 'sort', h_seite: 'page', h_karte: 'card', h_etikett: 'label', h_variante: 'variant',
-    zm_tausch: 'Swap', zm_schieben: 'Push',
+    zm_tausch: 'Drag swaps', zm_schieben: 'Drag pushes',
     zm_tausch_t: 'Dragging swaps two slots — every other card stays where it is.',
     zm_schieben_t: 'Dragging inserts the card at the target — everything after it moves along.',
     zm_tausch_an: 'Dragging now swaps two slots.', zm_schieben_an: 'Dragging now pushes cards along.',
@@ -1054,7 +1059,7 @@ const T = {
     hz_suchen_3: 'Filters on the left: era, set, rarity, type, illustrator, tournament mark.',
     hz_suchen_4: 'Several cards at once: „To the tray" collects them, „Insert" places them together.',
     hz_ordnen_t: 'Arrange slots', hz_ordnen_u: 'Drag, swap, push, select – and undo all of it.',
-    hz_ordnen_1: 'Dragging a slot moves the card. The „Swap/Push" button decides what happens to the others.',
+    hz_ordnen_1: 'Dragging a slot moves the card. The „Drag swaps / Drag pushes" button decides what happens to the others.',
     hz_ordnen_2: 'Swap exchanges two slots and leaves the rest alone. Push moves everything after the target along.',
     hz_ordnen_3: 'Click selects, Shift selects a range, Ctrl+A everything. The bar below shows what you can do with a selection.',
     hz_ordnen_4: 'Ctrl+Z undoes, Ctrl+Y redoes – up to 40 steps back.',
@@ -1401,7 +1406,13 @@ const S = {
 };
 const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
-const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'asc',
+// Jede Sortierung hat eine naheliegende Richtung. Bis 14.09.2026 startete die Suche mit
+// „Erscheinungsdatum aufsteigend" — ganz oben lagen also Karten von 1999, während die meisten
+// Sammler nach dem suchen, was gerade erschienen ist. Neu ist deshalb: Datum und Seltenheit
+// beginnen absteigend, Name/Nummer/Dex aufsteigend. Wer selbst umdreht, bleibt umgedreht —
+// bis er die Sortierung wechselt, dann gilt wieder die Richtung dieser Tabelle.
+const SORT_RICHTUNG = { datum: 'desc', rarity: 'desc', wert: 'desc', name: 'asc', dex: 'asc', nummer: 'asc', typ: 'asc' };
+const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: new Set(), sort: 'datum', richtung: 'desc',
   illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '', region: 'intl',
   artOrte: new Set(), artMerkmale: new Set(), artZeit: '', artWasser: 0, artText: '' };
 

@@ -612,7 +612,25 @@ REGIE_PROMPT = (
 )
 
 
-def _regie(cols, rows, anker, namen, analysen):
+def _wunsch_regel(wunsch: str) -> str:
+    """Der Wunschtext aus dem Feld „Wünsche (optional)", als Anweisung für die Planungsschritte.
+
+    Er steht bewusst am Ende des Auftrags und wird ausdrücklich über den Vorgaben darüber
+    einsortiert — sonst gewinnt der allgemeine Teil („die Umgebung ist ruhiger und leerer",
+    „kein zusätzliches Licht") gegen einen konkreten Wunsch."""
+    w = (wunsch or "").strip()
+    if not w:
+        return ""
+    return ("\n\nTHE COLLECTOR ASKED FOR THIS, IN THEIR OWN WORDS: \"" + w[:400] + "\"\n"
+            "This is the single most important instruction. Build the plan around it and say in every "
+            "direction how it is visible there. Where it contradicts a rule above about mood, time of day, "
+            "weather, light, emptiness or which things may appear, the collector's wish wins; only the rules "
+            "about not repeating the illustration's own creature, people and objects still hold. If the wish "
+            "names something that cannot be in the surroundings at all, get as close to it as the scene allows "
+            "instead of ignoring it.")
+
+
+def _regie(cols, rows, anker, namen, analysen, wunsch=""):
     """Kompositionsplan für Seiten mit mehreren Karten (reines Text-Modell, ≈ 0,5 ct)."""
     zone, paare = _zonen(cols, rows, anker)
     beschreibung = []
@@ -624,7 +642,7 @@ def _regie(cols, rows, anker, namen, analysen):
             f"{len(felder)} neighbouring areas.\n{_analyse_text(analysen.get(cid))}")
     nachbarn = "; ".join(f"{namen.get(a) or a} ↔ {namen.get(b) or b}" for a, b in paare) or "none"
     text = (REGIE_PROMPT + "\n\nSOURCES:\n" + "\n\n".join(beschreibung)
-            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}")
+            + f"\n\nNEIGHBOURING ZONE PAIRS: {nachbarn}" + _wunsch_regel(wunsch))
     try:
         d = _openrouter({
             "model": _dep["env"]().get("ARTWORK_REGIE_MODELL") or ANALYSE_MODELL,
@@ -651,15 +669,21 @@ DREHBUCH_EINZEL_PROMPT = (
 )
 
 
-def _drehbuch_einzel(cols, rows, anker, namen, analysen):
+def _drehbuch_einzel(cols, rows, anker, namen, analysen, wunsch=""):
     """Positiver Plan je Richtung für eine Einzelkarte (Textmodell, ≈ 0,5 ct). Der lange Auftrag hat
     dem Modell nur gesagt, was es NICHT malen soll; das Drehbuch sagt, was draußen IST. Bei
-    Mehrkartenseiten hat genau das am 04.09. den Unterschied gemacht."""
+    Mehrkartenseiten hat genau das am 04.09. den Unterschied gemacht.
+
+    Der Wunsch des Sammlers gehört hier hinein, nicht erst in den Malauftrag: bis 14.09.2026
+    wurde das Drehbuch ohne ihn geschrieben und stand dann als konkreter, verbindlicher Plan
+    („What the new areas show – …") im Prompt, während der Wunsch als letzte, allgemeine Zeile
+    daruntersackte. Wer „Nachtszene mit Vollmond" schrieb, bekam den Tagesplan des Drehbuchs."""
     slot, cid = next(iter(anker.items()))
     col, row = int(slot) % cols, int(slot) // cols
     lage = (f"The illustration sits at row {row + 1} of {rows}, column {col + 1} of {cols}: "
             f"{row} row(s) of space above, {rows - 1 - row} below, {col} column(s) left, {cols - 1 - col} right.")
-    text = (DREHBUCH_EINZEL_PROMPT + "\n\n" + lage + "\nILLUSTRATION (" + (namen.get(cid) or cid) + "):\n"
+    text = (DREHBUCH_EINZEL_PROMPT + _wunsch_regel(wunsch) + "\n\n" + lage
+            + "\nILLUSTRATION (" + (namen.get(cid) or cid) + "):\n"
             + _analyse_text(analysen.get(cid)))
     try:
         d = _openrouter({
@@ -718,7 +742,12 @@ def _prompt_kurz(anker, stil, wunsch, namen, analysen, vorlage, bilder, regie=""
     if stil and stil != "karte":
         text += f"\nTechnique for the new areas: {STILE.get(stil, STILE['karte'])}"
     if wunsch:
-        text += f"\nThe collector wishes: {wunsch[:300]}"
+        # Bis 14.09.2026 stand hier „The collector wishes: …" als letzter Halbsatz nach zwei
+        # Absätzen Verboten — das Modell hat ihn regelmäßig überhört. Jetzt als Anweisung mit
+        # Vorrang; der Plan oben kennt den Wunsch inzwischen selbst.
+        text += ("\nMOST IMPORTANT INSTRUCTION FROM THE COLLECTOR, follow it visibly: "
+                 f"\"{wunsch.strip()[:400]}\" Where it disagrees with the description of the surroundings "
+                 "above, do what the collector asked; the finished part itself stays untouched either way.")
     teile = [{"type": "text", "text": text}, {"type": "image_url", "image_url": {"url": _data_url(vorlage)}}]
     crop = bilder.get(cid)
     if crop is not None and typ != "scene":
@@ -842,7 +871,11 @@ def _prompt_teile(cols, rows, anker, stil, wunsch, namen, analysen, vorlage, bil
                    "elements where natural, seen from the scene's perspective, doing something that fits the moment "
                    "(watching the source creature, playing, resting). Never a floating cut-out.\n")
     if wunsch:
-        regeln += f"- Wishes from the collector: {wunsch.strip()[:400]}\n"
+        regeln += ("- MOST IMPORTANT INSTRUCTION FROM THE COLLECTOR, follow it visibly: "
+                   f"\"{wunsch.strip()[:400]}\" Where it disagrees with the composition plan or with a rule "
+                   "above about mood, time of day, weather, light or which scenery appears, do what the "
+                   "collector asked. The rules about not repeating the sources' own creatures, people and "
+                   "objects, and about leaving the finished parts untouched, still hold.\n")
     if feedback:
         regeln += ("\nA previous attempt was rejected by a reviewer for these problems – avoid them this time: "
                    + feedback + "\n")
@@ -1119,12 +1152,12 @@ def _job(artwork_id):
         # Regie-Plan bei mehreren Karten (billiger Textschritt, verhindert den „alles-verschmolzen“-Matsch)
         regie = ""
         if len(dict.fromkeys(anker.values())) > 1:
-            regie, kr = _regie(cols, rows, anker, namen, analysen)
+            regie, kr = _regie(cols, rows, anker, namen, analysen, wunsch)
             kosten += kr
             if regie:
                 schritte.append({"regie": regie})
         elif not pokemon and (_dep["env"]().get("ARTWORK_EINZEL_KURZ", "1") != "0"):
-            regie, kr = _drehbuch_einzel(cols, rows, anker, namen, analysen)
+            regie, kr = _drehbuch_einzel(cols, rows, anker, namen, analysen, wunsch)
             kosten += kr
             if regie:
                 schritte.append({"drehbuch": regie})

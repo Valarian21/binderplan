@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609131904">
-<link rel="stylesheet" href="assets/app.css?v=202609131904">
+<link rel="stylesheet" href="assets/tokens.css?v=202609141208">
+<link rel="stylesheet" href="assets/app.css?v=202609141208">
 </head>
 <body>
 <div id="app">
@@ -359,6 +359,12 @@
              der geteilten Seite — deshalb ist er kein reiner Merkzettel. -->
         <button class="seiten-titel nur-edit" id="wb-seitentitel" onclick="seitenTitelFragen()"></button>
         <button onclick="seiteWechsel(1)" style="font-size: var(--t-l)" aria-label="Nächste Seite" data-i18n-aria="s_naechste">›</button>
+        <!-- In „Alle Seiten" trägt jede Seite ihr Paletten-Symbol in der Kopfzeile; in „Eine
+             Seite" lag der Einstieg nur im Menü „Seite …" und war damit unauffindbar
+             (gemeldet 14.09.2026). Derselbe Knopf steht jetzt an derselben Stelle wie dort. -->
+        <button class="seite-btn aw-knopf nur-edit" id="wb-artwork-btn" onclick="artworkOeffnen()" title="Artwork-Seite gestalten" data-i18n-title="aw_t">
+          <svg class="ic" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.2c-3.8 0-6.8 2.9-6.8 6.5 0 3.3 2.4 5.3 5 5.3 1 0 1.6.6 1.6 1.4 0 .8.5 1.4 1.3 1.4 3 0 5.7-2.9 5.7-6.6 0-4.4-3.2-8-6.8-8z"/><circle cx="7" cy="8.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="10.4" cy="6.6" r="1.05" fill="currentColor" stroke="none"/><circle cx="13.4" cy="9" r="1.05" fill="currentColor" stroke="none"/></svg>
+          <span data-i18n="aw_kurz">Artwork</span></button>
         <div class="menuwrap nur-edit" style="margin-left:6px">
           <button onclick="seiteMenueOeffnen()" class="seite-btn" data-i18n="seite_menue">Seite …</button>
           <div class="menu hoch hidden" id="menu-seite" style="right:0;left:auto;min-width:240px">
@@ -370,7 +376,8 @@
             <button onclick="seiteZiehen(1)" id="wb-seite-zurueck" data-i18n="s_seite_runter">Seite nach hinten</button>
             <div class="trenn"></div>
             <button onclick="blaetternOeffnen()" data-i18n="bv_titel">Durchblättern</button>
-            <button onclick="artworkOeffnen()" data-i18n="aw_t">Artwork-Seite gestalten</button>
+            <!-- „Artwork-Seite gestalten" stand hier; es steht jetzt als eigener Knopf in
+                 dieser Leiste, zwei Zentimeter weiter links. -->
             <button onclick="themaOeffnen()" data-i18n="th_titel">Seite nach Thema</button>
             <div class="trenn"></div>
             <button onclick="statistikOeffnen()" data-i18n="st_t">Was steckt in diesem Binder?</button>
@@ -782,6 +789,7 @@
         <div class="aw-stile" id="aw-stile"></div>
         <div class="feld-lbl" data-i18n="aw_wunsch">Wünsche (optional)</div>
         <textarea class="feld" id="aw-wunsch" rows="2" maxlength="400" data-i18n-ph="aw_wunsch_ph" placeholder="z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …"></textarea>
+        <div class="aw-wunsch-u" data-i18n="aw_wunsch_u">Gilt für das, was um die Karte herum entsteht: Tageszeit, Wetter, Landschaft, Stimmung. Die Karte selbst bleibt unverändert.</div>
         <div class="feld-lbl" data-i18n="aw_pokemon">Pokémon im Bild (optional)</div>
         <div class="aw-poke-chips" id="aw-poke-chips"></div>
         <input class="feld" id="aw-poke" list="dex-namen" autocomplete="off" data-i18n-ph="aw_pokemon_ph" placeholder="Name eingeben, Enter fügt hinzu (max. 3)" onkeydown="artworkPokeTaste(event)" onchange="artworkPokeAdd()">
@@ -1425,19 +1433,19 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609131904"></script>
-<script defer src="assets/konto.js?v=202609131904"></script>
-<script defer src="assets/werkbank.js?v=202609131904"></script>
-<script defer src="assets/vitrine.js?v=202609131904"></script>
-<script defer src="assets/preise.js?v=202609131904"></script>
-<script defer src="assets/planer.js?v=202609131904"></script>
-<script defer src="assets/teilen.js?v=202609131904"></script>
-<script defer src="assets/hilfe.js?v=202609131904"></script>
-<script defer src="assets/detail.js?v=202609131904"></script>
-<script defer src="assets/artwork.js?v=202609131904"></script>
+<script defer src="assets/kern.js?v=202609141208"></script>
+<script defer src="assets/konto.js?v=202609141208"></script>
+<script defer src="assets/werkbank.js?v=202609141208"></script>
+<script defer src="assets/vitrine.js?v=202609141208"></script>
+<script defer src="assets/preise.js?v=202609141208"></script>
+<script defer src="assets/planer.js?v=202609141208"></script>
+<script defer src="assets/teilen.js?v=202609141208"></script>
+<script defer src="assets/hilfe.js?v=202609141208"></script>
+<script defer src="assets/detail.js?v=202609141208"></script>
+<script defer src="assets/artwork.js?v=202609141208"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609131904"></script>
+<script defer src="assets/markt.js?v=202609141208"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609131904"></script>
+<script defer src="assets/sammlung.js?v=202609141208"></script>
 </body>
 </html>

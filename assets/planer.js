@@ -980,7 +980,14 @@ $('f-dex').addEventListener('input', () => {
 $('f-serie').addEventListener('change', () => { filter.serie = $('f-serie').value; filter.set = ''; baueSetSelect(); sucheNeu(); });
 $('f-set').addEventListener('change', () => { filter.set = $('f-set').value; sucheNeu(); });
 $('f-rarity').addEventListener('change', () => { filter.rarity = $('f-rarity').value; mehrFilterZahl(); sucheNeu(); });
-$('f-sort').addEventListener('change', () => { filter.sort = $('f-sort').value; richtungZeichnen(); sucheNeu(); });
+$('f-sort').addEventListener('change', () => {
+  filter.sort = $('f-sort').value;
+  // Beim Wechsel der Sortierung gilt wieder deren eigene Richtung (SORT_RICHTUNG in kern.js).
+  // Sonst schleppt „absteigend" vom Erscheinungsdatum sich zu „Name" weiter und die Liste
+  // beginnt bei Z.
+  filter.richtung = SORT_RICHTUNG[filter.sort] || 'asc';
+  richtungZeichnen(); sucheNeu();
+});
 /** Was liegt oben? Der Knopf sagt es in Worten, je nach Sortierung — „neueste zuerst"
  *  ist verständlicher als „absteigend". */
 function richtungText(sort, richtung) {
@@ -1330,6 +1337,7 @@ function slotMenue(ev, idx) {
     ${item.type === 'card' ? `<button onclick="slotMenueZu();detailOeffnen('${item.id}')">${t('s_details')}</button><button onclick="slotMenueZu();themaOeffnen('${item.id}')">${t('s_passend')}</button><div class="trenn"></div>` : ''}
     ${item.type === 'art' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('s_artwork')}</button>
       <button onclick="slotMenueZu();kunstFreigeben('${esc(item.artwork)}')">${t('aw_seite_frei')}</button><div class="trenn"></div>` : ''}
+    ${item.type === 'empty' ? `<button onclick="slotMenueZu();artworkOeffnen(${seiteBei(idx)})">${t('aw_menu')}</button><div class="trenn"></div>` : ''}
     <button onclick="slotMenueZu();fachEinfuegen(${idx})">${t('s_frei_davor')}</button>
     <button onclick="slotMenueZu();fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button>
     ${item.type === 'card' ? `<button onclick="slotMenueZu();fachSprache(${idx})">${t('kartensprache')}: <strong>${(item.sprache || 'de').toUpperCase()}</strong> ${ic('wechsel', 15)}</button><button onclick="slotMenueZu();fachZustand(${idx})">${t('s_zustand')}${item.zustand ? `: <strong>${esc(item.zustand)}</strong>` : ' …'}</button>` : ''}
