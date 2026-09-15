@@ -69,10 +69,10 @@ for m in re.finditer(r'(?:src|href)="(assets/[^"?]+)', html):
     if not os.path.exists(os.path.join(wurzel, m.group(1))):
         befunde.append(f'Asset fehlt: {m.group(1)}')
 
-# 5. pyflakes – main.py und ihre Abschnitte (auth, bilder, binder, pdf, katalog, passend) teilen sich einen
+# 5. pyflakes – main.py und ihre Abschnitte (auth, bilder, binder, pdf, katalog, passend, herkunft) teilen sich einen
 #    Namensraum; ein Name, der in einer der Dateien auf oberster Ebene definiert ist, gilt überall.
 import ast
-ABSCHNITTE = ['auth.py', 'bilder.py', 'binder.py', 'pdf.py', 'katalog.py', 'passend.py']
+ABSCHNITTE = ['auth.py', 'bilder.py', 'binder.py', 'pdf.py', 'katalog.py', 'passend.py', 'herkunft.py']
 bekannt = set()
 for f in ['main.py'] + ABSCHNITTE:
     try:

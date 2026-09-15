@@ -406,6 +406,10 @@ async function authAbsenden() {
       } catch (e) {}
       S.user = (await api('api/auth/me')).user;
     }
+    // Aus dem Besuch ist ein Konto geworden. Bei einem Gastbinder hat `/api/auth/claim`
+    // die Herkunft schon übernommen; wer direkt über „Konto anlegen" kommt, hat keinen —
+    // deshalb hier noch einmal unmittelbar.
+    if (typeof herkunftMelden === 'function') herkunftMelden('');
     modalSchliessen();
     kontoAnzeigen();
     toast(t('willkommen') + ' ' + d.user.email);

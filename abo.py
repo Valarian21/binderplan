@@ -466,10 +466,10 @@ def _kuendigung_drossel(request: Request, grenze: int = 3, fenster: int = 3600):
 
 
 def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_konfiguriert,
-             basis, melden=None):
+             basis, melden=None, ereignis=None):
     _dep.update(get_db=get_db, current_user=current_user, require_user=require_user, env=env,
                 mail_senden=mail_senden, mail_konfiguriert=mail_konfiguriert, basis=basis,
-                melden=melden)
+                melden=melden, ereignis=ereignis)
 
     con = get_db()
     con.executescript(
@@ -714,6 +714,9 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
             _buchen(con, user["id"], 0, PAKETE[variante]["credits"], "kauf", variante)
             con.commit()
         _kaufbestaetigung(_user_frisch(con, user["id"]), art, variante, obj)
+        # Das Ende des Trichters: aus dem Kanal ist Umsatz geworden (herkunft.py).
+        if _dep.get("ereignis"):
+            _dep["ereignis"](con, user["id"], "paid")
 
     def _erstattung(con, obj):
         """Rückerstattung: gekaufte Credits wieder abziehen, soweit noch vorhanden."""

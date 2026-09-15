@@ -1449,6 +1449,38 @@ const filter = { q: '', set: '', serie: '', typ: '', rarity: '', dex: 0, kinds: 
   illustrator: '', rgroup: new Set(), trainer: '', regmark: new Set(), first: false, jahrVon: 0, jahrBis: 0, preset: '', region: 'intl',
   artOrte: new Set(), artMerkmale: new Set(), artZeit: '', artWasser: 0, artText: '' };
 
+/* Woher dieser Besuch kam — einmal beim Laden aus der Adresse gelesen.
+
+   Bewusst eine Variable und kein localStorage und kein Cookie: Binderplan verspricht in der
+   Datenschutzerklärung, keine Werbe-Cookies zu setzen und deshalb keinen Banner zu zeigen.
+   Eine Reichweitenmessung ist nach § 25 TDDDG nicht „unbedingt erforderlich" — jede
+   Speicherung im Browser wäre einwilligungspflichtig. Diese Variable stirbt mit der Seite.
+
+   Der Preis: wer den Tab schließt und Tage später wiederkommt, zählt als „direkt". Dafür
+   steht auf der Seite kein Banner. */
+const HERKUNFT = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    const teile = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].map((k) => (q.get(k) || '').trim());
+    if (!teile[0]) return '';
+    while (teile.length && !teile[teile.length - 1]) teile.pop();
+    return teile.join('/').slice(0, 200);
+  } catch (e) { return ''; }
+})();
+
+/** Die Herkunft an den Server melden — höchstens einmal je Seitenaufruf und Ziel.
+ *  Schlägt sie fehl, geht nichts verloren: es ist Buchhaltung, nicht Produkt. */
+const _herkunftGemeldet = new Set();
+function herkunftMelden(binderId) {
+  if (!HERKUNFT) return;
+  const schluessel = binderId || '-';
+  if (_herkunftGemeldet.has(schluessel)) return;
+  _herkunftGemeldet.add(schluessel);
+  api('api/herkunft', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ herkunft: HERKUNFT, binder_id: binderId || '' }) })
+    .catch(() => {});
+}
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

@@ -425,6 +425,12 @@ async def auth_bestaetigen(request: Request):
                 " bestaetigung_token = NULL WHERE id = ?", (row["id"],))
     neu = _start_credits_geben(con, row["id"])
     con.commit()
+    # Bestätigte E-Mail ist die erste Stufe nach der Anmeldung, die wirklich zählt: erst dann
+    # gibt es Startguthaben und erst dann kann das Konto etwas tun (herkunft.py).
+    try:
+        herkunft_ereignis(con, row["id"], "activated")
+    except NameError:
+        pass
     user = dict(con.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone())
     sitzung = _neue_session(con, row["id"])
     con.commit()
@@ -612,6 +618,17 @@ async def auth_claim(request: Request):
         % ",".join("?" * len(ids)),
         [user["id"]] + ids,
     )
+    # Der Gastbinder weiß, über welchen Kanal dieser Besuch kam (herkunft.py). Hier ist die
+    # Stelle, an der aus dem Besuch ein Konto wird — also wird die Herkunft hier übernommen.
+    # Kein Cookie nötig: beides liegt bereits auf dem Server.
+    try:
+        row = con.execute(
+            "SELECT herkunft FROM binders WHERE id IN (%s) AND COALESCE(herkunft,'') <> ''"
+            " ORDER BY created_at LIMIT 1" % ",".join("?" * len(ids)), ids).fetchone()
+        if row:
+            herkunft_ins_konto(con, user["id"], row["herkunft"])
+    except (sqlite3.OperationalError, NameError):
+        pass
     con.commit()
     con.close()
     return {"uebernommen": cur.rowcount}

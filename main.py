@@ -355,6 +355,12 @@ async def _zugriffsprotokoll(request: Request, call_next):
         log.exception("%s %s abgebrochen", request.method, request.url.path)
         raise
     pfad = request.url.path
+    # Aggregierter Besuchszähler je Tag und Kanal (herkunft.py) — ohne Kennung, ohne IP.
+    if not pfad.startswith("/api/"):
+        try:
+            herkunft_zaehlen(request, antwort.status_code)
+        except NameError:
+            pass
     if pfad.startswith("/api/") and not pfad.startswith("/api/img"):
         dauer = (time.perf_counter() - start) * 1000
         konto = "K" if request.headers.get("authorization") or request.cookies.get("bp_token") else "-"
@@ -3652,6 +3658,12 @@ def admin_ok(key: str, request: Request = None) -> bool:
     return _hmac.compare_digest(kandidat, echt)
 
 
+# --- Woher Besucher und Konten kommen → herkunft.py -------------------------------------------
+# Muss nach init_db() stehen (legt eigene Tabellen an) und vor den Landing-Routen, damit die
+# Kurzlinks /tt, /ig … registriert sind, bevor jemand sie aufruft.
+_abschnitt("herkunft")
+
+
 # --- Passende Karten nach Farbe und Motiv → passend.py ----------------------------------------
 # Steht vor katalog.py, weil die Kartensuche dort `passend_rangliste()` aufruft.
 _abschnitt("passend")
@@ -3676,6 +3688,8 @@ try:
         app, get_db=get_db, current_user=_current_user, require_user=_require_user,
         env=_env, mail_senden=_mail_senden, mail_konfiguriert=_mail_konfiguriert, basis=BASE,
         melden=betreiber_melden,
+        # Bezahlte Abschlüsse gehen als „paid" an den Marketing-Piloten (herkunft.py).
+        ereignis=lambda con, uid, ev: herkunft_ereignis(con, uid, ev),
     )
 except Exception as _e:  # pragma: no cover
     _log("Abo-Modul nicht geladen:", _e)

@@ -16,6 +16,8 @@ import json
 import time
 from datetime import datetime, timedelta
 
+import sqlite3
+
 import httpx
 from fastapi import HTTPException
 
@@ -202,9 +204,50 @@ def uebersicht():
         "preislauf": (q("SELECT value FROM kv WHERE key='preishistorie_lauf'") or {"value": None})["value"],
         "katalog_sync": (q("SELECT value FROM kv WHERE key='last_sync'") or {"value": None})["value"],
     }
+    herkunft = _herkunft(con, d30)
     con.close()
     return {"stand": _now(), "nutzer": nutzer, "umsatz": umsatz, "stripe": _gecacht("stripe", _stripe),
-            "ki": ki, "credits": credits, "vitrine": vitrine, "katalog": katalog}
+            "ki": ki, "credits": credits, "vitrine": vitrine, "katalog": katalog,
+            "herkunft": herkunft}
+
+
+def _herkunft(con, seit):
+    """Der Trichter je Kanal: Besuche → Gastbinder → Konten → bestätigt → zahlend.
+
+    Die Besuche stehen aggregiert in `besuche_tag` (keine Person, keine IP), die übrigen
+    Stufen hängen an `binders.herkunft` bzw. `users.herkunft` — beides von herkunft.py
+    gesetzt. Nur der Kanal (`utm_source`) wird gruppiert; Kampagne und Inhalt stehen in der
+    Tabelle, taugen bei diesen Mengen aber noch nicht als eigene Zeile.
+
+    „(direkt)" ist kein Kanal, sondern die Antwort „wissen wir nicht": Konten ohne Herkunft,
+    also Direktaufrufe, Lesezeichen — und alles, was vor dem 15.09.2026 entstanden ist."""
+    kanal = lambda feld: f"CASE WHEN COALESCE({feld},'') = '' THEN '(direkt)'" \
+                         f" ELSE substr({feld}, 1, CASE WHEN instr({feld},'/') > 0" \
+                         f" THEN instr({feld},'/') - 1 ELSE length({feld}) END) END"
+    zeilen = {}
+
+    def hol(schluessel, sql, *par):
+        for r in con.execute(sql, par):
+            zeilen.setdefault(r["kanal"], {"kanal": r["kanal"], "besuche": 0, "besuche_30": 0,
+                                           "binder": 0, "konten": 0, "bestaetigt": 0, "zahlend": 0})
+            zeilen[r["kanal"]][schluessel] = r["c"]
+
+    try:
+        hol("besuche", "SELECT quelle AS kanal, SUM(anzahl) c FROM besuche_tag GROUP BY 1")
+        hol("besuche_30", "SELECT quelle AS kanal, SUM(anzahl) c FROM besuche_tag"
+                          " WHERE tag >= date('now','-30 days') GROUP BY 1")
+        hol("binder", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM binders"
+                      f" WHERE COALESCE(herkunft,'') <> '' GROUP BY 1")
+        hol("konten", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users GROUP BY 1")
+        hol("bestaetigt", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users"
+                          f" WHERE email_bestaetigt IS NOT NULL GROUP BY 1")
+        hol("zahlend", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users"
+                       f" WHERE plan NOT IN ('free') GROUP BY 1")
+    except sqlite3.OperationalError:
+        return {"kanaele": [], "hinweis": "Die Herkunftstabellen fehlen noch."}
+
+    aus = sorted(zeilen.values(), key=lambda z: (-z["konten"], -z["besuche"], z["kanal"]))
+    return {"kanaele": aus, "seit": seit[:10]}
 
 
 def nutzer_liste():

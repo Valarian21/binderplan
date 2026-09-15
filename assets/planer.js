@@ -1270,6 +1270,9 @@ async function _binderAnlegen() {
   } catch (e) { if (!gate(e)) toast(e.message); return false; }
   S.binder.id = res.id;
   merkeBinderId(res.id);
+  // Hier entsteht aus einem Besuch eine Nutzung — der richtige Moment, den Kanal
+  // festzuhalten. Bei einer späteren Registrierung übernimmt `/api/auth/claim` ihn.
+  if (typeof herkunftMelden === 'function') herkunftMelden(res.id);
   if (undo && undo.binderId === null) undo.binderId = res.id;   // Rückgängig nach der ersten Karte bleibt möglich
   hashSetzen('binder/' + res.id);
   return true;
