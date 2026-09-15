@@ -51,8 +51,17 @@ function zeichneVitrineBereich() {
     suche.classList.toggle('hidden', n < VT_FILTER_AB && !suche.value);
   }
 }
-function vitrineSchliessen() {
+function vitrineSchliessen(vonZurueck) {
   if ($('vitrine').classList.contains('hidden')) return;
+  // Wer gefiltert hat und „zurück" drückt, will die Auswahl rückgängig machen — nicht aus
+  // dem Stöbern in den Binder geworfen werden (gemeldet 15.09.2026). Der erste Schritt
+  // zurück räumt deshalb die Filter weg, erst der zweite verlässt die Vitrine. Beim Wechsel
+  // auf einen anderen Reiter (ohne `vonZurueck`) wird wie bisher sofort geschlossen.
+  if (vonZurueck && vitrineGefiltert()) {
+    vitrineFilterZuruecksetzen();
+    ebeneOeffnen(vitrineSchliessen);
+    return;
+  }
   ebeneAufraeumen(vitrineSchliessen);
   $('vitrine').classList.add('hidden');
   // Fehlte als einzige der Vollbildansichten: die Adresse blieb auf /app/vitrine stehen,
@@ -84,13 +93,39 @@ const VT_JAHRGAENGE = [[1996, 2003, '1996–2003 · WotC'], [2004, 2010, '2004�
  *  über sechs Bindern standen zwei Wähler, ein Suchfeld, drei Reiter und ein Schalter. */
 const VT_FILTER_AB = 12;
 
+/** Ist gerade etwas eingeschränkt? Das Zeitfenster und die Doppelseiten-Anzeige zählen
+ *  nicht dazu — sie lassen nichts verschwinden. */
+function vitrineGefiltert() {
+  return VT.bereich === 'kunst'
+    ? Boolean(VT.kunstStil || VT.jahrVon || VT.jahrBis)
+    : Boolean(VT.art || VT.groesse);
+}
+
+/** Alle Einschränkungen des aktuellen Bereichs aufheben. */
+function vitrineFilterZuruecksetzen() {
+  if (VT.bereich === 'kunst') { VT.kunstStil = ''; VT.jahrVon = ''; VT.jahrBis = ''; }
+  else { VT.art = ''; VT.groesse = ''; }
+  zeichneVitrineFilter();
+  vitrineLaden();
+}
+
 function zeichneVitrineFilter() {
   const box = $('vt-filter');
   if (!box) return;
   const anzahl = VT.bereich === 'kunst' ? (VT.kunstGesamt || 0) : (VT.gesamt || 0);
   const suche = VT.bereich === 'kunst' ? VT.kunstSuche : VT.suche;
-  if (anzahl < VT_FILTER_AB && !suche) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+  // Unter zwölf Objekten sind Filter Lärm — ABER nur, solange keiner gesetzt ist. Vorher
+  // verschwand die Leiste, sobald ein Filter die Liste unter die Schwelle drückte: der
+  // Filter blieb aktiv, war aber weder zu sehen noch zurückzunehmen, und die Vitrine wirkte
+  // kaputt (gemeldet 15.09.2026).
+  if (anzahl < VT_FILTER_AB && !suche && !vitrineGefiltert()) {
+    box.innerHTML = ''; box.classList.add('hidden'); return;
+  }
   box.classList.remove('hidden');
+  // Steht ein Filter, gehört das Zurücksetzen sichtbar dazu — sonst ist der einzige Ausweg
+  // der Zurück-Knopf des Browsers.
+  const zurueck = vitrineGefiltert()
+    ? `<button class="chip vt-reset" onclick="vitrineFilterZuruecksetzen()">${t('vt_f_reset')}</button>` : '';
   // Die Bestenliste bekommt ein Zeitfenster: „beliebt diese Woche" statt einer Liste,
   // die für immer dieselbe bleibt. Voreinstellung „Immer", solange die Vitrine klein ist.
   const aktivTab = VT.bereich === 'kunst' ? VT.kunstSort : VT.sortierung;
@@ -112,6 +147,7 @@ function zeichneVitrineFilter() {
         <option value="">${t('vt_k_jahrgang')}: ${t('vt_f_alle')}</option>
         ${VT_JAHRGAENGE.map(([v, b, l]) => `<option value="${v}-${b}" ${String(VT.jahrVon) === String(v) && String(VT.jahrBis) === String(b) ? 'selected' : ''}>${l}</option>`).join('')}
       </select>
+      ${zurueck}
       <div style="flex:1"></div>
       <span class="vt-lbl">${t('vt_k_preis').replace('{n}', VT.preis)}</span>`;
     return;
@@ -129,6 +165,7 @@ function zeichneVitrineFilter() {
       <option value="mittel" ${VT.groesse === 'mittel' ? 'selected' : ''}>${t('vt_f_mittel')}</option>
       <option value="gross" ${VT.groesse === 'gross' ? 'selected' : ''}>${t('vt_f_gross')}</option>
     </select>
+    ${zurueck}
     <div style="flex:1"></div>
     <button class="chip ${VT.doppelseite ? 'on' : ''}" onclick="vitrineDoppelseite()" title="${t('vt_f_dop_t')}">${t('vt_f_dop')}</button>`;
 }
@@ -141,6 +178,7 @@ function vitrineFilter(feld, wert) {
 
 function vitrineFilterSetzen(feld, wert) {
   VT[feld] = wert;
+  zeichneVitrineFilter();
   vitrineLaden();
 }
 function vitrineFenster(w) {
@@ -1035,7 +1073,9 @@ function ebeneZu(schliesser) {
 }
 
 window.addEventListener('popstate', (ev) => {
-  if (EBENEN.length) { const schliessen = EBENEN.pop(); try { schliessen(); } catch (e) {} return; }
+  // `true` heißt „über Zurück geschlossen". Die meisten Schließer ignorieren das; die
+  // Vitrine nimmt damit erst ihre Filter zurück, bevor sie sich schließt.
+  if (EBENEN.length) { const schliessen = EBENEN.pop(); try { schliessen(true); } catch (e) {} return; }
   // Ein Eintrag, den eine längst geschlossene Ebene hinterlassen hat. Er trägt die Adresse
   // von damals — wer seither den Binder gewechselt hat, würde hier zurück in den alten
   // geworfen, samt Neuladen. Der Eintrag wird eingesammelt, die Adresse geradegezogen,

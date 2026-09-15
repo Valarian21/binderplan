@@ -1469,6 +1469,10 @@
   .passend-leiste .pa-zeile { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .passend-leiste .pa-modus button { padding: 5px 12px; font-size: var(--t-s); }
   .passend-leiste .pa-fuellen { margin-left: auto; font-size: var(--t-s); padding: 5px 11px; white-space: nowrap; }
+  .passend-leiste .pa-zeile .pa-chips { flex: 1; min-width: 0; overflow-x: auto; flex-wrap: nowrap;
+                                        scrollbar-width: none; }
+  .passend-leiste .pa-zeile .pa-chips::-webkit-scrollbar { display: none; }
+  .passend-leiste .pa-chips .chip { flex-shrink: 0; }
   .passend-leiste .pa-chips { display: flex; gap: 5px; flex-wrap: wrap; }
   .passend-leiste .pa-chips:empty { display: none; }
   /* Der Wert auf der Kachel. Oben rechts ist schon die Anzahl im Binder, oben links die
@@ -1482,8 +1486,32 @@
   .seiten-nav .pa-knopf { display: inline-flex; align-items: center; gap: 6px; }
   .seiten-nav .pa-knopf:hover { border-color: var(--blau); color: var(--blau); }
   @media (max-width: 700px) {
-    .passend-leiste .pa-fuellen { margin-left: 0; width: 100%; justify-content: center; }
     .seiten-nav .pa-knopf span { display: none; }
+    /* Am Handy war diese Leiste 207 px hoch; die Trefferliste begann erst bei 424 px von
+       844 px Fensterhöhe, und von 60 Treffern waren vier zu sehen (gemessen 15.09.2026).
+       Jetzt zwei knappe Zeilen: oben woran gemessen wird und das Füllen, unten der Modus
+       und die Schnellfilter — die scrollen seitlich, statt auf eine dritte Zeile zu brechen. */
+    .passend-leiste { padding: 6px 8px; gap: 6px; }
+    .passend-leiste .pa-bilder img { width: 22px; height: 30px; }
+    .passend-leiste .pa-text strong { font-size: var(--t-s); }
+    .passend-leiste .pa-fuellen { margin-left: auto; font-size: var(--t-xs); padding: 4px 9px; }
+    .passend-leiste .pa-modus button { padding: 4px 9px; font-size: var(--t-xs); }
+    .passend-leiste .pa-zu { padding: 2px 6px; }
+
+    /* Dichtere Trefferliste, solange nach passenden Karten gesucht wird: hier entscheidet
+       das Bild, nicht der Name. Statt vier halben Kacheln sind rund neun ganze zu sehen. */
+    body.passend-an .suche-lade .ergebnisse { grid-template-columns: repeat(3, 1fr) !important; gap: 6px; }
+    body.passend-an .tk .tk-name,
+    body.passend-an .tk .tk-meta { display: none; }
+    body.passend-an .tk .tk-hab { padding: 3px; gap: 3px; }
+    body.passend-an .tk .tk-hab .wunsch,
+    body.passend-an .tk .tk-hab .ab-knopf,
+    body.passend-an .tk .tk-hab .rev { display: none; }
+    body.passend-an .tk .tk-hab .hinzu { font-size: var(--t-s); padding: 3px 6px; font-weight: 800; }
+    /* Die Sortierung ist in diesem Modus eine Unwahrheit: geordnet wird nach Passung,
+       nicht nach Erscheinungsdatum. Ein Bedienelement, das nichts bewirkt, gehört weg —
+       und die Zeile spart 38 px über der Liste. */
+    body.passend-an .kopfzeile .sortwahl { display: none; }
   }
   .chip.klein { font-size: var(--t-xs); padding: 3px 8px; }
   .d-illu { color: var(--akzent-text); cursor: pointer; font-weight: 700; }

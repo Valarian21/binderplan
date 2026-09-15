@@ -102,6 +102,10 @@ function passendLeiste() {
   const box = $('passend-leiste');
   if (!box) return;
   box.classList.toggle('hidden', !S.passend);
+  // Die Trefferliste wird in diesem Modus enger gesetzt (siehe app.css): hier sucht man mit
+  // dem Auge unter vielen Karten, statt eine bestimmte zu finden. Am Handy waren von 60
+  // Treffern vier zu sehen, weil über der Liste 424 px Kopf standen (gemessen 15.09.2026).
+  document.body.classList.toggle('passend-an', !!S.passend);
   if (!S.passend) return;
   const a = S.passend.anker;
   const bilder = a.slice(0, 5).map((id) =>
@@ -116,13 +120,13 @@ function passendLeiste() {
     <div class="pa-kopf">
       <div class="pa-bilder">${bilder}</div>
       <div class="pa-text"><strong>${t('pa_titel')}</strong><span>${woher}</span></div>
+      ${frei ? `<button class="btn sekundaer pa-fuellen" onclick="passendFuellen()">${t('pa_fuellen_kurz').replace('{n}', frei)}</button>` : ''}
       <button class="pa-zu" onclick="passendAus()" title="${t('pa_aus')}" aria-label="${t('pa_aus')}">✕</button>
     </div>
     <div class="pa-zeile">
       <div class="segment pa-modus" role="tablist">${seg}</div>
-      ${frei ? `<button class="btn sekundaer pa-fuellen" onclick="passendFuellen()">${t('pa_fuellen').replace('{n}', frei)}</button>` : ''}
-    </div>
-    <div class="pa-chips">${passendChips()}</div>`;
+      <div class="pa-chips">${passendChips()}</div>
+    </div>`;
   passendInfoLaden();
 }
 

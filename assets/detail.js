@@ -679,8 +679,15 @@ function zielText() {
   // Am Handy stehen drei Knöpfe in einer 94 px breiten Kachel: „＋ In Fach 1" wurde zu
   // „＋ In …" abgeschnitten. Wofür das Fach steht, sagt ohnehin der Kopf des Sheets.
   const kurz = window.innerWidth < 901;
+  const it = z === null ? null : (S.binder && S.binder.items[z]);
+  // Beim Suchen nach passenden Karten stehen am Handy drei Kacheln nebeneinander — dort
+  // passt kein ganzer Satz auf den Knopf („+ Anhän…"). Das Fach steht als Zahl darauf,
+  // der Rest sagt der Hinweis nach dem Einsetzen.
+  if (document.body.classList.contains('passend-an') && window.innerWidth < 700) {
+    // Der Aufrufer setzt bereits ein „＋" davor — hier nur noch das Ziel.
+    return z === null ? '' : (it && it.type === 'card' ? '↔ ' : '') + (z + 1);
+  }
   if (z === null) return t('tk_anhaengen');
-  const it = S.binder && S.binder.items[z];
   if (it && it.type === 'card') return t('pa_ersetzen').replace('{n}', z + 1);
   return (kurz ? t('tk_in_fach_kurz') : t('tk_in_fach')).replace('{n}', z + 1);
 }
