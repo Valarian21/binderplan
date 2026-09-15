@@ -5,6 +5,12 @@
 function ansicht(w) {
   profilseiteSchliessen();
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Die Kartensuche ist am Handy ein Sheet über dem Binder. Blieb es beim Reiterwechsel
+  // offen, stand über der Sammlung, dem Markt und der Vitrine der Katalog — sichtbar war
+  // nur eine Kopfzeile, darunter 21.153 fremde Karten (gemeldet 15.09.2026). Sie gehört zum
+  // Binder, also geht sie mit ihm zu. Am Desktop ist sie eine Spalte und stört nicht.
+  if (w !== 'suche' && w !== 'planer' && window.innerWidth < 901
+      && document.body.classList.contains('suche-offen')) sucheLadeZu();
   if (w !== 'profil' && !$('profilseite').classList.contains('hidden')) profilSchliessen();   // Reiter über der Profilseite
   if (w === 'start') { startOeffnen(); return; }
   if (w === 'profil') { profilOeffnen(); return; }
