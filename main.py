@@ -4481,17 +4481,73 @@ def favicon():
 
 
 @app.get("/manifest.webmanifest")
-def manifest():
+def manifest(request: Request):
+    """Der Steckbrief, aus dem Android und iOS die installierte App bauen.
+
+    Vier Dinge, die vorher fehlten und je einen sichtbaren Fehler verursachten:
+
+    * `start_url` stand auf „.", also auf der Landingpage. Wer die App vom Startbildschirm
+      öffnete, landete in der Werbung statt in seinem Binder. Jetzt `/app`.
+    * `id` legt die Identität der App fest. Ohne sie dient `start_url` als Kennung — die
+      Änderung oben hätte Android als *andere* App gesehen und ein zweites Symbol angelegt.
+    * Die Symbole waren nicht `maskable`. Android schneidet sie auf die Geräteform zu
+      (Kreis, Squircle); unser Symbol füllt den Rahmen bis zum Rand und verlor dabei seine
+      Ecken. `icon-maskable-*.png` hat den nötigen Sicherheitsrand.
+    * Ohne `screenshots` zeigt Chrome nur eine dünne Leiste am unteren Rand. Mit ihnen
+      kommt die große Installationskarte mit Bildern — der Unterschied zwischen
+      „irgendein Lesezeichen" und „App".
+    """
+    en = _landing_sprache(request) == "en"
     return Response(json.dumps({
+        "id": "/app",
         "name": "Binderplan", "short_name": "Binderplan",
-        "description": "Pokémon-Binder planen und als Schwarz-Weiß-Checkliste drucken",
-        "start_url": ".", "scope": ".", "display": "standalone",
+        "description": ("Plan your Pokémon binder and print it as a black-and-white checklist"
+                        if en else
+                        "Pokémon-Binder planen und als Schwarz-Weiß-Checkliste drucken"),
+        "lang": "en" if en else "de",
+        "dir": "ltr",
+        "start_url": "/app", "scope": "/",
+        "display": "standalone", "display_override": ["standalone", "minimal-ui"],
+        "orientation": "portrait-primary",
         "background_color": "#ffffff", "theme_color": "#2a4b9b",
+        "categories": ["utilities", "lifestyle", "entertainment"],
         "icons": [
-            {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
-            {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "/icon-maskable-192.png", "sizes": "192x192", "type": "image/png",
+             "purpose": "maskable"},
+            {"src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png",
+             "purpose": "maskable"},
+        ],
+        "screenshots": _manifest_bilder(en),
+        "shortcuts": [
+            {"name": "Sammlung" if not en else "Collection", "url": "/app/sammlung",
+             "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Karten suchen" if not en else "Search cards", "url": "/app/suche",
+             "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Vitrine" if not en else "Showcase", "url": "/app/vitrine",
+             "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
         ],
     }), media_type="application/manifest+json")
+
+
+def _manifest_bilder(en: bool) -> list:
+    """Bilder für die Installationskarte. Chrome verlangt mindestens eins in `narrow`
+    (Handy) und eins in `wide` (Laptop), sonst fällt es stillschweigend auf die dünne
+    Leiste zurück; Firefox und Safari ignorieren den Eintrag. Fehlt eine Datei, lassen wir
+    sie weg — ein Screenshot, den es nicht gibt, kostet die ganze Karte."""
+    bilder = []
+    for datei, groesse, form, text in (
+            ("pwa-handy-1.png", "1080x1920", "narrow",
+             "Your binder on the phone" if en else "Der Binder auf dem Handy"),
+            ("pwa-handy-2.png", "1080x1920", "narrow",
+             "Art pages in the showcase" if en else "Kunstseiten in der Vitrine"),
+            ("pwa-breit-1.png", "1920x1080", "wide",
+             "A whole binder at a glance" if en else "Ein ganzer Binder auf einen Blick")):
+        if (BASE / "assets" / datei).exists():
+            bilder.append({"src": f"/assets/{datei}", "sizes": groesse,
+                           "type": "image/png", "form_factor": form, "label": text})
+    return bilder
 
 
 def _app_icon(groesse: int) -> Path:
@@ -4517,6 +4573,15 @@ def _app_icon(groesse: int) -> Path:
         d.line([g * 0.16, g * (0.16 + i * 0.227), g * 0.84, g * (0.16 + i * 0.227)], fill="#14161c", width=max(3, g // 26))
     img.save(ziel)
     return ziel
+
+
+@app.get("/icon-maskable-{groesse}.png")
+def icon_maskable(groesse: int):
+    """Symbole mit Sicherheitsrand für Android (siehe manifest, „purpose": "maskable")."""
+    datei = BASE / f"icon-maskable-{groesse}.png"
+    if groesse not in (192, 512) or not datei.exists():
+        raise HTTPException(404)
+    return FileResponse(datei, media_type="image/png", headers=IMG_HEADERS)
 
 
 @app.get("/icon-{groesse}.png")

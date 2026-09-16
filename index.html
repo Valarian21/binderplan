@@ -14,12 +14,19 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609151647">
-<link rel="stylesheet" href="assets/app.css?v=202609151647">
+<link rel="stylesheet" href="assets/tokens.css?v=202609161039">
+<link rel="stylesheet" href="assets/app.css?v=202609161039">
 </head>
 <body>
 <div id="app">
   <div id="sync-banner" class="sync-banner hidden"></div>
+  <!-- Einmaliger Hinweis auf dem Handy, dass es die App auch zum Anlegen gibt. Wer ihn
+       wegdrückt, sieht ihn nicht wieder (localStorage bp_inst_weg). -->
+  <div id="install-banner" class="best-banner hidden">
+    <span data-i18n="inst_banner">Binderplan auf den Startbildschirm legen?</span>
+    <button class="btn primaer" style="font-size: var(--t-s);padding:5px 12px" onclick="installDialog()" data-i18n="inst_menue">App installieren</button>
+    <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 12px" onclick="installBannerWeg()" data-i18n="inst_spaeter">Später</button>
+  </div>
   <div id="bestaetigen-banner" class="best-banner hidden">
     <span id="best-text"></span>
     <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 12px" onclick="bestaetigungNeu()" data-i18n="best_nochmal">Nochmal senden</button>
@@ -704,6 +711,38 @@
 </div>
 
 <!-- Modal: Anmelden / Registrieren -->
+<!-- „App installieren": erklärt den Weg auf den Startbildschirm. Android und der
+     Desktop bekommen den nativen Dialog über beforeinstallprompt, iOS-Safari kennt den
+     nicht und braucht die Anleitung — deshalb beide Hälften in einem Dialog, sichtbar
+     geschaltet in installDialog() (assets/konto.js). -->
+<div class="overlay hidden" id="modal-install">
+  <div class="modal" style="width:min(460px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="inst_titel">Binderplan als App</h2>
+    <div class="unter" data-i18n="inst_warum">Eigenes Symbol auf dem Startbildschirm, Vollbild ohne Browserleiste, und die zuletzt geöffneten Binder gehen auch ohne Netz auf.</div>
+    <div id="inst-fertig" class="hidden" style="margin-top:14px;font-weight:600" data-i18n="inst_fertig">Binderplan ist installiert.</div>
+    <div id="inst-knopf" class="hidden" style="margin-top:16px">
+      <button class="btn primaer" style="width:100%" onclick="installStarten()" data-i18n="inst_jetzt">Jetzt installieren</button>
+    </div>
+    <div id="inst-ios" class="hidden" style="margin-top:16px">
+      <div class="feld-lbl" data-i18n="inst_ios_titel">So geht es auf dem iPhone</div>
+      <ol style="margin:8px 0 0;padding-left:20px;line-height:1.7">
+        <li data-i18n="inst_ios_1">Unten auf «Teilen» tippen — das Quadrat mit dem Pfeil nach oben.</li>
+        <li data-i18n="inst_ios_2">In der Liste «Zum Home-Bildschirm» wählen.</li>
+        <li data-i18n="inst_ios_3">Oben rechts auf «Hinzufügen» tippen — fertig.</li>
+      </ol>
+      <div style="font-size:var(--t-s);color:var(--mut);margin-top:8px" data-i18n="inst_ios_safari">Das geht nur in Safari. In Chrome oder Firefox auf dem iPhone fehlt der Eintrag.</div>
+    </div>
+    <div id="inst-android" class="hidden" style="margin-top:16px">
+      <div class="feld-lbl" data-i18n="inst_and_titel">So geht es auf Android</div>
+      <ol style="margin:8px 0 0;padding-left:20px;line-height:1.7">
+        <li data-i18n="inst_and_1">Oben rechts auf die drei Punkte tippen.</li>
+        <li data-i18n="inst_and_2">«App installieren» oder «Zum Startbildschirm zufügen» wählen.</li>
+      </ol>
+    </div>
+    <div style="font-size:var(--t-s);color:var(--mut);margin-top:16px" data-i18n="inst_updates">Updates kommen von allein: beim Öffnen holt sich die App die neueste Fassung, ganz ohne Store.</div>
+  </div>
+</div>
 <div class="overlay hidden" id="modal-auth">
   <div class="modal" style="width:min(420px,94vw)">
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
@@ -1441,20 +1480,20 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609151647"></script>
-<script defer src="assets/konto.js?v=202609151647"></script>
-<script defer src="assets/werkbank.js?v=202609151647"></script>
-<script defer src="assets/vitrine.js?v=202609151647"></script>
-<script defer src="assets/preise.js?v=202609151647"></script>
-<script defer src="assets/planer.js?v=202609151647"></script>
-<script defer src="assets/teilen.js?v=202609151647"></script>
-<script defer src="assets/hilfe.js?v=202609151647"></script>
-<script defer src="assets/detail.js?v=202609151647"></script>
-<script defer src="assets/artwork.js?v=202609151647"></script>
-<script defer src="assets/passend.js?v=202609151647"></script>
+<script defer src="assets/kern.js?v=202609161039"></script>
+<script defer src="assets/konto.js?v=202609161039"></script>
+<script defer src="assets/werkbank.js?v=202609161039"></script>
+<script defer src="assets/vitrine.js?v=202609161039"></script>
+<script defer src="assets/preise.js?v=202609161039"></script>
+<script defer src="assets/planer.js?v=202609161039"></script>
+<script defer src="assets/teilen.js?v=202609161039"></script>
+<script defer src="assets/hilfe.js?v=202609161039"></script>
+<script defer src="assets/detail.js?v=202609161039"></script>
+<script defer src="assets/artwork.js?v=202609161039"></script>
+<script defer src="assets/passend.js?v=202609161039"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609151647"></script>
+<script defer src="assets/markt.js?v=202609161039"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609151647"></script>
+<script defer src="assets/sammlung.js?v=202609161039"></script>
 </body>
 </html>

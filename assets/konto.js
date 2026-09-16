@@ -5,6 +5,9 @@
 async function boot() {
   // App-Hülle und zuletzt geöffnete Binder auch ohne Netz (assets/sw.js, Wurzelpfad /sw.js)
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+  // Auf dem iPhone kommt nie ein beforeinstallprompt — der Hinweis muss von sich aus
+  // nachsehen, sonst erführe dort niemand, dass es die App zum Anlegen gibt.
+  setTimeout(installBanner, 1200);
   // Direkt nach einem Neustart oder aus dem Service-Worker-Cache schlägt der erste Aufruf
   // gelegentlich fehl – ein zweiter Versuch nach 1,5 s, bevor die App aufgibt.
   try { S.meta = await api('api/meta'); } catch (e) {
@@ -320,12 +323,99 @@ function kontoMenue() {
     <div class="trenn"></div>
     <button onclick="startOeffnen()">${t('start')}</button>
     <button onclick="profilOeffnen()">${t('profil')}</button>
+    ${installiert() ? '' : `<button onclick="installDialog()">${t('inst_menue')}</button>`}
     <div class="trenn"></div>
     <button onclick="upgradeOeffnen('')">${u.plan === 'free' ? t('upgrade') : t('credits_kaufen')}</button>
     ${u.plan !== 'free' && u.plan !== 'lifetime' ? `<button onclick="aboVerwalten()">${t('abo_verwalten')}</button>` : ''}
     <button onclick="window.open('recht','_blank')">${t('recht_link')}</button>
     <button onclick="window.open('/kuendigen','_blank')">${t('kuend_link')}</button>
     <button onclick="abmelden()">${t('abmelden')}</button>`;
+}
+
+// ---------- App installieren ----------
+// Binderplan ist eine Progressive Web App: Manifest (/manifest.webmanifest), Service Worker
+// (assets/sw.js) und Symbole liegen seit Langem bereit — nur *angeboten* hat die App die
+// Installation nie, und von allein fragt kein Browser mehr danach. Chrome hebt den Dialog
+// hinter `beforeinstallprompt` auf, den man abfangen und später selbst auslösen muss;
+// Safari auf dem iPhone kennt das Ereignis gar nicht und kann nur über „Teilen →
+// Zum Home-Bildschirm", also über eine Anleitung.
+let installPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();                 // sonst zeigt Chrome seine eigene schmale Leiste
+  installPrompt = e;
+  kontoAnzeigen();                    // Menüeintrag kann jetzt erscheinen
+  installBanner();
+});
+
+window.addEventListener('appinstalled', () => {
+  installPrompt = null;
+  try { localStorage.setItem('bp_inst_weg', '1'); } catch (e) {}
+  $('install-banner').classList.add('hidden');
+  toast(t('inst_fertig'));
+});
+
+/** Läuft die Seite schon als installierte App? `standalone` deckt Android und den Desktop
+ *  ab, `navigator.standalone` ist Safaris eigener Weg auf dem iPhone. */
+function installiert() {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.matchMedia('(display-mode: minimal-ui)').matches
+      || navigator.standalone === true;
+  } catch (e) { return false; }
+}
+
+function istIOS() {
+  const ua = navigator.userAgent || '';
+  // iPadOS meldet sich seit Version 13 als Macintosh — der Touchscreen verrät es trotzdem.
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+function istSafari() {
+  const ua = navigator.userAgent || '';
+  return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Chrome|Chromium|Android/.test(ua);
+}
+
+function installDialog() {
+  const fertig = installiert();
+  // Drei Zustände, und nur einer ist je sichtbar: schon installiert, nativer Knopf da,
+  // oder Anleitung — für iOS die Safari-Schritte, sonst die Android-Schritte als Rückfall
+  // (Firefox und ältere Chrome-Fassungen liefern kein beforeinstallprompt).
+  $('inst-fertig').classList.toggle('hidden', !fertig);
+  $('inst-knopf').classList.toggle('hidden', fertig || !installPrompt);
+  $('inst-ios').classList.toggle('hidden', fertig || !!installPrompt || !istIOS());
+  $('inst-android').classList.toggle('hidden', fertig || !!installPrompt || istIOS());
+  modalOeffnen('modal-install');
+}
+
+async function installStarten() {
+  if (!installPrompt) return;
+  const p = installPrompt;
+  installPrompt = null;               // ein Prompt lässt sich nur einmal zeigen
+  try {
+    p.prompt();
+    await p.userChoice;
+  } catch (e) {}
+  modalSchliessen();
+  kontoAnzeigen();
+}
+
+function installBannerWeg() {
+  try { localStorage.setItem('bp_inst_weg', '1'); } catch (e) {}
+  $('install-banner').classList.add('hidden');
+}
+
+/** Der Hinweis erscheint nur dort, wo er etwas nützt: auf einem Touch-Gerät, im Browser
+ *  (nicht in der installierten App), und nur, wenn der Nutzer ihn nicht schon weggedrückt
+ *  hat. Auf dem iPhone auch ohne `beforeinstallprompt` — dort ist die Anleitung der
+ *  einzige Weg, und ohne Hinweis findet ihn niemand. */
+function installBanner() {
+  const el = $('install-banner');
+  if (!el) return;
+  let weg = false;
+  try { weg = localStorage.getItem('bp_inst_weg') === '1'; } catch (e) {}
+  const handy = (navigator.maxTouchPoints || 0) > 0 && Math.min(screen.width, screen.height) < 820;
+  const moeglich = !!installPrompt || (istIOS() && istSafari());
+  el.classList.toggle('hidden', weg || installiert() || !handy || !moeglich);
 }
 
 let authModus = 'login';
