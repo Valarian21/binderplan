@@ -383,38 +383,70 @@ def entfernen():
     print(f"{n} Karten und das Set {SET_ID} entfernt.")
 
 
-def quellen_pruefen():
-    """Haben TCGdex oder pokemontcg.io das Set inzwischen? Dann ist Handarbeit vorbei.
+QUELLEN = (("TCGdex (en)", "https://api.tcgdex.net/v2/en/sets"),
+           ("TCGdex (de)", "https://api.tcgdex.net/v2/de/sets"),
+           ("pokemontcg.io", "https://api.pokemontcg.io/v2/sets?pageSize=250"))
 
-    Danach: --entfernen, anschließend den regulären Sync laufen lassen
-    (POST /api/admin/sync?key=…). Erst löschen, dann syncen — sonst stünden die
-    Karten unter zwei Nummernkreisen doppelt im Katalog."""
-    treffer = False
-    for name, url, feld in (
-            ("TCGdex (en)", "https://api.tcgdex.net/v2/en/sets", "name"),
-            ("TCGdex (de)", "https://api.tcgdex.net/v2/de/sets", "name"),
-            ("pokemontcg.io", "https://api.pokemontcg.io/v2/sets?pageSize=250", "name")):
+
+def quelle_befragen():
+    """Führen TCGdex oder pokemontcg.io das 30th-Set inzwischen? Still, ohne Ausgabe.
+
+    Rückgabe: {Quellenname: [(Set-ID, Name), …] oder None bei Fehler}. `None` ist wichtig
+    und nicht dasselbe wie eine leere Liste — pokemontcg.io fällt zu etwa zwei Dritteln
+    aus, und „nicht erreichbar" darf nie als „das Set gibt es nicht" durchgehen."""
+    ergebnis = {}
+    for name, url in QUELLEN:
         try:
             daten = json.loads(_holen(url))
             liste = daten.get("data", daten) if isinstance(daten, dict) else daten
-            gefunden = [s for s in liste
-                        if "30th" in (s.get(feld) or "") or "Celebration" in (s.get(feld) or "")]
-            gefunden = [s for s in gefunden if "2021" not in str(s) and s.get("id") not in ("cel25", "cel25c", "cel25cc")]
-            print(f"{name}: {[ (s.get('id'), s.get(feld)) for s in gefunden ] or 'noch nicht da'}")
-            treffer = treffer or bool(gefunden)
+            gefunden = [(s.get("id"), s.get("name")) for s in liste
+                        if ("30th" in (s.get("name") or "") or "Celebration" in (s.get("name") or ""))
+                        and "2021" not in str(s)
+                        and (s.get("id") or "") not in ("cel25", "cel25c", "cel25cc")
+                        and (s.get("id") or "") != SET_ID]
+            ergebnis[name] = gefunden
         except Exception as exc:
-            print(f"{name}: nicht erreichbar ({exc})")
+            print(f"  {name}: nicht erreichbar ({exc})") if os.environ.get("BP_LAUT") else None
+            ergebnis[name] = None
+    return ergebnis
+
+
+def quellen_pruefen():
+    """Haben TCGdex oder pokemontcg.io das Set inzwischen? Dann ist die Handarbeit vorbei.
+
+    Danach **nicht** `--entfernen` — das ist der grobe Weg und verliert die Verweise der
+    Kunden (Binderfächer, Kunstseiten, Sammlung). Der richtige Weg ist `--ersetzen`,
+    der den Sync selbst anstößt und die Vorab-IDs auf die echten umbiegt."""
+    treffer = False
+    for name, gefunden in quelle_befragen().items():
+        if gefunden is None:
+            print(f"{name}: nicht erreichbar")
+            continue
+        print(f"{name}: {gefunden or 'noch nicht da'}")
+        treffer = treffer or bool(gefunden)
     if treffer:
-        print("\n→ Vorab-Satz kann weg: scripts/vorab_30th.py --entfernen, dann Sync starten.")
+        print("\n→ Jetzt ablösen: scripts/vorab_30th.py --ersetzen  (dann --ersetzen --wirklich).")
     return treffer
 
 
 # --- Ablösung durch den echten Katalog -------------------------------------
 
-VERWEISE = (("sammlung", "card_id"), ("wants", "card_id"), ("card_prices", "card_id"),
-            ("price_history", "card_id"), ("card_hashes", "card_id"),
-            ("card_art_tags", "card_id"), ("card_art_analysis", "card_id"),
-            ("card_art_aufdrucke", "card_id"))
+# Kundendaten: was der Nutzer selbst angelegt hat. Die werden immer umgebogen, notfalls
+# über eine bestehende Zeile hinweg — bei einem Widerspruch gewinnt der Kunde.
+VERWEISE_KUNDE = (("sammlung", "card_id"), ("wants", "card_id"))
+# Abgeleitetes gehört dem Katalog (Preise, Bildmotiv-Index, Farbmessung). Steht beim echten
+# Nachfolger schon eine Zeile, ist die frischer als unsere aus den Serebii-Scans gewonnene —
+# dann gewinnt sie, und die Vorab-Zeile fällt weg (UPDATE OR IGNORE, danach DELETE).
+VERWEISE_ABGELEITET = (("card_prices", "card_id"), ("price_history", "card_id"),
+                       ("card_hashes", "card_id"), ("card_palette", "card_id"),
+                       ("card_art_tags", "card_id"), ("card_art_fts", "card_id"),
+                       ("card_art_analysis", "card_id"), ("card_art_aufdrucke", "card_id"))
+VERWEISE = VERWEISE_KUNDE + VERWEISE_ABGELEITET
+# Karten-IDs, die in einer JSON-Spalte stecken statt in einer eigenen Zeile. Beide tragen
+# Kundenarbeit: `binders.items` die Fächer des Binders, `artworks.anker` die Karten, aus
+# denen eine Kunstseite gemalt wurde. Ohne diese beiden Stellen zeigten Fächer und
+# Kunstseiten nach der Ablösung auf gelöschte Karten.
+JSON_VERWEISE = (("binders", "items", "Fächer"), ("artworks", "anker", "Kunstseiten"))
 
 
 def verweise_zaehlen(con, praefix=SET_ID + "-"):
@@ -428,10 +460,14 @@ def verweise_zaehlen(con, praefix=SET_ID + "-"):
                 f"SELECT COUNT(*) FROM {tabelle} WHERE {feld} LIKE ?", (praefix + "%",)).fetchone()[0]
         except sqlite3.OperationalError:
             pass
-    zahlen["binders"] = con.execute(
-        "SELECT COUNT(*) FROM binders WHERE items LIKE ?", ("%" + praefix + "%",)).fetchone()[0]
+    for tabelle, feld, _ in JSON_VERWEISE:
+        zahlen[tabelle] = con.execute(
+            f"SELECT COUNT(*) FROM {tabelle} WHERE {feld} LIKE ?",
+            ("%" + praefix + "%",)).fetchone()[0]
     zahlen["preis_alarme"] = con.execute(
         "SELECT COUNT(*) FROM preis_alarme WHERE ziel LIKE ?", (praefix + "%",)).fetchone()[0]
+    zahlen["profile (Avatar)"] = con.execute(
+        "SELECT COUNT(*) FROM profile WHERE avatar_card LIKE ?", (praefix + "%",)).fetchone()[0]
     return {k: v for k, v in zahlen.items() if v}
 
 
@@ -481,7 +517,15 @@ def echte_karten(con, set_ids):
 def zuordnung_bauen(alt, neu):
     """alt -> neu. Erst über die aufgedruckte Nummer (deckt 001–158 ab), dann über
     Name + KP (für die Klassische Kollektion, die bei uns H1–H30 heißt und im echten
-    Katalog mit Sicherheit anders nummeriert ist)."""
+    Katalog mit Sicherheit anders nummeriert ist).
+
+    Eiserne Regel: **jede echte Karte wird höchstens einmal vergeben.** Bewerben sich
+    mehrere Vorab-Karten um dieselbe, bleiben alle offen und damit als Karteileiche
+    stehen. Das ist nicht theoretisch — die drei „RGB Mew", die der Wächter von Serebii
+    aufgelesen hat, heißen alle „Mew" mit 60 KP und trugen sonst alle drei die Nummer der
+    einen echten Mew-Karte davon. Drei Binderfächer hätten danach auf dieselbe Karte
+    gezeigt, und in der Sammlung hätte `UPDATE OR REPLACE` zwei Posten gelöscht.
+    Eine Karteileiche ist immer besser als eine falsche Zuordnung."""
 
     nach_nummer = {}
     nach_name = {}
@@ -489,75 +533,139 @@ def zuordnung_bauen(alt, neu):
         nach_nummer.setdefault(_nummer(n["local_id"]), []).append(n)
         nach_name.setdefault(((n["name_en"] or "").lower(), n["hp"]), []).append(n)
 
-    karte, mehrdeutig = {}, {}
+    karte = {}
+    vergeben = set()          # echte IDs, die schon einen Vorbesitzer haben
+    rest = []
+
+    # Runde 1: die aufgedruckte Nummer. Eindeutig und exklusiv — wer hier trifft, hat den
+    # Platz sicher, auch wenn später jemand über den Namen danach greift.
     for a in alt:
         kandidaten = nach_nummer.get(_nummer(a["local_id"]), [])
-        if len(kandidaten) != 1:
-            kandidaten = nach_name.get(((a["name_en"] or "").lower(), a["hp"]), [])
-        if len(kandidaten) == 1:
+        if len(kandidaten) == 1 and kandidaten[0]["id"] not in vergeben:
             if kandidaten[0]["id"] != a["id"]:
                 karte[a["id"]] = kandidaten[0]["id"]
+            vergeben.add(kandidaten[0]["id"])
         else:
-            mehrdeutig.setdefault(((a["name_en"] or "").lower(), a["hp"]), []).append(a)
+            rest.append(a)
 
-    # Gleicher Name, gleiche KP, mehrfach im Set (im Vorab-Satz z. B. „Darkrai & Cresselia"
-    # zweimal): wenn drüben genauso viele stehen, paaren wir sie in Nummernreihenfolge.
-    # Sonst bleiben sie offen — eine falsche Zuordnung wäre schlimmer als eine Karteileiche.
+    # Runde 2: Name + KP, aber nur auf noch freie Plätze. Bewerben sich mehrere um
+    # denselben freien Platz, bekommt ihn keiner.
+    bewerber = {}
+    for a in rest:
+        frei = [n for n in nach_name.get(((a["name_en"] or "").lower(), a["hp"]), [])
+                if n["id"] not in vergeben]
+        bewerber.setdefault(tuple(sorted(n["id"] for n in frei)), []).append((a, frei))
+
     offen = []
-    for schluessel, gruppe in mehrdeutig.items():
-        gegenueber = [n for n in nach_name.get(schluessel, []) if n["id"] not in karte.values()]
-        if len(gegenueber) == len(gruppe):
-            for a, n in zip(sorted(gruppe, key=lambda x: _nummer(x["local_id"])),
-                            sorted(gegenueber, key=lambda x: _nummer(x["local_id"]))):
+    for _, gruppe in bewerber.items():
+        frei = gruppe[0][1]
+        gleiche = [a for a, _ in gruppe]
+        if len(frei) == len(gleiche):
+            # Gleich viele auf beiden Seiten: paarweise in Nummernreihenfolge. Deckt den
+            # Fall „dieselbe Karte zweimal im Set" ab (z. B. „Darkrai & Cresselia").
+            for a, n in zip(sorted(gleiche, key=lambda x: _nummer(x["local_id"])),
+                            sorted(frei, key=lambda x: _nummer(x["local_id"]))):
                 if n["id"] != a["id"]:
                     karte[a["id"]] = n["id"]
+                vergeben.add(n["id"])
         else:
-            offen.extend(gruppe)
+            offen.extend(gleiche)
     return karte, offen
 
 
 def verweise_umschreiben(con, karte, wirklich):
-    """Sammlung, Wunschliste, Binderfächer, Alarme auf die neuen IDs umbiegen."""
+    """Alles, was auf eine Vorab-ID zeigt, auf die neue ID umbiegen.
+
+    Drei Sorten, die unterschiedlich behandelt werden müssen:
+
+    * **Kundendaten** (Sammlung, Wunschliste) — `UPDATE OR REPLACE`: gäbe es drüben schon
+      eine Zeile, gewinnt der Kunde. Praktisch kann das nicht auftreten, solange das echte
+      Set neu ist, aber ein Posten des Kunden darf nie stillschweigend verschwinden.
+    * **Abgeleitetes** (Preise, Bildmotiv-Index, Farben) — `UPDATE OR IGNORE`, dann die
+      Vorab-Zeile löschen: hat der Katalog schon eigene Werte, sind die besser als unsere.
+    * **JSON-Spalten** (`binders.items`, `artworks.anker`) — Zeile für Zeile aufmachen und
+      jede Karten-ID darin ersetzen. Das sind die beiden Stellen, an denen Kundenarbeit
+      steckt, die kein `UPDATE` erreicht.
+    """
     geaendert = {}
-    for tabelle, feld in VERWEISE:
+    for tabelle, feld in VERWEISE_KUNDE:
         n = 0
         for alt, neu in karte.items():
-            try:
-                r = con.execute(f"UPDATE OR REPLACE {tabelle} SET {feld} = ? WHERE {feld} = ?",
-                                (neu, alt)) if wirklich else None
-                n += r.rowcount if r else con.execute(
-                    f"SELECT COUNT(*) FROM {tabelle} WHERE {feld} = ?", (alt,)).fetchone()[0]
-            except sqlite3.OperationalError:
-                break
+            if wirklich:
+                n += con.execute(f"UPDATE OR REPLACE {tabelle} SET {feld} = ? WHERE {feld} = ?",
+                                 (neu, alt)).rowcount
+            else:
+                n += con.execute(f"SELECT COUNT(*) FROM {tabelle} WHERE {feld} = ?",
+                                 (alt,)).fetchone()[0]
         if n:
             geaendert[tabelle] = n
-    # Binderfächer liegen als JSON-Liste [{"type":"card","id":"…"}] in einer Spalte
-    n = 0
-    for bid, items in con.execute(
-            "SELECT id, items FROM binders WHERE items LIKE ?", ("%" + SET_ID + "-%",)):
+    for tabelle, feld in VERWEISE_ABGELEITET:
+        n = 0
         try:
-            liste = json.loads(items or "[]")
-        except ValueError:
+            for alt, neu in karte.items():
+                if wirklich:
+                    n += con.execute(f"UPDATE OR IGNORE {tabelle} SET {feld} = ? WHERE {feld} = ?",
+                                     (neu, alt)).rowcount
+                    con.execute(f"DELETE FROM {tabelle} WHERE {feld} = ?", (alt,))
+                else:
+                    n += con.execute(f"SELECT COUNT(*) FROM {tabelle} WHERE {feld} = ?",
+                                     (alt,)).fetchone()[0]
+        except sqlite3.OperationalError:
             continue
-        treffer = 0
-        for fach in liste:
-            if isinstance(fach, dict) and fach.get("id") in karte:
-                fach["id"] = karte[fach["id"]]
-                treffer += 1
-        if treffer and wirklich:
-            con.execute("UPDATE binders SET items = ? WHERE id = ?",
-                        (json.dumps(liste, ensure_ascii=False), bid))
-        n += treffer
-    if n:
-        geaendert["binders (Fächer)"] = n
+        if n:
+            geaendert[tabelle] = n
+
+    # Binderfächer liegen als JSON-Liste [{"type":"card","id":"…"}] in einer Spalte,
+    # Kunstseiten-Anker als JSON-Objekt {"<Fach>": "<Karten-ID>"}. Beide Formen hier.
+    for tabelle, feld, wort in JSON_VERWEISE:
+        n = 0
+        for zid, roh in con.execute(
+                f"SELECT id, {feld} FROM {tabelle} WHERE {feld} LIKE ?",
+                ("%" + SET_ID + "-%",)).fetchall():
+            try:
+                daten = json.loads(roh or "null")
+            except ValueError:
+                continue
+            treffer = 0
+            if isinstance(daten, list):          # binders.items
+                for fach in daten:
+                    if isinstance(fach, dict) and fach.get("id") in karte:
+                        fach["id"] = karte[fach["id"]]
+                        treffer += 1
+            elif isinstance(daten, dict):        # artworks.anker
+                for fach, cid in list(daten.items()):
+                    if cid in karte:
+                        daten[fach] = karte[cid]
+                        treffer += 1
+            if treffer and wirklich:
+                con.execute(f"UPDATE {tabelle} SET {feld} = ? WHERE id = ?",
+                            (json.dumps(daten, ensure_ascii=False), zid))
+            n += treffer
+        if n:
+            geaendert[f"{tabelle} ({wort})"] = n
+
     m = 0
     for alt, neu in karte.items():
-        r = con.execute("UPDATE preis_alarme SET ziel = ? WHERE ziel = ?", (neu, alt)) \
-            if wirklich else None
-        m += r.rowcount if r else con.execute(
-            "SELECT COUNT(*) FROM preis_alarme WHERE ziel = ?", (alt,)).fetchone()[0]
+        if wirklich:
+            m += con.execute("UPDATE preis_alarme SET ziel = ? WHERE ziel = ?",
+                             (neu, alt)).rowcount
+        else:
+            m += con.execute("SELECT COUNT(*) FROM preis_alarme WHERE ziel = ?",
+                             (alt,)).fetchone()[0]
     if m:
         geaendert["preis_alarme"] = m
+
+    # Wer eine cel30-Karte als Profilbild gewählt hat, behält sie.
+    a = 0
+    for alt, neu in karte.items():
+        if wirklich:
+            a += con.execute("UPDATE profile SET avatar_card = ? WHERE avatar_card = ?",
+                             (neu, alt)).rowcount
+        else:
+            a += con.execute("SELECT COUNT(*) FROM profile WHERE avatar_card = ?",
+                             (alt,)).fetchone()[0]
+    if a:
+        geaendert["profile (Avatar)"] = a
     return geaendert
 
 
