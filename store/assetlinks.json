@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.binderplan.twa",
+      "sha256_cert_fingerprints": [
+        "9C:55:31:F2:B5:87:19:1B:0D:06:D2:8C:DF:FB:F7:58:FF:21:86:35:37:B0:36:1B:AD:47:7E:33:4B:C8:0C:20"
+      ]
+    }
+  }
+]

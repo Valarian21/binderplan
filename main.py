@@ -4480,6 +4480,28 @@ def favicon():
     return FileResponse(_app_icon(192), media_type="image/png", headers=IMG_HEADERS)
 
 
+@app.get("/.well-known/assetlinks.json")
+def assetlinks():
+    """Digital Asset Links — der Beweis, dass binderplan.app und die Android-App
+    zusammengehören.
+
+    Die Play-Fassung ist eine Trusted Web Activity, also eine Hülle um diese Seite. Chrome
+    prüft beim Start, ob die Domain die App-Signatur hier bestätigt. Fehlt die Datei oder
+    passt ein Fingerabdruck nicht, startet die App zwar, zeigt aber die Adressleiste des
+    Browsers über der Seite — sichtbar kaputt, ohne Fehlermeldung.
+
+    Der Inhalt liegt als Datei in `store/assetlinks.json`, nicht hier im Code: gebraucht
+    werden **zwei** Fingerabdrücke, und den zweiten gibt es erst nach dem ersten Upload.
+    Google signiert die ausgelieferte App mit einem eigenen Schlüssel (Play App Signing);
+    unser Upload-Schlüssel ist nur die Eintrittskarte. Beide müssen in der Liste stehen,
+    sonst funktioniert entweder die selbst gebaute Fassung nicht oder die aus dem Store."""
+    datei = BASE / "store" / "assetlinks.json"
+    if not datei.exists():
+        raise HTTPException(404)
+    return FileResponse(datei, media_type="application/json",
+                        headers={"Cache-Control": "public, max-age=300"})
+
+
 @app.get("/manifest.webmanifest")
 def manifest(request: Request):
     """Der Steckbrief, aus dem Android und iOS die installierte App bauen.
