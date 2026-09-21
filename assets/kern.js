@@ -1731,6 +1731,21 @@ async function api(pfad, opts) {
   return r.json();
 }
 
+/* Unbehandelte Fehler an den Server melden (steht dann im Dienstlog). Ohne das war ein
+   „geht nicht" auf einem fremden Gerät nicht zu fassen. Höchstens zehn je Seitenaufruf. */
+let FEHLER_GEMELDET = 0;
+function fehlerMelden(text, wo) {
+  if (FEHLER_GEMELDET++ >= 10) return;
+  try {
+    const rumpf = JSON.stringify({ text: String(text).slice(0, 400), wo: String(wo || '').slice(0, 160),
+                                   seite: location.pathname + location.hash, breite: innerWidth });
+    if (navigator.sendBeacon) navigator.sendBeacon('/api/fehler', new Blob([rumpf], { type: 'application/json' }));
+    else fetch('/api/fehler', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf, keepalive: true }).catch(() => {});
+  } catch (e) { /* Melden darf nie selbst stören */ }
+}
+window.addEventListener('error', (ev) => fehlerMelden(ev.message || ev.error, (ev.filename || '').split('/').pop() + ':' + ev.lineno));
+window.addEventListener('unhandledrejection', (ev) => { const r = ev.reason; fehlerMelden((r && (r.stack || r.message)) || r, 'promise'); });
+
 /** Sitzung ungültig: Anmeldung überall zurücknehmen, damit Kopfzeile und Ansichten dasselbe sagen. */
 function sitzungWeg() {
   S.user = null;

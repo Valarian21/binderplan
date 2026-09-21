@@ -370,6 +370,34 @@ async def _zugriffsprotokoll(request: Request, call_next):
     return antwort
 
 
+# Fehler aus dem Browser (21.09.2026): „Drag & Drop geht nicht" ließ sich in keiner Nachstellung
+# fassen, weil der Fehler nur in Marcels Browser auftrat — und dessen Konsole liest niemand.
+# Die App schickt unbehandelte Fehler hierher; sie stehen dann als WARNING im Dienstlog.
+# Höchstens 30 je Minute und Adresse, ohne Konto, ohne Kennung.
+_FEHLER_TAKT = {}
+
+
+@app.post("/api/fehler")
+async def browser_fehler(request: Request):
+    ip = (request.headers.get("x-forwarded-for") or request.client.host or "?").split(",")[0].strip()
+    minute = int(time.time() // 60)
+    n = _FEHLER_TAKT.get((ip, minute), 0)
+    _FEHLER_TAKT[(ip, minute)] = n + 1
+    for k in [k for k in _FEHLER_TAKT if k[1] < minute - 2]:
+        _FEHLER_TAKT.pop(k, None)
+    if n >= 30:
+        return {"ok": False}
+    try:
+        d = await request.json()
+    except Exception:
+        return {"ok": False}
+    text = str(d.get("text") or "")[:400]
+    wo = str(d.get("wo") or "")[:160]
+    ua = (request.headers.get("user-agent") or "")[:120]
+    log.warning("BROWSER-FEHLER %s @ %s | %s | %s", text, wo, str(d.get("seite") or "")[:80], ua)
+    return {"ok": True}
+
+
 
 def get_db():
     con = sqlite3.connect(DB, timeout=30)
