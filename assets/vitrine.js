@@ -405,16 +405,30 @@ async function kunstInBinder(id) {
 function kunstEinsetzen(d) {
   if (!S.binder) return toast(t('vt_k_kein_binder'));
   if (d.layout && d.layout !== S.binder.layout) return toast(t('aw_layout_anders'));
-  merken('kunst');
   const [cols, rows] = LAYOUTS[d.layout || S.binder.layout] || [3, 3];
   const pp = cols * rows;
-  while (S.binder.items.length % pp !== 0) S.binder.items.push({ type: 'empty' });
-  const start = S.binder.items.length;
+  let start;
+  const fest = seitenFest();
+  if (fest) {
+    // Feste Seitenzahl: die Kunstseite braucht eine ganz leere Seite — sonst Rückfrage.
+    const leer = seitenPlan().find((p) => p.laenge === pp && S.binder.items.slice(p.start, p.start + p.laenge).every((x) => !x || x.type === 'empty'));
+    if (leer) start = leer.start;
+    else {
+      if (!confirm(t('sf_voll_frage').replace('{n}', pp).replace('{f}', 0).replace('{a}', fest).replace('{s}', fest + 1))) return;
+      S.binder.options.seitenFest = fest + 1;
+      while (S.binder.items.length % pp !== 0) S.binder.items.push({ type: 'empty' });
+      start = S.binder.items.length;
+    }
+  } else {
+    while (S.binder.items.length % pp !== 0) S.binder.items.push({ type: 'empty' });
+    start = S.binder.items.length;
+  }
+  merken('kunst');
   const seite = Math.floor(start / pp);
   for (let i = 0; i < pp; i++) {
     const anker = d.anker && d.anker[String(i)];
-    S.binder.items.push(anker ? { type: 'card', id: anker }
-                              : { type: 'art', artwork: d.artwork, slot: i, layout: d.layout });
+    const fach = anker ? { type: 'card', id: anker } : { type: 'art', artwork: d.artwork, slot: i, layout: d.layout };
+    if (start + i < S.binder.items.length) S.binder.items[start + i] = fach; else S.binder.items.push(fach);
   }
   S.seite = seite;
   speichern();
@@ -782,9 +796,7 @@ async function fehlendeUebernehmen() {
   const ziel = await zielBinder();
   if (!ziel) return uebernehmenAlsNeu(fehlen, t('vt_kopie_name').replace('{n}', S.binder.name));
   if (!confirm(t('vt_seite_frage').replace('{n}', fehlen.length).replace('{b}', ziel.name))) return;
-  const pp = LAYOUTS[ziel.layout] ? (LAYOUTS[ziel.layout][0] * LAYOUTS[ziel.layout][1]) : 9;
-  while (ziel.items.length % pp) ziel.items.push({ type: 'empty' });
-  ziel.items.push(...fehlen);
+  kartenEinlegen(fehlen, { binder: ziel, abNaechsterSeite: true, fragen: false });
   try {
     await api('api/binders/' + ziel.id, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ziel),
@@ -837,8 +849,7 @@ async function seiteUebernehmen() {
   const ziel = await zielBinder();
   if (!ziel) return uebernehmenAlsNeu(teil, t('vt_kopie_name').replace('{n}', S.binder.name));
   if (!confirm(t('vt_seite_frage').replace('{n}', teil.length).replace('{b}', ziel.name))) return;
-  while (ziel.items.length % pp) ziel.items.push({ type: 'empty' });
-  ziel.items.push(...teil.map(fremdesFach));
+  kartenEinlegen(teil.map(fremdesFach), { binder: ziel, abNaechsterSeite: true, fragen: false });
   try {
     await api('api/binders/' + ziel.id, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ziel),

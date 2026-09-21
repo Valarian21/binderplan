@@ -16,7 +16,8 @@
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var imgUrl = function (id) { return '/api/img/card/' + encodeURIComponent(id) + '?lang=' + (/^[A-Z]/.test(id) ? 'en' : lang); };
-  var LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
+  var LAYOUTS = {};
+  for (var _c = 1; _c <= 5; _c++) for (var _r = 1; _r <= 5; _r++) LAYOUTS[_c + 'x' + _r] = [_c, _r];
 
   /* Ein Fach: Karte, Ausschnitt einer Kunstseite, Pokédex-Platz oder leer. Die Fugenrechnung
      ist dieselbe wie in der App: 4 Einheiten Fuge auf 63 × 88 Kartenmaß. */

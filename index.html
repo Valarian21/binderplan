@@ -14,8 +14,8 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <meta name="theme-color" content="#2A4B9B">
-<link rel="stylesheet" href="assets/tokens.css?v=202609161508">
-<link rel="stylesheet" href="assets/app.css?v=202609161508">
+<link rel="stylesheet" href="assets/tokens.css?v=202609211412">
+<link rel="stylesheet" href="assets/app.css?v=202609211412">
 </head>
 <body>
 <div id="app">
@@ -49,6 +49,13 @@
       <button id="seg-vitrine" onclick="ansicht('vitrine')" data-i18n="vitrine">Vitrine</button>
     </div>
     <div style="flex:1"></div>
+    <!-- „Neuer Binder" stand nur am Ende der Binderliste und als blasser Link im Kopf der
+         Startseite: wer zwölf Binder hat, scrollt daran vorbei. Hier liegt er in jeder
+         Ansicht an derselben Stelle; unter 900 px bleibt nur das „+". -->
+    <button class="btn neu-binder" id="btn-neu-binder" onclick="vorlagenOeffnen()" title="Neuen Binder anlegen" data-i18n-title="vl_t" aria-label="Neuen Binder anlegen">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+      <span class="nb-text" data-i18n="st_neu">Neuer Binder</span>
+    </button>
     <div class="menuwrap">
       <button class="btn sekundaer" style="font-size: var(--t-m);padding:7px 12px" onclick="kontoMenue()" id="btn-konto" data-i18n="anmelden">Anmelden</button>
       <div class="menu hidden" id="menu-konto"></div>
@@ -107,40 +114,17 @@
         <div class="f-lbl" data-i18n="f_suche">Suche</div>
         <input type="search" class="feld" id="f-suche" placeholder="Karte oder Pokémon …" data-i18n-ph="ph_suche">
       </div>
-      <!-- Die Reihenfolge folgt der Sache: erst der Markt (westlich/Japan), dann die
-           Sprache, dann die Freitextsuche — und danach von oben nach unten immer enger.
-           Die Ära steht über dem Set, weil sie ihm übergeordnet ist: sie *filtert* die
-           Set-Liste (siehe baueSetSelect). Vorher stand sie unter „Erweiterte Filter",
-           also hinter dem, was sie einschränkt. -->
-      <!-- Die Ära ist kein eigenes Feld mehr: der Set-Wähler gruppiert nach Ära, und ein
-           Klick auf den Gruppenkopf wählt die ganze Ära. Das Feld bleibt versteckt, weil die
-           Filterlogik (filter.serie) weiter über seinen Wert läuft. -->
-      <div class="hidden">
-        <div class="f-lbl" data-i18n="f_aera">Ära</div>
-        <select class="feld" id="f-serie"></select>
-      </div>
+      <!-- Ära, Set, Pokémon und Seltenheit stehen seit 21.09.2026 nicht mehr hier, sondern
+           als Leiste direkt über den Treffern (#f-schnell). Es sind die vier Filter, nach
+           denen fast jede Suche geht — sie lagen zwei Klicks tief („Karten suchen" →
+           „Filter"). In diesem Panel bleibt, was man seltener braucht; der Filter-Knopf
+           zählt deshalb auch nur noch die erweiterten Filter.
+           Die Reihenfolge folgt weiter der Sache: erst der Markt (westlich/Japan), dann die
+           Sprache, dann die Freitextsuche, dann die Schnellauswahl. -->
       <div>
-        <div class="f-lbl">Set</div>
-        <div class="menuwrap" style="width:100%">
-          <button class="feld setwahl" id="f-set-btn" onclick="setWahlToggle()"><span class="setwahl-inhalt" id="f-set-lbl"></span><span class="bw-caret">▾</span></button>
-          <div class="menu links hidden setpop" id="set-popover">
-            <input type="search" class="feld" id="set-popover-suche" placeholder="Set suchen …" data-i18n-ph="ph_set" oninput="zeichneSetWahl()" onclick="event.stopPropagation()">
-            <div class="setliste" id="set-popover-liste"></div>
-          </div>
-        </div>
-        <select class="feld hidden" id="f-set"></select>
+        <div class="f-lbl" data-i18n="f_preset">Schnellauswahl</div>
+        <div class="f-chips" id="f-presets" style="gap:4px"></div>
       </div>
-      <div class="f-zweispaltig">
-        <div>
-          <div class="f-lbl" data-i18n="f_pokemon">Pokémon</div>
-          <input class="feld" id="f-dex" list="dex-namen" placeholder="z. B. Glurak" data-i18n-ph="ph_dex">
-          <datalist id="dex-namen"></datalist>
-        </div>
-        <div><div class="f-lbl" data-i18n="f_rarity">Seltenheit</div><select class="feld" id="f-rgroup-select"></select><div class="hidden" id="f-rgroup"></div></div>
-      </div>
-      <!-- Was gerade filtert, steht hier als Chip und lässt sich einzeln wegnehmen. Vorher
-           musste man alle zwölf Felder durchsehen, um zu wissen, warum nur acht Karten kommen. -->
-      <div class="f-aktiv" id="f-aktiv"></div>
       <button class="btn sekundaer f-mehr" id="f-art-btn" onclick="artFilterToggle()"><span data-i18n="f_art_motiv">Bildmotiv</span> <span id="f-art-zahl"></span> <span id="f-art-caret">▾</span></button>
       <div id="f-art-box" class="hidden f-mehr-box">
         <div class="f-motiv-schnell" id="f-motiv-schnell"></div>
@@ -227,9 +211,35 @@
           <span data-i18n="m_filter">Filter</span><span id="filter-zahl-mobil"></span>
         </button>
       </div>
+      <!-- Die vier Filter, nach denen fast jede Suche geht, direkt über der Trefferliste:
+           Ära, Set, Pokémon, Seltenheit. Es sind dieselben Elemente wie früher im Panel —
+           verschoben, nicht verdoppelt, damit es weiter genau einen Zustand je Filter gibt.
+           Die Ära filtert dabei die Set-Liste (siehe baueSetSelect), deshalb steht sie
+           davor. -->
+      <div class="f-schnell" id="f-schnell">
+        <div><div class="fs-lbl" data-i18n="f_aera">Ära</div>
+          <select class="feld" id="f-serie" aria-label="Ära"></select></div>
+        <div><div class="fs-lbl">Set</div>
+          <div class="menuwrap">
+            <button class="feld setwahl" id="f-set-btn" onclick="setWahlToggle()"><span class="setwahl-inhalt" id="f-set-lbl"></span><span class="bw-caret">▾</span></button>
+            <div class="menu links hidden setpop" id="set-popover">
+              <input type="search" class="feld" id="set-popover-suche" placeholder="Set suchen …" data-i18n-ph="ph_set" oninput="zeichneSetWahl()" onclick="event.stopPropagation()">
+              <div class="setliste" id="set-popover-liste"></div>
+            </div>
+          </div>
+          <select class="feld hidden" id="f-set"></select></div>
+        <div><div class="fs-lbl" data-i18n="f_pokemon">Pokémon</div>
+          <input class="feld" id="f-dex" list="dex-namen" placeholder="Pokémon …" data-i18n-ph="ph_pokemon" aria-label="Pokémon">
+          <datalist id="dex-namen"></datalist></div>
+        <div><div class="fs-lbl" data-i18n="f_rarity">Seltenheit</div>
+          <select class="feld" id="f-rgroup-select" aria-label="Seltenheit"></select>
+          <div class="hidden" id="f-rgroup"></div></div>
+      </div>
+      <!-- Was sonst noch filtert (Kartenart, Typ, Jahr, Motiv …), steht hier als Chip und
+           lässt sich einzeln wegnehmen — vorher nur im Panel, also nur im geöffneten Filter. -->
+      <div class="f-aktiv" id="f-aktiv"></div>
       <div class="kopfzeile">
         <span id="erg-anzahl">–</span>
-        <div class="f-chips" id="f-presets" style="gap:4px"></div>
         <div style="flex:1"></div>
         <!-- Sortierung stand im eingeklappten Block „Erweiterte Filter", die Richtung dahinter
              als Kästchen. „Neueste zuerst" waren drei Klicks, wenn man wusste, wo. Jetzt ein
@@ -263,11 +273,12 @@
       <div class="menu links hidden" id="menu-bw">
         <div class="bw-edit"><svg class="ic stift" width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13.2 3.8 3 3L7.6 15.4l-3.6.6.6-3.6z"/></svg><input class="bindername" id="wb-name" placeholder="Name des Binders" data-i18n-ph="ph_bindername" onclick="event.stopPropagation()"><span id="wb-status"></span></div>
         <div class="trenn"></div>
+        <!-- Über der Liste, nicht darunter: mit 20 Bindern scrollt sie, und der Eintrag
+             darunter war nur nach dem Scrollen zu sehen. -->
+        <button class="bw-neu" onclick="vorlagenOeffnen()"><span aria-hidden="true">+</span><span data-i18n="vl_neu">Neuen Binder anlegen …</span></button>
+        <div class="trenn"></div>
         <div class="menu-lbl" data-i18n="meine">Meine Binder</div>
         <div class="bw-liste" id="bw-liste"></div>
-        <div class="trenn"></div>
-        <div class="trenn"></div>
-        <button onclick="vorlagenOeffnen()" data-i18n="vl_neu">Neuen Binder anlegen …</button>
       </div>
     </div>
         <div class="bp-stats" id="wb-fortschritt"></div>
@@ -284,8 +295,10 @@
           </div>
           <button class="btn sekundaer nur-edit zieh-btn" id="wb-ziehmodus" style="font-size: var(--t-s);padding:5px 10px" onclick="ziehModusUmschalten()">Tauschen</button>
           <label class="schalter" title="Cardmarket-Trendpreise in Euro einblenden" data-i18n-title="preis_t"><input type="checkbox" id="preis-toggle" onchange="preiseUmschalten()"><span data-i18n="preise">Preise</span></label>
-          <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 10px" onclick="sucheLadeToggle()" id="btn-suche-lade">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
+          <!-- Der Weg zu den Karten ist die wichtigste Handlung im Binder — er stand als
+               grauer Knopf zwischen Preisen und Drucken (21.09.2026). -->
+          <button class="btn" style="font-size: var(--t-m);padding:7px 14px" onclick="sucheLadeToggle()" id="btn-suche-lade">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><line x1="10.5" y1="10.5" x2="14" y2="14"></line></svg>
             <span data-i18n="suche_knopf">Karten suchen</span></button>
           <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 10px" onclick="druckOeffnen()" title="Platzhalter, Checkliste, Kaufliste" data-i18n-title="dr_t">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 6V2h8v4"></path><rect x="2" y="6" width="12" height="6" rx="1"></rect><path d="M4 12h8v3H4z"></path></svg>
@@ -303,6 +316,7 @@
               <button onclick="lueckenSchliessen()" data-i18n="luecken">Lücken schließen</button>
               <button onclick="seiteAuffuellen()" data-i18n="auffuellen">Seite mit leeren Fächern auffüllen</button>
               <button onclick="leereSeite();zeichneBinder()" data-i18n="leere_seite">+ Leere Seite</button>
+              <button onclick="seitenzahlOeffnen()" data-i18n="sz_menu">Seitenzahl festlegen …</button>
               <div class="trenn"></div>
               <label class="schalter" style="margin:6px 12px 8px;display:flex;gap:8px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="wb-wants" onchange="wantsUmschalten(this.checked)">
@@ -599,8 +613,17 @@
     <div class="f-zweispaltig" style="margin-top:12px">
       <div><div class="f-lbl" data-i18n="f_sort">Sortierung</div>
         <select class="feld" id="opt-master-sort"><option value="nummer" data-i18n="s_nummer">Setnummer</option><option value="typ" data-i18n="s_rainbow">Regenbogen (nach Typ)</option><option value="dex" data-i18n="s_dex">Pokédex-Nummer</option></select></div>
-      <div style="display:flex;align-items:flex-end"><label class="schalter"><input type="checkbox" id="opt-reverse"><span data-i18n="m_reverse">Reverse Holos zusätzlich (Karte erscheint doppelt)</span></label></div>
+      <!-- Vorher ein Haken „Reverse Holos zusätzlich". Die Frage, die Sammler wirklich
+           stellen, hat drei Antworten — und „jede Version" ist die Bedeutung, die der
+           Begriff Master Set im Regal hat. -->
+      <div><div class="f-lbl" data-i18n="m_umfang">Umfang</div>
+        <select class="feld" id="opt-master-umfang" onchange="masterUmfangInfo()">
+          <option value="einmal" data-i18n="m_umfang_einmal">Jede Karte einmal</option>
+          <option value="reverse" data-i18n="m_umfang_reverse">Jede Karte + Reverse Holo</option>
+          <option value="alle" data-i18n="m_umfang_alle">Jede Version jeder Karte (Normal, Holo, Reverse, 1st Ed.)</option>
+        </select></div>
     </div>
+    <div class="unter" id="master-umfang-info" style="margin-top:8px"></div>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
       <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
       <button class="btn" onclick="masterErstellen()" data-i18n="anlegen">Binder anlegen</button>
@@ -981,7 +1004,7 @@
 
     <div class="st-abschnitt">
       <div class="st-titel"><h2 data-i18n="st_deine">Deine Binder</h2>
-        <span class="mehr" onclick="vorlagenOeffnen()" data-i18n="st_neu">Neuer Binder</span></div>
+        <button class="btn sekundaer st-neu-knopf" onclick="vorlagenOeffnen()"><span aria-hidden="true">+</span><span data-i18n="st_neu">Neuer Binder</span></button></div>
       <div class="binder-grid" id="st-grid"></div>
       <button class="st-mehr" id="st-mehr-binder" hidden
               onclick="$('st-grid').classList.add('alle');this.hidden=true"></button>
@@ -1123,19 +1146,81 @@
   </div>
 </div>
 
+<!-- Anlege-Assistent: Raster → Seiten → Inhalt. Vorher war das ein Kachelfeld, das direkt
+     in eine Vorlage sprang — das Raster ließ sich erst hinterher im ⋯-Menü ändern, und eine
+     Seitenzahl gab es gar nicht: jede Seite musste einzeln angehängt werden. -->
 <div class="overlay hidden" id="modal-vorlagen">
-  <div class="modal" style="max-width:620px">
+  <div class="modal wiz" style="max-width:640px">
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
     <h3 data-i18n="vl_t">Neuen Binder anlegen</h3>
-    <p class="modal-u" data-i18n="vl_u">Womit soll er gefüllt werden?</p>
-    <div class="onb-tpl vl-gitter">
-      <button onclick="vorlage('master')"><strong data-i18n="tpl_master">Master Set</strong><span data-i18n="tpl_master_u">jede Karte eines Sets</span></button>
-      <button onclick="vorlage('dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
-      <button onclick="vorlage('poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
-      <button onclick="vorlage('illu')"><strong data-i18n="tpl_illu">Künstler</strong><span data-i18n="tpl_illu_u">alle Karten eines Illustrators</span></button>
-      <button onclick="vorlage('foto')"><strong data-i18n="tpl_foto">Aus Fotos</strong><span data-i18n="tpl_foto_u">Seiten abfotografieren, Karten werden erkannt</span></button>
-      <button onclick="vorlage('import')"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
-      <button onclick="vorlage('leer')"><strong data-i18n="m_leer">Leerer Binder</strong><span data-i18n="vl_leer_u">Karte für Karte selbst suchen</span></button>
+    <div class="wiz-schritte" id="wiz-schritte">
+      <span data-s="1" data-i18n="wiz_s1">Raster</span><i></i><span data-s="2" data-i18n="wiz_s2">Seiten</span><i></i><span data-s="3" data-i18n="wiz_s3">Inhalt</span>
+    </div>
+
+    <div class="wiz-seite" id="wiz-s1">
+      <p class="modal-u" data-i18n="wiz_1_u">Wie viele Fächer hat eine Seite deines Binders?</p>
+      <div class="f-lbl" data-i18n="wiz_beliebt">Beliebte Größen</div>
+      <div class="f-chips" id="wiz-beliebt"></div>
+      <div class="f-lbl" style="margin-top:12px" data-i18n="wiz_frei">Oder frei wählen – Spalten × Zeilen</div>
+      <div class="wiz-raster" id="wiz-raster" onmouseleave="wizRasterVorschau(0,0)"></div>
+      <div class="unter" id="wiz-raster-info"></div>
+    </div>
+
+    <div class="wiz-seite hidden" id="wiz-s2">
+      <p class="modal-u" data-i18n="wiz_2_u">Soll der Binder gleich eine feste Seitenzahl bekommen?</p>
+      <div class="segment" style="width:max-content">
+        <button id="wiz-seg-selbst" class="on" onclick="wizSeitenModus(0)" data-i18n="wiz_s_selbst">Seiten selbst anlegen</button>
+        <button id="wiz-seg-fest" onclick="wizSeitenModus(1)" data-i18n="wiz_s_fest">Seitenzahl festlegen</button>
+      </div>
+      <div class="unter" id="wiz-seiten-hin" data-i18n="wiz_s_selbst_u">Wie bisher: eine Seite entsteht, sobald du sie brauchst.</div>
+      <div class="hidden" id="wiz-seiten-box">
+        <div class="f-chips" id="wiz-seiten-chips"></div>
+        <div class="f-lbl" style="margin-top:10px" data-i18n="wiz_seiten_lbl">Seiten</div>
+        <input class="feld" type="number" id="wiz-seiten" min="1" max="200" value="20" style="width:120px" oninput="wizSeitenInfo()">
+        <div class="unter" id="wiz-seiten-info"></div>
+      </div>
+    </div>
+
+    <div class="wiz-seite hidden" id="wiz-s3">
+      <p class="modal-u" data-i18n="wiz_3_u">Womit soll er gefüllt werden? Später lässt sich alles ändern.</p>
+      <div class="onb-tpl vl-gitter" id="wiz-inhalt">
+        <button class="on" data-inhalt="leer" onclick="wizInhalt('leer')"><strong data-i18n="m_leer">Leerer Binder</strong><span data-i18n="vl_leer_u">Karte für Karte selbst suchen</span></button>
+        <button data-inhalt="master" onclick="wizInhalt('master')"><strong data-i18n="tpl_master">Master Set</strong><span data-i18n="tpl_master_u">jede Karte eines Sets</span></button>
+        <button data-inhalt="dex" onclick="wizInhalt('dex')"><strong data-i18n="tpl_dex">Pokédex</strong><span data-i18n="tpl_dex_u">ein Fach je Pokémon</span></button>
+        <button data-inhalt="poke" onclick="wizInhalt('poke')"><strong data-i18n="tpl_poke">Ein Pokémon</strong><span data-i18n="tpl_poke_u">alle Karten, chronologisch</span></button>
+        <button data-inhalt="illu" onclick="wizInhalt('illu')"><strong data-i18n="tpl_illu">Künstler</strong><span data-i18n="tpl_illu_u">alle Karten eines Illustrators</span></button>
+        <button data-inhalt="foto" onclick="wizInhalt('foto')"><strong data-i18n="tpl_foto">Aus Fotos</strong><span data-i18n="tpl_foto_u">Seiten abfotografieren, Karten werden erkannt</span></button>
+        <button data-inhalt="import" onclick="wizInhalt('import')"><strong data-i18n="tpl_import">Import</strong><span data-i18n="tpl_import_u">Liste aus anderem Tool</span></button>
+      </div>
+    </div>
+
+    <div class="wiz-fuss">
+      <button class="btn sekundaer hidden" id="wiz-zurueck" onclick="wizSchritt(WIZ.schritt - 1)" data-i18n="wiz_zurueck">Zurück</button>
+      <span class="wiz-zus" id="wiz-zus"></span>
+      <button class="btn" id="wiz-weiter" onclick="wizWeiter()" data-i18n="wiz_weiter">Weiter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seitenzahl nachträglich ändern: derselbe Gedanke wie Schritt 2 des Assistenten,
+     nur für einen Binder, den es schon gibt. -->
+<div class="overlay hidden" id="modal-seitenzahl">
+  <div class="modal" style="width:min(460px,94vw)">
+    <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h3 data-i18n="sz_t">Seitenzahl festlegen</h3>
+    <div class="unter" data-i18n="sz_u">Leere Seiten kommen hinten dazu, überzählige fallen weg.</div>
+    <div class="unter" id="sz-jetzt" style="margin-top:6px"></div>
+    <div class="f-chips" id="sz-chips" style="margin-top:10px"></div>
+    <div class="f-lbl" style="margin-top:10px" data-i18n="wiz_seiten_lbl">Seiten</div>
+    <input class="feld" type="number" id="sz-zahl" min="1" max="200" style="width:120px" oninput="szInfo()">
+    <div class="unter" id="sz-info"></div>
+    <!-- Festgelegt heißt festgelegt: „Alle Treffer" legte 60 Karten auf 14 neue Seiten,
+         obwohl der Binder mit 40 angelegt war. Mit dem Haken füllen Karten freie Fächer;
+         reicht der Platz nicht, fragt die App, ob die Seitenzahl wachsen soll. -->
+    <label class="schalter" style="margin-top:12px;display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="sz-fest" checked><span data-i18n="sz_fest_lbl">Feste Seitenzahl: Karten füllen freie Fächer und legen keine neuen Seiten an</span></label>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+      <button class="btn sekundaer" onclick="modalSchliessen()" data-i18n="abbrechen">Abbrechen</button>
+      <button class="btn" onclick="seitenzahlAnwenden()" data-i18n="uebernehmen">Übernehmen</button>
     </div>
   </div>
 </div>
@@ -1480,20 +1565,20 @@
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609161508"></script>
-<script defer src="assets/konto.js?v=202609161508"></script>
-<script defer src="assets/werkbank.js?v=202609161508"></script>
-<script defer src="assets/vitrine.js?v=202609161508"></script>
-<script defer src="assets/preise.js?v=202609161508"></script>
-<script defer src="assets/planer.js?v=202609161508"></script>
-<script defer src="assets/teilen.js?v=202609161508"></script>
-<script defer src="assets/hilfe.js?v=202609161508"></script>
-<script defer src="assets/detail.js?v=202609161508"></script>
-<script defer src="assets/artwork.js?v=202609161508"></script>
-<script defer src="assets/passend.js?v=202609161508"></script>
+<script defer src="assets/kern.js?v=202609211412"></script>
+<script defer src="assets/konto.js?v=202609211412"></script>
+<script defer src="assets/werkbank.js?v=202609211412"></script>
+<script defer src="assets/vitrine.js?v=202609211412"></script>
+<script defer src="assets/preise.js?v=202609211412"></script>
+<script defer src="assets/planer.js?v=202609211412"></script>
+<script defer src="assets/teilen.js?v=202609211412"></script>
+<script defer src="assets/hilfe.js?v=202609211412"></script>
+<script defer src="assets/detail.js?v=202609211412"></script>
+<script defer src="assets/artwork.js?v=202609211412"></script>
+<script defer src="assets/passend.js?v=202609211412"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609161508"></script>
+<script defer src="assets/markt.js?v=202609211412"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609161508"></script>
+<script defer src="assets/sammlung.js?v=202609211412"></script>
 </body>
 </html>

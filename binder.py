@@ -8,9 +8,11 @@ Dateien zusammen (pyflakes kennt die Namen der anderen Abschnitte)."""
 
 # --- Binder -----------------------------------------------------------------
 
-# Gängige Binder-Raster: 4er (2×2), 9er (3×3), 12er hoch (3×4) und quer (4×3),
-# 16er (4×4), 20er (4×5 bzw. 5×4) und 25er-Jumbo (5×5)
-LAYOUTS = {"2x2": 4, "3x3": 9, "3x4": 12, "4x3": 12, "4x4": 16, "4x5": 20, "5x4": 20, "5x5": 25}
+# Jedes Raster von 1×1 bis 5×5 (Spalten × Zeilen). Vorher waren es acht ausgewählte Größen;
+# seit dem Anlege-Assistenten (21.09.2026) wählt man das Rechteck frei, und die Liste muss
+# jede Kombination kennen — sonst fällt ein gespeicherter Binder still auf 3×3 zurück.
+RASTER = {f"{c}x{r}": (c, r) for c in range(1, 6) for r in range(1, 6)}
+LAYOUTS = {k: c * r for k, (c, r) in RASTER.items()}
 
 
 def _seiten_plan(binder, mindestens=0):
@@ -290,10 +292,6 @@ def binder_delete(binder_id: str, request: Request):
     con.commit()
     con.close()
     return {"ok": True}
-
-
-RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4, 4),
-          "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
 
 
 def _besitz_ids(user, con=None):

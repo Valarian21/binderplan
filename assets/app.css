@@ -825,6 +825,7 @@
   .st-titel { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
   .st-titel h2 { margin: 0; font-size: var(--t-l); letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
   .st-titel .mehr { font-size: var(--t-s); color: var(--blau); cursor: pointer; margin-left: auto; }
+  .st-titel .st-neu-knopf { margin-left: auto; font-size: var(--t-s); padding: 6px 13px; gap: 5px; }
 
   .st-weiter { display: flex; align-items: center; gap: 18px; border: 2px solid var(--kontur); border-radius: 16px;
                padding: 14px 18px; background: var(--card); box-shadow: 4px 4px 0 var(--gelb); flex-wrap: wrap; }
@@ -1256,6 +1257,10 @@
   .bcard .bmeta { font-size: var(--t-s); color: var(--mut); }
   .bcard.neu { border-style: dashed; align-items: center; justify-content: center; color: var(--mut); min-height: 130px; }
   .bcard.neu:hover { color: var(--akzent-text); }
+  /* Der Weg zum neuen Binder in der Kopfzeile — sichtbar aus jeder Ansicht. */
+  .kopf .neu-binder { font-size: var(--t-m); padding: 7px 13px; gap: 6px; flex-shrink: 0; }
+  .menu .bw-neu { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--akzent-text); }
+  .menu .bw-neu span:first-child { font-size: var(--t-l); line-height: 1; }
   .pf-block { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
   .pf-block h3 { margin: 0 0 12px; font-size: var(--t-mp); }
   .pf-zeile { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-mp); padding: 6px 0; border-bottom: 1px solid var(--line); }
@@ -1328,6 +1333,7 @@
        Stilkacheln, das Wunschfeld und der Startknopf nicht mehr erreichbar. Deshalb
        endet der Dialog eine Leistenhöhe früher und bekommt so viel Fuß, dass sich das
        letzte Element freischeiben lässt. */
+    .wiz-fuss { --wiz-fuss-luft: calc(70px + env(safe-area-inset-bottom)); }
     .modal { padding: 16px 16px calc(78px + env(safe-area-inset-bottom));
              max-height: calc(88vh - 62px); }
     body.nur-ansicht .modal { padding-bottom: 16px; max-height: 88vh; }
@@ -1417,7 +1423,8 @@
   .up-tab th, .up-tab td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: center; }
   .up-tab td:first-child, .up-tab th:first-child { text-align: left; }
   .up-tab th:last-child, .up-tab td:last-child { color: var(--akzent-text); font-weight: 700; }
-  body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap { display: none !important; }
+  body.nur-ansicht .bw, body.nur-ansicht .segment, body.nur-ansicht #btn-konto, body.nur-ansicht .kopf .menuwrap,
+  body.nur-ansicht .neu-binder { display: none !important; }
   body.nur-ansicht .ansicht-cta { display: inline-flex !important; margin-left: auto; font-size: var(--t-m); }
   /* Wer aus der Vitrine kommt, bekommt den Weg zurück; die untere Handy-Leiste (Planer, Mehr)
      gehört zum Bearbeiten und bleibt in der Nur-Ansicht weg. */
@@ -1552,7 +1559,20 @@
      „Erscheinungsdatum“ ihre eigene Beschriftung ab. */
   .f-zweispaltig { display: grid; grid-template-columns: 1fr; gap: 10px; }
   /* Was gerade filtert, steht sichtbar über der Liste und lässt sich einzeln wegklicken. */
+  /* Schnellfilter über den Treffern: vier gleich breite Felder, am Handy zwei mal zwei. */
+  .f-schnell { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+  .f-schnell .feld { font-size: var(--t-s); padding: 7px 9px; min-height: 34px; text-overflow: ellipsis; }
+  .f-schnell select.feld { padding-right: 26px; }
+  .f-schnell .setwahl { min-height: 34px; }
+  .f-schnell .setwahl-inhalt span { font-size: var(--t-s); }
+  .f-schnell .menuwrap { min-width: 0; }
+  /* Ohne Beschriftung stand da nach der Wahl nur noch „Common" – wozu das gehört, sah man
+     nicht mehr. Die Zeile ist schmal genug, um sie mitzutragen. */
+  .f-schnell .fs-lbl { font-size: var(--t-xs); font-weight: 700; color: var(--mut); margin-bottom: 3px;
+                       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 760px) { .f-schnell { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .f-aktiv { display: flex; flex-wrap: wrap; gap: 5px; }
+  .f-aktiv:empty { display: none; }
   .f-aktiv .chip { display: inline-flex; align-items: center; gap: 5px; border-color: var(--akzent-text);
     color: var(--akzent-text); font-size: var(--t-s); padding: 3px 8px; }
   .f-aktiv .chip b { font-weight: 700; }
@@ -1569,6 +1589,28 @@
   .onb-tpl button:hover { border-color: var(--akzent-text); }
   .onb-tpl strong { font-size: var(--t-s); }
   .onb-tpl span { font-size: var(--t-xs); color: var(--mut); }
+  /* Anlege-Assistent: Schrittleiste, Rasterwähler als aufziehbares Rechteck, Fußzeile.
+     Der Wähler zeigt die Seite, statt sie zu beschreiben — deshalb Fächer im Kartenmaß. */
+  .wiz .wiz-schritte { display: flex; align-items: center; gap: 8px; margin: 12px 0 14px; font-size: var(--t-s); font-weight: 700; color: var(--mut); }
+  .wiz .wiz-schritte i { flex: 1; height: 1.5px; background: var(--line); }
+  .wiz .wiz-schritte span.on { color: var(--ink); }
+  .wiz .wiz-schritte span.fertig { color: var(--gruen-text); }
+  .wiz-raster { display: grid; grid-template-columns: repeat(5, 30px); gap: 4px; margin: 6px 0 8px; width: max-content; }
+  .wz-zelle { width: 30px; height: 40px; border: 1.5px solid var(--slotrand); border-radius: 4px; background: var(--card); }
+  .wz-zelle.vor { border-color: var(--akzent-text); }
+  .wz-zelle.on { background: var(--aktiv-bg); border-color: var(--aktiv-bg); }
+  /* Der Rasterwähler macht den Dialog hoch; am Handy lag „Weiter" dadurch unter dem
+     sichtbaren Bereich (gemessen im iPhone-13-Profil). Der Fuß klebt deshalb unten. */
+  .wiz-fuss { display: flex; align-items: center; gap: 12px; margin-top: 18px;
+              position: sticky; bottom: calc(-1 * var(--wiz-fuss-luft, 0px)); background: var(--card);
+              padding: 10px 0 2px; border-top: 1.5px solid var(--line); }
+  .wiz-zus { flex: 1; font-size: var(--t-s); color: var(--mut); text-align: right; }
+  .vl-gitter { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vl-gitter button.on { border-color: var(--aktiv-bg); box-shadow: inset 0 0 0 1.5px var(--aktiv-bg); }
+  @media (max-width: 560px) { .vl-gitter { grid-template-columns: 1fr; }
+    /* Am Handy zählt jede Zeile: der Wähler wird kleiner, bleibt aber im Kartenmaß. */
+    .wiz-raster { grid-template-columns: repeat(5, 26px); }
+    .wz-zelle { width: 26px; height: 34px; } }
   .tk .plus { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); background: var(--akzent-flaeche); color: var(--akzent-fg); border-radius: 999px;
               padding: 5px 12px; font-size: var(--t-s); font-weight: 700; opacity: 0; transition: opacity .12s; z-index: 3; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
   .tk:hover .plus { opacity: 1; }
@@ -2413,4 +2455,11 @@
 @media (max-width: 560px) {
   .seiten-nav .seiten-titel.leer { font-size: 0; padding: 3px 10px; }
   .seiten-nav .seiten-titel.leer::before { content: "T"; font-size: var(--t-s); }
+}
+
+/* Am Handy trägt die Kopfzeile nur Logo, Konto und ⋯ — vom „Neuer Binder"-Knopf bleibt
+   das „+", damit der Weg auch dort in jeder Ansicht einen festen Platz hat. */
+@media (max-width: 900px) {
+  .kopf .neu-binder { padding: 7px 10px; }
+  .kopf .neu-binder .nb-text { display: none; }
 }

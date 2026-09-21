@@ -603,7 +603,7 @@ function lueckenSchliessen() {
 /** Neue leere Seite anhängen und gleich dorthin springen. */
 function seiteAnhaengen() {
   if (!S.binder || S.nurAnsicht) return;
-  leereSeite();
+  if (!leereSeite()) return;
   S.seite = Math.max(0, seitenAnzahl() - 1);
   zeichneBinder();
   toastUndo(t('neue_seite'));
@@ -611,10 +611,13 @@ function seiteAnhaengen() {
 
 function leereSeite() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
+  // Feste Seitenzahl: Seiten kommen nur über die Seitenzahl dazu, nicht nebenbei.
+  if (seitenFest()) { toast(t('sf_seite_hin').replace('{s}', seitenFest())); seitenzahlOeffnen(seitenFest() + 1); return false; }
   const pp = seiteInfo(seitenAnzahl()).laenge;
   merken('seite');
   for (let i = 0; i < pp; i++) S.binder.items.push({ type: 'empty' });
   speichern(); zeichneBinder();
+  return true;
 }
 
 async function auswahlSortieren(key) {
@@ -656,6 +659,9 @@ async function auswahlSortieren(key) {
 // ---------- Speichern & PDF ----------
 function speichern() {
   if (!S.binder || S.nurAnsicht) return;
+  // Eine feste Seitenzahl gilt bei jeder Änderung — auch bei Wegen, die hier nicht
+  // hindurchmüssen (Fach einfügen, Lücken schließen, Ablage). Siehe seitenFestHalten().
+  if (seitenFestHalten()) zeichneBinder();
   if (!S.binder.id) { if (S.binder.items.length) binderAnlegenWennNoetig(); return; }
   $('wb-status').textContent = t('speichert');
   clearTimeout(S.speicherTimer);
@@ -977,11 +983,20 @@ function sucheBegriff(wert) {
 let suchTimer = null;
 $('f-suche').addEventListener('input', () => { if ($('f-suche-lade')) $('f-suche-lade').value = $('f-suche').value; clearTimeout(suchTimer); suchTimer = setTimeout(() => { filter.q = $('f-suche').value.trim(); sucheNeu(); }, 350); });
 $('f-dex').addEventListener('focus', ladePokedex);
-$('f-dex').addEventListener('input', () => {
+/** Das Feld steht seit 21.09.2026 offen über den Treffern, nicht mehr im Filterpanel —
+ *  es muss deshalb auch tragen, wenn der Pokédex noch gar nicht geladen ist (vorher blieb
+ *  ein eingefügter Name wirkungslos, weil die Liste erst beim Fokus kam). Eine reine Zahl
+ *  gilt als Pokédex-Nummer, und ein Name, den es nicht gibt, nimmt den alten Filter weg. */
+$('f-dex').addEventListener('input', async () => {
   const v = $('f-dex').value.trim().toLowerCase();
   if (!v) { if (filter.dex) { filter.dex = 0; sucheNeu(); } return; }
-  const p = (S.pokedex || []).find((x) => x.name.toLowerCase() === v || (x.name_en || '').toLowerCase() === v);
-  if (p) { filter.dex = p.dex; sucheNeu(); }
+  if (!S.pokedex) { try { await ladePokedex(); } catch (e) { return; } }
+  if ($('f-dex').value.trim().toLowerCase() !== v) return;   // inzwischen weitergetippt
+  const nr = /^[0-9]{1,4}$/.test(v) ? parseInt(v, 10) : 0;
+  const p = (S.pokedex || []).find((x) => (nr ? x.dex === nr
+    : x.name.toLowerCase() === v || (x.name_en || '').toLowerCase() === v));
+  if (p) { if (filter.dex !== p.dex) { filter.dex = p.dex; sucheNeu(); } return; }
+  if (filter.dex) { filter.dex = 0; sucheNeu(); }
 });
 $('f-serie').addEventListener('change', () => { filter.serie = $('f-serie').value; filter.set = ''; baueSetSelect(); sucheNeu(); });
 $('f-set').addEventListener('change', () => { filter.set = $('f-set').value; sucheNeu(); });
@@ -1258,8 +1273,11 @@ function varianteSetzen(idx, v) {
 }
 
 // ---------- Gast-Binder: erst anlegen, wenn die erste Karte kommt ----------
-function lokalerBinder() {
-  return { id: null, name: t('neuer_binder'), mode: 'custom', layout: (S.binder && S.binder.layout) || '3x3', options: {}, items: [] };
+function lokalerBinder(layout) {
+  // `layout` kommt aus dem Anlege-Assistenten; ohne ihn erbt der neue Binder das Raster des
+  // offenen (wer 4×3 sammelt, sammelt meist weiter 4×3).
+  return { id: null, name: t('neuer_binder'), mode: 'custom',
+           layout: layout || (S.binder && S.binder.layout) || '3x3', options: {}, items: [] };
 }
 let binderAnlage = null;   // laufender POST, damit zwei schnelle Klicks nicht zwei Binder anlegen
 async function binderAnlegenWennNoetig() {

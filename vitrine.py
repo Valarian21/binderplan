@@ -316,8 +316,7 @@ def register(app, *, get_db, current_user, require_user, env, admin_key, load_bi
 
     # --- Listen ------------------------------------------------------------
 
-    RASTER = {"2x2": (2, 2), "3x3": (3, 3), "3x4": (3, 4), "4x3": (4, 3), "4x4": (4, 4),
-              "4x5": (4, 5), "5x4": (5, 4), "5x5": (5, 5)}
+    RASTER = {f"{c}x{r}": (c, r) for c in range(1, 6) for r in range(1, 6)}
 
     def _fach(it):
         """Ein Fach so beschreiben, wie es die Vorschau zeichnen kann — leere Plätze inklusive."""

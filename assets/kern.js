@@ -415,6 +415,41 @@ const T = {
     m_import_t: 'Liste importieren', m_import_u: 'Eine Karte pro Zeile – z. B. „sv1 25“, „Glurak 4/102“, „1x Charizard (Base Set) 4“ oder die CSV-Exporte von TCG Collector, Collectr und Cardmarket-Wants.',
     import_datei: 'Datei wählen (.csv/.txt)', import_pruefen: 'Prüfen', import_btn: 'In den Binder', imp_erkannt: 'erkannt', imp_unklar: 'unklar', imp_kein_treffer: 'kein Treffer',
     onb_t: 'So geht’s', onb_1: 'Set wählen oder Karte suchen', onb_2: 'Auf „+“ tippen – die Karte landet hier im Fach', onb_3: 'Drucken, abhaken, Kaufliste mitnehmen',
+    // Anlege-Assistent (21.09.2026): Raster → Seiten → Inhalt
+    wiz_t: 'Neuen Binder anlegen', wiz_schritt: 'Schritt {n} von 3',
+    wiz_s1: 'Raster', wiz_s2: 'Seiten', wiz_s3: 'Inhalt',
+    wiz_1_u: 'Wie viele Fächer hat eine Seite deines Binders?',
+    wiz_alle: 'Alle Raster', uebernehmen: 'Übernehmen', ph_pokemon: 'Pokémon …',
+    // Feste Seitenzahl (21.09.2026): Karten legen keine Seiten an
+    sf_kurz: 'feste Seitenzahl',
+    sf_voll_frage: '{n} Karten, aber nur {f} freie Fächer. Seitenzahl von {a} auf {s} erhöhen? (Abbrechen legt nur ein, was passt.)',
+    sf_voll: 'Der Binder ist voll – alle {s} Seiten sind belegt. Erhöhe die Seitenzahl im ⋯-Menü.',
+    sf_nicht_alle: '{n} eingelegt, {r} passten nicht mehr hinein.',
+    sf_seite_hin: 'Dieser Binder hat eine feste Seitenzahl ({s}). Erhöhe sie, um Seiten anzuhängen.',
+    sf_erhoeht: 'Seitenzahl auf {s} erhöht, damit nichts verloren geht.',
+    sz_fest_lbl: 'Feste Seitenzahl: Karten füllen freie Fächer und legen keine neuen Seiten an',
+    wiz_beliebt: 'Beliebte Größen', wiz_frei: 'Oder frei wählen – Spalten × Zeilen',
+    wiz_raster_info: '{c} Spalten × {r} Zeilen · {n} Fächer je Seite',
+    wiz_2_u: 'Soll der Binder gleich eine feste Seitenzahl bekommen?',
+    wiz_s_selbst: 'Seiten selbst anlegen', wiz_s_fest: 'Seitenzahl festlegen',
+    wiz_s_selbst_u: 'Wie bisher: eine Seite entsteht, sobald du sie brauchst.',
+    wiz_s_fest_u: 'Alle Seiten sind sofort da – und es bleiben genau so viele: Karten füllen freie Fächer, statt neue Seiten anzulegen.',
+    wiz_seiten_lbl: 'Seiten', wiz_seiten_info: '{s} Seiten × {p} Fächer = {n} Fächer',
+    wiz_3_u: 'Womit soll er gefüllt werden? Später lässt sich alles ändern.',
+    wiz_weiter: 'Weiter', wiz_zurueck: 'Zurück', wiz_anlegen: 'Binder anlegen',
+    wiz_zus: '{l} · {s}', wiz_zus_selbst: 'Seiten nach Bedarf', wiz_zus_fest: '{n} Seiten',
+    m_umfang: 'Umfang', m_umfang_einmal: 'Jede Karte einmal',
+    m_umfang_reverse: 'Jede Karte + Reverse Holo',
+    m_umfang_alle: 'Jede Version jeder Karte (Normal, Holo, Reverse, 1st Ed.)',
+    m_umfang_u: 'Ein „echtes" Master Set enthält jede Druckvariante – das sind deutlich mehr Fächer.',
+    sz_menu: 'Seitenzahl festlegen …', sz_t: 'Seitenzahl festlegen',
+    sz_u: 'Leere Seiten kommen hinten dazu, überzählige fallen weg.',
+    sz_jetzt: 'Aktuell {n} Seiten à {p} Fächer', sz_jetzt_1: 'Aktuell 1 Seite mit {p} Fächern',
+    sz_auf: '{n} leere Seiten kommen dazu.', sz_ab: '{n} Seiten fallen weg.', sz_gleich: 'Unverändert.',
+    sz_frage: 'Dabei gehen {n} belegte Fächer verloren. Trotzdem kürzen?',
+    sz_ok: 'Der Binder hat jetzt {n} Seiten.',
+    sz_grenze: 'Mehr als 5.000 Fächer kann ein Binder nicht fassen.',
+    dex_suche: 'Alle Karten von {n}',
     tpl_master: 'Master Set', tpl_master_u: 'jede Karte eines Sets', tpl_dex: 'Pokédex', tpl_dex_u: 'ein Fach je Pokémon', tpl_poke: 'Ein Pokémon', tpl_poke_u: 'alle Karten, chronologisch', tpl_import: 'Import', tpl_import_u: 'Liste aus anderem Tool',
     variante: 'Variante / Fach', v_normal: 'Normal', v_reverse: 'Reverse Holo', v_holo: 'Holo', v_first: '1st Edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
     zustand_ph: 'Zustand (z. B. NM, PSA 10)', in_binder: 'In den Binder', im_binder: 'im Binder', andere_drucke: 'Andere Drucke dieses Pokémon',
@@ -1161,6 +1196,40 @@ const T = {
     m_import_t: 'Import a list', m_import_u: 'One card per line – e.g. “sv1 25”, “Charizard 4/102”, “1x Charizard (Base Set) 4” or the CSV exports of TCG Collector, Collectr and Cardmarket wants.',
     import_datei: 'Choose file (.csv/.txt)', import_pruefen: 'Check', import_btn: 'Add to binder', imp_erkannt: 'matched', imp_unklar: 'unclear', imp_kein_treffer: 'no match',
     onb_t: 'How it works', onb_1: 'Pick a set or search a card', onb_2: 'Tap “+” – the card lands in a slot here', onb_3: 'Print, tick off, take the buy list',
+    // Create wizard (21.09.2026): grid → pages → content
+    wiz_t: 'Create a new binder', wiz_schritt: 'Step {n} of 3',
+    wiz_s1: 'Grid', wiz_s2: 'Pages', wiz_s3: 'Content',
+    wiz_1_u: 'How many pockets does one page of your binder have?',
+    wiz_alle: 'All grids', uebernehmen: 'Apply', ph_pokemon: 'Pokémon …',
+    sf_kurz: 'fixed page count',
+    sf_voll_frage: '{n} cards but only {f} free pockets. Raise the page count from {a} to {s}? (Cancel adds only what fits.)',
+    sf_voll: 'The binder is full – all {s} pages are taken. Raise the page count in the ⋯ menu.',
+    sf_nicht_alle: '{n} added, {r} did not fit.',
+    sf_seite_hin: 'This binder has a fixed page count ({s}). Raise it to add pages.',
+    sf_erhoeht: 'Page count raised to {s} so nothing is lost.',
+    sz_fest_lbl: 'Fixed page count: cards fill free pockets and never add pages',
+    wiz_beliebt: 'Popular sizes', wiz_frei: 'Or pick freely – columns × rows',
+    wiz_raster_info: '{c} columns × {r} rows · {n} pockets per page',
+    wiz_2_u: 'Should the binder start with a fixed number of pages?',
+    wiz_s_selbst: 'Add pages myself', wiz_s_fest: 'Set a page count',
+    wiz_s_selbst_u: 'As before: a page appears as soon as you need it.',
+    wiz_s_fest_u: 'Every page is there from the start – and it stays that many: cards fill free pockets instead of adding pages.',
+    wiz_seiten_lbl: 'Pages', wiz_seiten_info: '{s} pages × {p} pockets = {n} pockets',
+    wiz_3_u: 'What should it be filled with? Everything can be changed later.',
+    wiz_weiter: 'Next', wiz_zurueck: 'Back', wiz_anlegen: 'Create binder',
+    wiz_zus: '{l} · {s}', wiz_zus_selbst: 'pages as needed', wiz_zus_fest: '{n} pages',
+    m_umfang: 'Scope', m_umfang_einmal: 'Every card once',
+    m_umfang_reverse: 'Every card + reverse holo',
+    m_umfang_alle: 'Every version of every card (normal, holo, reverse, 1st ed.)',
+    m_umfang_u: 'A true master set holds every print variant – that is a lot more pockets.',
+    sz_menu: 'Set page count …', sz_t: 'Set page count',
+    sz_u: 'Empty pages are added at the end, surplus pages are dropped.',
+    sz_jetzt: 'Currently {n} pages of {p} pockets', sz_jetzt_1: 'Currently 1 page of {p} pockets',
+    sz_auf: '{n} empty pages will be added.', sz_ab: '{n} pages will be dropped.', sz_gleich: 'Unchanged.',
+    sz_frage: '{n} filled pockets will be lost. Shorten anyway?',
+    sz_ok: 'The binder now has {n} pages.',
+    sz_grenze: 'A binder cannot hold more than 5,000 pockets.',
+    dex_suche: 'All cards of {n}',
     tpl_master: 'Master set', tpl_master_u: 'every card of a set', tpl_dex: 'Pokédex', tpl_dex_u: 'one slot per Pokémon', tpl_poke: 'One Pokémon', tpl_poke_u: 'all cards, chronological', tpl_import: 'Import', tpl_import_u: 'list from another tool',
     variante: 'Variant / slot', v_normal: 'Normal', v_reverse: 'Reverse holo', v_holo: 'Holo', v_first: '1st edition', v_pokeball: 'Poké Ball', v_masterball: 'Master Ball',
     zustand_ph: 'Condition (e.g. NM, PSA 10)', in_binder: 'Add to binder', im_binder: 'in binder', andere_drucke: 'Other prints of this Pokémon',
@@ -1471,7 +1540,14 @@ const S = {
   // null = normale Suche. Der Modus überlebt das Schließen, die Ankerkarten nicht.
   passend: null,
 };
-const LAYOUTS = { '2x2': [2, 2], '3x3': [3, 3], '3x4': [3, 4], '4x3': [4, 3], '4x4': [4, 4], '4x5': [4, 5], '5x4': [5, 4], '5x5': [5, 5] };
+/* Alle Raster von 1x1 bis 5x5 als {Schluessel: [Spalten, Zeilen]}. Bis 21.09.2026 gab es nur
+   acht ausgewaehlte Groessen; gewaehlt wird das Raster jetzt im Anlege-Assistenten als Rechteck,
+   und dort muss jede Kombination anklickbar sein (1x1 sind Toploader-Seiten, 5x5 der Jumbo).
+   Reihenfolge: nach Faecherzahl, damit Auswahllisten von klein nach gross laufen. */
+const LAYOUTS = {};
+for (let c = 1; c <= 5; c++) for (let r = 1; r <= 5; r++) LAYOUTS[c + 'x' + r] = [c, r];
+/* Die drei Raster, die Sammler am haeufigsten im Regal haben — sie stehen im Assistenten oben. */
+const LAYOUTS_BELIEBT = ['3x3', '4x3', '2x2'];
 const KIND_KEYS = ['lvx','ex','exgross','gx','tagteam','v','vmax','vstar','vunion','mega','break','prime','legend','sp','shining','goldstar','shiny','radiant','amazing','delta','prism','acespec','dark','light','trainer','energie'];
 // Jede Sortierung hat eine naheliegende Richtung. Bis 14.09.2026 startete die Suche mit
 // „Erscheinungsdatum aufsteigend" — ganz oben lagen also Karten von 1999, während die meisten

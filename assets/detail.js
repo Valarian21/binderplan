@@ -72,7 +72,11 @@ async function inspektorZeichnen() {
     return;
   }
   if (item.type === 'dex') {
-    box.innerHTML = `${zu}<div class="ik-name">#${String(item.dex).padStart(3, '0')}</div><div class="ik-meta">${lage}</div><div class="ik-akt"><button onclick="fachEinfuegen(${idx})">${t('s_frei_davor')}</button><button onclick="fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button><div class="trenn"></div><button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>${gefahr}</div>`;
+    // Der Platzhalter steht für ein Pokémon, nicht für eine Nummer — also trägt er seinen
+    // Namen und den Knopf, der die Karten dazu heraussucht.
+    const pk = (S.pokedex || []).find((x) => x.dex === item.dex);
+    const pname = pk ? (nm(pk) || '') : (item.name || '');
+    box.innerHTML = `${zu}<div class="ik-name">#${String(item.dex).padStart(3, '0')}${pname ? ' ' + esc(pname) : ''}</div><div class="ik-meta">${lage}</div><div class="ik-akt"><button onclick="dexSuchen(${item.dex})">${t('dex_suche').replace('{n}', esc(pname) || '#' + item.dex)}</button><div class="trenn"></div><button onclick="fachEinfuegen(${idx})">${t('s_frei_davor')}</button><button onclick="fachEinfuegen(${idx + 1})">${t('s_frei_danach')}</button><div class="trenn"></div><button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>${gefahr}</div>`;
     return;
   }
   let info = LADE.info[item.id];
@@ -137,7 +141,9 @@ function fachEinfuegen(idx) {
 function fachFreimachen(idx) {
   merken('frei');
   S.binder.items[idx] = { type: 'empty' };
-  speichern(); zeichneBinder(); zeichneErgebnisse(); if (!$('planer').classList.contains('hidden')) zeichnePlaner();
+  // `#planer` gibt es seit der Zusammenlegung (09.09.2026) nicht mehr — der Aufruf warf
+  // nach dem Speichern still einen TypeError in die Konsole.
+  speichern(); zeichneBinder(); zeichneErgebnisse();
   toastUndo(t('s_zu_leer'));
 }
 function seiteAuffuellen() {
@@ -229,6 +235,30 @@ function fachKlick(ev, idx) {
   auswahlZeigen();
   const it = S.binder.items[idx];
   if (it && it.type === 'empty' && S.auswahl.size === 1 && S.auswahl.has(idx)) sucheLadeOeffnen(false);
+  // Ein Pokédex-Fach ist ein Platzhalter für eine Karte, die noch fehlt. Der Klick darauf
+  // stellt deshalb die Frage, für die er da steht: welche Karten gibt es von diesem Pokémon?
+  if (it && it.type === 'dex' && S.auswahl.size === 1 && S.auswahl.has(idx)) dexSuchen(it.dex);
+}
+
+/** Die Suche links auf ein Pokémon stellen. Set und Ära fallen dabei weg — sonst zeigt der
+ *  Filter „Glurak in Base Set" genau eine Karte und wirkt wie ein Fehler. */
+async function dexSuchen(dex) {
+  if (!dex) return;
+  filter.dex = dex; filter.q = ''; filter.set = ''; filter.serie = '';
+  if ($('f-suche')) $('f-suche').value = '';
+  if ($('f-suche-lade')) $('f-suche-lade').value = '';
+  if ($('f-set')) $('f-set').value = '';
+  if ($('f-serie')) $('f-serie').value = '';
+  if (typeof baueSetSelect === 'function') baueSetSelect();
+  sucheLadeOeffnen(false);
+  sucheNeu();
+  try { await ladePokedex(); } catch (e) {}
+  const p = (S.pokedex || []).find((x) => x.dex === dex);
+  if (p) {
+    if ($('f-dex')) $('f-dex').value = nm(p) || '';
+    toast(t('dex_suche').replace('{n}', nm(p) || ('#' + dex)));
+  }
+  if (typeof mehrFilterZahl === 'function') mehrFilterZahl();
 }
 /** Alter Name, damit ältere Aufrufer nicht brechen. */
 function slotKlick(idx) { fachKlick(null, idx); }
@@ -702,10 +732,14 @@ async function kartAddId(id, variant, zustand, sprache) {
   // Der Knopf hieß „Ins Fach", legte die Karte aber immer ans Ende. Jetzt geht sie in das
   // gewählte leere Fach — und der Knopf sagt vorher, welches das ist.
   const ziel = zielFach();
-  if (ziel === null) S.binder.items.push(item);
-  else S.binder.items[ziel] = item;
+  let platz = ziel;
+  if (ziel === null) {
+    // Kein Fach gewählt: ans Ende — bei fester Seitenzahl ins erste freie Fach.
+    if (!kartenEinlegen([item])) return;
+    platz = EINGELEGT_AB;
+  } else S.binder.items[ziel] = item;
   if (!await binderAnlegenWennNoetig()) {
-    if (ziel === null) S.binder.items.pop(); else S.binder.items[ziel] = { type: 'empty' };
+    if (ziel === null && !seitenFest()) S.binder.items.pop(); else S.binder.items[platz] = { type: 'empty' };
     return;
   }
   if (ziel !== null) {
@@ -825,10 +859,12 @@ async function importUebernehmen() {
   }
   if (!S.binder) return;
   merken('import');
-  for (const x of importTreffer) S.binder.items.push({ type: 'card', id: x.id });
+  const n = kartenEinlegen(importTreffer.map((x) => ({ type: 'card', id: x.id })));
+  if (!n) return;
   if (!await binderAnlegenWennNoetig()) return;
+  neuSeitenNachziehen();   // Assistent: „20 Seiten" gilt erst, wenn der Inhalt drin ist
   speichern(); zeichneBinder(); zeichneErgebnisse(); modalSchliessen();
-  toastUndo(importTreffer.length + ' ' + t('hinzugefuegt'));
+  toastUndo(n + ' ' + t('hinzugefuegt'));
 }
 
 // ---------- Anzeigename ----------

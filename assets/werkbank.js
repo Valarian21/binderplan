@@ -3,10 +3,12 @@
 // kern → konto → werkbank → vitrine → preise → planer → detail → artwork → markt → sammlung.
 // ---------- Menüs & Modale ----------
 /** Ein Ort für alle Vorlagen. Vorher lagen dieselben sechs Einstiege im Binder-Wechsler,
- *  im leeren Binder, auf der Startseite und im Mehr-Menü — jeweils mit eigener Reihenfolge. */
+ *  im leeren Binder, auf der Startseite und im Mehr-Menü — jeweils mit eigener Reihenfolge.
+ *  Seit 21.09.2026 führt er als Assistent durch Raster, Seitenzahl und Inhalt. */
 function vorlagenOeffnen() {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!$('startseite').classList.contains('hidden')) startSchliessen();
+  wizStart();
   modalOeffnen('modal-vorlagen');
 }
 
@@ -15,15 +17,282 @@ function vorlage(art) {
   // bestehen (er schließt ohnehin jedes offene Modal), und es gibt keinen Verlaufssprung,
   // dessen verzögertes popstate den neuen Dialog gleich wieder zumachen würde.
   $('modal-vorlagen').classList.add('hidden');
-  if (art === 'leer') { modalSchliessen(); return neuLeer(); }
+  // Nur `neuLeer` schließt — es ruft selbst `modalSchliessen()`. Beides nacheinander
+  // waren zwei `history.back()` auf einmal: der zweite trug aus der App heraus.
+  if (art === 'leer') return neuLeer();
   const ziel = art === 'foto' ? 'modal-foto' : art === 'import' ? 'modal-import'
              : art === 'master' ? 'modal-master' : art === 'poke' ? 'modal-poke'
              : art === 'illu' ? 'modal-kuenstler' : 'modal-dex';
   $(ziel).classList.remove('hidden');
-  if (ziel === 'modal-master') zeichneSetliste();
+  if (ziel === 'modal-master') { zeichneSetliste(); masterUmfangInfo(); }
   if (ziel === 'modal-dex') zeichneGens();
   if (ziel === 'modal-import') { $('import-vorschau').innerHTML = ''; $('import-btn').disabled = true; }
   if (ziel === 'modal-foto') fotoSchritt(1);
+}
+
+/* ---------- Anlege-Assistent ----------
+   Drei Entscheidungen gehören zusammen und wurden vorher an drei Orten getroffen: das Raster
+   im ⋯-Menü *nachdem* der Binder stand, die Seitenzahl gar nicht (jede Seite einzeln
+   anhängen) und der Inhalt im Kachelfeld. Der Assistent stellt sie in der Reihenfolge, in
+   der sie im Regal entstehen: erst die Hülle, dann ihre Dicke, dann was hineinkommt. */
+const WIZ = { schritt: 1, layout: '3x3', seitenModus: 0, inhalt: 'leer' };
+/** Was der Assistent dem nächsten neuen Binder mitgibt. Beides ist einmalig: `neuRaster()`
+ *  und `neuSeitenNachziehen()` nehmen es heraus, danach gilt wieder der Standard. Sonst
+ *  trüge der übernächste Binder noch die Wahl von vorgestern. */
+const NEU = { layout: '', seiten: 0 };
+function neuRaster() { const l = NEU.layout; NEU.layout = ''; return l; }
+/** Die gewünschte Seitenzahl herstellen – erst *nachdem* der Inhalt drin ist, und nur
+ *  auffüllend: ein Master Set mit 300 Karten wird von „20 Seiten" nicht beschnitten. */
+function neuSeitenNachziehen() {
+  const n = NEU.seiten; NEU.seiten = 0;
+  if (n) seitenSetzen(n, true, true);
+}
+
+function wizStart() {
+  WIZ.schritt = 1; WIZ.layout = '3x3'; WIZ.seitenModus = 0; WIZ.inhalt = 'leer';
+  NEU.layout = ''; NEU.seiten = 0;
+  $('wiz-seiten').value = 20;
+  wizBeliebtZeichnen(); wizRasterZeichnen(); wizSeitenModus(0); wizInhalt('leer'); wizSchritt(1);
+}
+function wizSchritt(n) {
+  WIZ.schritt = Math.max(1, Math.min(3, n));
+  for (let i = 1; i <= 3; i++) $('wiz-s' + i).classList.toggle('hidden', i !== WIZ.schritt);
+  document.querySelectorAll('#wiz-schritte span').forEach((el) => {
+    const i = Number(el.dataset.s);
+    el.classList.toggle('on', i === WIZ.schritt);
+    el.classList.toggle('fertig', i < WIZ.schritt);
+  });
+  $('wiz-zurueck').classList.toggle('hidden', WIZ.schritt === 1);
+  wizKnopf(); wizZus();
+}
+function wizKnopf() {
+  $('wiz-weiter').textContent = (WIZ.schritt === 3 && WIZ.inhalt === 'leer') ? t('wiz_anlegen') : t('wiz_weiter');
+}
+function wizSeitenZahl() { return Math.max(1, Math.min(200, parseInt($('wiz-seiten').value, 10) || 1)); }
+/** Die Zeile über den Knöpfen: was gerade gewählt ist, in einem Satz. */
+function wizZus() {
+  const [c, r] = LAYOUTS[WIZ.layout] || [3, 3];
+  const wie = WIZ.seitenModus ? t('wiz_zus_fest').replace('{n}', wizSeitenZahl()) : t('wiz_zus_selbst');
+  $('wiz-zus').textContent = t('wiz_zus').replace('{l}', c + ' × ' + r).replace('{s}', wie);
+}
+
+function wizBeliebtZeichnen() {
+  $('wiz-beliebt').innerHTML = LAYOUTS_BELIEBT.map((l) => {
+    const [c, r] = LAYOUTS[l];
+    return `<button class="chip ${WIZ.layout === l ? 'on' : ''}" onclick="wizRaster('${l}')">${c} × ${r} · ${c * r} ${t('faecher')}</button>`;
+  }).join('');
+}
+/** Das Raster wird gewählt wie eine Tabellengröße: Rechteck aufziehen statt Liste lesen.
+ *  25 Einträge in einem Auswahlfeld sagen nicht, wie die Seite aussieht — das Rechteck schon. */
+function wizRasterZeichnen() {
+  let h = '';
+  for (let r = 1; r <= 5; r++) for (let c = 1; c <= 5; c++)
+    h += `<button class="wz-zelle" data-c="${c}" data-r="${r}" onclick="wizRaster('${c}x${r}')" onmouseover="wizRasterVorschau(${c},${r})" title="${c} × ${r}"></button>`;
+  $('wiz-raster').innerHTML = h;
+  wizRasterMarkieren();
+}
+function wizRasterMarkieren(vc, vr) {
+  const [gc, gr] = LAYOUTS[WIZ.layout] || [3, 3];
+  const c0 = vc || gc, r0 = vr || gr;
+  document.querySelectorAll('#wiz-raster .wz-zelle').forEach((el) => {
+    const c = Number(el.dataset.c), r = Number(el.dataset.r);
+    el.classList.toggle('on', c <= gc && r <= gr);
+    el.classList.toggle('vor', c <= c0 && r <= r0);
+  });
+  $('wiz-raster-info').textContent = t('wiz_raster_info').replace('{c}', c0).replace('{r}', r0).replace('{n}', c0 * r0);
+}
+function wizRasterVorschau(c, r) { wizRasterMarkieren(c, r); }
+function wizRaster(l) {
+  if (!LAYOUTS[l]) return;
+  WIZ.layout = l;
+  wizBeliebtZeichnen(); wizRasterMarkieren(); wizSeitenInfo();
+}
+
+function wizSeitenModus(m) {
+  WIZ.seitenModus = m ? 1 : 0;
+  $('wiz-seg-selbst').classList.toggle('on', !WIZ.seitenModus);
+  $('wiz-seg-fest').classList.toggle('on', !!WIZ.seitenModus);
+  $('wiz-seiten-box').classList.toggle('hidden', !WIZ.seitenModus);
+  $('wiz-seiten-hin').textContent = WIZ.seitenModus ? t('wiz_s_fest_u') : t('wiz_s_selbst_u');
+  wizSeitenInfo();
+}
+function wizSeitenInfo() {
+  const n = wizSeitenZahl(), [c, r] = LAYOUTS[WIZ.layout] || [3, 3];
+  if (WIZ.seitenModus) {
+    $('wiz-seiten-chips').innerHTML = [5, 10, 20, 30, 40, 60].map((z) =>
+      `<button class="chip ${n === z ? 'on' : ''}" onclick="$('wiz-seiten').value=${z};wizSeitenInfo()">${z}</button>`).join('');
+    $('wiz-seiten-info').textContent = t('wiz_seiten_info').replace('{s}', n).replace('{p}', c * r).replace('{n}', n * c * r);
+  } else {
+    $('wiz-seiten-info').textContent = '';
+  }
+  wizZus();
+}
+
+function wizInhalt(art) {
+  WIZ.inhalt = art;
+  document.querySelectorAll('#wiz-inhalt button').forEach((el) => el.classList.toggle('on', el.dataset.inhalt === art));
+  wizKnopf();
+}
+function wizWeiter() {
+  if (WIZ.schritt < 3) return wizSchritt(WIZ.schritt + 1);
+  NEU.layout = WIZ.layout;
+  NEU.seiten = WIZ.seitenModus ? wizSeitenZahl() : 0;
+  if (WIZ.inhalt === 'leer') return neuLeer();
+  // Der Import hängt an den *offenen* Binder an. Ohne diesen leeren Binder davor landete
+  // eine importierte Liste im zuletzt geöffneten – unter der Überschrift „Neuen Binder anlegen".
+  // Die Seiten kommen hier noch nicht: sie werden nach dem Import nachgezogen.
+  if (WIZ.inhalt === 'import') neuLeer(true, true);
+  vorlage(WIZ.inhalt);
+}
+
+/* ---------- Seitenzahl (auch nachträglich) ----------
+   Ein Binder kann eine *feste* Seitenzahl haben (`options.seitenFest`). Dann ist er wie der
+   im Regal: 40 Seiten sind 40 Seiten. Karten füllen freie Fächer; wer mehr einlegen will,
+   als hineinpasst, wird gefragt, ob die Seitenzahl wachsen soll — und „+ Leere Seite" führt
+   zur Seitenzahl statt eine Seite anzuhängen. Ohne feste Seitenzahl bleibt alles wie zuvor:
+   Karten kommen ans Ende, Seiten entstehen nach Bedarf. */
+function seitenFest() { return (S.binder && S.binder.options && Number(S.binder.options.seitenFest)) || 0; }
+
+/** Seitenplan für einen beliebigen Binder (auch fremde, z. B. das Ziel beim Übernehmen). */
+function _planFuer(binder, mindestens) {
+  const items = (binder && binder.items) || [];
+  const je = (binder && binder.options && binder.options.seitenLayouts) || {};
+  const plan = [];
+  let i = 0, nr = 0;
+  do {
+    const l = LAYOUTS[je[nr]] ? je[nr] : ((binder && binder.layout) || '3x3');
+    const [c, r] = LAYOUTS[l] || [3, 3];
+    plan.push({ nr, start: i, laenge: c * r, cols: c, rows: r, layout: l });
+    i += c * r; nr++;
+  } while (i < items.length || nr <= (mindestens || 0));
+  return plan;
+}
+/** Wie viele Fächer `n` Seiten dieses Binders haben. */
+function faecherBis(binder, n) { const p = _planFuer(binder, n - 1); return p[n - 1].start + p[n - 1].laenge; }
+
+/** Die feste Seitenzahl durchsetzen — läuft vor jedem Speichern. Fehlende Fächer werden
+ *  aufgefüllt (Lücken schließen, Herausnehmen), überzählige leere am Ende abgeschnitten
+ *  (Fach einfügen). Steht dahinter noch Inhalt, wächst die Seitenzahl mit: lieber eine
+ *  Seite mehr als eine Karte weniger. */
+function seitenFestHalten(binder) {
+  binder = binder || S.binder;
+  const fest = binder && binder.options && Number(binder.options.seitenFest);
+  if (!fest || !binder.items) return false;
+  const ziel = faecherBis(binder, fest);
+  const it = binder.items;
+  while (it.length > ziel && it[it.length - 1] && it[it.length - 1].type === 'empty') it.pop();
+  while (it.length < ziel) it.push({ type: 'empty' });
+  if (it.length <= ziel) return false;
+  const neu = _planFuer(binder).length;
+  binder.options.seitenFest = neu;
+  const z2 = faecherBis(binder, neu);
+  while (it.length < z2) it.push({ type: 'empty' });
+  if (binder === S.binder) toast(t('sf_erhoeht').replace('{s}', neu));
+  return true;
+}
+
+/** Wo die zuletzt eingelegten Karten anfangen (Index des ersten Fachs). */
+let EINGELEGT_AB = -1;
+/** Karten in einen Binder legen — die eine Stelle dafür.
+ *  Ohne feste Seitenzahl ans Ende (auf Wunsch ab der nächsten freien Seite). Mit fester
+ *  Seitenzahl in die freien Fächer; reicht der Platz nicht, wird gefragt, ob die Seitenzahl
+ *  wächst — bei Abbruch kommt nur hinein, was passt. `opt.binder` erlaubt ein fremdes Ziel
+ *  (Übernehmen aus der Vitrine), `opt.fragen === false` erhöht ohne Rückfrage.
+ *  Gibt die Zahl der eingelegten Karten zurück. */
+function kartenEinlegen(neue, opt) {
+  opt = opt || {};
+  const binder = opt.binder || S.binder;
+  const fest = binder.options && Number(binder.options.seitenFest);
+  const plan = _planFuer(binder);
+  if (!fest) {
+    if (opt.abNaechsterSeite) {
+      const letzte = plan[plan.length - 1];
+      const rest = binder.items.length - letzte.start;
+      if (rest) for (let x = 0; x < letzte.laenge - rest; x++) binder.items.push({ type: 'empty' });
+    }
+    EINGELEGT_AB = binder.items.length;
+    binder.items.push(...neue);
+    return neue.length;
+  }
+  let ab = 0;
+  if (opt.abNaechsterSeite) {
+    const leer = plan.find((p) => binder.items.slice(p.start, p.start + p.laenge).every((x) => !x || x.type === 'empty'));
+    ab = leer ? leer.start : binder.items.length;
+  }
+  const freie = () => { const f = []; binder.items.forEach((x, i) => { if (i >= ab && x && x.type === 'empty') f.push(i); }); return f; };
+  let frei = freie();
+  if (frei.length < neue.length) {
+    const pp = plan[plan.length - 1].laenge;
+    const mehr = Math.ceil((neue.length - frei.length) / pp);
+    const ok = opt.fragen === false || confirm(t('sf_voll_frage').replace('{n}', neue.length).replace('{f}', frei.length).replace('{a}', fest).replace('{s}', fest + mehr));
+    if (ok) {
+      binder.options.seitenFest = fest + mehr;
+      const ziel = faecherBis(binder, fest + mehr);
+      while (binder.items.length < ziel) binder.items.push({ type: 'empty' });
+      frei = freie();
+    }
+  }
+  const n = Math.min(frei.length, neue.length);
+  EINGELEGT_AB = n ? frei[0] : -1;
+  for (let i = 0; i < n; i++) binder.items[frei[i]] = neue[i];
+  if (n < neue.length && binder === S.binder) {
+    toast(neue.length === 1 ? t('sf_voll').replace('{s}', fest) : t('sf_nicht_alle').replace('{n}', n).replace('{r}', neue.length - n));
+  }
+  return n;
+}
+
+/** Den Binder auf `n` Seiten bringen. `nurAuffuellen` schneidet nie ab – so kann eine
+ *  Vorlage mehr Seiten mitbringen, als im Assistenten stand. `fest` true/false setzt die
+ *  feste Seitenzahl bzw. hebt sie auf; undefined lässt sie, wie sie ist. */
+function seitenSetzen(n, nurAuffuellen, fest) {
+  if (!S.binder || S.nurAnsicht) return false;
+  n = Math.max(1, Math.min(200, Math.round(n) || 1));
+  S.binder.options = S.binder.options || {};
+  const plan = seitenPlan(n - 1);
+  const ziel = plan[n - 1].start + plan[n - 1].laenge;
+  const items = S.binder.items;
+  if (ziel > 5000) { toast(t('sz_grenze')); return false; }
+  const festSetzen = () => {
+    if (fest === true) S.binder.options.seitenFest = seitenAnzahl();
+    else if (fest === false) delete S.binder.options.seitenFest;
+  };
+  if (items.length === ziel) { festSetzen(); speichern(); zeichneBinder(); return true; }
+  if (items.length < ziel) {
+    merken('seiten');
+    while (S.binder.items.length < ziel) S.binder.items.push({ type: 'empty' });
+  } else {
+    if (nurAuffuellen) { festSetzen(); speichern(); zeichneBinder(); return true; }
+    const weg = items.slice(ziel).filter((x) => x && x.type !== 'empty').length;
+    if (weg && !confirm(t('sz_frage').replace('{n}', weg))) return false;
+    merken('seiten');
+    S.binder.items = items.slice(0, ziel);
+    if ((S.seite || 0) >= n) S.seite = n - 1;
+  }
+  festSetzen();
+  speichern(); zeichneBinder();
+  return true;
+}
+function seitenzahlOeffnen(vorgabe) {
+  if (!S.binder || S.nurAnsicht) return;
+  $('sz-zahl').value = vorgabe || seitenAnzahl();
+  $('sz-fest').checked = true;
+  szInfo();
+  modalOeffnen('modal-seitenzahl');
+}
+function szInfo() {
+  const jetzt = seitenAnzahl(), pp = seiteInfo(0).laenge;
+  const n = Math.max(1, Math.min(200, parseInt($('sz-zahl').value, 10) || 1));
+  $('sz-jetzt').textContent = t(jetzt === 1 ? 'sz_jetzt_1' : 'sz_jetzt').replace('{n}', jetzt).replace('{p}', pp);
+  $('sz-chips').innerHTML = [5, 10, 20, 30, 40, 60].map((z) =>
+    `<button class="chip ${n === z ? 'on' : ''}" onclick="$('sz-zahl').value=${z};szInfo()">${z}</button>`).join('');
+  $('sz-info').textContent = n > jetzt ? t('sz_auf').replace('{n}', n - jetzt)
+    : n < jetzt ? t('sz_ab').replace('{n}', jetzt - n) : t('sz_gleich');
+}
+function seitenzahlAnwenden() {
+  const n = Math.max(1, Math.min(200, parseInt($('sz-zahl').value, 10) || 1));
+  if (!seitenSetzen(n, false, !!$('sz-fest').checked)) return;
+  modalSchliessen();
+  toast(t('sz_ok').replace('{n}', seitenAnzahl()));
 }
 
 function menuToggle(id) {
@@ -71,12 +340,18 @@ document.addEventListener('keydown', (ev) => {
 function modalOeffnen(id) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   $(id).classList.remove('hidden');
-  if (id === 'modal-master') zeichneSetliste();
+  if (id === 'modal-master') { zeichneSetliste(); masterUmfangInfo(); }
   if (id === 'modal-dex') zeichneGens();
   ebeneOeffnen(modalZu);
 }
-/** Nur das DOM schließen – ohne den Verlauf anzufassen. */
-function modalZu() { document.querySelectorAll('.overlay').forEach((o) => o.classList.add('hidden')); }
+/** Nur das DOM schließen – ohne den Verlauf anzufassen.
+ *  Ein abgebrochener Assistent nimmt seine Vorgaben mit: wer den Master-Set-Dialog schließt,
+ *  soll nicht beim nächsten leeren Binder unerwartet 20 Seiten bekommen. Die anlegenden Wege
+ *  holen sich Raster und Seitenzahl vorher heraus, hier ist nur noch Leergut. */
+function modalZu() {
+  document.querySelectorAll('.overlay').forEach((o) => o.classList.add('hidden'));
+  NEU.layout = ''; NEU.seiten = 0;
+}
 function modalSchliessen() { ebeneZu(modalZu); }
 
 /** Einen Dialog schließen und danach den nächsten öffnen.
@@ -100,28 +375,34 @@ function dialogWechsel(fn) {
 
 // ---------- Binder anlegen ----------
 async function binderSpeichernNeu(name, mode, items, options) {
+  // Das Raster kommt aus dem Assistenten; ohne ihn (Startseite, leerer Binder) erbt der
+  // neue Binder das des offenen — vorher gab es nur diesen zweiten Fall.
+  const layout = neuRaster() || (S.binder && S.binder.layout) || '3x3';
   let res;
   try {
     res = await api('api/binders', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, mode, layout: (S.binder && S.binder.layout) || '3x3', options: options || {}, items }),
+      body: JSON.stringify({ name, mode, layout, options: options || {}, items }),
     });
   } catch (e) {
     if (!gate(e)) toast(e.message);
     return false;
   }
-  S.binder = { id: res.id, name, mode, layout: (S.binder && S.binder.layout) || '3x3', options: options || {}, items };
+  S.binder = { id: res.id, name, mode, layout, options: options || {}, items };
   merkeBinderId(res.id);
   binderAnzeigen();
   zeichneErgebnisse();
+  neuSeitenNachziehen();
   return true;
 }
 
-async function neuLeer(still) {
+async function neuLeer(still, ohneSeiten) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
-  // Leerer Binder = nur lokal; die DB-Zeile entsteht mit der ersten Karte (keine leeren Gast-Binder mehr)
-  S.binder = lokalerBinder();
+  // Leerer Binder = nur lokal; die DB-Zeile entsteht mit der ersten Karte (keine leeren
+  // Gast-Binder mehr) — oder sofort, wenn im Assistenten eine Seitenzahl stand.
+  S.binder = lokalerBinder(neuRaster());
   binderAnzeigen(); zeichneErgebnisse();
+  if (!ohneSeiten) neuSeitenNachziehen();
   if (!still) { modalSchliessen(); toast(t('angelegt')); }
 }
 
@@ -173,15 +454,42 @@ async function _masterErstellen() {
   const karten = d.karten.slice();
   if (sortkey === 'typ') karten.sort((a, b) => ((a.types[0] || 'zz') + String(parseInt(a.local_id) || 0).padStart(5, '0')).localeCompare((b.types[0] || 'zz') + String(parseInt(b.local_id) || 0).padStart(5, '0')));
   if (sortkey === 'dex') karten.sort((a, b) => (a.dex || 99999) - (b.dex || 99999));
+  const umfang = ($('opt-master-umfang') || {}).value || 'einmal';
   let items = karten.map((k) => ({ type: 'card', id: k.id }));
-  const options = {};
-  if ($('opt-reverse').checked) {
+  const options = { umfang };
+  if (umfang === 'reverse') {
     options.reverse = true;
     items = items.concat(d.karten.filter((k) => k.reverse).map((k) => ({ type: 'card', id: k.id, variant: 'reverse' })));
+  } else if (umfang === 'alle') {
+    // Jede Karte mit allen ihren Druckvarianten, direkt hintereinander — so liegt im Regal
+    // Normal neben Reverse, statt dass alle Reverse hinten sammeln.
+    items = [];
+    for (const k of karten) for (const v of kartenVarianten(k))
+      items.push(v === 'normal' ? { type: 'card', id: k.id } : { type: 'card', id: k.id, variant: v });
   }
   if (!await binderSpeichernNeu(name, 'master', items, options)) return;
   modalSchliessen();
   toast(items.length + ' ' + t('angelegt'));
+}
+
+/** Welche Druckvarianten es von einer Karte gibt. Die Flags kommen aus der Katalogzeile
+ *  (has_normal/has_holo/has_reverse/has_first); Poké-Ball- und Master-Ball-Muster gibt es
+ *  nur in zwei Sets und stehen deshalb je Set in `muster`. */
+function kartenVarianten(k) {
+  const out = [];
+  if (k.normal !== false) out.push('normal');
+  if (k.holo) out.push('holo');
+  if (k.reverse) out.push('reverse');
+  if (k.first) out.push('first');
+  for (const m of (k.muster || [])) if (m === 'pokeball' || m === 'masterball') out.push(m);
+  return out.length ? out : ['normal'];
+}
+/** „Jede Version" verdoppelt bis verdreifacht die Fächerzahl — das steht als Hinweis unter
+ *  der Auswahl, damit niemand aus einem 190er-Set ungewollt 400 Fächer baut. */
+function masterUmfangInfo() {
+  const el = $('master-umfang-info');
+  if (!el) return;
+  el.textContent = (($('opt-master-umfang') || {}).value === 'alle') ? t('m_umfang_u') : '';
 }
 
 const wzGens = new Set();
@@ -301,10 +609,11 @@ function setSymbol(s, cls) {
   return `<span class="setcode">${esc(s.id)}</span>`;
 }
 function zeichneSetWahlKnopf() {
+  // Die gewählte Ära stand hier als Ersatzbeschriftung, solange sie kein eigenes Feld hatte.
+  // Jetzt steht sie direkt daneben — der Knopf sagt wieder nur etwas über Sets.
   const s = (S.meta.sets || []).find((x) => x.id === filter.set);
-  const se = !s && filter.serie ? (S.meta.series || []).find((x) => x.id === filter.serie) : null;
   $('f-set-lbl').innerHTML = s ? `${setSymbol(s, '')}<span>${esc(setName(s))}</span>`
-    : se ? `<span>${t('f_aera')}: ${esc(se.name)}</span>` : `<span>${t('alle_sets')}</span>`;
+    : `<span>${t('alle_sets')}</span>`;
 }
 function setWahlToggle() {
   menuToggle('set-popover');
@@ -419,16 +728,24 @@ function aktiveFilter() {
     const st = (S.meta && S.meta.sets || []).find((x) => x.id === filter.set);
     return st ? (LANG === 'en' ? (st.name_en || st.name) : st.name) : filter.set;
   };
-  if (filter.q) raus.push([t('f_suche'), filter.q, () => { $('f-suche').value = ''; $('f-suche-mobil').value = ''; filter.q = ''; }]);
-  if (filter.set) raus.push(['Set', setname(), () => { filter.set = ''; if (typeof setWaehlen === 'function') setWaehlen(''); }]);
-  if (filter.dex) raus.push([t('f_pokemon'), $('f-dex').value || String(filter.dex), () => { filter.dex = 0; $('f-dex').value = ''; }]);
+  // Der vierte Eintrag ist der Schlüssel: Suche, Set, Pokémon, Ära und Seltenheit haben seit
+  // 21.09.2026 ein eigenes sichtbares Feld über den Treffern. Dort doppelt als Chip zu
+  // stehen, hilft niemandem — im Filterpanel (wo die Felder nicht sind) schon.
+  if (filter.q) raus.push([t('f_suche'), filter.q, () => { $('f-suche').value = ''; $('f-suche-mobil').value = ''; filter.q = ''; }, 'q']);
+  if (filter.set) raus.push(['Set', setname(), () => { filter.set = ''; if (typeof setWaehlen === 'function') setWaehlen(''); }, 'set']);
+  if (filter.dex) raus.push([t('f_pokemon'), $('f-dex').value || String(filter.dex), () => { filter.dex = 0; $('f-dex').value = ''; }, 'dex']);
   if (filter.serie) {
     const se = (S.meta && S.meta.series || []).find((x) => x.id === filter.serie);
-    raus.push([t('f_aera'), se ? se.name : filter.serie, () => { filter.serie = ''; $('f-serie').value = ''; }]);
+    raus.push([t('f_aera'), se ? se.name : filter.serie, () => { filter.serie = ''; $('f-serie').value = ''; }, 'serie']);
   }
   if (filter.illustrator) raus.push([t('f_illu'), filter.illustrator, () => { filter.illustrator = ''; $('f-illu').value = ''; $('f-illu-suche').value = ''; }]);
-  filter.rgroup.forEach((r) => raus.push([t('f_rarity'), r, () => filter.rgroup.delete(r)]));
-  filter.kinds.forEach((k) => raus.push([t('f_art'), (T[LANG].arten && T[LANG].arten[k]) || k, () => filter.kinds.delete(k)]));
+  filter.rgroup.forEach((r) => {
+    const g = (S.meta && S.meta.rarity_groups || []).find((x) => x.id === r);
+    raus.push([t('f_rarity'), g ? (LANG === 'en' ? g.name_en : g.name) : r, () => filter.rgroup.delete(r), 'rgroup']);
+  });
+  // Die Beschriftungen der Kartenarten stehen in T[LANG].kinds; `arten` gibt es nicht,
+  // der Chip hieß deshalb „trainer" statt „Trainerkarte".
+  filter.kinds.forEach((k) => raus.push([t('f_art'), (T[LANG].kinds && T[LANG].kinds[k]) || k, () => filter.kinds.delete(k)]));
   if (filter.typ) raus.push([t('f_typ'), (T[LANG].typen && T[LANG].typen[filter.typ]) || filter.typ, () => { filter.typ = ''; }]);
   if (filter.trainer) raus.push([t('f_trainer'), filter.trainer, () => { filter.trainer = ''; $('f-trainer').value = ''; }]);
   filter.regmark.forEach((r) => raus.push(['Regulation', r, () => filter.regmark.delete(r)]));
@@ -445,17 +762,21 @@ function aktiveFilter() {
 }
 
 let _aktivWeg = [];
+const SCHNELL_FILTER = ['q', 'set', 'dex', 'serie', 'rgroup'];
 function zeichneAktivChips() {
   const box = $('f-aktiv');
   if (!box) return;
-  const liste = aktiveFilter();
+  const alle = aktiveFilter();
+  // Die Chip-Zeile steht über den Treffern, direkt unter den Schnellfiltern: sie zeigt nur
+  // das, was man dort nicht schon sieht. Die Zahl am Filter-Rail zählt weiter alles.
+  const liste = alle.filter((x) => !SCHNELL_FILTER.includes(x[3]));
   _aktivWeg = liste.map((x) => x[2]);
   box.innerHTML = liste.map(([lbl, wert, ], i) =>
     `<button class="chip" onclick="filterChipWeg(${i})" title="${esc(lbl)} – ${t('f_chip_weg')}"><b>${esc(String(wert).slice(0, 22))}</b><span class="w">✕</span></button>`).join('');
   const reset = $('f-reset-btn');
-  if (reset) reset.classList.toggle('hidden', liste.length === 0);
+  if (reset) reset.classList.toggle('hidden', alle.length === 0);
   const rail = $('f-rail-zahl');
-  if (rail) { rail.textContent = liste.length; rail.classList.toggle('hidden', liste.length === 0); }
+  if (rail) { rail.textContent = alle.length; rail.classList.toggle('hidden', alle.length === 0); }
   const zeigen = $('f-zeigen-btn');
   if (zeigen) zeigen.textContent = S.gesamt != null ? `${S.gesamt.toLocaleString(LANG === 'de' ? 'de-DE' : 'en-US')} ${t('karten_zeigen')}` : t('karten_zeigen');
 }
@@ -629,22 +950,22 @@ async function alleHinzufuegen(naechsteSeite) {
     if (!d.ids.length) return;
     if (d.ids.length > 300 && !confirm(d.ids.length + ' ' + t('bestaetigen_viele'))) return;
     merken('alle');
-    if (naechsteSeite) {
-      const letzte = seiteInfo(Math.max(0, seitenAnzahl() - 1));
-      const rest = S.binder.items.length - letzte.start;
-      if (rest) for (let x = 0; x < letzte.laenge - rest; x++) S.binder.items.push({ type: 'empty' });
-    }
-    for (const id of d.ids) S.binder.items.push({ type: 'card', id });
+    const n = kartenEinlegen(d.ids.map((id) => ({ type: 'card', id })), { abNaechsterSeite: !!naechsteSeite });
+    if (!n) return;
     if (!await binderAnlegenWennNoetig()) return;
+    if (EINGELEGT_AB >= 0) S.seite = seiteBei(EINGELEGT_AB);
     speichern(); zeichneBinder(); zeichneErgebnisse();
-    toastUndo(d.ids.length + ' ' + t('hinzugefuegt'));
+    toastUndo(n + ' ' + t('hinzugefuegt'));
   } catch (e) { toast(t('fehler_laden')); }
 }
 
 // ---------- Binder-Panel ----------
 function zeichneLayouts() {
-  $('wb-layout').innerHTML = Object.keys(LAYOUTS).map((l) =>
-    `<option value="${l}" ${S.binder.layout === l ? 'selected' : ''}>${l.replace('x', '×')} (${LAYOUTS[l][0] * LAYOUTS[l][1]})</option>`).join('');
+  // 25 Raster in einer Reihe wären eine Suchaufgabe; die drei gängigen stehen deshalb oben.
+  const opt = (l) => `<option value="${l}" ${S.binder.layout === l ? 'selected' : ''}>${l.replace('x', ' × ')} (${LAYOUTS[l][0] * LAYOUTS[l][1]})</option>`;
+  $('wb-layout').innerHTML =
+    `<optgroup label="${t('wiz_beliebt')}">${LAYOUTS_BELIEBT.map(opt).join('')}</optgroup>` +
+    `<optgroup label="${t('wiz_alle')}">${Object.keys(LAYOUTS).map(opt).join('')}</optgroup>`;
 }
 function layoutWechsel(l) { S.binder.layout = l; S.seite = 0; zeichneBinder(); speichern(); }
 // Breite der Binder-Übersicht (persistiert). Größer = die Karten in der
@@ -685,18 +1006,7 @@ function seitenRaster(nr) {
 
 /** Der Plan aller Seiten. `mindestens` erzwingt Einträge über das Binderende hinaus —
  *  gebraucht, wenn eine noch nicht vorhandene Seite befüllt werden soll. */
-function seitenPlan(mindestens) {
-  const items = (S.binder && S.binder.items) || [];
-  const plan = [];
-  let i = 0, nr = 0;
-  do {
-    const l = seitenRaster(nr);
-    const [c, r] = LAYOUTS[l] || [3, 3];
-    plan.push({ nr, start: i, laenge: c * r, cols: c, rows: r, layout: l });
-    i += c * r; nr++;
-  } while (i < items.length || nr <= (mindestens || 0));
-  return plan;
-}
+function seitenPlan(mindestens) { return _planFuer(S.binder, mindestens); }
 
 /** Eine einzelne Seite, auch wenn sie noch gar nicht befüllt ist. */
 function seiteInfo(nr) {
@@ -891,7 +1201,7 @@ function zeichneBinder() {
   $('wb-seite').textContent = S.seite + 1;
   $('wb-seiten').textContent = seiten;
   const druck = S.binder.items.filter((x) => x.type !== 'empty').length;
-  $('wb-fortschritt').textContent = S.binder.items.length ? `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')} · ${Math.ceil(druck / 9)} ${t('blaetter')}` : t('binder_leer');
+  $('wb-fortschritt').textContent = S.binder.items.length ? `${S.binder.items.length} ${t('faecher')} · ${seiten} ${t('seiten')}${seitenFest() ? ' (' + t('sf_kurz') + ')' : ''} · ${Math.ceil(druck / 9)} ${t('blaetter')}` : t('binder_leer');
   const titel = $('wb-titel');
   if (titel) {
     titel.textContent = S.binder.name || t('neuer_binder');
@@ -1319,9 +1629,8 @@ function themaUebernehmen(modus) {
   const letzteS = seiteInfo(Math.max(0, seitenAnzahl() - 1));
   const pp = letzteS.laenge;
   if (modus === 'anhaengen') {
-    while (S.binder.items.length > letzteS.start && (S.binder.items.length - letzteS.start) % pp !== 0) S.binder.items.push({ type: 'empty' });
-    S.binder.items.push(...karten);
-    S.seite = Math.floor((S.binder.items.length - 1) / pp);
+    if (!kartenEinlegen(karten, { abNaechsterSeite: true })) return;
+    S.seite = seiteBei(EINGELEGT_AB);
   } else {
     const start = S.seite * pp;
     while (S.binder.items.length < start + pp) S.binder.items.push({ type: 'empty' });
@@ -1500,7 +1809,11 @@ function fotoTauschen(si, ki, ai) {
 function fotoKarteWeg(si, ki) { FI.seiten[si].splice(ki, 1); slotMenueZu(); zeichneFotoErgebnis(); }
 
 async function fotoUebernehmen(modus) {
-  const pp = seiteInfo(S.seite || 0).laenge;
+  // Ein neuer Binder bekommt das Raster aus dem Assistenten, ein Anhängen das des offenen.
+  if (modus !== 'neu') { NEU.layout = ''; NEU.seiten = 0; }
+  const pp = (modus === 'neu' && NEU.layout)
+    ? LAYOUTS[NEU.layout][0] * LAYOUTS[NEU.layout][1]
+    : seiteInfo(S.seite || 0).laenge;
   const items = [];
   for (const karten of FI.seiten) {
     for (let i = 0; i < pp; i++) items.push(karten[i] ? { type: 'card', id: karten[i].id } : { type: 'empty' });
@@ -1512,11 +1825,10 @@ async function fotoUebernehmen(modus) {
   } else {
     if (!S.binder) return;
     merken('foto');
-    while (S.binder.items.length % pp) S.binder.items.push({ type: 'empty' });
-    S.binder.items.push(...items);
+    if (!kartenEinlegen(items, { abNaechsterSeite: true })) return;
     speichern(); zeichneBinder();
   }
-  S.seite = Math.max(0, Math.ceil(S.binder.items.length / pp) - FI.seiten.length);
+  S.seite = modus === 'neu' ? Math.max(0, Math.ceil(S.binder.items.length / pp) - FI.seiten.length) : seiteBei(Math.max(0, EINGELEGT_AB));
   zeichneBinder(); zeichneErgebnisse();
   modalSchliessen();
   toast(t('foto_fertig').replace('{n}', FI.seiten.reduce((s, k) => s + k.length, 0)));
