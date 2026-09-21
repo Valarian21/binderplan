@@ -260,7 +260,11 @@ function fachKlick(ev, idx) {
   // Marcels Vorgabe (21.09.): Shift ist die Taste für „noch eins dazu" — sie liegt am
   // nächsten und ist die, die man ohnehin drückt. Strg/Cmd tut dasselbe; der Bereich
   // (von der zuletzt angeklickten bis zu dieser Karte) liegt auf Strg+Shift.
-  const touch = matchMedia('(hover: none)').matches;
+  // Entscheidend ist die Ansicht, nicht die Eingabe: in der Desktop-Ansicht (mit Inspektor)
+  // wählt ein Klick ausschließlich — auch per Finger auf einem Surface. `(hover: none)` traf
+  // dort zu und ließ jeden Klick weiter sammeln (gemeldet 21.09.). Nur am Handy (< 901 px,
+  // ohne Inspektor) sammelt der Tipp.
+  const touch = window.innerWidth < 901;
   const strg = ev && (ev.ctrlKey || ev.metaKey);
   if (ev && ev.shiftKey && strg && letzterKlick !== null) {
     const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
