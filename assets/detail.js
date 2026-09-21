@@ -225,11 +225,22 @@ function fachKlick(ev, idx) {
   if (ev && ev.target && ev.target.closest('.raus, .mehr, .hat-btn')) return;
   if (S.nurAnsicht || !S.binder.items[idx]) return;
   if (zielModus) return auswahlZuZiel(idx);
+  // Mit der Maus wählt ein einfacher Klick *dieses eine* Fach — wie in jedem Dateimanager:
+  // Strg/Cmd nimmt weitere dazu, Shift einen Bereich, ein zweiter Klick auf das einzig
+  // gewählte hebt die Auswahl auf. Vorher sammelte jeder Klick: nach Karte A und Karte B
+  // waren zwei gewählt, der Inspektor (der genau eines zeigt) verschwand, und es sah aus, als
+  // bliebe er bei der alten Karte hängen (gemeldet 21.09.2026). Am Touchscreen gibt es kein
+  // Strg — dort sammelt der Tipp weiter, damit man Fächer für eine Aktion zusammenstellen kann.
+  const touch = matchMedia('(hover: none)').matches;
   if (ev && ev.shiftKey && letzterKlick !== null) {
     const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
     for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
-  } else {
+  } else if (touch || (ev && (ev.ctrlKey || ev.metaKey))) {
     S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
+  } else if (S.auswahl.size === 1 && S.auswahl.has(idx)) {
+    S.auswahl.clear();
+  } else {
+    S.auswahl.clear(); S.auswahl.add(idx);
   }
   letzterKlick = idx;
   auswahlZeigen();
