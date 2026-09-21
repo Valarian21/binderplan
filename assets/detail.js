@@ -257,11 +257,15 @@ function fachKlick(ev, idx) {
   // waren zwei gewählt, der Inspektor (der genau eines zeigt) verschwand, und es sah aus, als
   // bliebe er bei der alten Karte hängen (gemeldet 21.09.2026). Am Touchscreen gibt es kein
   // Strg — dort sammelt der Tipp weiter, damit man Fächer für eine Aktion zusammenstellen kann.
+  // Marcels Vorgabe (21.09.): Shift ist die Taste für „noch eins dazu" — sie liegt am
+  // nächsten und ist die, die man ohnehin drückt. Strg/Cmd tut dasselbe; der Bereich
+  // (von der zuletzt angeklickten bis zu dieser Karte) liegt auf Strg+Shift.
   const touch = matchMedia('(hover: none)').matches;
-  if (ev && ev.shiftKey && letzterKlick !== null) {
+  const strg = ev && (ev.ctrlKey || ev.metaKey);
+  if (ev && ev.shiftKey && strg && letzterKlick !== null) {
     const [von, bis] = [Math.min(letzterKlick, idx), Math.max(letzterKlick, idx)];
     for (let i = von; i <= bis; i++) if (S.binder.items[i]) S.auswahl.add(i);
-  } else if (touch || (ev && (ev.ctrlKey || ev.metaKey))) {
+  } else if (touch || strg || (ev && ev.shiftKey)) {
     S.auswahl.has(idx) ? S.auswahl.delete(idx) : S.auswahl.add(idx);
   } else if (S.auswahl.size === 1 && S.auswahl.has(idx)) {
     S.auswahl.clear();
