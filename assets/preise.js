@@ -244,10 +244,12 @@ function touchMove(ev) {
   const fach = unter && unter.closest('.slot[data-idx]');
   TOUCH.ziel = fach ? Number(fach.dataset.idx) : null;
   if (fach) fach.classList.add('dragover');
+  ziehRandPruefen(b.clientX, b.clientY);
 }
 
 function touchEnde() {
   clearTimeout(TOUCH.timer); TOUCH.timer = null;
+  ziehScrollEnde();
   if (!TOUCH.aktiv) { TOUCH.start = null; return; }
   if (TOUCH.geist) { TOUCH.geist.remove(); TOUCH.geist = null; }
   document.querySelectorAll('.slot.dragover, .slot.wird-gezogen')
@@ -277,6 +279,47 @@ function fachVerschieben(von, nach) {
 
 let dragIdx = null;
 let dragNeu = null;      // Karte aus der Trefferliste (statt Umsortieren im Binder)
+
+/* ---------- Beim Ziehen an den Rand scrollen ----------
+   Natives Drag & Drop scrollt einen overflow-Container nicht von allein (Firefox gar nicht,
+   Chrome nur den Seitenrahmen). Wer eine Karte von Seite 1 auf Seite 14 ziehen wollte, kam
+   nur bis zum Bildrand (gemeldet 21.09.2026). Ab 56 px vor dem oberen oder unteren Rand des
+   Scrollbereichs läuft der Inhalt in diese Richtung — je näher am Rand, desto schneller —
+   mit der Maus (dragover) wie am Handy (touchmove). Gescrollt wird der nächste scrollbare
+   Vorfahr des Elements unter dem Zeiger, sonst die Seite selbst. */
+const ZIEH_RAND = 56;
+const ziehScroll = { el: null, dy: 0, raf: 0 };
+function scrollElternVon(el) {
+  for (let e = el; e && e !== document.body; e = e.parentElement) {
+    const o = getComputedStyle(e).overflowY;
+    if ((o === 'auto' || o === 'scroll') && e.scrollHeight > e.clientHeight + 2) return e;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+function ziehRandPruefen(x, y) {
+  const box = scrollElternVon(document.elementFromPoint(x, y) || document.body);
+  const seite = box === document.scrollingElement || box === document.documentElement;
+  const r = seite ? { top: 0, bottom: window.innerHeight } : box.getBoundingClientRect();
+  let dy = 0;
+  if (y < r.top + ZIEH_RAND) dy = -(Math.ceil((r.top + ZIEH_RAND - y) / 4) + 2);
+  else if (y > r.bottom - ZIEH_RAND) dy = Math.ceil((y - (r.bottom - ZIEH_RAND)) / 4) + 2;
+  ziehScroll.el = box; ziehScroll.dy = dy;
+  if (dy && !ziehScroll.raf) ziehScroll.raf = requestAnimationFrame(ziehScrollSchritt);
+}
+function ziehScrollSchritt() {
+  ziehScroll.raf = 0;
+  if (!ziehScroll.dy || !ziehScroll.el) return;
+  ziehScroll.el.scrollTop += ziehScroll.dy;
+  ziehScroll.raf = requestAnimationFrame(ziehScrollSchritt);
+}
+function ziehScrollEnde() {
+  ziehScroll.dy = 0; ziehScroll.el = null;
+  if (ziehScroll.raf) cancelAnimationFrame(ziehScroll.raf);
+  ziehScroll.raf = 0;
+}
+document.addEventListener('dragover', (ev) => { if (dragIdx !== null || dragNeu) ziehRandPruefen(ev.clientX, ev.clientY); });
+document.addEventListener('dragend', () => { ziehScrollEnde(); dragIdx = null; });
+document.addEventListener('drop', ziehScrollEnde);
 
 function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); dragNeu = null; ev.dataTransfer.effectAllowed = 'move'; }
 function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
