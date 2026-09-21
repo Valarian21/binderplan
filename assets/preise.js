@@ -329,7 +329,12 @@ document.addEventListener('dragover', (ev) => { if (dragIdx !== null || dragNeu)
 document.addEventListener('dragend', () => { ziehScrollEnde(); dragIdx = null; });
 document.addEventListener('drop', ziehScrollEnde);
 
-function dragStart(ev) { dragIdx = Number(ev.currentTarget.dataset.idx); dragNeu = null; ev.dataTransfer.effectAllowed = 'move'; }
+function dragStart(ev) {
+  dragIdx = Number(ev.currentTarget.dataset.idx); dragNeu = null;
+  ev.dataTransfer.effectAllowed = 'move';
+  // Firefox startet ohne setData() gar keinen Zug — die Karte hob sich dort nie.
+  try { ev.dataTransfer.setData('text/plain', String(dragIdx)); } catch (e) { /* ältere Browser */ }
+}
 function dragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('dragover'); }
 function dragLeave(ev) { ev.currentTarget.classList.remove('dragover'); }
 
