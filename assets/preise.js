@@ -210,6 +210,7 @@ function touchStart(ev) {
     TOUCH.aktiv = true;
     TOUCH.idx = idx;
     ziehScrollStart();
+    document.body.classList.add('zieht');
     if (navigator.vibrate) navigator.vibrate(12);      // spürbare Rückmeldung, dass es „hängt“
     const r = fach.getBoundingClientRect();
     const geist = fach.cloneNode(true);
@@ -251,6 +252,7 @@ function touchMove(ev) {
 function touchEnde() {
   clearTimeout(TOUCH.timer); TOUCH.timer = null;
   ziehScrollEnde();
+  document.body.classList.remove('zieht');
   if (!TOUCH.aktiv) { TOUCH.start = null; return; }
   if (TOUCH.geist) { TOUCH.geist.remove(); TOUCH.geist = null; }
   document.querySelectorAll('.slot.dragover, .slot.wird-gezogen')
@@ -324,7 +326,9 @@ function ziehScrollEnde() {
   if (ziehScroll.raf) cancelAnimationFrame(ziehScroll.raf);
   ziehScroll.raf = 0;
 }
-document.addEventListener('dragstart', ziehScrollStart, true);
+document.addEventListener('dragstart', () => { ziehScrollStart(); document.body.classList.add('zieht'); }, true);
+document.addEventListener('dragend', () => document.body.classList.remove('zieht'));
+document.addEventListener('drop', () => document.body.classList.remove('zieht'));
 document.addEventListener('dragover', (ev) => { if (dragIdx !== null || dragNeu) ziehRandPruefen(ev.clientX, ev.clientY); });
 document.addEventListener('dragend', () => { ziehScrollEnde(); dragIdx = null; });
 document.addEventListener('drop', ziehScrollEnde);

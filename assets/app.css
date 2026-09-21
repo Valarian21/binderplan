@@ -1377,7 +1377,9 @@
   .st-gast { margin: 12px 0 18px; }
   .st-gast[hidden] { display: none; }
   .bp-stats { font-size: var(--t-s); color: var(--mut); font-weight: 600; }
-  .bp-tools { display: flex; align-items: center; gap: 12px; }
+  /* Umbrechen statt überlaufen: bei 1.100 px Fensterbreite lagen Drucken und ⋯ rechts
+     außerhalb der Spalte — unter dem Inspektor, unerreichbar (21.09.2026). */
+  .bp-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 8px; }
   .bp-tools-scroll { display: contents; }
   .bp-tools .menuwrap { margin-left: auto; }
   .bp-hilfe { font-size: var(--t-xs); color: var(--mut); line-height: 1.5; margin-top: auto; }
@@ -2212,6 +2214,20 @@
     .inspektor .ik-akt .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
     .inspektor .ik-zu { position: absolute; right: 10px; top: 10px; }
     .inspektor .ik-leer { display: flex; flex-direction: column; gap: 6px; margin: auto 0; padding: 18px 6px; text-align: center; color: var(--mut); font-size: var(--t-s); line-height: 1.45; }
+    /* Unter 1.400 px ist kein Platz für eine dauerhafte dritte Spalte: Suche (520) + Binder
+       (486) + Spalte (300) sind 1.306 px. Als feste Spalte drückte sie den Binder auf 92–430 px
+       und schob die Werkzeugleiste unter sich — „kann ganz viele Buttons nicht nutzen"
+       (Marcels Surface, 21.09.). Dort legt sie sich als Überlagerung über den rechten Rand und
+       erscheint nur, wenn etwas gewählt ist; der Ruhezustand bleibt der großen Ansicht. */
+    /* Regel darunter: Details überlagern die *Suche*, nie den Binder. Ist die Suchschublade
+       offen, legt sich die Spalte über deren rechten Teil (die Treffer braucht man in dem
+       Moment nicht, den Binder schon); ist sie zu, ist Platz für eine echte Spalte. */
+    @media (max-width: 1399px) {
+      .rumpf { position: relative; }
+      .inspektor.ueberlagert { position: absolute; left: var(--ik-left, 0px); top: var(--ik-top, 0px); bottom: 0; width: 300px; z-index: 46;
+                               box-shadow: 0 0 28px rgba(0,0,0,.16); border-left: 1.5px solid var(--line); }
+      .inspektor.ueberlagert.ruhe, body.zieht .inspektor.ueberlagert { display: none; }
+    }
     .inspektor .ik-leer strong { color: var(--ink); font-size: var(--t-m); }
     .ik-chip { padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--line); font-size: var(--t-s); font-weight: 600; background: var(--card); }
     .ik-chip.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }

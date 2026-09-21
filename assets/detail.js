@@ -12,12 +12,14 @@ function sucheLadeOeffnen(fokus) {
   const btn = $('btn-suche-lade'); if (btn) btn.classList.add('on');
   if (!S.sucheOffen) { S.sucheOffen = true; sucheNeu(); }
   ladeZielZeichnen();
+  inspektorZeichnen();
   if (fokus !== false && window.innerWidth >= 901) { const f = $('f-suche-lade'); if (f) f.focus(); }
 }
 function sucheLadeZu() {
   document.body.classList.remove('suche-offen');
   const btn = $('btn-suche-lade'); if (btn) btn.classList.remove('on');
   mobilFilter(false);
+  inspektorZeichnen();
 }
 function sucheLadeToggle() { document.body.classList.contains('suche-offen') ? sucheLadeZu() : sucheLadeOeffnen(); }
 function ladeZielZeichnen() {
@@ -61,6 +63,21 @@ async function inspektorZeichnen() {
   // Aktionen, die vorher in der schwebenden Leiste lagen).
   box.classList.remove('hidden');
   const n = S.auswahl.size;
+  // Unter 1.400 px mit offener Suchschublade: als Überlagerung über den rechten Teil der
+  // Schublade — nie über den Binder. Ein leeres gewähltes Fach braucht dort die Treffer,
+  // nicht die Spalte; dann bleibt sie weg.
+  const einzel = n === 1 ? S.binder.items[[...S.auswahl][0]] : null;
+  const band = window.innerWidth < 1400 && document.body.classList.contains('suche-offen');
+  box.classList.toggle('ueberlagert', band);
+  box.classList.toggle('ruhe', n === 0 || (band && einzel && einzel.type === 'empty'));
+  if (band) {
+    const lade = document.querySelector('.suche-lade'), rumpf = document.querySelector('.rumpf');
+    if (lade && rumpf) {
+      const lr = lade.getBoundingClientRect(), rr = rumpf.getBoundingClientRect();
+      box.style.setProperty('--ik-left', Math.max(0, Math.round(lr.right - rr.left - 300)) + 'px');
+      box.style.setProperty('--ik-top', Math.max(0, Math.round(lr.top - rr.top)) + 'px');
+    }
+  }
   const zu = `<button class="btn sekundaer ik-zu" style="padding:4px 9px" onclick="auswahlLeeren()" aria-label="Schließen">✕</button>`;
   if (n === 0) {
     box.innerHTML = `<div class="ik-leer"><strong>${t('ik_nichts_t')}</strong><span>${t('ik_nichts_u')}</span></div>`;
