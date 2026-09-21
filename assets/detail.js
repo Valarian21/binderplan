@@ -141,9 +141,10 @@ async function inspektorZeichnen() {
     <div class="ik-lbl">${t('f_variante')}</div><div class="ik-zeile">${chips(VARIANTEN, item.variant || 'normal', 'ikVariante', (v) => v === 'normal' ? t('v_normal_kurz') : (VMARK[v] || v))}</div>
     <div class="ik-lbl">${t('kartensprache')}</div><div class="ik-zeile">${chips(['de', 'en', 'jp'], item.sprache || 'de', 'ikSprache')}</div>
     <div class="ik-lbl">${t('s_zustand')}</div><div class="ik-zeile">${chips(['', ...Object.keys(zustandFaktoren())], (item.zustand || '').toUpperCase(), 'ikZustand', (v) => v || t('zst_ohne'))}</div>
+    <div class="ik-lbl">${t('ik_sm_t')}</div>
+    <div class="ik-sm" id="ik-sm">${S.user ? '…' : `<button class="ik-hab" onclick="hatToggle(${idx});setTimeout(inspektorZeichnen,50)">${sn ? '✓ ' + t('ik_hat') : t('ik_hat_nicht')}</button><div class="ik-sm-hin">${t('ik_sm_gast')}</div>`}</div>
     <div class="ik-lbl">${t('ik_aktionen')}</div>
     <div class="ik-akt">
-      <button onclick="hatToggle(${idx});setTimeout(inspektorZeichnen,50)">${sn ? '✓ ' + t('ik_hat') : t('ik_hat_nicht')}</button>
       <button onclick="wunschToggle('${esc(item.id)}');setTimeout(inspektorZeichnen,300)">${wunschHat(item.id) ? '★ ' : '☆ '}${t('wl_titel')}</button>
       <button onclick="alarmOeffnen('karte','${esc(item.id)}',${JSON.stringify(name).replace(/"/g, '&quot;')},${preis || 0})">${t('al_t')}</button>
       <button onclick="detailOeffnen('${esc(item.id)}')">${t('s_details')}</button>
@@ -156,6 +157,39 @@ async function inspektorZeichnen() {
       <button onclick="fachFreimachen(${idx})">${t('s_entfernen')}</button>
       ${gefahr}
     </div>`;
+  if (S.user) ikSammlungZeichnen(idx, item);
+}
+
+/* ---------- Sammlung in der Spalte ----------
+   Die Chips darüber beschreiben das Exemplar im Fach (Variante, Sprache, Zustand). Genau so
+   geht es in die Sammlung: ein Klick, und der Posten trägt diese Angaben — vorher kannte der
+   Haken „Hab ich" weder Zustand noch Sprache. Darüber stehen die Posten, die es von der Karte
+   schon gibt; jeder lässt sich im Posten-Dialog ändern (Kaufpreis, Grading, Anzahl). */
+LADE.posten = LADE.posten || {};
+function ikExemplar(item) {
+  return { variante: item.variant || 'normal', zustand: (item.zustand || '').toUpperCase(), sprache: item.sprache || 'de' };
+}
+async function ikSammlungZeichnen(idx, item) {
+  const box = $('ik-sm'); if (!box) return;
+  let posten = LADE.posten[item.id];
+  if (!posten) {
+    try { posten = (await api('api/sammlung/karte/' + encodeURIComponent(item.id))).posten || []; }
+    catch (e) { posten = []; }
+    LADE.posten[item.id] = posten;
+    if (!S.auswahl.has(idx) || S.auswahl.size !== 1 || !$('ik-sm')) return;
+  }
+  const ex = ikExemplar(item);
+  const gleich = posten.find((p) => (p.variante || 'normal') === ex.variante && (p.zustand || '') === ex.zustand && (p.sprache || '') === ex.sprache && !p.grading);
+  const zeilen = posten.map((p, i) => `<button class="ik-sm-posten" onclick="smPostenOeffnen('${esc(item.id)}', LADE.posten['${esc(item.id)}'][${i}])" title="${t('sm_posten_aendern')}">
+      <b>${p.anzahl}×</b> ${smPostenLabel(p)}${p.kaufpreis != null ? ` <span class="ik-sm-kauf">${anEur(p.kaufpreis)}</span>` : ''}<span class="ik-sm-pfeil">›</span></button>`).join('');
+  $('ik-sm').innerHTML = `${posten.length ? zeilen : `<div class="ik-sm-hin">${t('ik_sm_leer')}</div>`}
+    <button class="btn ik-sm-auf" onclick="ikAufnehmen(${idx})">＋ ${t(gleich ? 'ik_sm_nochmal' : 'ik_sm_auf').replace('{l}', smPostenLabel(ex))}</button>
+    <button class="ik-sm-weiter" onclick="smPostenOeffnen('${esc(item.id)}', null, ${JSON.stringify(ex).replace(/"/g, '&quot;')})">${t('ik_sm_weiter')}</button>`;
+}
+async function ikAufnehmen(idx) {
+  const item = S.binder.items[idx]; if (!item || item.type !== 'card') return;
+  const ex = ikExemplar(item);
+  await sammlungAufnehmen(item.id, ex);
 }
 function ikItem() { const idx = S.auswahl.size === 1 ? [...S.auswahl][0] : null; return idx === null ? null : S.binder.items[idx]; }
 function ikVariante(v) { const it = ikItem(); if (!it) return; if (v === 'normal') delete it.variant; else it.variant = v; speichern(); zeichneBinder(); inspektorZeichnen(); }

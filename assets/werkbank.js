@@ -390,6 +390,9 @@ async function binderSpeichernNeu(name, mode, items, options) {
   }
   S.binder = { id: res.id, name, mode, layout, options: options || {}, items };
   merkeBinderId(res.id);
+  // Herkunft an den Gastbinder – fehlte hier (nur der Planer-Pfad meldete), deshalb hatte bis
+  // 21.09.2026 kein einziges Konto einen Kanal, obwohl Besucher mit UTM kamen.
+  if (typeof herkunftMelden === 'function') herkunftMelden(res.id);
   binderAnzeigen();
   zeichneErgebnisse();
   neuSeitenNachziehen();

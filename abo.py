@@ -403,6 +403,13 @@ def _ts(wert):
         return ""
 
 
+def _item_periode_ende(sub):
+    try:
+        return (((sub.get("items") or {}).get("data") or [{}])[0]).get("current_period_end")
+    except Exception:
+        return None
+
+
 def _abo_aus_stripe(con, user_id, sub):
     """Abo-Zustand aus einem Stripe-Subscription-Objekt in die DB übernehmen."""
     status = sub.get("status")
@@ -419,7 +426,9 @@ def _abo_aus_stripe(con, user_id, sub):
         "UPDATE users SET plan=?, stripe_sub=?, abo_status=?, abo_bis=?, abo_kuendigt=?, abo_intervall=?"
         " WHERE id=?",
         (plan if (aktiv and plan) else "free", sub.get("id"), status or "",
-         _ts(sub.get("current_period_end")), 1 if sub.get("cancel_at_period_end") else 0,
+         # Seit Stripe-API 2025-03-31 steht current_period_end am Subscription-Item, nicht mehr am
+         # Abo – beide Abonnenten hatten deshalb ein leeres abo_bis (kein Verlängerungsdatum sichtbar).
+         _ts(sub.get("current_period_end") or _item_periode_ende(sub)), 1 if sub.get("cancel_at_period_end") else 0,
          intervall or "", user_id))
     con.commit()
     return plan if aktiv else "free"
@@ -631,7 +640,7 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         if not user.get("stripe_sub"):
             raise HTTPException(400, detail={"code": "kein_abo"})
         sub = _stripe(f"subscriptions/{user['stripe_sub']}", {"cancel_at_period_end": True})
-        bis = _ts(sub.get("current_period_end"))
+        bis = _ts(sub.get("current_period_end") or _item_periode_ende(sub))
         con = get_db()
         con.execute("UPDATE users SET abo_kuendigt = 1, abo_bis = ? WHERE id = ?", (bis, user["id"]))
         con.commit()
@@ -823,7 +832,7 @@ def register(app, *, get_db, current_user, require_user, env, mail_senden, mail_
         if user and user.get("stripe_sub"):
             try:
                 sub = _stripe(f"subscriptions/{user['stripe_sub']}", {"cancel_at_period_end": True})
-                bis = _ts(sub.get("current_period_end"))
+                bis = _ts(sub.get("current_period_end") or _item_periode_ende(sub))
                 con.execute("UPDATE users SET abo_kuendigt = 1, abo_bis = ? WHERE id = ?",
                             (bis, user["id"]))
                 con.commit()

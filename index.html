@@ -17,8 +17,8 @@
 <script>/* Frühe Fehlerfalle (21.09.2026): sammelt Fehler, die vor oder beim Laden der Skripte
    passieren; kern.js schickt sie später an /api/fehler. */
 window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try { window.__fruehe_fehler.push((e.message || String(e.error)) + ' @ ' + String(e.filename || '').split('/').pop() + ':' + e.lineno); } catch (x) {} }, true);</script>
-<link rel="stylesheet" href="assets/tokens.css?v=202609212152">
-<link rel="stylesheet" href="assets/app.css?v=202609212152">
+<link rel="stylesheet" href="assets/tokens.css?v=202609220230">
+<link rel="stylesheet" href="assets/app.css?v=202609220230">
 </head>
 <body>
 <div id="app">
@@ -814,9 +814,11 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
       </div>
     </div>
     <div class="tarif-karten" id="tarif-karten"></div>
+    <div id="up-pakete">
     <h3 style="margin:22px 0 2px;font-size: var(--t-l)" data-i18n="pak_t">Credits einzeln kaufen</h3>
     <div class="unter" style="margin-bottom:8px" data-i18n="pak_u">Ohne Abo, ohne Verfall – ideal, wenn du nur ab und zu eine Artwork-Seite gestaltest.</div>
     <div class="pakete" id="paket-karten"></div>
+    </div>
     <div style="font-size: var(--t-xs);color:var(--mut);margin-top:16px" data-i18n="up_recht">Endpreise; gemäß § 19 UStG wird keine Umsatzsteuer erhoben. Zahlung über Stripe (Karte, PayPal, Apple&nbsp;Pay, Google&nbsp;Pay, Klarna). Abos verlängern sich automatisch und sind jederzeit zum Laufzeitende kündbar.</div>
   </div>
 </div>
@@ -1568,20 +1570,20 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609212152"></script>
-<script defer src="assets/konto.js?v=202609212152"></script>
-<script defer src="assets/werkbank.js?v=202609212152"></script>
-<script defer src="assets/vitrine.js?v=202609212152"></script>
-<script defer src="assets/preise.js?v=202609212152"></script>
-<script defer src="assets/planer.js?v=202609212152"></script>
-<script defer src="assets/teilen.js?v=202609212152"></script>
-<script defer src="assets/hilfe.js?v=202609212152"></script>
-<script defer src="assets/detail.js?v=202609212152"></script>
-<script defer src="assets/artwork.js?v=202609212152"></script>
-<script defer src="assets/passend.js?v=202609212152"></script>
+<script defer src="assets/kern.js?v=202609220230"></script>
+<script defer src="assets/konto.js?v=202609220230"></script>
+<script defer src="assets/werkbank.js?v=202609220230"></script>
+<script defer src="assets/vitrine.js?v=202609220230"></script>
+<script defer src="assets/preise.js?v=202609220230"></script>
+<script defer src="assets/planer.js?v=202609220230"></script>
+<script defer src="assets/teilen.js?v=202609220230"></script>
+<script defer src="assets/hilfe.js?v=202609220230"></script>
+<script defer src="assets/detail.js?v=202609220230"></script>
+<script defer src="assets/artwork.js?v=202609220230"></script>
+<script defer src="assets/passend.js?v=202609220230"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609212152"></script>
+<script defer src="assets/markt.js?v=202609220230"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609212152"></script>
+<script defer src="assets/sammlung.js?v=202609220230"></script>
 </body>
 </html>

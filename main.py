@@ -1453,6 +1453,12 @@ def admin_backfill_details(key: str = ""):
 def _symbole_job():
     """Alle Set-Symbole in den Cache holen; Sets ohne TCGdex-Symbol bekommen das pokemontcg.io-Symbol
     (Name-Abgleich wie beim Bild-Fallback). Läuft beim Start im Hintergrund."""
+    # Der Thread startet beim Import, bevor der auth-Abschnitt `_env` definiert hat – bis 21.09.2026
+    # starb er deshalb bei jedem Neustart mit NameError. Kurz warten statt abstürzen.
+    for _ in range(120):
+        if "_env" in globals():
+            break
+        time.sleep(1)
     con = get_db()
     ohne = [dict(r) for r in con.execute("SELECT id, name_en, name FROM sets WHERE region='intl' AND (symbol IS NULL OR symbol='') AND symbol_alt IS NULL")]
     con.close()

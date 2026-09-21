@@ -899,6 +899,7 @@ async function uebernehmenAlsNeu(items, name) {
                              options: S.binder.options || {}, items }),
     });
     merkeBinderId(res.id);
+    if (typeof herkunftMelden === 'function') herkunftMelden(res.id);
     toast(t('vt_kopiert'));
     setTimeout(() => { location.assign(APP_BASIS + '/binder/' + res.id); }, 700);
   } catch (e) { if (!gate(e)) toast(e.message); }

@@ -681,6 +681,7 @@ async function sammlungAufnehmen(id, opt) {
     S.besitz[id] = d.anzahl;
     restkostenNeu();
     zeichneErgebnisse(); zeichneBinder();
+    if (typeof LADE !== 'undefined' && LADE.posten) { delete LADE.posten[id]; if (typeof inspektorZeichnen === 'function') inspektorZeichnen(); }
     // Steht der Kartendialog offen, gehört die neue Zahl auch auf seinen Knopf.
     const hab = $('detail-hab');
     if (hab && detailKarte && detailKarte.id === id) {
@@ -720,9 +721,12 @@ async function toastKaufSpeichern() {
 function toastKaufTaste(ev) { if (ev.key === 'Enter') toastKaufSpeichern(); if (ev.key === 'Escape') $('toast-kauf').classList.remove('zeig'); }
 
 /** Der Dialog für einen einzelnen Posten. `posten` leer heißt: neu anlegen. */
-function smPostenOeffnen(cardId, posten) {
+function smPostenOeffnen(cardId, posten, vorgabe) {
   if (!S.user) return loginOeffnen(t('sm_login'));
-  SM.posten = { card_id: cardId, ...(posten || {}) };
+  smAuswahlenFuellen();
+  // `vorgabe` (aus der Binderspalte): Variante, Zustand, Sprache des Fachs als Startwerte
+  // für einen *neuen* Posten — der Dialog bleibt dabei „hinzufügen", nicht „ändern".
+  SM.posten = { card_id: cardId, ...(posten || vorgabe || {}) };
   SM.postenAlt = { zustand: (posten || {}).zustand || '', sprache: (posten || {}).sprache || '', grading: (posten || {}).grading || '' };
   const p = SM.posten;
   $('smp-titel').textContent = posten ? t('sm_posten_aendern') : t('sm_posten_neu');
@@ -746,7 +750,11 @@ function smPostenOeffnen(cardId, posten) {
  *  die, die nach dem Speichern auf der Kachel erschien. */
 function smPostenWert() {
   const el = $('smp-wert'); if (!el) return;
-  const k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
+  let k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
+  if (!k && typeof LADE !== 'undefined' && LADE.info && LADE.info[SM.posten.card_id] && LADE.info[SM.posten.card_id].preis) {
+    const p = LADE.info[SM.posten.card_id].preis;   // aus der Binderspalte geöffnet
+    k = { eur: p.eur, eur_holo: p.eur_holo, eur_low: p.eur_low, usd: p.usd, usd_holo: p.usd_holo };
+  }
   if (!k || k.eur == null) { el.textContent = ''; return; }
   const z = $('smp-zustand').value;
   const stueck = postenWert(k.eur, k.eur_holo, k.eur_low, $('smp-variante').value, z, k.usd, k.usd_holo);
@@ -782,6 +790,7 @@ async function smPostenSpeichern(loeschen) {
     await besitzLaden();
     restkostenNeu();
     sammlungLaden(); zeichneBinder(); zeichneErgebnisse();
+    if (typeof LADE !== 'undefined' && LADE.posten) { delete LADE.posten[p.card_id]; if (typeof inspektorZeichnen === 'function') inspektorZeichnen(); }
   } catch (e) { toast(e.message); }
 }
 

@@ -420,6 +420,9 @@ const T = {
     wiz_s1: 'Raster', wiz_s2: 'Seiten', wiz_s3: 'Inhalt',
     wiz_1_u: 'Wie viele Fächer hat eine Seite deines Binders?',
     wiz_alle: 'Alle Raster', uebernehmen: 'Übernehmen', ph_pokemon: 'Pokémon …',
+    ik_sm_t: 'Sammlung', ik_sm_leer: 'Noch nicht in deiner Sammlung.', ik_sm_auf: 'Aufnehmen als {l}',
+    ik_sm_nochmal: 'Noch ein Exemplar ({l})', ik_sm_weiter: 'Anders aufnehmen (Kaufpreis, Grading) …',
+    ik_sm_gast: 'Mit Konto landet das Exemplar mit Zustand und Sprache in deiner Sammlung.',
     sitzung_weg: 'Deine Anmeldung ist abgelaufen – bitte neu anmelden.', server_weg: 'Der Server ist gerade nicht erreichbar – du siehst den letzten Stand aus dem Zwischenspeicher.',
     ik_nichts_t: 'Kein Fach gewählt', ik_nichts_u: 'Ein Klick auf ein Fach zeigt hier Karte, Preis und Zustand. Shift+Klick wählt weitere, Strg+Shift einen Bereich.',
     ab_kopieren: 'In die Ablage kopieren', ik_mehr_t: '{n} Fächer gewählt', ik_mehr_u: 'Alles hier gilt für die ganze Auswahl.',
@@ -740,7 +743,7 @@ const T = {
     erst_waehlen: 'Bitte erst auswählen', zu_viele: 'Mehr als 2000 Treffer – bitte enger filtern',
     anmelden: 'Anmelden', registrieren: 'Registrieren', anmelden_t: 'Anmelden', passwort: 'Passwort',
     agb_text: 'Ich akzeptiere die AGB und die Datenschutzerklärung.',
-    agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden',
+    agb_noetig: 'Bitte AGB und Datenschutz akzeptieren.', abmelden: 'Abmelden', abmelden_frage: 'Wirklich abmelden? Zum Anmelden brauchst du deine E-Mail-Adresse und dein Passwort. Ein neues Konto anzulegen bringt deine Binder nicht zurück.',
     inst_menue: 'App installieren',
     inst_titel: 'Binderplan als App',
     inst_warum: 'Eigenes Symbol auf dem Startbildschirm, Vollbild ohne Browserleiste, und die zuletzt geöffneten Binder gehen auch ohne Netz auf.',
@@ -764,7 +767,7 @@ const T = {
     gesammelt: 'Gesammelt', hat_hilfe: '✓ = Karte als „hab ich“ markieren',
     gate_pdf: 'Für den PDF-Export brauchst du ein kostenloses Konto — dein erster Export ist frei.',
     gate_binder: 'Mehr als 3 Binder gibt es ab Binderplan Plus.',
-    gate_export: 'Dein freier Export für diesen Monat ist verbraucht.',
+    gate_export: 'Deine freien Exporte für diesen Monat sind verbraucht. Unbegrenzt exportieren kannst du mit Plus – Credit-Pakete schalten den Export nicht frei.',
     gate_pro: 'Diese Funktion gehört zu Binderplan Pro.',
    
     preise_morgen: 'Free-Konto: Preise wurden heute schon aktualisiert — morgen wieder (oder mit Pro sofort).',
@@ -1206,6 +1209,9 @@ const T = {
     wiz_s1: 'Grid', wiz_s2: 'Pages', wiz_s3: 'Content',
     wiz_1_u: 'How many pockets does one page of your binder have?',
     wiz_alle: 'All grids', uebernehmen: 'Apply', ph_pokemon: 'Pokémon …',
+    ik_sm_t: 'Collection', ik_sm_leer: 'Not in your collection yet.', ik_sm_auf: 'Add as {l}',
+    ik_sm_nochmal: 'One more copy ({l})', ik_sm_weiter: 'Add differently (price paid, grading) …',
+    ik_sm_gast: 'With an account the copy goes into your collection with condition and language.',
     sitzung_weg: 'Your login has expired – please sign in again.', server_weg: 'The server is unreachable right now – you are seeing the last cached state.',
     ik_nichts_t: 'No slot selected', ik_nichts_u: 'Click a slot to see card, price and condition here. Shift+click adds more, Ctrl+Shift a range.',
     ab_kopieren: 'Copy to clipboard', ik_mehr_t: '{n} slots selected', ik_mehr_u: 'Everything here applies to the whole selection.',
@@ -1447,7 +1453,7 @@ const T = {
     erst_waehlen: 'Please choose first', zu_viele: 'More than 2000 results – please narrow the filters',
     anmelden: 'Sign in', registrieren: 'Sign up', anmelden_t: 'Sign in', passwort: 'Password',
     agb_text: 'I accept the terms of service and the privacy policy.',
-    agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out',
+    agb_noetig: 'Please accept the terms and privacy policy.', abmelden: 'Sign out', abmelden_frage: 'Sign out? To sign back in you need your e-mail address and password. Creating a new account will not bring your binders back.',
     inst_menue: 'Install app',
     inst_titel: 'Binderplan as an app',
     inst_warum: 'Its own icon on your home screen, full screen without the browser bar, and your recent binders open even without a connection.',
@@ -1471,7 +1477,7 @@ const T = {
     gesammelt: 'Collected', hat_hilfe: '✓ = mark card as “got it”',
     gate_pdf: 'PDF export needs a free account — your first export is free.',
     gate_binder: 'More than 3 binders come with Binderplan Plus.',
-    gate_export: 'Your free export for this month is used up.',
+    gate_export: 'Your free exports for this month are used up. Plus lets you export without limits – credit packs do not unlock exports.',
     gate_pro: 'This feature is part of Binderplan Pro.',
    
     preise_morgen: 'Free account: prices were already refreshed today — again tomorrow (or instantly with Pro).',
@@ -1775,9 +1781,9 @@ function sitzungWeg() {
 // Zentrale Behandlung der Konto-/Limit-Fehlercodes
 function gate(err) {
   if (err.code === 'login') { loginOeffnen(t(err.detail && err.detail.grund ? err.detail.grund : 'gate_login')); return true; }
-  if (err.code === 'limit_binder') { upgradeOeffnen(t('gate_binder')); return true; }
-  if (err.code === 'limit_export') { upgradeOeffnen(t('gate_export')); return true; }
-  if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro')); return true; }
+  if (err.code === 'limit_binder') { upgradeOeffnen(t('gate_binder'), 'abo'); return true; }
+  if (err.code === 'limit_export') { upgradeOeffnen(t('gate_export'), 'abo'); return true; }
+  if (err.code === 'limit_pro') { upgradeOeffnen(t('gate_pro'), 'abo'); return true; }
   if (err.code === 'keine_credits') {
     const d = err.detail || {};
     upgradeOeffnen(t('gate_credits').replace('{n}', d.benoetigt || '').replace('{s}', d.saldo || 0));

@@ -445,6 +445,19 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         con.close()
         return {"ok": True}
 
+    @app.get("/api/sammlung/karte/{card_id}")
+    def sammlung_karte(card_id: str, request: Request):
+        """Die Posten genau dieser Karte — für die Spalte im Binder (21.09.2026): dort steht,
+        was man von der Karte schon hat, je Exemplar mit Zustand und Sprache."""
+        user = require_user(request)
+        con = get_db()
+        rows = con.execute(
+            "SELECT variante, zustand, sprache, grading, zertifikat, anzahl, kaufpreis, gekauft_am, notiz"
+            " FROM sammlung WHERE user_id=? AND card_id=? AND anzahl>0 ORDER BY created_at",
+            (user["id"], card_id)).fetchall()
+        con.close()
+        return {"posten": [dict(r) for r in rows]}
+
     @app.post("/api/sammlung/aufnehmen")
     async def aufnehmen(request: Request):
         """Eine Karte in die Sammlung legen, ohne Umweg über einen Binder.

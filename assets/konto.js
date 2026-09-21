@@ -532,7 +532,7 @@ async function tarifeLaden() {
   TARIF.daten = await api('api/tarife');
   return TARIF.daten;
 }
-function upgradeOeffnen(grund) {
+function upgradeOeffnen(grund, nur) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
   if (!S.user) return loginOeffnen(grund || t('up_login'));
   // Lifetime kann kein Abo waehlen — der Monats/Jahres-Schalter und der Satz darueber
@@ -541,6 +541,10 @@ function upgradeOeffnen(grund) {
   $('up-grund').textContent = life ? t('up_u_life') : (grund ? grund + ' ' + t('up_u') : t('up_u'));
   document.querySelector('#modal-upgrade .tarif-schalter').closest('div').classList.toggle('hidden', life);
   $('modal-upgrade').classList.remove('hidden');
+  // Nach „Export-/Binder-Grenze erreicht" nur die Abos zeigen: Credit-Pakete schalten das nicht
+  // frei. Eine Nutzerin kaufte am 12.09.2026 genau in dieser Lage 250 Credits und stand danach
+  // wieder vor derselben Grenze.
+  $('up-pakete').classList.toggle('hidden', nur === 'abo');
   tarifeLaden().then(zeichneTarife).catch(() => toast(t('aw_fehler')));
 }
 function tarifZeitraum(z) {
@@ -1010,7 +1014,9 @@ async function kontoLoeschen() {
     location.href = location.pathname;
   } catch (e) { toast(e.message); }
 }
-async function profilAbmelden() { await abmelden(); }
+// Rückfrage, weil zwei von fünf echten Nutzern nach dem Abmelden ein Zweitkonto anlegten
+// statt sich anzumelden (19.09./17.09.2026) – die Binder blieben im alten Konto zurück.
+async function profilAbmelden() { if (!confirm(t('abmelden_frage'))) return; await abmelden(); }
 
 function syncBanner() {
   const b = $('sync-banner');

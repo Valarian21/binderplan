@@ -2213,6 +2213,16 @@
     .inspektor .ik-akt button.gefahr { color: var(--akzent-text); }
     .inspektor .ik-akt .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
     .inspektor .ik-zu { position: absolute; right: 10px; top: 10px; }
+    .inspektor .ik-sm { display: flex; flex-direction: column; gap: 4px; }
+    .inspektor .ik-sm-posten { display: flex; align-items: center; gap: 6px; text-align: left; padding: 7px 10px; border-radius: 8px; border: 1.5px solid var(--line); font-size: var(--t-s); }
+    .inspektor .ik-sm-posten:hover { background: var(--hover); }
+    .inspektor .ik-sm-posten b { color: var(--gruen-text); }
+    .inspektor .ik-sm-kauf { color: var(--mut); }
+    .inspektor .ik-sm-pfeil { margin-left: auto; color: var(--mut); }
+    .inspektor .ik-sm-auf { justify-content: center; font-size: var(--t-s); padding: 8px 12px; margin-top: 4px; }
+    .inspektor .ik-sm-weiter, .inspektor .ik-hab { text-align: left; padding: 6px 10px; border-radius: 8px; font-size: var(--t-s); font-weight: 600; color: var(--mut); }
+    .inspektor .ik-sm-weiter:hover, .inspektor .ik-hab:hover { background: var(--hover); color: var(--ink); }
+    .inspektor .ik-sm-hin { font-size: var(--t-xs); color: var(--mut); line-height: 1.4; padding: 2px 2px 0; }
     .inspektor .ik-leer { display: flex; flex-direction: column; gap: 6px; margin: auto 0; padding: 18px 6px; text-align: center; color: var(--mut); font-size: var(--t-s); line-height: 1.45; }
     /* Unter 1.400 px ist kein Platz für eine dauerhafte dritte Spalte: Suche (520) + Binder
        (486) + Spalte (300) sind 1.306 px. Als feste Spalte drückte sie den Binder auf 92–430 px
