@@ -749,7 +749,7 @@ function smPostenWert() {
   const k = (SM.karten || []).find((x) => x.id === SM.posten.card_id);
   if (!k || k.eur == null) { el.textContent = ''; return; }
   const z = $('smp-zustand').value;
-  const stueck = postenWert(k.eur, k.eur_holo, k.eur_low, $('smp-variante').value, z);
+  const stueck = postenWert(k.eur, k.eur_holo, k.eur_low, $('smp-variante').value, z, k.usd, k.usd_holo);
   if (stueck == null) { el.textContent = ''; return; }
   const anz = Math.max(1, parseInt($('smp-anzahl').value, 10) || 1);
   el.innerHTML = `${t('sm_wert_posten')}: <strong>${(stueck * anz).toFixed(2).replace('.', ',')} €</strong>`

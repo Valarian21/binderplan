@@ -179,12 +179,13 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         for teil in [ids[i:i + 800] for i in range(0, len(ids), 800)]:
             marken = ",".join("?" * len(teil))
             for r in con.execute(f"SELECT card_id, {_wert.sql_eur('card_prices')} eur,"
-                                 " eur_holo, eur_low, status, eur_avg7, eur_avg30 FROM card_prices"
-                                 f" WHERE card_id IN ({marken})", teil):
+                                 " eur_holo, eur_low, status, eur_avg7, eur_avg30, usd, usd_holo"
+                                 f" FROM card_prices WHERE card_id IN ({marken})", teil):
                 if r["eur"]:
                     aus[r["card_id"]] = {"eur": r["eur"], "eur_holo": r["eur_holo"],
                                          "eur_low": r["eur_low"], "quelle": r["status"],
-                                         "eur_avg7": r["eur_avg7"], "eur_avg30": r["eur_avg30"]}
+                                         "eur_avg7": r["eur_avg7"], "eur_avg30": r["eur_avg30"],
+                                         "usd": r["usd"], "usd_holo": r["usd_holo"]}
         # Die 7-Tage-Bewegung vergleicht ab dem 11.09.2026 gegen den eigenen Preis von vor
         # sieben Tagen, nicht gegen Cardmarkets Verkaufsschnitt — siehe wert.historie_basis.
         # Ohne Eintrag bleibt das Feld leer und die Bewegung „–“, statt falsch zu rechnen.
@@ -199,7 +200,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
         if not preis or not preis_fuer_posten:
             return None
         return preis_fuer_posten(preis.get("eur"), preis.get("eur_holo"), preis.get("eur_low"),
-                                 posten.get("variante") or "normal", posten.get("zustand") or "")
+                                 posten.get("variante") or "normal", posten.get("zustand") or "",
+                                 preis.get("usd"), preis.get("usd_holo"))
 
     # --- Endpunkte ---------------------------------------------------------
 
@@ -268,6 +270,8 @@ def register(app, *, get_db, current_user, require_user, env, card_query, card_s
             # Für die Wertvorschau im Posten-Dialog: dort wird mit derselben Regel gerechnet.
             kurz["eur_holo"] = pr.get("eur_holo") if pr else None
             kurz["eur_low"] = pr.get("eur_low") if pr else None
+            kurz["usd"] = pr.get("usd") if pr else None
+            kurz["usd_holo"] = pr.get("usd_holo") if pr else None
             # Woher die Zahl kommt, gehört an die Zahl. „geschaetzt" heißt aus dem
             # US-Preis umgerechnet, „zweitquelle" heißt von pokemontcg.io statt TCGdex.
             kurz["preis_quelle"] = pr.get("quelle") if pr else None

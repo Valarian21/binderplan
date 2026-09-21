@@ -376,7 +376,7 @@ def _items_wert(con, items):
         teil = ids[start:start + 600]
         marken = ",".join("?" * len(teil))
         for r in con.execute(f"SELECT card_id, {_wert.sql_eur('card_prices')} eur, eur_holo, eur_low,"
-                             f" eur_avg30 FROM card_prices WHERE card_id IN ({marken})", teil):
+                             f" eur_avg30, usd, usd_holo FROM card_prices WHERE card_id IN ({marken})", teil):
             preise[r["card_id"]] = r
     # Jedes Fach ist ein Exemplar: liegt dieselbe Karte zweimal im Binder, zählt sie zweimal.
     # Und ein Fach kann einen Zustand tragen (Kartendialog „Zustand" beim Einlegen) — der zählt
@@ -388,6 +388,7 @@ def _items_wert(con, items):
         if not pr or not pr["eur"]:
             continue
         zeilen.append({"eur": pr["eur"], "eur_holo": pr["eur_holo"], "eur_low": pr["eur_low"],
+                       "usd": pr["usd"], "usd_holo": pr["usd_holo"],
                        "variante": i.get("variant") or "normal", "zustand": i.get("zustand") or ""})
         s = pr["eur_avg30"]
         if _wert.bewegung_prozent(pr["eur"], s) is not None:

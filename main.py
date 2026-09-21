@@ -387,6 +387,54 @@ ZUSTAND_FAKTOR = _wert.ZUSTAND_FAKTOR
 preis_fuer_posten = _wert.posten_wert
 
 
+# --- Wechselkurs USD → EUR (EZB-Referenzkurs) ---------------------------------
+# Die Zustandspreise rechnen seit 21.09.2026 mit dem US-Marktpreis in Euro (siehe wert.py).
+# Der Kurs kommt vom täglichen EZB-Referenzkurs — kostenlos, ohne Schlüssel, eine XML-Datei.
+# Er liegt in `kv` (wechselkurs_usd) und wird beim Start gelesen, im Preislauf erneuert.
+EZB_KURSE = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+
+
+def _wechselkurs_lesen(con=None):
+    """Den gespeicherten Kurs in wert.WECHSELKURS laden."""
+    eigene = con is None
+    con = con or get_db()
+    try:
+        row = con.execute("SELECT value FROM kv WHERE key='wechselkurs_usd'").fetchone()
+        if row:
+            d = json.loads(row["value"])
+            if d.get("usd_je_eur"):
+                _wert.WECHSELKURS.update(d)
+    except Exception:
+        pass
+    finally:
+        if eigene:
+            con.close()
+
+
+def _wechselkurs_holen():
+    """USD je Euro von der EZB holen und ablegen. Schweigt bei Ausfall — dann gilt der
+    letzte gespeicherte Kurs, notfalls der Rückfall in wert.py."""
+    try:
+        r = httpx.get(EZB_KURSE, timeout=15, headers={"User-Agent": "Binderplan/1.0"})
+        m = re.search(r"currency='USD'\s+rate='([0-9.]+)'", r.text)
+        d = re.search(r"time='([0-9-]+)'", r.text)
+        if not m:
+            return None
+        kurs = {"usd_je_eur": float(m.group(1)), "datum": d.group(1) if d else None, "quelle": "ezb"}
+        con = get_db()
+        con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('wechselkurs_usd', ?)",
+                    (json.dumps(kurs),))
+        con.commit()
+        con.close()
+        _wert.WECHSELKURS.update(kurs)
+        return kurs
+    except Exception:
+        return None
+
+
+_wechselkurs_lesen()
+
+
 def _spalte_da(con, tabelle, spalte):
     """Gibt es die Spalte schon? Der Pruefstein fuer additive Migrationen."""
     try:
@@ -1863,6 +1911,7 @@ def _preishistorie_job():
 
     geschrieben = _preis_schreiben(con, ergebnisse)
     con.commit()
+    _wechselkurs_holen()
     kurs, urteile = _kurs_pruefen(con)
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preishistorie_lauf', datetime('now'))")
     con.execute("INSERT OR REPLACE INTO kv (key,value) VALUES ('preise_offen', ?)",
@@ -3633,6 +3682,9 @@ def _maybe_autosync():
         if fehlt > 5000 and not done:
             threading.Thread(target=run_backfill_details, daemon=True).start()
         threading.Thread(target=_symbole_job, daemon=True).start()
+    # Der EZB-Kurs ist nach einem Neustart sonst so alt wie der letzte Preislauf.
+    if (_wert.WECHSELKURS.get("datum") or "") < datetime.date.today().isoformat():
+        threading.Thread(target=_wechselkurs_holen, daemon=True).start()
     threading.Thread(target=_hintergrund_takt, daemon=True).start()
 
 
@@ -3834,17 +3886,24 @@ async def preise(request: Request):
     frei_gedrosselt = bool(user) and not abo.darf_preise_live(user) and user.get("preise_tag") == _heute()
     con = get_db()
     result, holo, fehlt = {}, {}, []
+    low, usd, usd_holo = {}, {}, {}
     for start in range(0, len(ids), 500):
         chunk = ids[start:start + 500]
         # Wo Cardmarket über TCGdex nichts hergibt, zählt die Zahl der Zweitquelle. Ohne
         # diesen Rückfall blieben in Sammlung und Binder Felder leer, obwohl ein Preis da war.
         rows = con.execute(
-            "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, updated_at"
+            "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, updated_at,"
+            " eur_low, usd, usd_holo"
             " FROM card_prices WHERE card_id IN (%s)"
             % ",".join("?" * len(chunk)), chunk).fetchall()
         alle = {r["card_id"]: r for r in rows}
         for cid in chunk:
             r = alle.get(cid)
+            if r:
+                # Für Fächer mit Zustand: Tiefstpreis und US-Markt (siehe wert.posten_wert)
+                if r["eur_low"] is not None: low[cid] = r["eur_low"]
+                if r["usd"] is not None: usd[cid] = r["usd"]
+                if r["usd_holo"] is not None: usd_holo[cid] = r["usd_holo"]
             if r and (r["updated_at"] or "") >= datetime_str_vor(24):
                 result[cid] = r["eur"]; holo[cid] = r["eur_holo"]
             else:
@@ -3926,7 +3985,8 @@ async def preise(request: Request):
                              % ",".join("?" * len(list(result)[:500])), list(result)[:500]).fetchone()
         con2.close()
         stand = (zeile["s"] or "")[:10] or None
-    return {"preise": result, "holo": holo, "offen": max(0, len(fehlt) - len(nachgeladen)),
+    return {"preise": result, "holo": holo, "low": low, "usd": usd, "usd_holo": usd_holo,
+            "offen": max(0, len(fehlt) - len(nachgeladen)),
             "gedrosselt": frei_gedrosselt, "stand": stand}
 
 

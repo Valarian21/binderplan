@@ -298,6 +298,8 @@ def _meta_bauen():
         # Die Zustandsfaktoren standen dreimal im Browser-Code und wichen dort voneinander ab.
         # Jetzt kommen sie von hier; im Frontend wird nur noch nachgeschlagen.
         "zustand_faktor": _wert.ZUSTAND_FAKTOR,
+        # USD je Euro (EZB) — der Browser rechnet die Zustandspreise mit derselben Regel.
+        "wechselkurs": _wert.WECHSELKURS,
     }
 
 
@@ -748,7 +750,7 @@ def card_detail(card_id: str):
     if k["set"]:
         k["set"]["name"] = SET_NAME_FIX_DE.get(k["set"]["id"], k["set"]["name"]) or k["set"]["name_en"]
     pr = con.execute("SELECT eur, eur_holo, updated_at, cm_produkt, eur_low, eur_avg7,"
-                     " eur_avg30, usd, usd_low, usd_mid, usd_high, preise_json, status,"
+                     " eur_avg30, usd, usd_holo, usd_low, usd_mid, usd_high, preise_json, status,"
                      " kurs, eur_geschaetzt, cm_url, ptc_id, cm_import_am, cm_name,"
                      " cm_eindeutig, cm_expansion FROM card_prices"
                      " WHERE card_id = ?", (card_id,)).fetchone()
@@ -797,6 +799,7 @@ def card_detail(card_id: str):
                   "eur_low": pr["eur_low"], "eur_avg7": pr["eur_avg7"],
                   "eur_avg30": pr["eur_avg30"], "direkt": bool(pr["cm_import_am"]),
                   "usd": pr["usd"], "usd_low": pr["usd_low"], "usd_mid": pr["usd_mid"],
+                  "usd_holo": pr["usd_holo"],
                   "varianten": var_preise, "status": pr["status"], "kurs": pr["kurs"],
                   "eur_geschaetzt": pr["eur_geschaetzt"]} if pr else None
     # Die fertige Cardmarket-Adresse gleich mitgeben, damit der Link im Dialog ein echter

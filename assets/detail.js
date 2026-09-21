@@ -517,20 +517,24 @@ async function detailOeffnen(idOrIdx) {
   // der Trend als Nähe-Neuwert, der Tiefstpreis als das untere Ende, dazwischen die
   // Abschläge, mit denen im Handel üblicherweise gerechnet wird. Das ist eine Ableitung
   // und wird auch so benannt — keine gemessene Zahl.
-  if (preis.eur && $('detail-zustaende')) {
+  if ((preis.eur || preis.usd) && $('detail-zustaende')) {
     // Basis ist die gewählte Ausprägung: für ein Holo-Exemplar standen hier die Preise der
-    // Normalfassung. Poor bekommt den echten Tiefstpreis, wo Cardmarket einen kennt.
+    // Normalfassung. Near Mint kommt aus dem US-Markt in Euro, Poor ist das günstigste
+    // Cardmarket-Angebot — siehe wert.py.
     const zeilen = Object.keys(zustandFaktoren()).map((z) => {
-      const wert = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, z);
+      const wert = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, z, preis.usd, preis.usd_holo);
       return `<div><span>${z}</span><strong>${fmt(wert)}</strong></div>`;
     }).join('');
-    // Sieben Kacheln waren der größte Block im Dialog, obwohl es eine Ableitung ist.
-    // Jetzt eine Zeile mit Aufklapper — der Nahe-Neuwert steht sichtbar, der Rest auf Klick.
-    const nm = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, 'NM');
+    const nm = postenWert(preis.eur, preis.eur_holo, preis.eur_low, detailVariante, 'NM', preis.usd, preis.usd_holo);
+    const [, quelle] = nmAnker(preis.eur, preis.eur_holo, preis.usd, preis.usd_holo, detailVariante);
+    const us = (detailVariante === 'holo' || detailVariante === 'reverse') && preis.usd_holo ? preis.usd_holo : preis.usd;
+    const herkunft = quelle === 'us'
+      ? t('zst_q_us').replace('{u}', us.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE', { style: 'currency', currency: 'USD' })).replace('{k}', wechselkurs().toFixed(3).replace('.', LANG === 'de' ? ',' : '.'))
+      : t('zst_q_trend');
     $('detail-zustaende').innerHTML =
       `<button class="zst-auf" onclick="this.nextElementSibling.classList.toggle('hidden');this.querySelector('i').textContent=this.nextElementSibling.classList.contains('hidden')?'▾':'▴'">
          <span>${t('zst_titel')}</span><strong>NM ${fmt(nm)}</strong><i>▾</i></button>
-       <div class="hidden"><div class="zst-liste">${zeilen}</div><div class="zst-hin">${t('zst_hin')}</div></div>`;
+       <div class="hidden"><div class="zst-liste">${zeilen}</div><div class="zst-hin">${herkunft} ${t('zst_hin')}</div></div>`;
   }
   // Fünf Zahlen in einer Zeile waren fünf mögliche „Preise“. Der Trend bleibt die eine
   // sichtbare Zahl; Tiefstpreis, 7- und 30-Tage-Schnitt und der US-Markt liegen als
@@ -589,14 +593,34 @@ const ZUSTAND_FAKTOR_FALLBACK = { M: 1.10, NM: 1.00, EX: 0.85, GD: 0.70, LP: 0.5
 function zustandFaktoren() {
   return (S.meta && S.meta.zustand_faktor) || ZUSTAND_FAKTOR_FALLBACK;
 }
-/** Was ein Exemplar wert ist — dieselbe Regel wie wert.posten_wert() auf dem Server. */
-function postenWert(eur, eurHolo, eurLow, variante, zustand) {
+/** USD je Euro aus /api/meta (EZB), mit demselben Rückfall wie wert.py. */
+function wechselkurs() { return (S.meta && S.meta.wechselkurs && S.meta.wechselkurs.usd_je_eur) || 1.146; }
+/** Near-Mint-Anker: US-Marktpreis in Euro, nie unter dem Trend; ohne US-Preis der Trend.
+ *  → [wert, quelle] mit quelle 'us' | 'trend' | null. Spiegel von wert.nm_anker(). */
+function nmAnker(eur, eurHolo, usd, usdHolo, variante) {
   const basis = (variante === 'holo' || variante === 'reverse') && eurHolo ? eurHolo : eur;
-  if (basis == null) return null;
-  const f = zustandFaktoren()[(zustand || '').toUpperCase()];
-  if (!f) return Math.round(basis * 100) / 100;
-  let w = basis * f;
-  if ((zustand || '').toUpperCase() === 'PO' && eurLow != null) w = Math.min(w, eurLow);
+  const us = (variante === 'holo' || variante === 'reverse') && usdHolo ? usdHolo : usd;
+  if (us) {
+    const anker = Math.round(us / wechselkurs() * 100) / 100;
+    if (basis && basis > anker) return [Math.round(basis * 100) / 100, 'trend'];
+    return [anker, 'us'];
+  }
+  if (basis == null) return [null, null];
+  return [Math.round(basis * 100) / 100, 'trend'];
+}
+/** Was ein Exemplar wert ist — dieselbe Regel wie wert.posten_wert() auf dem Server:
+ *  ohne Zustand der Trend; Poor das günstigste Cardmarket-Angebot; sonst Faktor × Near-Mint-
+ *  Anker (US-Markt in Euro), aber nie unter dem günstigsten Angebot. */
+function postenWert(eur, eurHolo, eurLow, variante, zustand, usd, usdHolo) {
+  const basis = (variante === 'holo' || variante === 'reverse') && eurHolo ? eurHolo : eur;
+  const z = (zustand || '').toUpperCase();
+  const f = zustandFaktoren()[z];
+  if (!f) return basis == null ? null : Math.round(basis * 100) / 100;
+  if (z === 'PO' && eurLow) return Math.round(eurLow * 100) / 100;
+  const [anker] = nmAnker(eur, eurHolo, usd, usdHolo, variante);
+  if (anker == null) return null;
+  let w = anker * f;
+  if (eurLow != null && w < eurLow) w = eurLow;
   return Math.round(w * 100) / 100;
 }
 

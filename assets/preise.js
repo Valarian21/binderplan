@@ -394,6 +394,9 @@ async function preiseLaden() {
   try {
     const d = await api('api/preise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
     Object.assign(S.preise, d.preise); Object.assign(S.preiseHolo, d.holo || {});
+    S.preiseLow = Object.assign(S.preiseLow || {}, d.low || {});
+    S.preiseUsd = Object.assign(S.preiseUsd || {}, d.usd || {});
+    S.preiseUsdHolo = Object.assign(S.preiseUsdHolo || {}, d.usd_holo || {});
     S.preisStand = d.stand || null;
     if (d.gedrosselt) toast(t('preise_morgen'));
     else if (d.offen > 0) toast(t('preise_offen'));
@@ -405,8 +408,15 @@ async function preiseLaden() {
   }
   zeichnePreisSumme();
 }
-// Holo-Varianten bekommen den Holo-Trend, wenn Cardmarket einen kennt
+// Holo-Varianten bekommen den Holo-Trend, wenn Cardmarket einen kennt. Trägt das Fach einen
+// Zustand, gilt dieselbe Regel wie im Server (wert.posten_wert) — vorher zählte ein Fach im
+// Binder anders als derselbe Posten in der Sammlung.
 function preisFuer(item) {
+  if (item.zustand && typeof postenWert === 'function') {
+    const w = postenWert(S.preise[item.id], S.preiseHolo[item.id], (S.preiseLow || {})[item.id], item.variant || 'normal', item.zustand,
+                         (S.preiseUsd || {})[item.id], (S.preiseUsdHolo || {})[item.id]);
+    if (w != null) return w;
+  }
   if (item.variant === 'holo' || item.variant === 'reverse') { const h = S.preiseHolo[item.id]; if (h != null) return h; }
   return S.preise[item.id];
 }

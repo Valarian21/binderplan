@@ -537,7 +537,7 @@ def _binder_zeilen(binder, lang, user=None):
     pokemon_names = {r["dex_id"]: (r[spalte] or r["name_de"])
                      for r in con.execute("SELECT dex_id, name_de, name_en FROM pokemon")}
     preise = {r["card_id"]: r for r in con.execute(
-        "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, eur_low FROM card_prices")}
+        "SELECT card_id, COALESCE(eur, eur_geschaetzt) eur, eur_holo, eur_low, usd, usd_holo FROM card_prices")}
     besitz = _besitz_ids(user, con)
     con.close()
 
@@ -546,7 +546,8 @@ def _binder_zeilen(binder, lang, user=None):
         if not p:
             return None
         return preis_fuer_posten(p["eur"], p["eur_holo"], p["eur_low"],
-                                 item.get("variant") or "normal", item.get("zustand") or "")
+                                 item.get("variant") or "normal", item.get("zustand") or "",
+                                 p["usd"], p["usd_holo"])
     plan = _seiten_plan(binder)
     zeilen = []
     for idx, item in enumerate(binder["items"]):

@@ -168,7 +168,7 @@ def _digest_fuer(con, user_id):
     posten = [dict(r) for r in con.execute(
         "SELECT s.card_id, s.variante, s.anzahl, s.zustand, c.name_de, c.name_en, c.local_id,"
         " (SELECT name FROM sets WHERE sets.id = c.set_id) set_name,"
-        f" {_wert.sql_eur()} eur, p.eur_holo, p.eur_low, p.eur_avg7"
+        f" {_wert.sql_eur()} eur, p.eur_holo, p.eur_low, p.eur_avg7, p.usd, p.usd_holo"
         " FROM sammlung s JOIN cards c ON c.id = s.card_id LEFT JOIN card_prices p ON p.card_id = s.card_id"
         " WHERE s.user_id = ? AND s.anzahl > 0", (user_id,))]
     wants = [dict(r) for r in con.execute(
@@ -197,7 +197,8 @@ def _digest_fuer(con, user_id):
         # Zähler und Nenner mit demselben Faktor (Holo, Zustand) – sonst stimmt der
         # Prozentsatz nicht zum Eurobetrag daneben (dieselbe Falle wie in Audit B3).
         _w = _wert.posten_wert(p.get("eur"), p.get("eur_holo"), p.get("eur_low"),
-                               p.get("variante") or "normal", p.get("zustand") or "")
+                               p.get("variante") or "normal", p.get("zustand") or "",
+                               p.get("usd"), p.get("usd_holo"))
         _f = (_w / p["eur"]) if (_w and p.get("eur")) else 1
         basis += (p["eur_avg7"] or 0) * _f * (p["anzahl"] or 0)
         if abs(d) >= 0.5:

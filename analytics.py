@@ -191,7 +191,7 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
             " c.name_de, c.name_en, c.rarity, c.set_id, c.types, c.first_dex, c.release_date,"
             " c.category, c.region, c.local_id, s.sprache,"
             " (SELECT name FROM sets WHERE sets.id = c.set_id) AS set_name,"
-            " COALESCE(p.eur, p.eur_geschaetzt) eur, p.eur_holo, p.eur_low, p.usd, p.eur_avg7, p.eur_avg30"
+            " COALESCE(p.eur, p.eur_geschaetzt) eur, p.eur_holo, p.eur_low, p.usd, p.usd_holo, p.eur_avg7, p.eur_avg30"
             " FROM sammlung s JOIN cards c ON c.id = s.card_id"
             " LEFT JOIN card_prices p ON p.card_id = s.card_id"
             " WHERE s.user_id = ? AND s.anzahl > 0", (user["id"],))]
@@ -208,7 +208,7 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
         def preis(z):
             if preis_fuer_posten:
                 return preis_fuer_posten(z["eur"], z["eur_holo"], z["eur_low"],
-                                         z["variante"], z["zustand"] or "")
+                                         z["variante"], z["zustand"] or "", z["usd"], z["usd_holo"])
             if z["variante"] in ("holo", "reverse") and z["eur_holo"]:
                 return z["eur_holo"]
             return z["eur"]

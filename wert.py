@@ -13,14 +13,53 @@ wer nichts angegeben hat, soll nicht stillschweigend abgewertet werden. Für Poo
 zusätzlich der echte Tiefstpreis als Obergrenze — ein tatsächliches Angebot schlägt jede
 Ableitung.
 
-**Warum die Faktoren so aussehen.** Preise je Zustand veröffentlicht keine Börse. Der
-Cardmarket-Trend steht für ein nahezu neues Exemplar; darunter liegen die Abschläge, mit denen
-im Handel gerechnet wird. Dieselben Werte stehen im Kartendetail und im Posten-Dialog — sie
-kommen jetzt über `/api/meta` von hier, damit die drei Kopien im Browser verschwinden.
+**Warum die Faktoren so aussehen.** Preise je Zustand veröffentlicht keine Börse. Die Abschläge
+sind die, mit denen im Handel gerechnet wird. Dieselben Werte stehen im Kartendetail und im
+Posten-Dialog — sie kommen über `/api/meta` von hier, damit die Kopien im Browser verschwinden.
+
+**Seit 21.09.2026 hängen die Zustandspreise nicht mehr am Trend.** Der Cardmarket-Trend ist
+ein Schnitt der Verkäufe über *alle* Zustände und Sprachen — bei einer alten Holo-Karte
+dominieren bespielte Exemplare: die Giratina Lv.63 (Platinum) stand mit 12 € im Trend, während
+Near-Mint-Angebote bei 95 € lagen und der US-Markt 93 $ nannte. Deshalb:
+
+* **Near-Mint-Anker** ist der TCGplayer-Marktpreis (der gilt dort für Near Mint) in Euro,
+  umgerechnet mit dem EZB-Referenzkurs (`WECHSELKURS`, täglich geholt). Fehlt der US-Preis,
+  bleibt der Trend der Anker. Der Anker liegt nie unter dem Trend — ein Near-Mint-Exemplar
+  ist nicht weniger wert als der Durchschnitt aller.
+* **Poor** ist das günstigste Cardmarket-Angebot (`eur_low`), egal welcher Zustand — das ist
+  der Boden, zu dem so eine Karte tatsächlich zu haben ist.
+* Die Zustände dazwischen sind Faktor × Anker, **aber nie unter `eur_low`**: ein Good-Preis
+  unter dem billigsten Angebot bei Cardmarket wäre Unsinn.
+* Ohne Zustandsangabe gilt weiter der Trend — wer nichts angegeben hat, wird weder auf- noch
+  abgewertet. Trend, Tiefstpreis und 7/30-Tage-Schnitte werden unverändert angezeigt.
 """
 
 ZUSTAND_FAKTOR = {"M": 1.10, "NM": 1.00, "EX": 0.85, "GD": 0.70,
                   "LP": 0.55, "PL": 0.42, "PO": 0.30}
+
+# USD je Euro. main.py setzt ihn beim Start aus `kv` und holt ihn täglich bei der EZB;
+# der Rückfall ist der Stand vom September 2026, damit nie durch null geteilt wird.
+WECHSELKURS = {"usd_je_eur": 1.146, "datum": None, "quelle": "rueckfall"}
+
+
+def _basis(eur, eur_holo, variante):
+    return eur_holo if (variante in ("holo", "reverse") and eur_holo) else eur
+
+
+def nm_anker(eur, eur_holo, usd, usd_holo, variante="normal"):
+    """→ (Near-Mint-Anker in Euro, Quelle) — 'us' für den umgerechneten US-Markt, 'trend'
+    für den Cardmarket-Trend, None wenn es gar nichts gibt."""
+    basis = _basis(eur, eur_holo, variante)
+    us = usd_holo if (variante in ("holo", "reverse") and usd_holo) else usd
+    kurs = WECHSELKURS.get("usd_je_eur") or 0
+    if us and kurs:
+        anker = round(us / kurs, 2)
+        if basis and basis > anker:
+            return round(basis, 2), "trend"
+        return anker, "us"
+    if basis is None:
+        return None, None
+    return round(basis, 2), "trend"
 
 # Der Preis-Ausdruck für SQL. Jede Abfrage, die einen Wert bildet, nimmt diesen statt „p.eur":
 # Karten ohne Cardmarket-Preis tragen den aus dem US-Preis umgerechneten Wert, sonst fielen
@@ -33,18 +72,31 @@ def sql_eur(alias="p"):
     return SQL_EUR.format(p=alias)
 
 
-def posten_wert(eur, eur_holo, eur_low, variante="normal", zustand=""):
-    """Was ein einzelnes Exemplar wert ist — Ausprägung und Zustand eingerechnet."""
-    basis = eur_holo if (variante in ("holo", "reverse") and eur_holo) else eur
-    if basis is None:
-        return None
-    f = ZUSTAND_FAKTOR.get((zustand or "").upper())
+def posten_wert(eur, eur_holo, eur_low, variante="normal", zustand="", usd=None, usd_holo=None):
+    """Was ein einzelnes Exemplar wert ist — Ausprägung und Zustand eingerechnet.
+    `usd`/`usd_holo` sind optional: ohne sie rechnet die Regel wie vor dem 21.09.2026."""
+    basis = _basis(eur, eur_holo, variante)
+    z = (zustand or "").upper()
+    f = ZUSTAND_FAKTOR.get(z)
     if not f:
-        return round(basis, 2)
-    w = basis * f
-    if (zustand or "").upper() == "PO" and eur_low is not None:
-        w = min(w, eur_low)
+        return None if basis is None else round(basis, 2)
+    if z == "PO" and eur_low:
+        return round(eur_low, 2)
+    anker, _q = nm_anker(eur, eur_holo, usd, usd_holo, variante)
+    if anker is None:
+        return None
+    w = anker * f
+    if eur_low is not None and w < eur_low:
+        w = eur_low
     return round(w, 2)
+
+
+def zustand_preise(eur, eur_holo, eur_low, usd=None, usd_holo=None, variante="normal"):
+    """Alle Zustände auf einmal, samt Quelle des Ankers — für Kartendetail und Prüfungen."""
+    anker, quelle = nm_anker(eur, eur_holo, usd, usd_holo, variante)
+    return {"anker": anker, "quelle": quelle, "kurs": WECHSELKURS.get("usd_je_eur"),
+            "preise": {z: posten_wert(eur, eur_holo, eur_low, variante, z, usd, usd_holo)
+                       for z in ZUSTAND_FAKTOR}}
 
 
 def _feld(zeile, name, standard=None):
@@ -67,7 +119,8 @@ def zeilen_wert(zeilen, *, anzahl_feld="anzahl", preis_alias=""):
     for z in zeilen:
         n = 1 if anzahl_feld is None else (_feld(z, anzahl_feld, 0) or 0)
         w = posten_wert(_feld(z, "eur"), _feld(z, "eur_holo"), _feld(z, "eur_low"),
-                        _feld(z, "variante", "normal"), _feld(z, "zustand", ""))
+                        _feld(z, "variante", "normal"), _feld(z, "zustand", ""),
+                        _feld(z, "usd"), _feld(z, "usd_holo"))
         if w is None:
             ohne += n
             continue
@@ -173,7 +226,8 @@ def bewegung_euro(zeile, schnitt_feld, anzahl=None):
     if bewegung_prozent(eur, schnitt) is None:
         return None
     w = posten_wert(eur, _feld(zeile, "eur_holo"), _feld(zeile, "eur_low"),
-                    _feld(zeile, "variante", "normal"), _feld(zeile, "zustand", ""))
+                    _feld(zeile, "variante", "normal"), _feld(zeile, "zustand", ""),
+                    _feld(zeile, "usd"), _feld(zeile, "usd_holo"))
     if w is None:
         return None
     n = anzahl if anzahl is not None else (_feld(zeile, "anzahl", 1) or 1)
