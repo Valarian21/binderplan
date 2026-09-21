@@ -1744,6 +1744,24 @@ function fehlerMelden(text, wo) {
   } catch (e) { /* Melden darf nie selbst stören */ }
 }
 window.addEventListener('error', (ev) => fehlerMelden(ev.message || ev.error, (ev.filename || '').split('/').pop() + ':' + ev.lineno));
+// Was vor kern.js schiefging (frühe Falle in index.html), jetzt nachreichen
+try { (window.__fruehe_fehler || []).forEach((f) => fehlerMelden(f, 'frueh')); window.__fruehe_fehler = []; } catch (e) {}
+/* Diagnose auf Zuruf: ?diag=1 an die Adresse hängen, dann landen Fenstermaße, Ebenen und was
+   an sechs Stellen unter dem Zeiger liegt im Dienstlog — für „bei mir geht nichts", ohne
+   Bildschirmfreigabe. */
+if (/[?&]diag=1/.test(location.search)) setTimeout(() => {
+  try {
+    const at = (x, y) => { const e = document.elementFromPoint(x, y); return e ? e.tagName + (e.id ? '#' + e.id : '') + '.' + String(e.className).trim().split(/\s+/).slice(0, 2).join('.') : '-'; };
+    const oben = [...document.querySelectorAll('body *')].filter((e) => { const cs = getComputedStyle(e); return (cs.position === 'fixed' || cs.position === 'absolute') && cs.display !== 'none' && cs.visibility !== 'hidden' && parseInt(cs.zIndex || '0', 10) >= 30 && e.getBoundingClientRect().width > 200; })
+      .slice(0, 12).map((e) => { const r = e.getBoundingClientRect(); return `${e.tagName}#${e.id}.${String(e.className).trim().split(/\s+/)[0]} z${getComputedStyle(e).zIndex} ${Math.round(r.width)}x${Math.round(r.height)}@${Math.round(r.left)},${Math.round(r.top)} pe=${getComputedStyle(e).pointerEvents}`; });
+    const seg = document.getElementById('seg-sammlung'); const sr = seg ? seg.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
+    const text = JSON.stringify({ fenster: [innerWidth, innerHeight, outerWidth, devicePixelRatio], touch: navigator.maxTouchPoints, body: document.body.className, html: document.documentElement.className,
+      user: S.user ? S.user.id : null, binder: S.binder ? [S.binder.id, S.binder.items.length] : null, nurAnsicht: S.nurAnsicht, ebenen: (typeof EBENEN !== 'undefined') ? EBENEN.length : '?',
+      unterZeiger: { nav: at(sr.left + sr.width / 2, sr.top + sr.height / 2), mitte: at(innerWidth / 2, innerHeight / 2), obenRechts: at(innerWidth - 40, 30), untenMitte: at(innerWidth / 2, innerHeight - 40) },
+      oben, overlays: [...document.querySelectorAll('.overlay:not(.hidden)')].map((o) => o.id), fruehe: window.__fruehe_fehler, typen: [typeof ansicht, typeof fachKlick, typeof zeichneBinder] });
+    fehlerMelden('DIAG ' + text, 'diag');
+  } catch (e) { fehlerMelden('DIAG kaputt: ' + e.message, 'diag'); }
+}, 2500);
 window.addEventListener('unhandledrejection', (ev) => { const r = ev.reason; fehlerMelden((r && (r.stack || r.message)) || r, 'promise'); });
 
 /** Sitzung ungültig: Anmeldung überall zurücknehmen, damit Kopfzeile und Ansichten dasselbe sagen. */
