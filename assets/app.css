@@ -2211,6 +2211,8 @@
     .inspektor .ik-akt button.gefahr { color: var(--akzent-text); }
     .inspektor .ik-akt .trenn { border-top: 1px solid var(--line); margin: 5px 0; }
     .inspektor .ik-zu { position: absolute; right: 10px; top: 10px; }
+    .inspektor .ik-leer { display: flex; flex-direction: column; gap: 6px; margin: auto 0; padding: 18px 6px; text-align: center; color: var(--mut); font-size: var(--t-s); line-height: 1.45; }
+    .inspektor .ik-leer strong { color: var(--ink); font-size: var(--t-m); }
     .ik-chip { padding: 3px 9px; border-radius: 999px; border: 1.5px solid var(--line); font-size: var(--t-s); font-weight: 600; background: var(--card); }
     .ik-chip.on { background: var(--aktiv-bg); color: var(--aktiv-fg); border-color: var(--aktiv-bg); }
   }

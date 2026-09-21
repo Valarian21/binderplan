@@ -420,6 +420,8 @@ const T = {
     wiz_s1: 'Raster', wiz_s2: 'Seiten', wiz_s3: 'Inhalt',
     wiz_1_u: 'Wie viele Fächer hat eine Seite deines Binders?',
     wiz_alle: 'Alle Raster', uebernehmen: 'Übernehmen', ph_pokemon: 'Pokémon …',
+    ik_nichts_t: 'Kein Fach gewählt', ik_nichts_u: 'Ein Klick auf ein Fach zeigt hier Karte, Preis und Zustand. Strg+Klick wählt mehrere, Shift einen Bereich.',
+    ab_kopieren: 'In die Ablage kopieren', ik_mehr_t: '{n} Fächer gewählt', ik_mehr_u: 'Alles hier gilt für die ganze Auswahl.',
     // Feste Seitenzahl (21.09.2026): Karten legen keine Seiten an
     sf_kurz: 'feste Seitenzahl',
     sf_voll_frage: '{n} Karten, aber nur {f} freie Fächer. Seitenzahl von {a} auf {s} erhöhen? (Abbrechen legt nur ein, was passt.)',
@@ -1203,6 +1205,8 @@ const T = {
     wiz_s1: 'Grid', wiz_s2: 'Pages', wiz_s3: 'Content',
     wiz_1_u: 'How many pockets does one page of your binder have?',
     wiz_alle: 'All grids', uebernehmen: 'Apply', ph_pokemon: 'Pokémon …',
+    ik_nichts_t: 'No slot selected', ik_nichts_u: 'Click a slot to see card, price and condition here. Ctrl+click selects several, Shift a range.',
+    ab_kopieren: 'Copy to clipboard', ik_mehr_t: '{n} slots selected', ik_mehr_u: 'Everything here applies to the whole selection.',
     sf_kurz: 'fixed page count',
     sf_voll_frage: '{n} cards but only {f} free pockets. Raise the page count from {a} to {s}? (Cancel adds only what fits.)',
     sf_voll: 'The binder is full – all {s} pages are taken. Raise the page count in the ⋯ menu.',

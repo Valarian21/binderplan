@@ -54,11 +54,37 @@ function zeichneStreifen() {
  *  Aktionen, die vorher im Fach-Menü, im Detail-Dialog und in der Auswahlleiste verteilt lagen. */
 async function inspektorZeichnen() {
   const box = $('inspektor'); if (!box) return;
-  const idx = S.auswahl.size === 1 ? [...S.auswahl][0] : null;
-  const item = idx !== null && S.binder ? S.binder.items[idx] : null;
-  if (S.nurAnsicht || !item || window.innerWidth < 901) { box.classList.add('hidden'); return; }
+  if (S.nurAnsicht || !S.binder || window.innerWidth < 901) { box.classList.add('hidden'); return; }
+  // Die Spalte bleibt stehen (21.09.2026). Vorher kam sie bei genau einem gewählten Fach und
+  // verschwand bei null oder zwei — der Binder sprang jedes Mal 300 px breiter oder schmaler.
+  // Jetzt hat sie drei Zustände: nichts gewählt (Hinweis), ein Fach (Karte), mehrere (die
+  // Aktionen, die vorher in der schwebenden Leiste lagen).
   box.classList.remove('hidden');
+  const n = S.auswahl.size;
   const zu = `<button class="btn sekundaer ik-zu" style="padding:4px 9px" onclick="auswahlLeeren()" aria-label="Schließen">✕</button>`;
+  if (n === 0) {
+    box.innerHTML = `<div class="ik-leer"><strong>${t('ik_nichts_t')}</strong><span>${t('ik_nichts_u')}</span></div>`;
+    return;
+  }
+  if (n > 1) {
+    const sort = ['datum', 'dex', 'name', 'nummer', 'typ', 'rarity'].map((x) => `<button onclick="auswahlSortieren('${x}')">${t('s_' + x)}</button>`).join('');
+    box.innerHTML = `${zu}<div class="ik-name">${t('ik_mehr_t').replace('{n}', n)}</div><div class="ik-meta">${t('ik_mehr_u')}</div>
+      <div class="ik-lbl">${t('ik_aktionen')}</div>
+      <div class="ik-akt">
+        <button onclick="auswahlVerschieben(-1)">◂ ${t('nach_links')}</button><button onclick="auswahlVerschieben(1)">▸ ${t('nach_rechts')}</button>
+        <button onclick="zielModusAn()">${t('hierher')}</button><button onclick="auswahlVerschieben('anfang')">${t('nach_vorn')}</button><button onclick="auswahlVerschieben('ende')">${t('ans_ende')}</button>
+        <div class="trenn"></div>
+        <button onclick="auswahlKopieren()">${t('ab_kopieren')}</button>
+        <div class="trenn"></div>
+        <button onclick="auswahlEntfernen()">${t('entfernen')}</button><button class="gefahr" onclick="auswahlHerausnehmen()">${t('herausnehmen')}</button>
+        <div class="trenn"></div><button onclick="auswahlLeeren()">${t('aufheben')}</button>
+      </div>
+      <div class="ik-lbl">${t('pl_sort_nach')}</div><div class="ik-akt">${sort}</div>`;
+    return;
+  }
+  const idx = [...S.auswahl][0];
+  const item = S.binder.items[idx];
+  if (!item) { box.innerHTML = `<div class="ik-leer"><strong>${t('ik_nichts_t')}</strong><span>${t('ik_nichts_u')}</span></div>`; return; }
   const lage = `${t('seite')} ${seiteBei(idx) + 1} · ${t('fach_wort')} ${idx - seiteInfo(seiteBei(idx)).start + 1}`;
   const gefahr = `<button class="gefahr" onclick="slotHerausnehmen(${idx})" title="${t('s_herausnehmen_t')}">${t('herausnehmen')}</button>`;
   if (item.type === 'empty') {
@@ -968,7 +994,7 @@ function auswahlAktionen() {
   // Bei genau einem gewaehlten Fach steht rechts der Inspektor mit denselben Aktionen —
   // „Entfernen" lag dann zweimal auf dem Schirm, einmal ueber dem Binder (Audit C7).
   // Die Leiste ist fuer die Mehrfachauswahl da; am Handy gibt es keinen Inspektor.
-  const inspektorDa = window.innerWidth >= 901 && n === 1;
+  const inspektorDa = window.innerWidth >= 901 && !S.nurAnsicht;   // die Spalte trägt seit 21.09. alle Zustände
   bar.classList.toggle('hidden', n === 0 || S.nurAnsicht || inspektorDa);
   const zahl = $('planer-anzahl');
   if (zahl) zahl.textContent = n;
