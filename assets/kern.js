@@ -420,6 +420,7 @@ const T = {
     wiz_s1: 'Raster', wiz_s2: 'Seiten', wiz_s3: 'Inhalt',
     wiz_1_u: 'Wie viele Fächer hat eine Seite deines Binders?',
     wiz_alle: 'Alle Raster', uebernehmen: 'Übernehmen', ph_pokemon: 'Pokémon …',
+    sitzung_weg: 'Deine Anmeldung ist abgelaufen – bitte neu anmelden.', server_weg: 'Der Server ist gerade nicht erreichbar – du siehst den letzten Stand aus dem Zwischenspeicher.',
     ik_nichts_t: 'Kein Fach gewählt', ik_nichts_u: 'Ein Klick auf ein Fach zeigt hier Karte, Preis und Zustand. Shift+Klick wählt weitere, Strg+Shift einen Bereich.',
     ab_kopieren: 'In die Ablage kopieren', ik_mehr_t: '{n} Fächer gewählt', ik_mehr_u: 'Alles hier gilt für die ganze Auswahl.',
     // Feste Seitenzahl (21.09.2026): Karten legen keine Seiten an
@@ -1205,6 +1206,7 @@ const T = {
     wiz_s1: 'Grid', wiz_s2: 'Pages', wiz_s3: 'Content',
     wiz_1_u: 'How many pockets does one page of your binder have?',
     wiz_alle: 'All grids', uebernehmen: 'Apply', ph_pokemon: 'Pokémon …',
+    sitzung_weg: 'Your login has expired – please sign in again.', server_weg: 'The server is unreachable right now – you are seeing the last cached state.',
     ik_nichts_t: 'No slot selected', ik_nichts_u: 'Click a slot to see card, price and condition here. Shift+click adds more, Ctrl+Shift a range.',
     ab_kopieren: 'Copy to clipboard', ik_mehr_t: '{n} slots selected', ik_mehr_u: 'Everything here applies to the whole selection.',
     sf_kurz: 'fixed page count',
@@ -1711,6 +1713,11 @@ async function api(pfad, opts) {
   opts.headers = Object.assign({}, opts.headers);
   if (S.token) opts.headers['Authorization'] = 'Bearer ' + S.token;
   const r = await fetch(pfad, opts);
+  // Antwort aus dem Service-Worker-Cache (Server nicht erreichbar): einmal sagen, woran man ist.
+  if (r.headers.get('X-Bp-Cache') === '1' && !S.ausCacheGemeldet) { S.ausCacheGemeldet = true; toast(t('server_weg')); }
+  // 401 mit angemeldetem Konto: die Sitzung gilt nicht mehr. Vorher blieb oben der Name stehen,
+  // während die Sammlung „bitte anmelden" sagte — angemeldet und abgemeldet zugleich (21.09.).
+  if (r.status === 401 && S.user && !/api\/auth\/(login|logout)/.test(pfad)) sitzungWeg();
   if (!r.ok) {
     let code = null; let msg = 'API ' + r.status;
     try {
@@ -1722,6 +1729,14 @@ async function api(pfad, opts) {
     throw err;
   }
   return r.json();
+}
+
+/** Sitzung ungültig: Anmeldung überall zurücknehmen, damit Kopfzeile und Ansichten dasselbe sagen. */
+function sitzungWeg() {
+  S.user = null;
+  if (typeof setToken === 'function') setToken('');
+  if (typeof kontoAnzeigen === 'function') { try { kontoAnzeigen(); } catch (e) {} }
+  toast(t('sitzung_weg'));
 }
 
 // Zentrale Behandlung der Konto-/Limit-Fehlercodes

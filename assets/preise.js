@@ -209,6 +209,7 @@ function touchStart(ev) {
   TOUCH.timer = setTimeout(() => {
     TOUCH.aktiv = true;
     TOUCH.idx = idx;
+    ziehScrollStart();
     if (navigator.vibrate) navigator.vibrate(12);      // spürbare Rückmeldung, dass es „hängt“
     const r = fach.getBoundingClientRect();
     const geist = fach.cloneNode(true);
@@ -288,7 +289,12 @@ let dragNeu = null;      // Karte aus der Trefferliste (statt Umsortieren im Bin
    mit der Maus (dragover) wie am Handy (touchmove). Gescrollt wird der nächste scrollbare
    Vorfahr des Elements unter dem Zeiger, sonst die Seite selbst. */
 const ZIEH_RAND = 56;
-const ziehScroll = { el: null, dy: 0, raf: 0 };
+// `scharf`: die Randzone greift erst, wenn der Zeiger sie einmal verlassen hat. Wer eine Karte
+// in der untersten Reihe anfasst, steht schon im Rand — ohne diese Sperre lief der Binder
+// sofort davon und kein Ziel war mehr zu treffen (gemeldet 21.09.: „gar nichts mehr
+// verschiebbar"). Das Tempo ist auf 8 px je Bild gedeckelt (≈ 480 px/s).
+const ziehScroll = { el: null, dy: 0, raf: 0, scharf: false };
+function ziehScrollStart() { ziehScroll.scharf = false; ziehScroll.dy = 0; }
 function scrollElternVon(el) {
   for (let e = el; e && e !== document.body; e = e.parentElement) {
     const o = getComputedStyle(e).overflowY;
@@ -301,8 +307,9 @@ function ziehRandPruefen(x, y) {
   const seite = box === document.scrollingElement || box === document.documentElement;
   const r = seite ? { top: 0, bottom: window.innerHeight } : box.getBoundingClientRect();
   let dy = 0;
-  if (y < r.top + ZIEH_RAND) dy = -(Math.ceil((r.top + ZIEH_RAND - y) / 4) + 2);
-  else if (y > r.bottom - ZIEH_RAND) dy = Math.ceil((y - (r.bottom - ZIEH_RAND)) / 4) + 2;
+  if (y < r.top + ZIEH_RAND) dy = -Math.min(8, Math.ceil((r.top + ZIEH_RAND - y) / 8) + 1);
+  else if (y > r.bottom - ZIEH_RAND) dy = Math.min(8, Math.ceil((y - (r.bottom - ZIEH_RAND)) / 8) + 1);
+  if (!ziehScroll.scharf) { if (dy === 0) ziehScroll.scharf = true; dy = 0; }
   ziehScroll.el = box; ziehScroll.dy = dy;
   if (dy && !ziehScroll.raf) ziehScroll.raf = requestAnimationFrame(ziehScrollSchritt);
 }
@@ -317,6 +324,7 @@ function ziehScrollEnde() {
   if (ziehScroll.raf) cancelAnimationFrame(ziehScroll.raf);
   ziehScroll.raf = 0;
 }
+document.addEventListener('dragstart', ziehScrollStart, true);
 document.addEventListener('dragover', (ev) => { if (dragIdx !== null || dragNeu) ziehRandPruefen(ev.clientX, ev.clientY); });
 document.addEventListener('dragend', () => { ziehScrollEnde(); dragIdx = null; });
 document.addEventListener('drop', ziehScrollEnde);

@@ -6,7 +6,7 @@
  * Browser-Cache (immutable-Header). Schreibzugriffe werden nicht gepuffert: wer offline eine
  * Karte legt, sieht „Fehler beim Speichern" und der Binder holt sich beim nächsten Netz den
  * Stand vom Server (updated_at-Prüfung). */
-const CACHE = 'bp-huelle-2';
+const CACHE = 'bp-huelle-3';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {
@@ -36,6 +36,12 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, kopie)).catch(() => {});
       }
       return antwort;
-    }).catch(() => caches.match(req, { ignoreVary: true }).then((treffer) => treffer || new Response('', { status: 503, statusText: 'offline' })))
+    }).catch(() => caches.match(req, { ignoreVary: true }).then((treffer) => {
+      if (!treffer) return new Response('', { status: 503, statusText: 'offline' });
+      // Kennzeichnen: die App sagt dann „Server nicht erreichbar", statt einen alten
+      // Anmeldestand als aktuellen auszugeben.
+      const h = new Headers(treffer.headers); h.set('X-Bp-Cache', '1');
+      return treffer.blob().then((b) => new Response(b, { status: treffer.status, statusText: treffer.statusText, headers: h }));
+    }))
   );
 });
