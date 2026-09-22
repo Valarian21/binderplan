@@ -13,9 +13,12 @@ ohne Bestätigungsmails zustellen zu können.
 Zwei Absender sind im Spiel und das ist Absicht:
   * das Postfach, das die Zugangsdaten hat (SMTP_USER) — es meldet sich beim Server an,
   * die Adresse, die der Kunde sieht (SMTP_FROM) — support@binderplan.app.
-IONOS erlaubt einen abweichenden Absender nur, wenn die Domain im selben Vertrag liegt. Klappt
-es nicht, fällt das Skript automatisch auf die Postfachadresse als Absender zurück; Antworten
-gehen über Reply-To trotzdem an support@binderplan.app.
+IONOS erlaubt einen abweichenden Absender nur innerhalb **derselben Domain** — gemessen am
+22.09.2026: support.binderplan@binderplan.app darf als support@binderplan.app senden, aber
+nicht als support@lehreule.de („550 Sender address is not allowed"), obwohl beide Domains im
+selben Vertrag liegen. Jedes Produkt braucht also ein eigenes Postfach. Klappt der Wunsch-
+Absender nicht, fällt das Skript auf die Postfachadresse zurück; Antworten gehen über Reply-To
+trotzdem an support@binderplan.app.
 """
 import getpass
 import pathlib
