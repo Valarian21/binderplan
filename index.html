@@ -12,7 +12,16 @@
 <link rel="stylesheet" href="/assets/schrift.css">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<!-- iPhone: ab iOS 16.4 liest Safari das Manifest und macht Vollbild von allein.
+     Aeltere iPhones kennen nur diese Metazeilen — ohne sie oeffnet das Symbol auf
+     dem Startbildschirm die Seite mit Browserleiste statt als App. `mobile-web-app-capable`
+     ist die standardisierte Fassung derselben Angabe. Das Touch-Symbol ist eine eigene,
+     deckende Datei: iOS legt transparente Flaechen schwarz hinterlegt an. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Binderplan">
 <meta name="theme-color" content="#2A4B9B">
 <script>/* Frühe Fehlerfalle (21.09.2026): sammelt Fehler, die vor oder beim Laden der Skripte
    passieren; kern.js schickt sie später an /api/fehler. */

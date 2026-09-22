@@ -4702,6 +4702,9 @@ def icon_maskable(groesse: int):
 
 @app.get("/icon-{groesse}.png")
 def icon(groesse: int):
-    if groesse not in (192, 512):
+    # 180 ist das Apple-Touch-Symbol: iOS legt transparente Flaechen schwarz
+    # hinter das Symbol, deshalb liegt dort eine deckende Fassung (Rahmenfarbe
+    # statt Alpha). 192 und 512 bleiben die Manifest-Symbole mit Transparenz.
+    if groesse not in (180, 192, 512):
         raise HTTPException(404)
     return FileResponse(_app_icon(groesse), media_type="image/png", headers=IMG_HEADERS)
