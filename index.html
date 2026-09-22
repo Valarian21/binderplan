@@ -17,8 +17,8 @@
 <script>/* Frühe Fehlerfalle (21.09.2026): sammelt Fehler, die vor oder beim Laden der Skripte
    passieren; kern.js schickt sie später an /api/fehler. */
 window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try { window.__fruehe_fehler.push((e.message || String(e.error)) + ' @ ' + String(e.filename || '').split('/').pop() + ':' + e.lineno); } catch (x) {} }, true);</script>
-<link rel="stylesheet" href="assets/tokens.css?v=202609220230">
-<link rel="stylesheet" href="assets/app.css?v=202609220230">
+<link rel="stylesheet" href="assets/tokens.css?v=202609221910">
+<link rel="stylesheet" href="assets/app.css?v=202609221910">
 </head>
 <body>
 <div id="app">
@@ -33,6 +33,15 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
   <div id="bestaetigen-banner" class="best-banner hidden">
     <span id="best-text"></span>
     <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 12px" onclick="bestaetigungNeu()" data-i18n="best_nochmal">Nochmal senden</button>
+  </div>
+  <!-- Ohne Konto liegt ein Binder nur im Speicher dieses einen Browsers. Am 21.09.2026 baute
+       ein Besucher seinen Binder im Instagram-Browser, registrierte sich in Safari — und das
+       Konto blieb leer, weil der Speicher nicht geteilt wird. Der Hinweis sagt das, bevor
+       Arbeit hineinfließt, und wird im In-App-Browser deutlicher. -->
+  <div id="gast-banner" class="best-banner gast-banner hidden">
+    <span id="gast-text"></span>
+    <button class="btn primaer" style="font-size: var(--t-s);padding:5px 12px" onclick="gastKontoOeffnen()" data-i18n="gast_sichern">Konto anlegen — gratis</button>
+    <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 12px" onclick="gastBannerWeg()" data-i18n="inst_spaeter">Später</button>
   </div>
   <div class="kopf">
     <div class="logo" onclick="if(S.user)startOeffnen();else location.href='/?landing=1'" style="cursor:pointer" title="Binderplan">
@@ -1570,20 +1579,20 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609220230"></script>
-<script defer src="assets/konto.js?v=202609220230"></script>
-<script defer src="assets/werkbank.js?v=202609220230"></script>
-<script defer src="assets/vitrine.js?v=202609220230"></script>
-<script defer src="assets/preise.js?v=202609220230"></script>
-<script defer src="assets/planer.js?v=202609220230"></script>
-<script defer src="assets/teilen.js?v=202609220230"></script>
-<script defer src="assets/hilfe.js?v=202609220230"></script>
-<script defer src="assets/detail.js?v=202609220230"></script>
-<script defer src="assets/artwork.js?v=202609220230"></script>
-<script defer src="assets/passend.js?v=202609220230"></script>
+<script defer src="assets/kern.js?v=202609221910"></script>
+<script defer src="assets/konto.js?v=202609221910"></script>
+<script defer src="assets/werkbank.js?v=202609221910"></script>
+<script defer src="assets/vitrine.js?v=202609221910"></script>
+<script defer src="assets/preise.js?v=202609221910"></script>
+<script defer src="assets/planer.js?v=202609221910"></script>
+<script defer src="assets/teilen.js?v=202609221910"></script>
+<script defer src="assets/hilfe.js?v=202609221910"></script>
+<script defer src="assets/detail.js?v=202609221910"></script>
+<script defer src="assets/artwork.js?v=202609221910"></script>
+<script defer src="assets/passend.js?v=202609221910"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609220230"></script>
+<script defer src="assets/markt.js?v=202609221910"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609220230"></script>
+<script defer src="assets/sammlung.js?v=202609221910"></script>
 </body>
 </html>

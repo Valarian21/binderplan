@@ -671,6 +671,11 @@
                  background: var(--gelb); color: var(--kontur); font-size: var(--t-m); font-weight: 700;
                  padding: 9px 16px; border-bottom: 2px solid var(--kontur); }
   .best-banner.hidden { display: none !important; }
+  /* Gast-Hinweis: dieselbe Bauform, andere Farbe – es ist kein offener Vorgang, sondern ein Risiko. */
+  .gast-banner { background: var(--panel2); color: var(--ink); font-weight: 600;
+                 border-bottom: 2px solid var(--line); text-align: center; }
+  .gast-banner.ist-ernst { background: var(--akzent); color: #fff; border-bottom-color: var(--akzent-dunkel); }
+  .gast-banner.ist-ernst .btn.sekundaer { background: transparent; color: #fff; border-color: rgba(255,255,255,.65); }
 
 
   /* ---------- Sammlung ---------- */

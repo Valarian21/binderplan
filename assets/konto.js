@@ -297,6 +297,7 @@ function kontoAnzeigen() {
     if (S.alleSeiten) zeichneAlleSeiten();
     if (typeof habStandZeigen === 'function') habStandZeigen();
   });
+  banner();
   const btn = $('btn-konto');
   if (S.user) {
     // Ein Kreis mit dem Anfangsbuchstaben, der Name daneben – die volle Adresse stand
@@ -399,6 +400,63 @@ async function installStarten() {
   kontoAnzeigen();
 }
 
+/** In-App-Browser von Instagram, Facebook, TikTok, Snapchat, LinkedIn, Pinterest.
+ *  Diese Fenster haben einen **eigenen** localStorage: was hier als Gast entsteht, findet
+ *  man in Safari oder Chrome nicht wieder — auch nicht auf demselben Gerät. */
+function istInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  return /Instagram|FBAN|FBAV|FB_IAB|TikTok|BytedanceWebview|Snapchat|LinkedInApp|Pinterest|musical_ly/i.test(ua);
+}
+
+/** Name des Fensters für den Hinweistext – „im Instagram-Browser" trifft besser als „in dieser App". */
+function inAppName() {
+  const ua = navigator.userAgent || '';
+  if (/Instagram/i.test(ua)) return 'Instagram';
+  if (/TikTok|BytedanceWebview|musical_ly/i.test(ua)) return 'TikTok';
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook';
+  if (/Snapchat/i.test(ua)) return 'Snapchat';
+  if (/Pinterest/i.test(ua)) return 'Pinterest';
+  if (/LinkedInApp/i.test(ua)) return 'LinkedIn';
+  return '';
+}
+
+function gastBannerWeg() {
+  try { sessionStorage.setItem('bp_gast_weg', '1'); } catch (e) {}
+  $('gast-banner').classList.add('hidden');
+}
+
+function gastKontoOeffnen() {
+  loginOeffnen(t('gast_grund'));
+}
+
+/** Zeigt den Hinweis, sobald ein Gast etwas zu verlieren hat: ein Binder liegt in diesem
+ *  Browser, aber kein Konto trägt ihn. Absichtlich `sessionStorage` statt `localStorage`:
+ *  „Später" gilt für diesen Besuch, nicht für immer — die Gefahr besteht ja weiter. */
+function gastBanner() {
+  const el = $('gast-banner');
+  if (!el) return;
+  let weg = false;
+  try { weg = sessionStorage.getItem('bp_gast_weg') === '1'; } catch (e) {}
+  const hatGastBinder = !S.user && (typeof binderIds === 'function' ? binderIds().length > 0 : false);
+  const inApp = istInAppBrowser();
+  // Im In-App-Browser warnt der Hinweis schon vor dem ersten Binder – dort ist der Verlust
+  // die Regel, nicht der Ausnahmefall.
+  const zeigen = !S.user && !weg && !S.nurAnsicht && (hatGastBinder || inApp);
+  el.classList.toggle('hidden', !zeigen);
+  el.classList.toggle('ist-ernst', zeigen && inApp);
+  if (!zeigen) return;
+  const name = inAppName();
+  $('gast-text').textContent = inApp
+    ? t('gast_inapp').replace('{a}', name || t('gast_diese_app'))
+    : t('gast_text');
+}
+
+/** Beide Balken hängen voneinander ab — deshalb immer zusammen neu bewerten. */
+function banner() {
+  gastBanner();
+  if (typeof installBanner === 'function') installBanner();
+}
+
 function installBannerWeg() {
   try { localStorage.setItem('bp_inst_weg', '1'); } catch (e) {}
   $('install-banner').classList.add('hidden');
@@ -415,7 +473,10 @@ function installBanner() {
   try { weg = localStorage.getItem('bp_inst_weg') === '1'; } catch (e) {}
   const handy = (navigator.maxTouchPoints || 0) > 0 && Math.min(screen.width, screen.height) < 820;
   const moeglich = !!installPrompt || (istIOS() && istSafari());
-  el.classList.toggle('hidden', weg || installiert() || !handy || !moeglich);
+  // Der Gast-Hinweis hat Vorrang: zwei gestapelte Balken mit je einem „Später" nahmen
+  // auf dem iPhone ein Drittel des Bildes und fragten zweierlei auf einmal.
+  const gastOffen = $('gast-banner') && !$('gast-banner').classList.contains('hidden');
+  el.classList.toggle('hidden', weg || installiert() || !handy || !moeglich || !!gastOffen);
 }
 
 let authModus = 'login';
@@ -1038,6 +1099,7 @@ function binderAnzeigen() {
   // man wieder im alten.
   hashSetzen(S.binder.id ? 'binder/' + S.binder.id : '');
   vitrineKnopf();
+  if (typeof banner === 'function') banner();
   $('wb-name').value = S.binder.name;
   $('wb-titel').textContent = S.binder.name || t('neuer_binder');
   S.seite = 0; S.preise = {};

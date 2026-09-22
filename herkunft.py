@@ -75,6 +75,35 @@ def _herkunft_vom_referrer(request) -> str:
     return _herkunft_saeubern("referrer/" + host)
 
 
+# Wer ohne Verweis und ohne UTM kommt: Lesezeichen, getippte Adresse, App-Symbol,
+# Messenger ohne Referrer. Bis zum 22.09.2026 wurden diese Besuche **gar nicht** gezählt —
+# damit war die Gesamtzahl der Besucher unbekannt und jede Quote ohne Nenner.
+BESUCH_DIREKT = "(direkt)"
+
+# Grobe Bot-Erkennung. Sie muss nicht vollständig sein: sie soll verhindern, dass die
+# Besucherzahl von Crawlern getragen wird, nicht jeden Bot der Welt kennen.
+BESUCH_BOTS = re.compile(
+    r"bot|crawl|spider|slurp|curl|wget|python-requests|httpx|headless|lighthouse|"
+    r"monitor|uptime|preview|scan|facebookexternalhit|embed", re.I)
+
+
+def _besuch_quelle(request):
+    """→ (wert, zählen?). Drei Fälle, und der dritte ist der neue:
+
+    1. UTM-Parameter oder fremder Verweis → die Quelle, zählt.
+    2. Verweis von binderplan.app selbst → Folgeseite desselben Besuchs, zählt **nicht**
+       (sonst wäre jeder Klick von der Landingpage in die App ein zweiter Besucher).
+    3. Weder noch → `(direkt)`, zählt. Das ist der eigentliche Direkteinstieg."""
+    wert = herkunft_aus_query(request.query_params) or _herkunft_vom_referrer(request)
+    if wert:
+        return wert, True
+    if request.headers.get("referer"):
+        return "", False
+    if BESUCH_BOTS.search(request.headers.get("user-agent") or ""):
+        return "", False
+    return BESUCH_DIREKT, True
+
+
 def herkunft_tabellen(con):
     """Eigenes Schema. Bewusst hier und nicht in `init_db()`: die läuft beim Import der
     main.py, lange bevor dieser Abschnitt geladen ist."""
@@ -94,9 +123,12 @@ def herkunft_tabellen(con):
 def herkunft_zaehlen(request, antwort_status: int):
     """Einen Seitenaufruf aggregiert mitschreiben. Läuft in der Zugriffs-Middleware.
 
-    Gezählt werden nur echte Seitenaufrufe mit erkennbarer Herkunft — keine API-Aufrufe,
-    keine Bilder, keine Kurzlink-Weiterleitungen (die zählen erst auf der Zielseite, sonst
-    stünde jeder Klick doppelt drin). Ein Fehler hier darf nie eine Auslieferung kippen."""
+    Gezählt werden echte Seitenaufrufe — keine API-Aufrufe, keine Bilder, keine
+    Kurzlink-Weiterleitungen (die zählen erst auf der Zielseite, sonst stünde jeder Klick
+    doppelt drin) und keine Folgeseiten desselben Besuchs. Seit dem 22.09.2026 zählen auch
+    Besuche **ohne** erkennbare Quelle als `(direkt)`: ohne sie war die Gesamtzahl der
+    Besucher unbekannt und eine Quote „Besuch → Anmeldung" nicht zu bilden.
+    Ein Fehler hier darf nie eine Auslieferung kippen."""
     try:
         pfad = request.url.path
         if antwort_status >= 400 or request.method != "GET":
@@ -105,8 +137,8 @@ def herkunft_zaehlen(request, antwort_status: int):
             return
         if pfad.strip("/") in HERKUNFT_KURZLINKS:
             return
-        wert = herkunft_aus_query(request.query_params) or _herkunft_vom_referrer(request)
-        if not wert:
+        wert, zaehlen = _besuch_quelle(request)
+        if not zaehlen:
             return
         teile = (wert.split("/") + ["", "", ""])[:4]
         seite = "app" if pfad.startswith("/app") else ("landing" if pfad in ("/", "/en") else "sonst")
