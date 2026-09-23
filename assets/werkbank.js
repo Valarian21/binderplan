@@ -620,16 +620,30 @@ function zeichneSetWahlKnopf() {
     : `<span>${t('alle_sets')}</span>`;
 }
 function setWahlToggle() {
-  menuToggle('set-popover');
   const pop = $('set-popover');
+  // Am Handy ist die Filterspalte eine Schublade mit `position: fixed` **und** `transform`
+  // (translateX zum Einfahren). Ein fixed positioniertes Kind bezieht sich dann auf die
+  // Schublade statt aufs Fenster, und `left: 8px` lag am 23.09.2026 bei x = −134 — das
+  // Popover stand zur Hälfte links außerhalb des Bildschirms. Deshalb wandert es beim
+  // ersten Öffnen in den Body, in eine eigene .menuwrap (der Außenklick-Schließer in
+  // werkbank.js prüft auf .menuwrap; ohne sie schlösse jeder Tipp in die Liste das Menü).
+  if (!pop.dataset.portal) {
+    const wrap = document.createElement('div');
+    wrap.className = 'menuwrap'; wrap.id = 'set-popover-portal';
+    document.body.appendChild(wrap); wrap.appendChild(pop); pop.dataset.portal = '1';
+  }
+  document.querySelectorAll('.menu').forEach((m) => { if (m.id !== 'set-popover') m.classList.add('hidden'); });
+  pop.classList.toggle('hidden');
+  pop.style.transform = '';
   if (!pop.classList.contains('hidden')) {
-    // fixed positioniert: die Filterspalte scrollt und würde ein absolutes Popover abschneiden
     const r = $('f-set-btn').getBoundingClientRect();
     const w = Math.min(380, window.innerWidth - 16);
     pop.style.position = 'fixed'; pop.style.width = w + 'px';
     pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
     pop.style.top = (r.bottom + 4) + 'px'; pop.style.right = 'auto';
     pop.style.maxHeight = (window.innerHeight - r.bottom - 16) + 'px'; pop.style.overflow = 'auto';
+    // Über der Schublade, die selbst schon über der Leiste liegt.
+    pop.style.zIndex = 'calc(var(--z-leiste) + 20)';
     $('set-popover-suche').value = ''; zeichneSetWahl(); setTimeout(() => $('set-popover-suche').focus(), 30);
   }
 }

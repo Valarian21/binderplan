@@ -6,7 +6,7 @@
  * Browser-Cache (immutable-Header). Schreibzugriffe werden nicht gepuffert: wer offline eine
  * Karte legt, sieht „Fehler beim Speichern" und der Binder holt sich beim nächsten Netz den
  * Stand vom Server (updated_at-Prüfung). */
-const CACHE = 'bp-huelle-4';
+const CACHE = 'bp-huelle-5';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => {

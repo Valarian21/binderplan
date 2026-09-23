@@ -1021,8 +1021,11 @@ function richtungText(sort, richtung) {
 }
 function richtungZeichnen() {
   const b = $('f-richtung'); if (!b) return;
-  b.innerHTML = `<span class="pf">${filter.richtung === 'desc' ? '↓' : '↑'}</span>${esc(richtungText(filter.sort, filter.richtung))}`;
-  b.title = t('ri_t');
+  // Der Wortlaut steht in einem eigenen Span: in der Handy-Schublade zeigt der Knopf nur
+  // den Pfeil, sonst ragte „↓neueste zuerst" halb aus dem Bild (23.09.2026); der Tooltip
+  // trägt die Worte weiter.
+  b.innerHTML = `<span class="pf">${filter.richtung === 'desc' ? '↓' : '↑'}</span><span class="rt">${esc(richtungText(filter.sort, filter.richtung))}</span>`;
+  b.title = t('ri_t') + ' — ' + richtungText(filter.sort, filter.richtung);
 }
 function richtungWechseln() {
   filter.richtung = filter.richtung === 'desc' ? 'asc' : 'desc';

@@ -656,7 +656,9 @@ function zeichneTarife() {
   const jahr = TARIF.zeitraum === 'jahr';
   const mein = (S.user || {}).plan || 'free';
   // Lifetime hat alles – Abo-Kacheln mit „Wählen" wären ein Abstieg, den niemand will.
-  $('tarif-karten').innerHTML = mein === 'lifetime' ? `<div class="unter" style="grid-column:1/-1">${t('tarif_life_hinweis')}</div>` : d.tarife.map((tf) => {
+  // Lifetime: der Satz „alle Funktionen sind frei, hier kaufst du Credits nach" steht schon
+  // als Untertitel (#up-grund) — hier stand er ein zweites Mal, wortgleich (23.09.2026).
+  $('tarif-karten').innerHTML = mein === 'lifetime' ? '' : d.tarife.map((tf) => {
     const preis = jahr ? tf.preis_jahr : tf.preis_monat;
     const ist = mein === tf.id;
     const zeilen = [];

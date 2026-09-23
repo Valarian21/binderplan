@@ -2501,3 +2501,19 @@
 .st-kunst { border-color: var(--akzent); display: grid; gap: 6px; }
 .st-kunst .st-kunst-btn { justify-self: start; margin-top: 6px; }
 .pro-marke { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; background: var(--akzent); color: #fff; margin-left: 4px; vertical-align: middle; }
+
+/* --- Audit 23.09.2026 ------------------------------------------------------------
+   Das „Seite …"-Menü liegt in der klebrigen Seitenleiste (z-index 2); die Häkchen und
+   ···-Knöpfe der Fächer (z-index 3) schienen durch das Menü hindurch. Solange ein Menü
+   darin offen ist, steigt die Leiste über alles. */
+.spalte-binder > .seiten-nav:has(.menu:not(.hidden)) { z-index: var(--z-menue); }
+/* Sortierrichtung in der Handy-Schublade: nur der Pfeil, der Wortlaut im Tooltip. */
+@media (max-width: 560px) {
+  .suche-lade .sortwahl .richtung .rt { display: none; }
+  .suche-lade .sortwahl .richtung { padding: 6px 9px; }
+}
+/* Die Chip-Reihe der passenden Karten läuft am Handy nach rechts weiter — der weiche
+   Rand fehlte hier als einziger Reihe. */
+.pa-chips { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent); }
+.pa-chips.am-ende { -webkit-mask-image: none; mask-image: none; }

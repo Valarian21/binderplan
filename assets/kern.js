@@ -1915,7 +1915,7 @@ function zeichneSeitenleiste() {
    dass es weitergeht. Am Ende der Zeile ist er falsch und wird abgeschaltet. Ohne diesen
    Hinweis stand der Jahrgangsfilter der Vitrine ausserhalb des Bildes und niemand fand ihn
    (Audit 11.09.2026, F12/F13). */
-const WISCHZEILEN = '.vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools-scroll, .suche-lade .kopfzeile';
+const WISCHZEILEN = '.vt-zeile2, #sammlung .an-chips, #sm-filter, .gal-umschalter, #mk-reiter, .bp-tools-scroll, .suche-lade .kopfzeile, .pa-chips';
 
 function wischRandPruefen(el) {
   if (!el) return;
