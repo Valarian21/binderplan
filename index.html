@@ -26,8 +26,8 @@
 <script>/* Frühe Fehlerfalle (21.09.2026): sammelt Fehler, die vor oder beim Laden der Skripte
    passieren; kern.js schickt sie später an /api/fehler. */
 window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try { window.__fruehe_fehler.push((e.message || String(e.error)) + ' @ ' + String(e.filename || '').split('/').pop() + ':' + e.lineno); } catch (x) {} }, true);</script>
-<link rel="stylesheet" href="assets/tokens.css?v=202609221910">
-<link rel="stylesheet" href="assets/app.css?v=202609221910">
+<link rel="stylesheet" href="assets/tokens.css?v=202609231400">
+<link rel="stylesheet" href="assets/app.css?v=202609231400">
 </head>
 <body>
 <div id="app">
@@ -47,6 +47,9 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
        ein Besucher seinen Binder im Instagram-Browser, registrierte sich in Safari — und das
        Konto blieb leer, weil der Speicher nicht geteilt wird. Der Hinweis sagt das, bevor
        Arbeit hineinfließt, und wird im In-App-Browser deutlicher. -->
+  <!-- Nach einer bezahlten Übernahme aus der Vitrine: Angebot, die Seite mit eigenem Stil
+       neu malen zu lassen (vitrine.js, neuMalenAnbieten). -->
+  <div id="upsell-banner" class="best-banner hidden"></div>
   <div id="gast-banner" class="best-banner gast-banner hidden">
     <span id="gast-text"></span>
     <button class="btn primaer" style="font-size: var(--t-s);padding:5px 12px" onclick="gastKontoOeffnen()" data-i18n="gast_sichern">Konto anlegen — gratis</button>
@@ -787,6 +790,21 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
     <div style="font-size:var(--t-s);color:var(--mut);margin-top:16px" data-i18n="inst_updates">Updates kommen von allein: beim Öffnen holt sich die App die neueste Fassung, ganz ohne Store.</div>
   </div>
 </div>
+<!-- Erste Schritte: einmal nach der Registrierung (konto.js, onboardingOeffnen) und für
+     Konten ohne Binder, die es noch nie gesehen haben. Drei Wege, kein Rundgang. -->
+<div class="overlay hidden" id="modal-onboarding">
+  <div class="modal" style="width:min(560px,94vw)">
+    <button class="modal-x" onclick="onboardingSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
+    <h2 data-i18n="onb_t">Willkommen bei Binderplan</h2>
+    <div class="unter" data-i18n="onb_u">Drei Dinge, die du kennen solltest.</div>
+    <div class="st-wege" style="margin-top:14px">
+      <button class="st-weg" onclick="onboardingSchliessen();vorlagenOeffnen()"><strong data-i18n="onb_1_t">Planen &amp; drucken</strong><span data-i18n="onb_1_u"></span></button>
+      <button class="st-weg" onclick="onboardingSchliessen();startSchliessen();ansicht('sammlung')"><strong data-i18n="onb_2_t">Sammlung &amp; Preise</strong><span data-i18n="onb_2_u"></span></button>
+      <button class="st-weg st-kunst" onclick="onboardingSchliessen();kunstStartOeffnen()"><strong data-i18n="onb_3_t">Kunstseiten — deine erste ist gratis</strong><span id="onb-3-u"></span></button>
+    </div>
+    <button class="btn primaer" style="width:100%;margin-top:16px" onclick="onboardingSchliessen()" data-i18n="onb_los">Los geht’s</button>
+  </div>
+</div>
 <div class="overlay hidden" id="modal-auth">
   <div class="modal" style="width:min(420px,94vw)">
     <button class="modal-x" onclick="modalSchliessen()" title="Schließen" data-i18n-title="schliessen_t">✕</button>
@@ -880,6 +898,8 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
       <div class="aw-rechts">
         <div class="feld-lbl" style="margin-top:0" data-i18n="aw_stil">Stil</div>
         <div class="aw-stile" id="aw-stile"></div>
+        <div class="feld-lbl" data-i18n="aw_qual">Qualität</div>
+        <div class="aw-stile" id="aw-qual"></div>
         <div class="feld-lbl" data-i18n="aw_wunsch">Wünsche (optional)</div>
         <textarea class="feld" id="aw-wunsch" rows="2" maxlength="400" data-i18n-ph="aw_wunsch_ph" placeholder="z. B. Nachtszene mit Vollmond, mehr Wasser, ruhiger Hintergrund …"></textarea>
         <div class="aw-wunsch-u" data-i18n="aw_wunsch_u">Gilt für das, was um die Karte herum entsteht: Tageszeit, Wetter, Landschaft, Stimmung. Die Karte selbst bleibt unverändert.</div>
@@ -989,6 +1009,16 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
     <div class="st-neu hidden" id="st-creator-neu"></div>
 
     <div class="st-band" id="st-band"></div>
+
+    <!-- Die eine Gratis-Kunstseite ist das stärkste Argument des Produkts — und wurde
+         nicht gefunden: 5 von 7 Gratis-Konten hatten ihre 12 Start-Credits nie angerührt
+         (Stand 23.09.2026). Der Block steht, solange die Credits reichen und noch keine
+         Seite entstanden ist; danach verschwindet er von selbst. -->
+    <div class="st-abschnitt" id="st-kunst-block" hidden>
+      <button class="st-weg st-kunst" onclick="kunstStartOeffnen()">
+        <strong id="st-kunst-t"></strong><span id="st-kunst-u"></span>
+        <span class="btn primaer st-kunst-btn" id="st-kunst-btn"></span></button>
+    </div>
 
     <!-- Reihenfolge nach Dringlichkeit: erst was passiert ist (Alarme), dann die Arbeit
          (Weiter, Ziele, Binder), zuletzt die Zusammenfassung. Der Wochenrückblick ändert
@@ -1588,20 +1618,20 @@ window.__fruehe_fehler = []; window.addEventListener('error', function (e) { try
 <div class="toast" id="toast-kauf"><span id="toast-kauf-text"></span><input id="toast-kauf-preis" inputmode="decimal" placeholder="12,50" onkeydown="toastKaufTaste(event)" aria-label="Kaufpreis"><button onclick="toastKaufSpeichern()">OK</button></div>
 
 <!-- App-Skripte: eine Datei je Bereich, Reihenfolge = frühere Reihenfolge in der index.html -->
-<script defer src="assets/kern.js?v=202609221910"></script>
-<script defer src="assets/konto.js?v=202609221910"></script>
-<script defer src="assets/werkbank.js?v=202609221910"></script>
-<script defer src="assets/vitrine.js?v=202609221910"></script>
-<script defer src="assets/preise.js?v=202609221910"></script>
-<script defer src="assets/planer.js?v=202609221910"></script>
-<script defer src="assets/teilen.js?v=202609221910"></script>
-<script defer src="assets/hilfe.js?v=202609221910"></script>
-<script defer src="assets/detail.js?v=202609221910"></script>
-<script defer src="assets/artwork.js?v=202609221910"></script>
-<script defer src="assets/passend.js?v=202609221910"></script>
+<script defer src="assets/kern.js?v=202609231400"></script>
+<script defer src="assets/konto.js?v=202609231400"></script>
+<script defer src="assets/werkbank.js?v=202609231400"></script>
+<script defer src="assets/vitrine.js?v=202609231400"></script>
+<script defer src="assets/preise.js?v=202609231400"></script>
+<script defer src="assets/planer.js?v=202609231400"></script>
+<script defer src="assets/teilen.js?v=202609231400"></script>
+<script defer src="assets/hilfe.js?v=202609231400"></script>
+<script defer src="assets/detail.js?v=202609231400"></script>
+<script defer src="assets/artwork.js?v=202609231400"></script>
+<script defer src="assets/passend.js?v=202609231400"></script>
 <!-- Markt: eigene Datei, damit index.html nicht weiter wächst. Läuft nach dem Hauptskript. -->
-<script defer src="assets/markt.js?v=202609221910"></script>
+<script defer src="assets/markt.js?v=202609231400"></script>
 <!-- Sammlung: Karten, Sets, Wunschliste, Ziele, Auswertung. Braucht die Kachel-Bausteine aus markt.js. -->
-<script defer src="assets/sammlung.js?v=202609221910"></script>
+<script defer src="assets/sammlung.js?v=202609231400"></script>
 </body>
 </html>

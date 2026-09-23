@@ -297,6 +297,13 @@ def register(app, *, get_db, require_user, ist_pro, ist_pro_stufe=None, preis_fu
                              "diff": round(diff, 2), "prozent": round((g / s7 - 1) * 100, 1)})
         bewegung.sort(key=lambda b: -abs(b["diff"]))
 
+        # Der Wertverlauf ist seit dem 23.09.2026 das erste Merkmal, das Pro innerhalb der
+        # Sammlung trägt: Aufteilung, Einsatz und Bewegung bleiben Plus, die Kurve über
+        # die Zeit nicht. Die Oberfläche bekommt `pro: False` an dieser Stelle und zeigt
+        # dort die Vorschau mit dem Hinweis — statt die ganze Auswertung zu sperren.
+        if not ist_markt_erlaubt(user):
+            verlauf = {"pro": False, "tage": verlauf.get("tage", 0)}
+
         con.close()
         return {
             "pro": True, "leer": False,

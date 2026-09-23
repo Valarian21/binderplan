@@ -43,8 +43,8 @@ ARTWORK_JE_KARTE = 2        # je weiterer Ankerkarte
 ARTWORK_MAX = 32            # Obergrenze je Seite
 ARTWORK_4K_FAKTOR = 1.8     # Druckauflösung kostet das Modell entsprechend mehr
 
-ARTWORK_FREMD = 5           # fremde, veröffentlichte Artwork-Seite übernehmen
-ARTWORK_ANTEIL = 2          # davon bekommt der Ersteller
+ARTWORK_FREMD = 12          # fremde, veröffentlichte Artwork-Seite übernehmen (seit 23.09.2026 = Erstellen)
+ARTWORK_ANTEIL = 4          # davon bekommt der Ersteller (ein Drittel)
 ARTWORK_VERDIENST_MONAT = 300   # Obergrenze je Ersteller und Monat
 
 # Genau eine Artwork-Seite zum Ausprobieren. Vorher waren es zwei — bei einer Registrierung
@@ -53,24 +53,29 @@ START_CREDITS = 12
 
 # Eine fremde Seite zu übernehmen kostet uns nichts — sie ist schon erzeugt. Der Preis
 # liegt trotzdem nicht bei null: sonst lohnt es sich, eine Seite einmal erzeugen zu
-# lassen und sie über die Vitrine an alle zu verteilen. Fünf statt zwölf Credits.
+# lassen und sie über die Vitrine an alle zu verteilen.
 #
-# Vom Preis gehen zwei Credits an den Ersteller. Die Rechnung dahinter (Stand 03.09.2026):
+# Preis seit 23.09.2026: zwölf Credits, so viel wie eine eigene Seite. Bis dahin waren es
+# fünf — begründet mit den Grenzkosten (die Datei liegt im Cache) und dem geringeren
+# Wert einer Seite zu fremden Karten. Marcel hat sich dagegen entschieden: eine fertige
+# Seite ist eine fertige Seite, und der Gratis-Nutzer bekommt mit seinen zwölf
+# Start-Credits damit genau eine Seite — egal ob selbst gemalt oder übernommen. Gemessen
+# war bei fünf ohnehin nichts: drei Übernahmen in drei Wochen, zwei davon vom Betreiber.
+#
+# Vom Preis gehen vier Credits an den Ersteller — ein Drittel, vorher zwei von fünf.
 #
 #   Ein Credit kostet im Verkauf 4,0 bis 5,0 ct (Pro 200 für 7,99 €, Paket 600 für 23,99 €
 #   am unteren Rand, Plus und das 100er-Paket am oberen).
 #   Selbst erzeugen: 12 Credits ≈ 0,48–0,60 € Erlös bei 0,11–0,15 € Modellkosten.
-#   Übernehmen:      5 Credits ≈ 0,20–0,25 € Erlös bei praktisch null Kosten — die Datei
-#                    liegt schon im Cache. Zwei Credits gehen zurück an den Ersteller,
-#                    drei bleiben: 0,12–0,15 € je Übernahme.
-#   Was die zwei ausgeschütteten Credits uns wirklich kosten, hängt davon ab, wofür der
+#   Übernehmen:      12 Credits ≈ 0,48–0,60 € Erlös bei praktisch null Kosten. Vier
+#                    Credits gehen an den Ersteller, acht bleiben: 0,32–0,40 €.
+#   Was die vier ausgeschütteten Credits uns wirklich kosten, hängt davon ab, wofür der
 #   Ersteller sie ausgibt. Im teuersten Fall — eine neue Artwork-Seite — sind es
-#   2/12 × 0,13 € ≈ 2,2 ct. In echtem Geld bleiben also rund 18 ct je Übernahme.
-#   Der Ersteller braucht sechs Übernahmen für eine neue eigene Seite; diese sechs haben
-#   uns 30 Credits eingebracht.
+#   4/12 × 0,13 € ≈ 4,3 ct. Der Ersteller braucht drei Übernahmen für eine neue eigene
+#   Seite; diese drei haben uns 36 Credits eingebracht.
 #
 # Die wichtigste Eigenschaft ist aber nicht die Marge, sondern dass die Ausschüttung
-# KLEINER ist als der Preis: jede Übernahme vernichtet drei Credits netto. Zwei Konten,
+# KLEINER ist als der Preis: jede Übernahme vernichtet acht Credits netto. Zwei Konten,
 # die sich gegenseitig die Seiten abkaufen, verlieren beide — ein Kreisgeschäft lohnt
 # nicht. Die Monatsgrenze ist nur der zweite Riegel für den Fall, den wir nicht bedacht
 # haben.
@@ -320,6 +325,17 @@ def auffrischen(user, con=None, stripe_marke=None):
     return frisch or user
 
 
+def _kunstseiten(user) -> int:
+    try:
+        con = _dep["get_db"]()
+        n = con.execute("SELECT COUNT(*) FROM artworks WHERE user_id = ? AND status = 'fertig'",
+                        (user.get("id"),)).fetchone()[0]
+        con.close()
+        return int(n or 0)
+    except Exception:
+        return 0
+
+
 def konto_info(user):
     """Tarif- und Guthabenangaben für das Frontend."""
     t = tarif(user)
@@ -330,6 +346,10 @@ def konto_info(user):
         "credits_abo": int(user.get("credits_abo") or 0),
         "credits_gekauft": int(user.get("credits") or 0),
         "credits_monat": t["credits"],
+        # Für die Startseite: solange null und die Start-Credits reichen, steht dort die
+        # Karte „Deine erste Kunstseite ist gratis" (23.09.2026). Gezählt wird in der
+        # Tabelle — `users.artwork_gesamt` pflegt niemand, es steht bei allen auf 0.
+        "kunstseiten": _kunstseiten(user),
         "abo_bis": (user.get("abo_bis") or "")[:10],
         "abo_kuendigt": bool(user.get("abo_kuendigt")),
         "abo_intervall": user.get("abo_intervall") or "",

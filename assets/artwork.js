@@ -3,7 +3,7 @@
 // kern → konto → werkbank → vitrine → preise → planer → detail → artwork → markt → sammlung.
 // ---------- Artwork-Seiten (KI erweitert das Kartenmotiv über die ganze Seite) ----------
 const AW_STILE = ['karte', 'comic', 'foto', 'aquarell', 'oel', 'anime', 'retro', 'pixel', 'neon', 'skizze', 'minimal', 'dunkel'];
-const AW = { seite: 0, anker: new Set(), stil: 'karte', aktuell: null, poll: null, liste: [], konto: null, pokemon: [], preise: null };
+const AW = { seite: 0, anker: new Set(), stil: 'karte', groesse: '2K', aktuell: null, poll: null, liste: [], konto: null, pokemon: [], preise: null };
 
 function artworkOeffnen(seite) {
   document.querySelectorAll('.menu').forEach((m) => m.classList.add('hidden'));
@@ -11,6 +11,7 @@ function artworkOeffnen(seite) {
   if (!S.user) return loginOeffnen(t('aw_login'));
   if (!S.binder.items.length) return toast(t('binder_leer'));
   AW.seite = seite == null ? S.seite : seite;
+  AW.groesse = '2K';
   AW.aktuell = null; clearInterval(AW.poll);
   const sp = seiteInfo(AW.seite), pp = sp.laenge;
   AW.anker = new Set();
@@ -20,12 +21,15 @@ function artworkOeffnen(seite) {
   AW.pokemon = []; zeichneArtworkPoke(); $('aw-poke').value = '';
   passungLaden();
   if (!S.pokedex) ladePokedex().catch(() => {});
-  if (!AW.preise) api('api/artwork/stile').then((d) => {
-    AW.preise = { basis: d.preis_basis, je_karte: d.preis_je_karte, max: d.preis_max };
-    AW.konto = d.konto; artworkKontingentText();
+  // Bei jedem Öffnen neu: `darf_4k` hängt am Tarif, und der kann sich seit dem letzten
+  // Mal geändert haben (Upgrade im selben Sitzungsfenster).
+  api('api/artwork/stile').then((d) => {
+    AW.preise = { basis: d.preis_basis, je_karte: d.preis_je_karte, max: d.preis_max,
+                  faktor4k: d.preis_4k_faktor || 1.8, darf4k: !!d.darf_4k };
+    AW.konto = d.konto; zeichneArtworkQual(); artworkKontingentText();
   }).catch(() => {});
   artworkAnsicht('editor');
-  zeichneArtworkGrid('aw-grid', true); zeichneArtworkStile();
+  zeichneArtworkGrid('aw-grid', true); zeichneArtworkStile(); zeichneArtworkQual();
   modalOeffnen('modal-artwork');
   artworkGalerieLaden();
 }
@@ -107,8 +111,19 @@ function zeichneArtworkStile() {
 // Was diese Seite kostet: Grundpreis + Zuschlag je Ankerkarte (mehr Karten = mehr Modellkosten)
 function artworkPreis() {
   const p = AW.preise;
-  if (!p) return 10;
-  return Math.min(p.max, p.basis + Math.max(0, AW.anker.size - 2) * p.je_karte);
+  if (!p) return 12;
+  const grund = Math.min(p.max, p.basis + Math.max(0, AW.anker.size - 2) * p.je_karte);
+  return AW.groesse === '4K' ? Math.round(grund * (p.faktor4k || 1.8)) : grund;
+}
+// Qualität: Standard (2K) für alle, Druck (4K) ab Pro. Wer nicht darf, sieht den Chip mit
+// Pro-Marke und landet beim Tippen im Tarif-Dialog — nicht in einer Fehlermeldung.
+function zeichneArtworkQual() {
+  const el = $('aw-qual'); if (!el) return;
+  const p = AW.preise || {}; const darf = !!p.darf4k;
+  const f = String(p.faktor4k || 1.8).replace('.', LANG === 'en' ? '.' : ',');
+  el.innerHTML = `<button class="chip ${AW.groesse !== '4K' ? 'on' : ''}" onclick="AW.groesse='2K';zeichneArtworkQual();artworkKontingentText()">${t('aw_qual_2k')}</button>`
+    + `<button class="chip ${AW.groesse === '4K' ? 'on' : ''}" onclick="${darf ? "AW.groesse='4K';zeichneArtworkQual();artworkKontingentText()" : "upgradeOeffnen(t('gate_4k'))"}">${t('aw_qual_4k')}${darf ? '' : ' <span class="pro-marke">Pro</span>'}</button>`
+    + `<div class="aw-wunsch-u">${t('aw_qual_4k_u').replace('{f}', f)}</div>`;
 }
 function artworkKontingentText() {
   const k = AW.konto; const el = $('aw-kont');
@@ -140,12 +155,13 @@ async function artworkStarten() {
   $('aw-start').disabled = true;
   try {
     const d = await api('api/artwork', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ binder_id: S.binder.id, seite: AW.seite, stil: AW.stil, wunsch: $('aw-wunsch').value.trim(), anker: [...AW.anker], pokemon: AW.pokemon.map((p) => p.name_en) }) });
+      body: JSON.stringify({ binder_id: S.binder.id, seite: AW.seite, stil: AW.stil, groesse: AW.groesse, wunsch: $('aw-wunsch').value.trim(), anker: [...AW.anker], pokemon: AW.pokemon.map((p) => p.name_en) }) });
     zeichneArtworkGrid('aw-lauf-grid', false);
     artworkAnsicht('lauf');
     artworkPollen(d.id);
   } catch (e) {
     $('aw-start').disabled = false;
+    if (e.code === 'limit_pro_4k') return upgradeOeffnen(t('gate_4k'));
     if (e.code === 'keine_credits' || e.code === 'limit_artwork') {
       const dt = e.detail || {};
       return upgradeOeffnen(t('gate_credits').replace('{n}', dt.benoetigt || artworkPreis()).replace('{s}', dt.saldo || 0));

@@ -2496,3 +2496,8 @@
   .kopf .neu-binder { padding: 7px 10px; }
   .kopf .neu-binder .nb-text { display: none; }
 }
+
+/* Gratis-Kunstseite auf der Startseite, Pro-Marke im Kunstseiten-Dialog (23.09.2026) */
+.st-kunst { border-color: var(--akzent); display: grid; gap: 6px; }
+.st-kunst .st-kunst-btn { justify-self: start; margin-top: 6px; }
+.pro-marke { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; background: var(--akzent); color: #fff; margin-left: 4px; vertical-align: middle; }

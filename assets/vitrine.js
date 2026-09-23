@@ -389,8 +389,24 @@ async function kunstUebernehmen(id) {
     zeichneKunst();
     toast(d.bezahlt ? t('vt_k_gekauft').replace('{n}', d.bezahlt) : t('vt_k_schon'));
     kunstEinsetzen(d);
+    if (d.bezahlt) neuMalenAnbieten();
   } catch (e) { if (!gate(e)) toast(e.message); }
 }
+
+/** Nach einer bezahlten Übernahme die Maßanfertigung anbieten (seit 23.09.2026).
+ *  Die übernommene Seite liegt jetzt als eigene Binderseite vor (S.seite), samt
+ *  Ankerkarten — „neu malen" öffnet genau dort den Kunstseiten-Dialog: dieselben
+ *  Karten, aber eigener Stil und eigener Wunsch. Konfektion verkauft Maßarbeit,
+ *  statt dass die Konfektion verteuert wird. */
+function neuMalenAnbieten() {
+  const el = $('upsell-banner'); if (!el) return;
+  const n = (typeof AW === 'object' && AW.preise && AW.preise.basis) || VT.preis || 12;
+  el.innerHTML = `<span><strong>${t('up_neu_t')}</strong> ${t('up_neu_u').replace('{n}', n)}</span>
+    <button class="btn primaer" style="font-size: var(--t-s);padding:5px 12px" onclick="upsellWeg();artworkOeffnen(S.seite)">${t('up_neu_btn')}</button>
+    <button class="btn sekundaer" style="font-size: var(--t-s);padding:5px 12px" onclick="upsellWeg()">${t('inst_spaeter')}</button>`;
+  el.classList.remove('hidden');
+}
+function upsellWeg() { const el = $('upsell-banner'); if (el) el.classList.add('hidden'); }
 
 async function kunstInBinder(id) {
   try {

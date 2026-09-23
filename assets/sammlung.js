@@ -885,7 +885,11 @@ function zeichneAuswertung() {
   const deckung = v.anteil == null ? 0 : v.anteil;
   const inEuro = deckung >= 60;
   let kurve;
-  if (v.punkte && v.punkte.length >= 2) {
+  if (v.pro === false) {
+    // Pro-Merkmal seit 23.09.2026: die Vorschau zeigt, was es gäbe; Aufteilung, Einsatz
+    // und Bewegung darüber und darunter bleiben Plus.
+    kurve = anSperre([t('an_vpro_1'), t('an_vpro_2'), t('an_vpro_3')], t('an_vpro_t'), 'Pro');
+  } else if (v.punkte && v.punkte.length >= 2) {
     const start = v.punkte[0].eur || 1;
     kurve = anLinie([{ name: inEuro ? t('an_wert') : t('an_bewegung_kurz'), farbe: 'var(--d1)',
                        punkte: v.punkte.map((p) => ({ datum: p.datum, wert: inEuro ? p.eur : p.eur / start * 100 })) }],

@@ -53,6 +53,10 @@ TAGESLIMIT_USD = 25.0
 
 STANDARD_MODELL = "google/gemini-3.1-flash-image"     # Nano Banana 2 – Bild rein, Bild raus
 STANDARD_GROESSE = "2K"
+# 4K beherrscht das Standardmodell nicht (gemessen 23.09.2026: „image_size '4K' is not
+# supported by google/gemini-3.1-flash-image"); die Preview-Fassung derselben Familie
+# kann es. Nur für 4K-Läufe, sonst bleibt das Standardmodell.
+STANDARD_MODELL_4K = "google/gemini-3.1-flash-image-preview-20260226"
 # Modus: "schnell" = Analyse + ein Malschritt (~0,12 $), "stufen" = Ring → Kontrolle → Seite → Pokémon-Edit
 # (~0,33–0,46 $). Die Stufen brachten im Vergleich keinen sichtbaren Mehrwert (28.08.) – Standard ist "schnell";
 # per ARTWORK_MODUS=stufen in .env umschaltbar.
@@ -1544,6 +1548,9 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "konto": _dep["abo"].konto_info(_dep["abo"].auffrischen(user)) if user else None,
                 "preis_basis": _dep["abo"].ARTWORK_BASIS, "preis_je_karte": _dep["abo"].ARTWORK_JE_KARTE,
                 "preis_max": _dep["abo"].ARTWORK_MAX,
+                # 4K: Druckqualität, seit 23.09.2026 nur für Pro (und den Lifetime-Altbestand)
+                "preis_4k_faktor": _dep["abo"].ARTWORK_4K_FAKTOR,
+                "darf_4k": bool(user and _dep["abo"].ist_pro(user)),
                 "aktiv": bool(env().get("OPENROUTER_KEY")), "max_pokemon": MAX_POKEMON}
 
     @app.post("/api/artwork")
@@ -1589,6 +1596,15 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
             raise HTTPException(503, detail={"code": "tageslimit"})
         e = env()
         groesse = e.get("ARTWORK_GROESSE") or STANDARD_GROESSE
+        # 4K nur für Pro: doppelte Kantenlänge, 1,8-facher Preis (abo.ARTWORK_4K_FAKTOR).
+        # Druckqualität ist seit dem 23.09.2026 das Merkmal, das Pro bei den Kunstseiten
+        # trägt — Plus und Pro unterschieden sich dort vorher nur in der Credit-Menge.
+        if str(data.get("groesse") or "").upper() == "4K":
+            if not _dep["abo"].ist_pro(user):
+                raise HTTPException(402, detail={"code": "limit_pro_4k"})
+            groesse = "4K"
+        modell = (e.get("ARTWORK_MODELL_4K") or STANDARD_MODELL_4K) if groesse == "4K" \
+            else (e.get("ARTWORK_MODELL") or STANDARD_MODELL)
         kosten_credits = _preis(len(anker), groesse)
         with _jobs_lock:
             con = get_db()
@@ -1607,7 +1623,7 @@ def register(app, *, get_db, current_user, require_user, ist_pro, load_binder, c
                 "sprache,modell,groesse,status,credits)"
                 " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'laeuft',?)",
                 (artwork_id, user["id"], binder["id"], seite, layout, json.dumps(anker), stil, wunsch,
-                 json.dumps(pokemon), sprache, e.get("ARTWORK_MODELL") or STANDARD_MODELL,
+                 json.dumps(pokemon), sprache, modell,
                  groesse, kosten_credits),
             )
             con.commit()

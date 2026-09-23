@@ -105,6 +105,13 @@ def _stripe():
 
 # --- Kennzahlen ---------------------------------------------------------------------
 
+# Betreiber- und Testkonten zählen nicht als Nutzer: der Betreiber (id 4) und alles unter
+# @binderplan.app (probe@, daniel@ — beide auf Plus ohne eine Bestellung). Bis zum
+# 23.09.2026 meldete die Übersicht deshalb 4 Zahler und 15,96 € MRR; echt waren 2 und
+# 7,98 €. KI-Kosten bleiben ungefiltert — das ist ausgegebenes Geld, egal von wem.
+INTERN = "(email LIKE '%@binderplan.app' OR id = 4)"
+EXTERN = "NOT " + INTERN
+
 def _aktivitaet_sql():
     """Letzte Aktivität je Nutzer: das Jüngste aus Binder-Änderung, Kunstseite, Buchung, Bestellung, Anmeldung."""
     return """
@@ -126,16 +133,16 @@ def uebersicht():
     d30 = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     akt = {r["id"]: r["zuletzt"] for r in con.execute(_aktivitaet_sql())}
     nutzer = {
-        "gesamt": q("SELECT COUNT(*) c FROM users")["c"],
-        "bestaetigt": q("SELECT COUNT(*) c FROM users WHERE email_bestaetigt IS NOT NULL")["c"],
-        "neu_7": q("SELECT COUNT(*) c FROM users WHERE created_at >= ?", d7)["c"],
-        "neu_30": q("SELECT COUNT(*) c FROM users WHERE created_at >= ?", d30)["c"],
+        "gesamt": q(f"SELECT COUNT(*) c FROM users WHERE {EXTERN}")["c"],
+        "bestaetigt": q(f"SELECT COUNT(*) c FROM users WHERE email_bestaetigt IS NOT NULL AND {EXTERN}")["c"],
+        "neu_7": q(f"SELECT COUNT(*) c FROM users WHERE created_at >= ? AND {EXTERN}", d7)["c"],
+        "neu_30": q(f"SELECT COUNT(*) c FROM users WHERE created_at >= ? AND {EXTERN}", d30)["c"],
         "aktiv_7": sum(1 for t in akt.values() if t and t >= d7),
         "aktiv_30": sum(1 for t in akt.values() if t and t >= d30),
-        "zahlend": q("SELECT COUNT(*) c FROM users WHERE plan NOT IN ('free','lifetime')")["c"],
-        "plaene": {r["plan"]: r["c"] for r in con.execute("SELECT plan, COUNT(*) c FROM users GROUP BY plan")},
-        "abos_aktiv": q("SELECT COUNT(*) c FROM users WHERE stripe_sub IS NOT NULL AND abo_status='active'")["c"],
-        "abos_gekuendigt": q("SELECT COUNT(*) c FROM users WHERE abo_kuendigt=1")["c"],
+        "zahlend": q(f"SELECT COUNT(*) c FROM users WHERE plan NOT IN ('free','lifetime') AND {EXTERN}")["c"],
+        "plaene": {r["plan"]: r["c"] for r in con.execute(f"SELECT plan, COUNT(*) c FROM users WHERE {EXTERN} GROUP BY plan")},
+        "abos_aktiv": q(f"SELECT COUNT(*) c FROM users WHERE stripe_sub IS NOT NULL AND abo_status='active' AND {EXTERN}")["c"],
+        "abos_gekuendigt": q(f"SELECT COUNT(*) c FROM users WHERE abo_kuendigt=1 AND {EXTERN}")["c"],
     }
     # Umsatz aus dem eigenen Bestellprotokoll (bezahlt), nach Art und Monat
     umsatz = {
@@ -238,11 +245,11 @@ def _herkunft(con, seit):
                           " WHERE tag >= date('now','-30 days') GROUP BY 1")
         hol("binder", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM binders"
                       f" WHERE COALESCE(herkunft,'') <> '' GROUP BY 1")
-        hol("konten", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users GROUP BY 1")
+        hol("konten", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users WHERE {EXTERN} GROUP BY 1")
         hol("bestaetigt", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users"
-                          f" WHERE email_bestaetigt IS NOT NULL GROUP BY 1")
+                          f" WHERE {EXTERN} AND email_bestaetigt IS NOT NULL GROUP BY 1")
         hol("zahlend", f"SELECT {kanal('herkunft')} AS kanal, COUNT(*) c FROM users"
-                       f" WHERE plan NOT IN ('free') GROUP BY 1")
+                       f" WHERE {EXTERN} AND plan NOT IN ('free') GROUP BY 1")
     except sqlite3.OperationalError:
         return {"kanaele": [], "hinweis": "Die Herkunftstabellen fehlen noch."}
 
@@ -260,7 +267,8 @@ def nutzer_liste():
                (SELECT COUNT(*) FROM artworks a WHERE a.user_id=u.id AND a.status='fertig') kunstseiten,
                (SELECT COALESCE(SUM(kosten_usd),0) FROM artworks a WHERE a.user_id=u.id) ki_kosten,
                (SELECT COALESCE(SUM(betrag),0) FROM bestellungen o WHERE o.user_id=u.id AND o.status='bezahlt') umsatz,
-               (SELECT COUNT(*) FROM bestellungen o WHERE o.user_id=u.id AND o.status='bezahlt') kaeufe
+               (SELECT COUNT(*) FROM bestellungen o WHERE o.user_id=u.id AND o.status='bezahlt') kaeufe,
+               (u.email LIKE '%@binderplan.app' OR u.id = 4) intern
         FROM users u LEFT JOIN profile p ON p.user_id=u.id ORDER BY u.id DESC""").fetchall()
     con.close()
     out = []

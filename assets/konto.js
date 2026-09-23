@@ -548,6 +548,8 @@ async function authAbsenden() {
     setToken(d.token);
     S.user = d.user;
     const nameFragen = authModus === 'reg';
+    // Nach der Registrierung folgen die ersten Schritte — nach dem Namensdialog (23.09.2026).
+    if (nameFragen) S.onbNach = true;
     // Anonyme Binder dem Konto zuordnen
     const ids = binderIds();
     if (ids.length) {
@@ -572,9 +574,44 @@ async function authAbsenden() {
 async function nameNeuSpeichern() {
   const name = $('name-neu').value.trim();
   modalSchliessen();
+  if (S.onbNach) { S.onbNach = false; setTimeout(onboardingOeffnen, 300); }
   if (!name) return;
   try { const d = await api('api/auth/profil', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); S.user = d.user; kontoAnzeigen(); } catch (e) {}
 }
+// ---------- Erste Schritte & Gratis-Kunstseite (23.09.2026) ----------
+// Gemessen: 5 von 7 Gratis-Konten hatten ihre 12 Start-Credits nie angerührt, 2 von 8
+// echten Konten nie einen Binder angelegt. Die Funktion, die das Produkt verkauft, wurde
+// schlicht nicht gefunden — deshalb steht sie jetzt an zwei Stellen: einmalig nach der
+// Registrierung und dauerhaft auf der Startseite, bis die erste Seite gemalt ist.
+function onboardingOeffnen() {
+  try { localStorage.setItem('bp_onb', '1'); } catch (e) {}
+  S.onbNach = false;
+  const n = (TARIF.daten && TARIF.daten.start_credits) || 12;
+  const u = $('onb-3-u'); if (u) u.textContent = t('onb_3_u').replace('{n}', n);
+  tarifeLaden().catch(() => {});
+  modalOeffnen('modal-onboarding');
+}
+function onboardingSchliessen() { modalSchliessen(); }
+function kunstStartBlock() {
+  const el = $('st-kunst-block'); if (!el) return;
+  const u = S.user; const n = (TARIF.daten && TARIF.daten.start_credits) || 12;
+  const zeigen = !!(u && (u.kunstseiten || 0) === 0 && (u.credits || 0) >= n);
+  el.hidden = !zeigen;
+  if (!zeigen) return;
+  $('st-kunst-t').textContent = t('st_kunst_t');
+  $('st-kunst-u').textContent = t('st_kunst_u').replace('{n}', u.credits);
+  $('st-kunst-btn').textContent = t('st_kunst_btn');
+}
+/** Der kürzeste Weg zur ersten Kunstseite: liegt im offenen Binder eine Karte, direkt der
+ *  Dialog auf der aktuellen Seite; sonst erst eine Vorlage — die KI malt um Karten herum. */
+function kunstStartOeffnen() {
+  if (typeof startSchliessen === 'function') startSchliessen();
+  const hatKarten = !!(S.binder && S.binder.items && S.binder.items.some((it) => it && it.type === 'card'));
+  if (hatKarten) { ansicht('suche'); artworkOeffnen(S.seite); return; }
+  toast(t('kunst_erst_karten'));
+  vorlagenOeffnen();
+}
+
 async function abmelden() {
   // Geteiltes Gerät: die App-Hülle im Service-Worker-Cache trägt Binderdaten des Kontos
   try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('leeren'); } catch (e) {}
@@ -765,11 +802,15 @@ async function startLaden() {
 
   if (S.user) {
     creatorNeuLaden();
+    kunstStartBlock();
+    // Konto ohne Binder, das die ersten Schritte nie gesehen hat — einmal zeigen.
+    let onbGesehen = true; try { onbGesehen = !!localStorage.getItem('bp_onb'); } catch (e) {}
+    if (!liste.length && !onbGesehen && !S.onbNach) setTimeout(onboardingOeffnen, 600);
     if (typeof zieleStartLaden === 'function') zieleStartLaden();
     if (typeof alarmeStartLaden === 'function') alarmeStartLaden();
     if (typeof digestStartLaden === 'function') digestStartLaden();
   } else {
-    ['st-alarme-block', 'st-ziele-block', 'st-digest-block', 'st-creator-neu'].forEach((id) => { const el = $(id); if (el) el.hidden = true; });
+    ['st-alarme-block', 'st-ziele-block', 'st-digest-block', 'st-creator-neu', 'st-kunst-block'].forEach((id) => { const el = $(id); if (el) el.hidden = true; });
   }
 
   // Zahlenband: drei Kacheln statt vier. Zwei der alten vier sagten, wie viel *geplant* ist,
